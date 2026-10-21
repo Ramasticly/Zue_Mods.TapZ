@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 490 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 583 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -55,8 +55,23 @@ dos projéteis 13312+p e do hit-detect md 935 = 13728; antes da câmera md 19 = 
 - **Estado entre `reset()`s**: câmera vertical, velocidades de reação e zoom são zerados (antes o quadro 0 de um replay herdava a câmera da execução anterior).
 - **Homing** para quando o projétil liga o `work[10]` (só com `CancelTime == 0`), não em qualquer hit.
 - **`sceneHidden` (OPT 1024)** olha só os lutadores e vale mesmo com OPT 2048 no frame (jogo:855 vem antes do aborto em 884).
+- **Projétil que não nascia (bug real do 33):** o hit de projétil (flag 0) no **frame 0 do ANO de um projétil** com `time = 1` era pulado — o app andava um frame antes do primeiro `_ActReq` do jogo (que só carrega o frame 0, jogo md 970 → 971). Resultado: o subprojétil (`SUBPROJETIL_ANIM_ID`) não nascia. Corrigido (primeira execução só carrega o frame; teste de regressão `SpawnDiagTest`, com `time` 1, 2 e 3). Conferido sem mudança: escolha do campo pela altura relativa (`PROJETIL_ANIM_NORMAL`/`ABAIXO`/`ACIMA`, jogo:2542-2590), tiro triplo (ANO, ANO+1, ANO+2) e limite `BulletNum < 8` — fuzz de 4000 sorteios contra uma réplica do jogo, 0 diferenças.
 
 ## 3. Textos e interface
+
+### 3.1 Projétil que não nasce: agora o app diz por quê
+Quando um hit de projétil (flag 0) existe mas **nada nasce**, uma faixa âmbar aparece na prévia (junto dos avisos do `GameRules`; o que fecha o jogo tem prioridade) e diz **qual** é o motivo. Casos: (a) o campo escolhido pela **altura relativa** está vazio, com o nome do campo e a diferença em px (a faixa `NORMAL` vale entre 37 px acima e 51 px abaixo do oponente) — nesse caso o botão **POS** abre o ajuste de altura; (b) `PROJETIL_ANIM_NORMAL` vazio; (c) o ANO do projétil não existe/está vazio, ou, no tiro triplo, falta o ANO+1/ANO+2; (d) já há 8 projéteis vivos; (e) hit de projétil dentro do ANO de projétil com `SUBPROJETIL_ANIM_ID = 0`; (f) ANO solto (modo ANO) sem golpe dono. O aviso vem da execução completa do golpe (`BattleSim.spawnProblem()`), então não depende de onde está a barra de tempo. O jogo se comporta do mesmo jeito nesses casos: o aviso só deixa de ser silencioso. `OCULTAR` esconde o aviso para aquela mensagem.
+
+### 3.2 Menu superior reordenável
+- **Segure** um botão do menu superior e **arraste** para frente ou para trás; a barra rola sozinha perto das bordas e o botão de origem fica translúcido durante o arraste. Soltar em cima de outro botão põe o arrastado naquela posição; soltar nas frestas/depois do último vai para o botão mais próximo.
+- O **primeiro botão** fica fixo fora da rolagem (por padrão, SALVAR). **Soltar qualquer botão no slot fixo troca o botão fixo.**
+- A ordem fica salva no aparelho (`SharedPreferences` "toolbar"); ids desconhecidos ou repetidos são descartados e botões novos entram no fim. Uma dica aparece uma única vez. `RESTAURAR ORDEM` (na ajuda) volta ao padrão.
+- Código: `ToolbarOrder` (Java puro, testado), `ReorderBar` (Android, arrastar/soltar), `LayoutManager` (monta os botões).
+
+### 3.3 Menu AJUDA
+Novo botão **AJUDA** (fim do menu, movível): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada).
+
+### 3.4 Textos corrigidos
 
 - Flag de link `0x1000` (SPAWN_POS) estava descrita **ao contrário**: bit ligado = o link **não** copia a posição do pai ao nascer (jogo:30047-30056).
 - Flag 26: vale para qualquer defensor (humano ou CPU). Flag 33: o bit que ela liga não é lido por ninguém (sem efeito). OPT 1024: também desliga o impacto na parede. Nota do FLY corrigida.
@@ -87,6 +102,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CutsceneTest (novo)** | 65 |
 | **FidelityTest (novo)** | 26 |
 | **GameRulesTest (novo)** | 20 |
+| **SpawnDiagTest (novo)** | 38 |
+| **ToolbarTest (novo)** | 55 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
@@ -101,8 +118,9 @@ Parser do DAC, `_ActReqMain`/`_Hokan` (exceto o quirk acima), desenho (flip/zoom
 - Stun + projétil: o jogo pode travar a luta (projétil pausado nunca termina). O app reproduz.
 - Se o dono morre (projétil) com stun ativo, o jogo não devolve o md do alvo; o app reproduz e o alvo fica parado.
 - Cutscene num pack de efeito editado só no `.txt` não é recompilada (precisa recarregar o personagem).
+- Arrastar os botões (`ReorderBar`) e o diálogo AJUDA usam `DragEvent`/`AlertDialog` do Android e **não foram executados num aparelho** (só compilados contra o `android-all` 13 e revisados); a lógica de ordem (`ToolbarOrder`) e os textos (`HelpText`) têm teste JVM.
 
 ## 8. Arquivos
 
 Alterados: `Ano`, `AttackData`, `AttackRenderer`, `AttackSim`, `AttackView`, `BattleSim`, `CharData`, `LayoutManager`, `LinkScreen`, `MainActivity`, `ObjModel`, `Saver`, `TimelineTools`, `test/BattleTest`.
-Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`.
+Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`.
