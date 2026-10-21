@@ -1,6 +1,6 @@
-diff -ruN ../app/Ano.java app/Ano.java
---- ../app/Ano.java	2026-10-13 17:09:18.000000000 +0000
-+++ app/Ano.java	2026-10-21 20:36:29.753082516 +0000
+diff -ruN a/Ano.java b/Ano.java
+--- a/Ano.java	2026-10-13 17:09:18.000000000 +0000
++++ b/Ano.java	2026-10-21 20:36:29.753082516 +0000
 @@ -35,6 +35,7 @@
          }
  
@@ -9,9 +9,9 @@ diff -ruN ../app/Ano.java app/Ano.java
          public boolean spawnPos() { return (flags & 0x1000) != 0; }
          public boolean syncXY() { return (flags & 0x4000) != 0; }
          public boolean syncMpt() { return (flags & 0x8000) != 0; }
-diff -ruN ../app/AttackData.java app/AttackData.java
---- ../app/AttackData.java	2026-10-09 10:00:35.000000000 +0000
-+++ app/AttackData.java	2026-10-21 20:29:04.495322788 +0000
+diff -ruN a/AttackData.java b/AttackData.java
+--- a/AttackData.java	2026-10-09 10:00:35.000000000 +0000
++++ b/AttackData.java	2026-10-21 20:29:04.495322788 +0000
 @@ -10,6 +10,8 @@
      public final CharData.Move move;
      /** charf do atacante (hitbox flags 41-70); pode ser null. */
@@ -29,9 +29,9 @@ diff -ruN ../app/AttackData.java app/AttackData.java
          return d;
      }
  }
-diff -ruN ../app/AttackRenderer.java app/AttackRenderer.java
---- ../app/AttackRenderer.java	2026-10-20 16:17:12.000000000 +0000
-+++ app/AttackRenderer.java	2026-10-21 20:34:19.382478406 +0000
+diff -ruN a/AttackRenderer.java b/AttackRenderer.java
+--- a/AttackRenderer.java	2026-10-20 16:17:12.000000000 +0000
++++ b/AttackRenderer.java	2026-10-21 20:34:19.382478406 +0000
 @@ -358,6 +358,18 @@
          text.setTextSize(11f / ps);
          for (int i = 0; i < o.hits.length; i++) {
@@ -51,10 +51,10 @@ diff -ruN ../app/AttackRenderer.java app/AttackRenderer.java
              float l, r, t, b;
              if ((fl & 16) != 0) { r = ax - h.x; l = r - h.width; } else { l = ax + h.x; r = l + h.width; }
              if ((fl & 32) != 0) { b = ay - h.y; t = b - h.height; } else { t = ay + h.y; b = t + h.height; }
-diff -ruN ../app/AttackSim.java app/AttackSim.java
---- ../app/AttackSim.java	2026-10-13 00:52:40.000000000 +0000
-+++ app/AttackSim.java	2026-10-21 20:07:56.051107095 +0000
-@@ -318,9 +318,63 @@
+diff -ruN a/AttackSim.java b/AttackSim.java
+--- a/AttackSim.java	2026-10-13 00:52:40.000000000 +0000
++++ b/AttackSim.java	2026-10-21 21:58:58.416651203 +0000
+@@ -318,10 +318,71 @@
      /** Um tick: raiz primeiro, depois os links na ordem. */
      public void step() { step(false); }
  
@@ -64,6 +64,12 @@ diff -ruN ../app/AttackSim.java app/AttackSim.java
 +     * (que escrevem so o x da raiz) deixam isto desligado.
 +     */
 +    public boolean rebaseLinks;
++
++    /**
++     * true = lutador, projetil, aura ou agarrao: o PlayerTail / md 971 / md 977 / md 941 recalculam o bit 4 do wActFlag (pausa) a cada tick
++     * (so o hitstop ou o md 925 o ligam), entao um bit 4 vindo do dado do MPT nao prende o objeto. Efeitos de hit e cutscenes nao fazem isso.
++     */
++    public boolean clearPause;
 +
 +    /** _SetXY do jogo: raiz e todos os links vao para (x, y) (16.16). */
 +    public void pinTo(int x, int y) {
@@ -116,9 +122,11 @@ diff -ruN ../app/AttackSim.java app/AttackSim.java
 +            }
 +        }
          if (!frozen) {
++            if (clearPause) root.actFlags &= ~4;
              root.actReq();
              for (int i = 0; i < children.length; i++) {
-@@ -330,6 +384,8 @@
+                 if (children[i] != null) children[i].actReq();
+@@ -330,6 +391,8 @@
          frame++;
          if (root.pat < prevRootPat) rootWrapped = true;
          prevRootPat = root.pat;
@@ -127,9 +135,9 @@ diff -ruN ../app/AttackSim.java app/AttackSim.java
      }
  
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
-diff -ruN ../app/AttackView.java app/AttackView.java
---- ../app/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ app/AttackView.java	2026-10-21 20:45:22.765030639 +0000
+diff -ruN a/AttackView.java b/AttackView.java
+--- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
++++ b/AttackView.java	2026-10-21 22:32:45.745760275 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -158,7 +166,7 @@ diff -ruN ../app/AttackView.java app/AttackView.java
                          anoEnd = fend;
                          loops = sim.loops();
                          stopSounds();
-@@ -304,6 +308,23 @@
+@@ -304,6 +308,27 @@
  
      private boolean noticeVisible() { return notice != null && SystemClock.uptimeMillis() < noticeUntil; }
  
@@ -170,11 +178,15 @@ diff -ruN ../app/AttackView.java app/AttackView.java
 +        if (data == null || data.attacker == null) return;
 +        java.util.TreeSet<Integer> anos = Saver.anosOfMove(data.attacker.dac, data.move, data.attacker.data);
 +        java.util.List<GameRules.Issue> iss = GameRules.check(data.attacker.dac, anos, data.attacker.cnv == null ? 0 : data.attacker.cnv.size());
-+        final String msg = GameRules.summary(iss);
-+        if (msg.isEmpty() || msg.equals(rulesDismissed)) return;
 +        boolean fatal = false;
 +        for (GameRules.Issue i : iss) fatal |= i.fatal;
-+        QuickNotice n = new QuickNotice(msg).duration(7000).left("OCULTAR", new Runnable() { public void run() { rulesDismissed = msg; } });
++        // prioridade: o que fecha o jogo > projetil que nao nasceu > avisos do jogo
++        String spawn = sim == null ? "" : sim.spawnProblem();
++        boolean showSpawn = !fatal && spawn.length() > 0;
++        final String msg = showSpawn ? spawn : GameRules.summary(iss);
++        if (msg.isEmpty() || msg.equals(rulesDismissed)) return;
++        QuickNotice n = new QuickNotice(msg).duration(showSpawn ? 9000 : 7000).left("OCULTAR", new Runnable() { public void run() { rulesDismissed = msg; } });
++        if (showSpawn && sim.spawnProblemByHeight()) n.right("POS", new Runnable() { public void run() { if (posRequest != null) posRequest.run(); } });
 +        if (!fatal) n.colors(QuickNotice.AMBER, QuickNotice.AMBER_BTN);
 +        showNotice(n);
 +    }
@@ -182,7 +194,7 @@ diff -ruN ../app/AttackView.java app/AttackView.java
      // aviso de pouso
  
      private static final String LAND_MSG = "Animação/golpe acabou antes por causa do pouso. Experimente mudar a posição do personagem para ver o movimento completo.";
-@@ -1349,6 +1370,7 @@
+@@ -1349,6 +1374,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -190,9 +202,9 @@ diff -ruN ../app/AttackView.java app/AttackView.java
          return data.attacker.sprites;
      }
  
-diff -ruN ../app/BattleSim.java app/BattleSim.java
---- ../app/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ app/BattleSim.java	2026-10-21 20:49:00.487857888 +0000
+diff -ruN a/BattleSim.java b/BattleSim.java
+--- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
++++ b/BattleSim.java	2026-10-21 22:32:45.745163919 +0000
 @@ -25,6 +25,8 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -224,7 +236,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +     * Prioridade (_SetObj) dos lutadores no jogo: atacando = 150 + 4*p (StartPlayerAttack), parado (md 863) = 130 + 4*(1-p),
 +     * em dano / depois do DamageEnd / md 925 = 130 - 4*p. Atacante = jogador 0, oponente = jogador 1.
 +     */
-+    private int atkPrio() { return idleMode ? 134 : 150; }
++    private int atkPrio() { return stunned[0] ? 130 : (idleMode ? 134 : 150); }
 +    private int oppPrio() { return (inDamage || endAnim >= 0 || stunned[1] || dead) ? 126 : 130; }
 +
 +    /** Prio das tasks do jogo (TCB.prio): so o desempate do DrawExec (iTaskPrio = prio*13 + 12 na raiz, + 11 - i nos links). */
@@ -253,7 +265,16 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
              out.add(d);
          }
      }
-@@ -113,19 +125,51 @@
+@@ -109,23 +121,60 @@
+         boolean dead;
+         int life;
+         int stillX = Integer.MIN_VALUE, stillY, still;   // ticks parado no ultimo frame
++        /** Projetil principal (md 970 criado no PlayerTail com prio 13312 < 13569): so roda no tick seguinte ao do nascimento. */
++        boolean main;
++        int bornTick = -1;
++        /** Quantas vezes a task ja rodou: a 1a so carrega o frame 0 (sem mover, sem passar tempo). */
++        int runs;
+     }
  
      private static final class Fx {
          AttackSim sim;
@@ -309,7 +330,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      /** Liga/desliga a simulacao das cutscenes da flag 20. */
      public static boolean cutscenes = true;
  
-@@ -162,6 +206,17 @@
+@@ -162,6 +211,19 @@
      private CharData oppChar;
      private int halfA = 30, halfO = 30;
      private int camLeft, camBase, oldAx, oldOx, cancelAtk;
@@ -324,18 +345,51 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +    private boolean dmgWall;
 +    /** PlayerState & 0x1000000 (mapa 2 com o alvo morto): o lutador some do desenho, com sombra e auras. */
 +    private final boolean[] hidden = new boolean[2];
++    /** O que o desenho ve: PlayerState & 0x1000000 so vira wObjFlag |= 1 no PlayerTail do tick seguinte (a camera e a sombra leem no mesmo tick). */
++    private final boolean[] hiddenDraw = new boolean[2];
      /** Camera vertical (iBackYPos, 16.16, <= 0) e iBackYOffset (px inteiros): ver updateCamY(). */
      private int camYFix, camYOff;
      private final List<Fx> fxs = new ArrayList<Fx>();
-@@ -197,6 +252,7 @@
+@@ -178,6 +240,23 @@
+     private int lastSerial, spawnedSerial;
+     private boolean armed;
+     private int bulletAno;
++    /** Campo do HDAT 4 que a altura relativa escolheu e a diferenca de altura (px, atacante - oponente) no inicio do golpe. */
++    private String bulletField = "PROJETIL_ANIM_NORMAL";
++    private int bulletRelPx;
++    /** Por que um hit de projetil (flag 0) nao gerou projetil (so o 1o motivo); "" = nada. byHeight = o ajuste e a altura (POS). */
++    private String spawnProblem = "";
++    private boolean spawnByHeight, measuredSpawnByHeight;
++    private String measuredSpawnProblem = "";
++    /** Resultado da medicao completa: motivo de um projetil nao nascer ("" se nasceu tudo que o golpe pede). */
++    public String spawnProblem() { return measuredSpawnProblem; }
++    /** O motivo se resolve mudando a altura relativa dos lutadores (botao POS). */
++    public boolean spawnProblemByHeight() { return measuredSpawnByHeight; }
++
++    private void noteSpawn(String text, boolean byHeight) {
++        if (spawnProblem.length() > 0) return;
++        spawnProblem = text;
++        spawnByHeight = byHeight;
++    }
+ 
+     // dano do defensor
+     private boolean inDamage;
+@@ -197,7 +276,14 @@
      }
      private final List<Aura> auras = new ArrayList<Aura>();
      private Dac charfDac;
 +    private Dac bobjDac;
      private boolean airborne, hitConfirmed;
++    /** HitTarget[defensor] do jogo: 1 depois de hit de projetil/agarrao, 0 depois de melee (so o recuo do atacante na parede usa). */
++    private boolean hitTargetDef;
++    /** bScrollLock: o agarrao simples zera a rolagem da camera no tick em que puxa. */
++    private boolean scrollLock;
++    /** wObjFlag & 8 do defensor no PlayerTail deste tick (tremor do hitstop em md 876): bloqueia a deteccao de hits e a separacao de corpos. */
++    private boolean defShaking;
      private boolean everHit;                     // o golpe acertou o oponente em algum momento
      private boolean flies = true;     // AirType: HDAT 3 linha 0 coluna 6
-@@ -207,6 +263,12 @@
+ 
+@@ -207,6 +293,12 @@
          reset();
      }
  
@@ -348,27 +402,43 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      /** Personagem do oponente (largura do corpo para as paredes). Reinicia a simulacao. */
      public void setOpponentChar(CharData c) {
          oppChar = c;
-@@ -214,6 +276,8 @@
+@@ -214,6 +306,14 @@
      }
  
      private AttackSim grab;      // OPONENTE_ANIM_SENDO_AGARRADO
 +    /** Hitstop proprio do objeto-agarrao (como o de um projetil: metade do hitstop do defensor). */
 +    private int grabHs;
++    /** DamageHitActNo do jogo: ANO do atacante que causou o dano atual (o md 940 so cria o agarrao com 40..62). */
++    private int grabHitAno = -1;
++    /** O objeto acabou de ser (re)criado: a primeira execucao sem pausa so carrega o frame 0. */
++    private boolean grabFresh, grabNew;
++    /** Em pausa (hitstop, md 925) o jogo refaz o _SetAct e o objeto fica sem imagem: nao e desenhado e nao acerta. */
++    private boolean grabPaused;
      private int grabSerial = -1;
      private boolean grabArmed;
      private int phase;           // 0 = ANIM_INICIAL, 1 = ANIM_SEQ, 2 = ANIM_END
-@@ -265,9 +329,18 @@
+@@ -265,11 +365,33 @@
          grab = null;
          grabSerial = -1;
          grabArmed = false;
 +        grabHs = 0;
++        grabHitAno = -1;
++        grabFresh = false;
++        grabNew = false;
++        grabPaused = false;
          auras.clear();
          cuts.clear();
 -        cutStun = false;
 +        stunned[0] = stunned[1] = false;
 +        hidden[0] = hidden[1] = false;
++        hiddenDraw[0] = hiddenDraw[1] = false;
 +        oppHold = -1;
 +        camXOff = 0;
++        camYFix = 0;
++        camYOff = 0;
++        dXs = dYs = dXa = dYa = 0;
++        zCurX = zCurY = zTgtX = zTgtY = zDW = zDX = zDY = 0f;
++        transKind = -1;
 +        camTgt = -1;
 +        scrollTarget = -1;
 +        forceWall = false;
@@ -376,16 +446,34 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +        pendA = false;
          edgeOff[0] = edgeOff[1] = scrollOff[0] = scrollOff[1] = false;
          hitConfirmed = false;
++        hitTargetDef = false;
++        scrollLock = false;
++        defShaking = false;
          everHit = false;
-@@ -286,6 +359,7 @@
+         attackOver = false;
+         flies = flyMode;
+@@ -286,6 +408,7 @@
  
          int atkY = -heightPx * PX;
          atk = new AttackSim(atkDac, move.animInicial, atkLeft, 0, atkY);
-+        atk.rebaseLinks = true;
++        atk.rebaseLinks = true; atk.clearPause = true;
          cineLeft = 0;
  
          oppX = (atkLeft ? -distancePx : distancePx) * PX;
-@@ -302,11 +376,11 @@
+@@ -295,18 +418,21 @@
+         setOppAct(0);
+ 
+         // animacao do projetil escolhida no inicio do golpe (altura relativa ao oponente)
+-        if (atkY >= oppY + 3342336) bulletAno = move.projAbaixo;
+-        else if (atkY <= oppY - 2424832) bulletAno = move.projAcima;
+-        else bulletAno = move.projNormal;
++        bulletRelPx = (atkY - oppY) >> 16;
++        if (atkY >= oppY + 3342336) { bulletAno = move.projAbaixo; bulletField = "PROJETIL_ANIM_ABAIXO"; }
++        else if (atkY <= oppY - 2424832) { bulletAno = move.projAcima; bulletField = "PROJETIL_ANIM_ACIMA"; }
++        else { bulletAno = move.projNormal; bulletField = "PROJETIL_ANIM_NORMAL"; }
++        spawnProblem = "";
++        spawnByHeight = false;
+ 
          airborne = heightPx > 0;
          if (cinematic && hasCinematic()) {
              cineLeft = 122;                         // md 923 (1 tick) + TLoop 120 do md 926 + 927/928
@@ -399,12 +487,12 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
                  if (f.sim.root() != null) fxs.add(f);
              }
          }
-@@ -314,10 +388,14 @@
+@@ -314,10 +440,14 @@
          consumeSe(atk, 0);
          consumeSe(opp, 1);
          updateAuras();
 +        oppFrameFlags();
-+        stepCuts();                                 // o 1o tick do jogo: a task 996 criada no frame 0 ja roda (camera/stun/SE)
++        endPhase();                                 // o 1o tick do jogo: a task 996 criada no frame 0 ja roda (camera/stun/SE)
 +        syncScreenCuts();
      }
  
@@ -414,12 +502,24 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
  
      /** Travamento cinematico do especial (md 923/926 do jogo): liga/desliga a simulacao dele. */
      public static boolean cinematic = true;
-@@ -366,15 +444,21 @@
+@@ -360,21 +490,33 @@
+ 
+     private void stepImpl() {
+         ticks++;
++        hiddenDraw[0] = hidden[0];
++        hiddenDraw[1] = hidden[1];
+         AttackSim.Obj rd = atk.root();
+         if (rd != null && rd.isDone()) { if (doneSince < 0) doneSince = ticks - 1; } else doneSince = -1;
+         if (cineLeft > 0) {
              // md 926: o jogador nao passa por PlayerTail (sem ActReq) e o oponente fica em md 925:
              // todo mundo congelado; so o cenario/efeito (task 965) continua.
              cineLeft--;
-+            if (cineLeft == 0) oppHold = 10;          // task 924: depois da trava o oponente fica em md 925 mais 10 ticks e solta no 11o
++            if (cineLeft == 0) oppHold = 11;          // task 924: o atacante ainda esta em md 928 neste tick; conta 10 ticks em 881 e solta no seguinte
++            pinStunned();                            // PlayerTail do oponente (md 925) ainda faz _SetXY
              stepCuts();                              // as tasks (cutscenes da flag 20) continuam rodando
++            camera();                                // md 19/3 sao tasks proprias: a camera segue rodando durante a trava
++            if (camShake != 0) camShake--;
++            updateCamY();
              for (int i = fxs.size() - 1; i >= 0; i--) {
                  Fx f = fxs.get(i);
 -                f.sim.step(false);
@@ -437,26 +537,33 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          // 1. atacante
          AttackSim.Obj r0 = atk.root();
          atkFrozen = extendTime && !idleMode && r0 != null && r0.isDone() && !atk.hasWrapped() && grounded(r0);
-@@ -383,6 +467,7 @@
+@@ -383,6 +525,7 @@
              if (idle != null && idle.present) {
                  preIdle = physHold != null ? physHold : atk;
                  atk = new AttackSim(atkDac, 0, atkLeft, r0.x, r0.y);
-+                atk.rebaseLinks = true;
++                atk.rebaseLinks = true; atk.clearPause = true;
                  idleMode = true;
                  lastSerial = -1;
                  spawnedSerial = -1;
-@@ -390,7 +475,9 @@
+@@ -390,8 +533,10 @@
                  atkFrozen = false;
              }
          }
 -        if (atkFrozen) {
+-            stepGrab();
 +        if (stunned[0]) {
-+            // md 925: o PlayerTail roda sem _ActReq (parado); projeteis, auras e agarrao nao andam
++            // md 925: o PlayerTail roda sem _ActReq (parado, mas com _SetXY); projeteis, auras e agarrao nao andam
++            pinStunned();
 +        } else if (atkFrozen) {
-             stepGrab();
              updateAuras();
          } else {
-@@ -404,14 +491,17 @@
+             atk.step(hsAtk > 0);
+@@ -399,34 +544,76 @@
+             tryPull();
+             checkEnd();
+             checkAttackOver();
+-            stepGrab();
+             updateAuras();
              afterAtkFrame();
              consumeSe(atk, 0);
          }
@@ -468,17 +575,16 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 -        if (!cutStun) stepDefender();
 -        AttackSim.Obj od = opp.root();                // CheckOptFlag roda no PlayerTail de cada lutador a cada frame novo: o do oponente tambem
 -        if (od != null && (od != lastOppObj || od.serial != lastOppSerial)) { lastOppObj = od; lastOppSerial = od.serial; shakeFlags(od); }
-+        if (!stunned[1]) stepDefender();
+-        tickCancel();
+-        camera();
+-        if (camShake != 0) camShake--;                // Game6#case935 (antes da task da camera no mesmo frame)
+-        updateCamY();
+-        zoomTick();
++        if (!stunned[1]) stepDefender(); else pinStunned();
++        stepGrab();                                   // md 939-941 (13696): depois dos lutadores e dos projeteis
++        defShaking = !stunned[1] && inDamage && !dCharSrc && hsDef > 0 && ((hsDef & 3) == 1 || (hsDef & 3) == 3);
 +        oppFrameFlags();
-+        // CheckOptFlag nao consome os hits 3-5: enquanto o frame estiver carregado (projetil fora da pausa, lutadores sempre) o tremor volta a 12 a cada tick
-+        for (int i = 0; i < projs.size(); i++) if (!projs.get(i).dead && projs.get(i).hs <= 0 && !stunAny()) shakeFlags(projs.get(i).sim.root(), 0);
-+        shakeFlags(atk.root(), 0);
-+        shakeFlags(opp.root(), 1);
-+        stepCuts();                                   // md 996 (13729): depois dos lutadores/projeteis/hit e antes da camera (13745)
-         tickCancel();
-         camera();
-         if (camShake != 0) camShake--;                // Game6#case935 (antes da task da camera no mesmo frame)
-@@ -420,13 +510,35 @@
++        endPhase();
          // 4. efeitos
          for (int i = fxs.size() - 1; i >= 0; i--) {
              Fx f = fxs.get(i);
@@ -495,6 +601,30 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +        settleFighters();
 +    }
 +
++    /**
++     * Fim do tick do jogo: tremor (CheckOptFlag nao consome os hits 3-5: enquanto o frame estiver carregado o tremor volta a 12 a cada tick),
++     * cutscenes (md 996, 13729), contagem do cancelamento, camera (md 19, 13745), tremor decrementado pelo md 935, camera vertical e zoom.
++     * O reset() tambem passa por aqui: ele e o 1o tick do jogo, que roda a camera depois da cutscene.
++     */
++    private void endPhase() {
++        for (int i = 0; i < projs.size(); i++) if (!projs.get(i).dead && projs.get(i).hs <= 0 && !stunAny()) shakeFlags(projs.get(i).sim.root(), 0);
++        shakeFlags(atk.root(), 0);
++        shakeFlags(opp.root(), 1);
++        stepCuts();                                   // md 996 (13729): depois dos lutadores/projeteis/hit e antes da camera (13745)
++        tickCancel();
++        camera();
++        if (camShake != 0) camShake--;                // Game6#case935 (antes da task da camera no mesmo frame)
++        updateCamY();
++        zoomTick();
++    }
++
++    /** md 925: o PlayerTail pula so o _ActReq; o _SetXY(PlayerXPos) continua levando raiz e links para a posicao logica. */
++    private void pinStunned() {
++        AttackSim.Obj a = atk.root(), o = opp.root();
++        if (stunned[0] && a != null) atk.pinTo(a.x, a.y);
++        if (stunned[1] && o != null) opp.pinTo(oppX, oppY);
++    }
++
 +    /** CheckOptFlag roda no PlayerTail de cada lutador a cada frame novo: o do oponente tambem (tremor e flag 20 do HDAT 13 dele). */
 +    private void oppFrameFlags() {
 +        AttackSim.Obj od = opp.root();
@@ -502,6 +632,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +            lastOppObj = od;
 +            lastOppSerial = od.serial;
 +            if (!optAbort(od, 1)) {
++                teleportFlags(od, 1, 2);
 +                if (cutscenes) cutsceneFlags(od, 1, null);
 +            }
 +        }
@@ -515,7 +646,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      }
  
      private boolean looping;
-@@ -442,6 +554,7 @@
+@@ -442,6 +629,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, move, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -523,7 +654,22 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          return s;
      }
-@@ -584,29 +697,37 @@
+@@ -492,7 +680,13 @@
+ 
+     public int measureLength() {
+         BattleSim s = fresh();
+-        try { return measure(s); } finally { realTrans = new ArrayList<Trans>(s.trans); measuredLandedEarly = s.landedEarly; measuredLandTick = s.landTick; }
++        try { return measure(s); } finally {
++            realTrans = new ArrayList<Trans>(s.trans);
++            measuredLandedEarly = s.landedEarly;
++            measuredLandTick = s.landTick;
++            measuredSpawnProblem = s.spawnProblem;
++            measuredSpawnByHeight = s.spawnByHeight;
++        }
+     }
+ 
+     private int measure(BattleSim s) {
+@@ -584,56 +778,121 @@
              for (int i = 0; i < r.hits.length; i++) {
                  if (r.hits[i].flag == 0) spawnMain(r, r.hits[i]);
              }
@@ -532,7 +678,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 -            if (cutscenes) cutsceneFlags(r);
 -            if (hasFlag(r, 32) && lifeA > 0 && lifeO > 0) selfDamage(r.optData[0]);
 +            if (!optAbort(r, 0)) {                       // CheckOptFlag: OPT 2048 fora de uma parede encerra a funcao antes de olhar os hits
-+                teleportFlags(r);
++                teleportFlags(r, 0, 1);
 +                if (cutscenes) cutsceneFlags(r, 0, null);
 +                if (hasFlag(r, 32) && lifeA > 0 && lifeO > 0) selfDamage(r.optData[0]);
 +            }
@@ -540,45 +686,60 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      }
  
      /**
-      * Hitbox flags 39 / 40 (CheckOptFlag): uma vez por frame carregado.
+-     * Hitbox flags 39 / 40 (CheckOptFlag): uma vez por frame carregado.
 -     * 39 = o atacante vai para a posicao do oponente.
 -     * 40 = o oponente vai para a posicao do atacante + COORDS[x, y] (x espelhado pelo flip do objeto).
-+     * 39 = o atacante vai para a posicao (logica) do oponente; 40 = o oponente vai para a do atacante + COORDS[x, y]
-+     * (x espelhado pelo flip do objeto). Com o oponente morto (Life <= 0) o jogo nao teleporta e encerra o ANO (wActFlag |= 2).
-+     * O oponente teleportado por 40 aparece no mesmo tick (o PlayerTail dele roda depois); o atacante teleportado por 39 so
-+     * aparece no tick seguinte (o _SetXY dele ja passou): fica pendente em pendA e entra logo apos o detect() do proximo tick.
++     * Hitbox flags 39 / 40 (CheckOptFlag): uma vez por frame carregado, em qualquer objeto (lutador ou projetil) do jogador {@code p}.
++     * 39 = p vai para a posicao (logica) do outro; 40 = o outro vai para a de p + COORDS[x, y] (x espelhado pelo flip do objeto).
++     * Com o alvo morto (Life <= 0) o jogo nao teleporta e encerra o ANO (wActFlag |= 2).
++     * {@code order} = ordem da task de origem (0 projetil 13312, 1 atacante 13569, 2 oponente 13570): o alvo so aparece no mesmo tick se o
++     * PlayerTail dele roda depois (ordem maior); senao o _SetXY dele ja passou e a posicao desenhada muda no tick seguinte (pendente).
       */
-     private void teleportFlags(AttackSim.Obj r) {
+-    private void teleportFlags(AttackSim.Obj r) {
++    private void teleportFlags(AttackSim.Obj r, int p, int order) {
++        int np = 1 - p;
          for (int i = 0; i < r.hits.length; i++) {
              Ano.Hit h = r.hits[i];
 +            if (h.flag != 39 && h.flag != 40) continue;
-+            if (lifeO <= 0) {
++            if ((np == 0 ? lifeA : lifeO) <= 0) {
 +                r.actFlags |= 2;
-+                lastHit = "flag " + h.flag + ": oponente derrotado, o ANO termina";
++                lastHit = "flag " + h.flag + ": alvo derrotado, o ANO termina";
 +                continue;
 +            }
++            int tx, ty, who;
              if (h.flag == 39) {
 -                r.x = oppX;
 -                r.y = oppY;
-+                movePlayer(0, true, oppX, true, oppY);
-                 lastHit = "flag 39: atacante -> oponente";
+-                lastHit = "flag 39: atacante -> oponente";
 -            } else if (h.flag == 40) {
++                who = p;
++                tx = logX(np);
++                ty = logY(np);
++                lastHit = "flag 39: " + (p == 0 ? "atacante -> oponente" : "oponente -> atacante");
 +            } else {
++                who = np;
                  int cx = (r.objFlags & 16) != 0 ? -h.x : h.x;
 -                oppX = r.x + (cx << 16);
 -                oppY = r.y + (h.y << 16);
-+                oppX = logX(0) + (cx << 16);
-+                oppY = logY(0) + (h.y << 16);
-                 if (oppY > 0) oppY = 0;
-                 AttackSim.Obj d = opp.root();
-                 if (d != null) { d.x = oppX; d.y = oppY; }
-@@ -615,25 +736,72 @@
-         }
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
+-                if (oppY > 0) oppY = 0;
+-                AttackSim.Obj d = opp.root();
+-                if (d != null) { d.x = oppX; d.y = oppY; }
+-                lastHit = "flag 40: oponente -> atacante + (" + cx + "," + h.y + ")";
++                tx = logX(p) + (cx << 16);
++                ty = logY(p) + (h.y << 16);
++                if (np == 1 && ty > 0) ty = 0;
++                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
+             }
++            movePlayer(who, true, tx, true, ty);
++            int whoOrder = who == 0 ? 1 : 2;
++            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
++                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
++                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
++                else if (d != null) { d.x = tx; d.y = ty; }
++            }
++        }
++    }
++
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -603,14 +764,17 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-+        }
+         }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
 +        if (setX) pendAX = x;
 +        if (setY) pendAY = y;
-+    }
-+
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    /** _SetXY do PlayerTail (inicio do tick, depois do hit-detect do tick anterior): o atacante vai para a posicao logica. */
 +    private void applyPendingMoves() {
 +        if (!pendA) return;
@@ -657,7 +821,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -643,118 +811,135 @@
+@@ -643,123 +902,145 @@
              int anim = c.flipped ? animF : animN;
              String why = "";
              if (animN == 0) why = " (sem animação: ANIM_ID = 0)";
@@ -879,7 +1043,93 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          }
      }
  
-@@ -844,7 +1029,7 @@
+     private void spawnMain(AttackSim.Obj r, Ano.Hit h) {
+-        if (bulletAno == 0 || projs.size() >= MAX_PROJECTILES) return;
++        if (bulletAno == 0) { noteNoBulletAno(); return; }
++        if (projs.size() >= MAX_PROJECTILES) {
++            noteSpawn("Um projétil não nasceu: já havia " + MAX_PROJECTILES + " vivos e o jogo não cria mais que isso (BulletNum < " + MAX_PROJECTILES
++                    + "). Faça os anteriores sumirem antes ou reduza a frequência do hit de projétil.", false);
++            return;
++        }
+         int count = (move.flags & 4) != 0 ? 3 : 1;
+         for (int k = 0; k < count; k++) {
+             int x, y;
+@@ -779,18 +1060,51 @@
+             else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
+ 
+             Proj p = new Proj();
++            p.main = true;
++            p.bornTick = ticks;
+             p.flip = facingLeft;
+             p.hitAno = move.projAoAcertar;
+             p.hitAnim = move.projAoAcertar != 0;
+             p.globalAno = move.projGlobal;
+             p.groundAno = move.projChao;
+             p.sim = new AttackSim(atkDac, bulletAno + k, p.flip, x, y);
++            p.sim.clearPause = true;
++            if (p.sim.root() == null)
++                noteSpawn("O projétil nasce, mas o ANO " + (bulletAno + k) + (k > 0 ? " (tiro triplo: ANO inicial + " + k + ")" : " (" + bulletField + ")")
++                        + " não existe ou está vazio no DAC: ele morre sem aparecer. "
++                        + (k > 0 ? "Com \"Lançar 3 projéteis\" os ANOs ANO, ANO+1 e ANO+2 precisam existir." : "Crie esse ANO ou aponte o campo para outro."), false);
+             projs.add(p);
+         }
+     }
+ 
++    /** O campo do HDAT 4 escolhido pela altura esta vazio: diz qual, a diferenca de altura e o que fazer. */
++    private void noteNoBulletAno() {
++        if (move.generic && !move.hasProjectile()) {
++            noteSpawn("O hit de projétil (flag 0) não gerou nada: este ANO não pertence a nenhum golpe com projétil (os três PROJETIL_ANIM estão vazios). "
++                    + "Abra o golpe dono para ver o projétil nascer.", false);
++            return;
++        }
++        boolean normal = bulletField.equals("PROJETIL_ANIM_NORMAL");
++        if (normal) {
++            noteSpawn("O hit de projétil (flag 0) não gerou nada: PROJETIL_ANIM_NORMAL está vazio (0). Preencha o campo em DADOS / EDITAR > GOLPE.", false);
++            return;
++        }
++        int d = bulletRelPx;
++        noteSpawn("O hit de projétil (flag 0) não gerou nada: com o atacante " + Math.abs(d) + " px " + (d > 0 ? "abaixo" : "acima")
++                + " do oponente o jogo usa " + bulletField + ", que está vazio (0)"
++                + (move.projNormal != 0 ? ", e PROJETIL_ANIM_NORMAL = " + move.projNormal + " só vale com o atacante entre 37 px acima e 51 px abaixo do oponente" : "")
++                + ". Preencha o campo ou mude a altura em POS.", true);
++    }
++
+     private void spawnSub(Proj parent, AttackSim.Obj o, Ano.Hit h) {
+-        if (move.subId == 0 || projs.size() >= MAX_PROJECTILES) return;
++        if (move.subId == 0) {
++            noteSpawn("Um hit de projétil (flag 0) dentro do ANO de projétil não gerou nada: SUBPROJETIL_ANIM_ID está vazio (0).", false);
++            return;
++        }
++        if (projs.size() >= MAX_PROJECTILES) {
++            noteSpawn("Um subprojétil não nasceu: já havia " + MAX_PROJECTILES + " projéteis vivos (BulletNum < " + MAX_PROJECTILES + ").", false);
++            return;
++        }
+         int dx = h.x << 16;
+         int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
+         int y = o.y + (h.y << 16);
+@@ -801,17 +1115,21 @@
+         p.globalAno = move.projGlobal;
+         p.groundAno = move.subChao;
+         p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
++        p.sim.clearPause = true;
+         projs.add(p);
+     }
+ 
+     private void setProjAct(Proj p, int ano) {
+         AttackSim.Obj o = p.sim.root();
+         p.sim = new AttackSim(atkDac, ano, p.flip, o.x, o.y);
++        p.sim.clearPause = true;
+         p.lastSerial = -1;
+         p.spawnedSerial = -1;
+     }
+ 
+     private void stepProj(Proj p) {
++        if (p.main && p.runs == 0 && p.bornTick == ticks) return;      // _TaskMake com prio menor que a task atual: roda a partir do proximo tick
++        boolean firstRun = p.runs++ == 0;                                // 1a execucao (md 970 -> 971): _ActReq so carrega o frame 0
+         p.life++;
+         AttackSim.Obj o = p.sim.root();
+         if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
+@@ -844,19 +1162,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -887,8 +1137,14 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +        boolean frozen = p.hs > 0 || stunAny();      // md 925 de qualquer jogador pausa o projetil (wActFlag |= 4); so o DONO em dano descongela (nunca no simulador)
  
          // homing (HOMING == 0): persegue o oponente depois que comecou a se mover e ate o primeiro hit
-         if (!frozen && move.homing == 0) {
-@@ -856,7 +1041,7 @@
+-        if (!frozen && move.homing == 0) {
++        if (!frozen && !firstRun && move.homing == 0) {
+             int spd = move.homingSpeed;
+-            if (!p.hitOnce && p.moved) {
++            if (!p.flagged && p.moved) {
+                 boolean right = (o.objFlags & 16) == 0;
+                 AttackSim.Obj ar = atk.root();
+                 int tx;
                  if (right && oppX < o.x) tx = ar.x + 31457280;
                  else if (!right && oppX > o.x) tx = ar.x - 31457280;
                  else tx = oppX;
@@ -897,11 +1153,23 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -890,17 +1075,11 @@
+@@ -869,7 +1187,7 @@
+         }
+         if (p.firstX != o.x) p.moved = true;
+ 
+-        p.sim.step(frozen);
++        if (!firstRun) p.sim.step(frozen);
+         o = p.sim.root();
+         if (o != null) {
+             if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
+@@ -890,22 +1208,19 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
-+                if (cutscenes && !optAbort(o, 0)) cutsceneFlags(o, 0, p);      // md 971 tambem chama CheckOptFlag (so fora da pausa)
++                if (!optAbort(o, 0)) {                                           // md 971 tambem chama CheckOptFlag (so fora da pausa)
++                    teleportFlags(o, 0, 0);
++                    if (cutscenes) cutsceneFlags(o, 0, p);
++                }
              }
          }
      }
@@ -916,43 +1184,80 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      // ============================================================ deteccao de hit
  
      private void detect() {
-@@ -989,7 +1168,7 @@
+         AttackSim.Obj def = opp.root();
+-        if (def == null) return;
++        if (def == null || defShaking) return;          // md 935: wObjFlag & 8 do defensor (tremor do hitstop) impede a deteccao neste tick
+         // projeteis
+         for (int i = 0; i < projs.size(); i++) {
+             Proj p = projs.get(i);
+@@ -920,13 +1235,14 @@
+                 p.hs = HIT_STOP / 2;
+                 hsDef = HIT_STOP;
+             }
++            hitTargetDef = true;
+             applyHit(op, pos, "projetil", o.optData[0], o.ano.index);
+             if (inDamage) onHitConfirmed(true, o.ano.index, p);
+         }
+         detectGrab(def);
+         // corpo a corpo
+         AttackSim.Obj r = atk.root();
+-        if (armed && r != null && !atkFrozen) {
++        if (armed && r != null && !atkFrozen && lifeA > 0 && lifeO > 0) {      // md 935: golpe corpo a corpo so com os dois vivos
+             int[] pos = checkObjHit(r, def);
+             if (pos != null) {
+                 armed = false;
+@@ -936,6 +1252,7 @@
+                     hsAtk = hs;
+                     hsDef = hs;
+                 }
++                hitTargetDef = false;
+                 applyHit(op, pos, "golpe", r.optData[0], r.ano.index);
+                 if (inDamage) onHitConfirmed(false, r.ano.index, null);
+             }
+@@ -989,7 +1306,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
 -                h2.air = atk.root().y < 0 && !flies; h2.blocked = false; h2.projectile = fromProjectile;
-+                h2.air = atk.root().y < 0; h2.blocked = false; h2.projectile = fromProjectile;
++                h2.air = atk.root().y != 0; h2.blocked = false; h2.projectile = fromProjectile;
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1178,7 @@
+@@ -999,7 +1316,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
 -                boolean evAir = ev.y < 0 && !flies;
-+                boolean evAir = ev.y < 0;
++                boolean evAir = ev.y != 0;
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1197,7 @@
+@@ -1018,7 +1335,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
 -            boolean air = rr != null && rr.y < 0 && !flies;
-+            boolean air = rr != null && rr.y < 0;
++            boolean air = rr != null && rr.y != 0;
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1209,7 @@
+@@ -1030,7 +1347,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
 -                    startGrab();
-+                    if (hitAno >= 40 && hitAno <= 62) startGrab();      // md 940: so cria o objeto se o ANO que acertou (DamageHitActNo) esta entre 40 e 62
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1117,6 +1296,7 @@
+@@ -1063,6 +1379,7 @@
+         transKind = -1;
+         if (switchAtk(next)) {
+             hitConfirmed = false;                 // work[10] = 0
++            scrollLock = true;                    // bScrollLock = true no md 882
+             lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
+         } else {
+             r.x = ox;
+@@ -1117,6 +1434,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -960,16 +1265,33 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1331,7 @@
+@@ -1151,7 +1469,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
 -        boolean air = r.y < 0 && !flies;
-+        boolean air = r.y < 0;
++        boolean air = r.y != 0;
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1232,7 +1412,7 @@
+@@ -1208,7 +1526,6 @@
+             r.speedX = 0;
+             r.accelX = 0;
+             sounds.add(new Snd(true, 12, 0));
+-            grab = null;
+             int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
+             if (land == 0) land = 13;
+             transKind = 3;
+@@ -1222,7 +1539,7 @@
+         // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
+         if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
+             transKind = 4;
+-            if (switchAtk(89)) { phase = 5; grab = null; lastHit += " -> QUEDA 89"; }
++            if (switchAtk(89)) { phase = 5; lastHit += " -> QUEDA 89"; }
+         }
+     }
+ 
+@@ -1232,11 +1549,11 @@
          AttackSim.Obj r = atk.root();
          // chaves ativas no frame atual (so a raiz, como o jogo)
          java.util.LinkedHashMap<Integer, Ano.Hit> active = new java.util.LinkedHashMap<Integer, Ano.Hit>();
@@ -978,7 +1300,12 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
              for (int i = 0; i < r.hits.length; i++) {
                  int f = r.hits[i].flag;
                  boolean ok = (f >= 10 && f <= 17) || (f >= 41 && f <= 70) || (f >= 71 && f <= 125);
-@@ -1255,7 +1435,8 @@
+-                if (ok && !active.containsKey(Integer.valueOf(f))) active.put(Integer.valueOf(f), r.hits[i]);
++                if (ok) active.put(Integer.valueOf(f), r.hits[i]);                 // AuraPosition recebe o ultimo hit com a mesma flag
+             }
+         }
+         for (int i = auras.size() - 1; i >= 0; i--) {
+@@ -1255,7 +1572,8 @@
              if (a != null) {
                  AttackSim.Obj o = a.sim.root();
                  if (o != null) { o.x = x; o.y = y; }
@@ -988,18 +1315,28 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
                  consumeSe(a.sim, 0);
                  continue;
              }
-@@ -1270,20 +1451,33 @@
+@@ -1270,21 +1588,22 @@
              a = new Aura();
              a.key = f;
              a.owner = owner;
 -            a.sim = new AttackSim(dac, ano, (r.objFlags & 16) != 0, x, y);
 +            a.sim = new AttackSim(dac, ano, false, x, y);
++            a.sim.clearPause = true;
 +            applyFlip(a.sim, auraFlip(owner, r, a.sim.root()));
              auras.add(a);
              consumeSe(a.sim, 0);
          }
      }
  
+-    private void startGrab() {
+-        grab = null;
+-        grabSerial = -1;
+-        grabArmed = false;
+-        int a = move.oponenteAgarrado;
+-        Ano an = a > 0 ? atkDac.getAno(a) : null;
+-        if (an == null || !an.present) return;
+-        grab = new AttackSim(atkDac, a, oppFlip, oppX, oppY);
+-        afterGrabFrame();
 +    /**
 +     * md 977: a aura (effect 10-17 ou char 71-125) herda o flip do dono (wObjFlag & 16), menos quando o frame dela tem um hit de flag 0;
 +     * md 978: as bolhas charf (41-70) nunca viram (so o x do offset e espelhado).
@@ -1008,39 +1345,85 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +        if (owner == OWNER_AURA_CHARF || ownerObj == null || (ownerObj.objFlags & 16) == 0) return false;
 +        if (aura != null) for (int i = 0; i < aura.hits.length; i++) if (aura.hits[i].flag == 0) return false;
 +        return true;
-+    }
-+
-     private void startGrab() {
-         grab = null;
-         grabSerial = -1;
-         grabArmed = false;
-+        grabHs = 0;
-         int a = move.oponenteAgarrado;
-         Ano an = a > 0 ? atkDac.getAno(a) : null;
-         if (an == null || !an.present) return;
-         grab = new AttackSim(atkDac, a, oppFlip, oppX, oppY);
-+        grab.rebaseLinks = true;       // md 941: _SetXY(posicao do agarrado) antes do _ActReq
-         afterGrabFrame();
      }
  
-@@ -1307,7 +1501,7 @@
-         g.x = d != null ? d.x : oppX;
-         g.y = d != null ? d.y : oppY;
-         applyFlip(grab, oppFlip);
--        grab.step(hsAtk > 0);
-+        grab.step(grabHs > 0 || hsAtk > 0 || stunAny());
-         afterGrabFrame();
-         consumeSe(grab, 0);
+     private void afterGrabFrame() {
+@@ -1296,20 +1615,50 @@
+         }
      }
-@@ -1331,6 +1525,7 @@
+ 
+-    /** A sprite acompanha o oponente a cada frame durante SEQ e END. */
++    /**
++     * Tasks 939-941 (prio 13696): o objeto "oponente sendo agarrado" nasce quando o defensor esta em dano (md 876/877) e o ANO que acertou
++     * (DamageHitActNo) esta entre 40 e 62, com SpecialType <= 12 e a coluna 24 do HDAT 4 preenchida; independe de SEQ/END. Acompanha a
++     * posicao do defensor, nunca vira (nao ha wObjFlag & 16) e morre quando o defensor sai de md 876/877/925. Em pausa (hitstop do atacante
++     * ou do objeto, md 925) o jogo refaz o _SetAct a cada tick: o objeto fica sem imagem e recomeca do frame 0.
++     */
+     private void stepGrab() {
+-        if (grab == null) return;
+-        AttackSim.Obj ar = atk.root();
+-        boolean active = (phase == 1) || (phase == 2 && ar != null && !ar.isDone());
+-        AttackSim.Obj g = grab.root();
+-        if (!active || g == null) { grab = null; return; }
++        if (grab == null) {
++            if (!inDamage || grabHitAno < 40 || grabHitAno > 62 || specialType > 12) return;
++            int a = move.oponenteAgarrado;
++            Ano an = a > 0 ? atkDac.getAno(a) : null;
++            if (an == null || !an.present) return;
++            AttackSim.Obj d0 = opp.root();
++            grab = new AttackSim(atkDac, a, false, d0 != null ? d0.x : oppX, d0 != null ? d0.y : oppY);
++            grab.rebaseLinks = true; grab.clearPause = true;
++            grabSerial = -1;
++            grabArmed = false;
++            grabHs = 0;
++            grabFresh = true;
++            grabNew = true;
++            grabPaused = true;
++        }
++        if (!(inDamage || stunned[1])) { grab = null; grabPaused = false; return; }
+         AttackSim.Obj d = opp.root();
+-        g.x = d != null ? d.x : oppX;
+-        g.y = d != null ? d.y : oppY;
+-        applyFlip(grab, oppFlip);
+-        grab.step(hsAtk > 0);
++        int gx = d != null ? d.x : oppX, gy = d != null ? d.y : oppY;
++        boolean pause = grabNew || grabHs > 0 || hsAtk > 0 || stunAny();      // work[12] == 0 (tick de criacao) tambem pausa
++        grabNew = false;
++        if (pause) {
++            AttackSim.Obj g0 = grab.root();
++            int a = g0 == null ? move.oponenteAgarrado : g0.ano.index;
++            grab = new AttackSim(atkDac, a, false, gx, gy);
++            grab.rebaseLinks = true; grab.clearPause = true;
++            grabSerial = -1;
++            grabArmed = false;
++            grabFresh = true;
++            grabPaused = true;
++            return;
++        }
++        grabPaused = false;
++        grab.pinTo(gx, gy);                           // _SetXY(posicao do defensor) antes do _ActReq
++        if (grabFresh) grabFresh = false;             // 1a execucao depois do _SetAct: so carrega o frame 0 (o AttackSim ja fez)
++        else grab.step(false);
+         afterGrabFrame();
+-        consumeSe(grab, 0);
++        consumeSe(grab, 1);                           // ChrSePlay(gw, defensor)
+     }
+ 
+     /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
+@@ -1331,6 +1680,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
-+        atk.rebaseLinks = true;
++        atk.rebaseLinks = true; atk.clearPause = true;
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1345,10 +1540,11 @@
+@@ -1341,14 +1691,17 @@
+ 
+     private void detectGrab(AttackSim.Obj def) {
+         AttackSim.Obj g = grab == null ? null : grab.root();
+-        if (g == null || !grabArmed) return;
++        if (g == null || !grabArmed || grabPaused) return;
          int[] pos = checkObjHit(g, def);
          if (pos == null) return;
          grabArmed = false;
@@ -1050,12 +1433,14 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +        // md 941 entra em tcbReqHit como um projetil: o defensor leva o hitstop inteiro, o objeto metade e o atacante nenhum
 +        Opt1 op = new Opt1(g.optData[1]);
 +        if (op.hitstopMode != 2) { grabHs = HIT_STOP / 2; hsDef = HIT_STOP; }
++        hitTargetDef = true;
          applyHit(op, pos, "agarrar", g.optData[0], g.ano.index);
 +        if (inDamage) onHitConfirmed(true, g.ano.index, null);
++        if (cancelAtk == 0) cancelAtk = 20;           // md 941: o objeto pausado que acertou liga CancelTime[atacante] = 20
      }
  
      /** CheckObjHit: hitbox (flag 2) do atacante contra hurtbox (flag 1) do alvo; devolve o centro do impacto em px. */
-@@ -1446,9 +1642,7 @@
+@@ -1446,9 +1799,7 @@
          }
          // efeito e som de impacto
          if (op.effectAno >= 0 && fxDac != null) {
@@ -1066,31 +1451,25 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          }
          if (op.sound >= 0) sounds.add(new Snd(true, op.sound, 0));
          // o defensor vira para o atacante e entra no estado de dano
-@@ -1457,6 +1651,7 @@
+@@ -1457,6 +1808,9 @@
          if (oppX != flipRef) oppFlip = oppX >= flipRef;
          applyFlip(opp, oppFlip);
          inDamage = true;
++        grabHitAno = hitAno;                        // DamageHitActNo
++        dmgWall = false;                            // DamageChange zera DamageWall (jogo:2386)
 +        stunned[1] = false;                         // DamageChange troca o md do defensor por 876/877: o stun (md 925) acaba
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1481,6 +1676,7 @@
+@@ -1481,6 +1835,7 @@
  
      private void setOppAct(int ano) {
          opp = new AttackSim(defDac, ano, oppFlip, oppX, oppY);
-+        opp.rebaseLinks = true;
++        opp.rebaseLinks = true; opp.clearPause = true;
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1520,6 +1716,7 @@
-             dead = true;
-             oppY = 0;
-         } else {
-+            dmgWall = false;                        // DamageEnd: DamageWall volta a false
-             combo = 0;                              // DamageEnd: ComboCount do atacante zera
-         }
-         inDamage = false;
-@@ -1601,7 +1798,7 @@
+@@ -1601,7 +1956,7 @@
          int comp = tb.u8(dIdx, 11);
          int wall = tb.u8(dIdx, 12);
          if (comp > 0 && comp < 50) {
@@ -1099,7 +1478,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1634,8 +1831,9 @@
+@@ -1634,8 +1989,9 @@
                  dTime = 0;
                  tickDamage(depth + 1);
                  return;
@@ -1110,34 +1489,45 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
                  if (comp < 30) { dCharSrc = false; dType = comp; }
                  else if (dCharSrc) dType = comp - 30;
                  else { endDamage(864, -1); return; }
-@@ -1701,16 +1899,23 @@
+@@ -1701,16 +2057,28 @@
          float tw = 100f, tx = nx, ty = ny;
          int n = 12;
          AttackSim.Obj r = atk.root();
-+        boolean action = false;
-         if (r != null) {
-+            // CheckOptFlag grava iActionZoom* a cada tick (o ultimo hit 30/31 vale). So com FRAMES > 0 o md do zoom usa a acao;
-+            // com W = 100 a acao nao muda nada (o alvo atual segue); sem acao: afastamento automatico por distancia
-             for (int i = 0; i < r.hits.length; i++) {
-                 Ano.Hit h = r.hits[i];
+-        if (r != null) {
+-            for (int i = 0; i < r.hits.length; i++) {
+-                Ano.Hit h = r.hits[i];
 -                if ((h.flag != 30 && h.flag != 31) || h.width <= 0) continue;
-+                if (h.flag != 30 && h.flag != 31) continue;
-+                action = false;
-+                if (h.height <= 0) continue;
-+                action = true;
-+                if (h.width == 100) { tw = zTgtW; tx = zTgtX; ty = zTgtY; continue; }
-                 int cx = (r.objFlags & 16) != 0 ? -h.x : h.x;
-                 tw = h.width; tx = (r.x + (cx << 16)) / 65536f; ty = (r.y + (h.y << 16)) / 65536f;
+-                int cx = (r.objFlags & 16) != 0 ? -h.x : h.x;
+-                tw = h.width; tx = (r.x + (cx << 16)) / 65536f; ty = (r.y + (h.y << 16)) / 65536f;
 -                n = Math.max(1, h.height);
-+                n = h.height;
-             }
+-            }
++        boolean action = false;
++        // CheckOptFlag grava iActionZoom* a cada tick, em qualquer objeto (projetil fora da pausa, atacante, oponente: nessa ordem de task);
++        // o ultimo hit 30/31 vale. So com FRAMES > 0 o md do zoom usa a acao; com W = 100 ela nao muda nada (o alvo atual segue)
++        float[] last = null;                                     // {w, frames, x, y} em px do mundo
++        for (int i = 0; i <= projs.size() + 1; i++) {
++            AttackSim.Obj o;
++            if (i < projs.size()) { Proj pr = projs.get(i); o = pr.dead || pr.hs > 0 || stunAny() ? null : pr.sim.root(); }
++            else o = i == projs.size() ? r : opp.root();
++            if (o == null) continue;
++            for (int k = 0; k < o.hits.length; k++) {
++                Ano.Hit h = o.hits[k];
++                if (h.flag != 30 && h.flag != 31) continue;
++                int cx = (o.objFlags & 16) != 0 ? -h.x : h.x;
++                last = new float[]{h.width, h.height, (o.x + (cx << 16)) / 65536f, (o.y + (h.y << 16)) / 65536f};
++            }
++        }
++        if (last != null && last[1] > 0) {
++            action = true;
++            if (last[0] == 100f) { tw = zTgtW; tx = zTgtX; ty = zTgtY; }
++            else { tw = last[0]; tx = last[2]; ty = last[3]; n = (int) last[1]; }
          }
 -        if (tw == 100f && r != null) {
 +        if (!action && tw == 100f && r != null) {
              // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
              int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
              if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1761,11 +1966,8 @@
+@@ -1761,11 +2129,8 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -1150,7 +1540,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
              refAtkX = ra.x;
          }
          oldAx = ra == null ? 0 : ra.x;
-@@ -1785,15 +1987,12 @@
+@@ -1785,15 +2150,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -1170,7 +1560,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          }
      }
  
-@@ -1802,14 +2001,14 @@
+@@ -1802,14 +2164,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -1187,7 +1577,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2016,7 @@
+@@ -1817,7 +2179,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -1196,7 +1586,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,13 +2036,14 @@
+@@ -1837,42 +2199,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -1214,7 +1604,12 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
              int lo = camLeft + h[i], hi = camLeft + SCREEN_W - h[i];
              int o = 1 - i;
              if (camBase == 0 && x[i] < lo) {
-@@ -1854,25 +2054,28 @@
+-                if (i == 1 && !hitConfirmed && old[i] > x[i] && cancelAtk != 0) x[o] += (old[i] - x[i]) * 4 / 5;
++                if (i == 1 && !hitTargetDef && old[i] > x[i] && cancelAtk != 0) x[o] += (old[i] - x[i]) * 4 / 5;
+                 x[i] = lo;
+             } else if (camBase == MAP_BASE_MAX && x[i] > hi) {
+-                if (i == 1 && !hitConfirmed && old[i] < x[i] && cancelAtk != 0) x[o] += (old[i] - x[i]) * 4 / 5;
++                if (i == 1 && !hitTargetDef && old[i] < x[i] && cancelAtk != 0) x[o] += (old[i] - x[i]) * 4 / 5;
                  x[i] = hi;
              }
          }
@@ -1226,8 +1621,9 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
          for (int i = 0; i < 2; i++) {
              int a = anoOfPlayer(i);
 -            d[i] = ((i == 1 && freeze) || a == 74 || a == 75 || scrollOff[i]) ? 0 : x[i] - old[i];
-+            d[i] = ((i == 1 && freeze) || a == 74 || a == 75 || scrollOff[i] || hidden[i]) ? 0 : x[i] - old[i];
++            d[i] = ((i == 1 && freeze) || a == 74 || a == 75 || scrollOff[i] || hidden[i] || scrollLock) ? 0 : x[i] - old[i];
          }
++        scrollLock = false;
          for (int i = 0; i < 2; i++) {
              int o = 1 - i;
              int ho = h[o] >> 16;
@@ -1248,7 +1644,7 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2087,120 @@
+@@ -1884,21 +2251,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -1313,10 +1709,12 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +        int hA = atkChar == null ? 0 : atkChar.bodyHeight() << 16, hO = oppChar == null ? 0 : oppChar.bodyHeight() << 16;
 +        int yA = pendA ? pendAY : atk.root().y;
 +        boolean near = yA >= -hA && oppY >= -hO;
-+        boolean shaking = inDamage && !dCharSrc && hsDef > 0 && ((hsDef & 3) == 1 || (hsDef & 3) == 3);      // wObjFlag & 8 do md 876
++        boolean shaking = defShaking;                                                                        // wObjFlag & 8 do md 876
 +        boolean ghost = (move.flags & 16) != 0 && !attackOver && !idleMode;                                    // SpecialKind & 16
 +        if (!near || shaking || ghost) return;
-+        int n15 = h[0] + h[1];                       // (largura0 + largura1) / 2
++        int w0 = atkChar == null || atkChar.bodyWidth() <= 0 ? h[0] >> 15 : atkChar.bodyWidth();
++        int w1 = oppChar == null || oppChar.bodyWidth() <= 0 ? h[1] >> 15 : oppChar.bodyWidth();
++        int n15 = ((w0 + w1) / 2) << 16;             // (largura0 + largura1) / 2 do HDAT 3, como o jogo (larguras impares)
 +        for (int i = 0; i < 2; i++) {
 +            int o = 1 - i;
 +            int n17 = old[i] - x[i];
@@ -1357,14 +1755,9 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 +
 +    /** PlayerState & 1 (OPT 1024 no frame atual de um lutador ou projetil): esconde o cenario e o jogo nao aplica o impacto na parede. */
 +    private boolean sceneHidden() {
++        // CheckOptFlag liga PlayerState |= 1 antes do aborto por OPT 2048 e so os lutadores contam (o PlayerTail apaga o que os projeteis ligaram)
 +        AttackSim.Obj a = atk.root(), o = opp.root();
-+        if (a != null && (a.optFlag & 1024) != 0 && !optAbort(a, 0)) return true;
-+        if (o != null && (o.optFlag & 1024) != 0 && !optAbort(o, 1)) return true;
-+        for (int i = 0; i < projs.size(); i++) {
-+            AttackSim.Obj r = projs.get(i).sim.root();
-+            if (r != null && (r.optFlag & 1024) != 0 && !projs.get(i).dead && !optAbort(r, 0)) return true;
-+        }
-+        return false;
++        return (a != null && (a.optFlag & 1024) != 0) || (o != null && (o.optFlag & 1024) != 0);
 +    }
 +
 +    /** WALL (coluna 12) da linha atual da reacao do defensor (0 fora de uma reacao). */
@@ -1377,7 +1770,16 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1979,55 +2281,47 @@
+@@ -1919,7 +2382,7 @@
+             int se = r.pendingSe;
+             r.pendingSe = -1;
+             // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
+-            if (owner == 1 && atkWavCount > 0) se += atkWavCount;
++            if (owner == 1 && atkWavCount > 0 && se >= 80) se += atkWavCount;
+             if (se < 80) pushRaw(se - 1);
+             else pushRaw(se);
+         }
+@@ -1979,55 +2442,47 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -1395,14 +1797,14 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
 -        collect(items, atk, OWNER_ATTACKER, PRIO_ATK);
 -        for (int i = 0; i < auras.size(); i++) collect(items, auras.get(i).sim, auras.get(i).owner, PRIO_ATK);
 -        for (int i = 1; i < items.size(); i++) {                 // insercao estavel: empate mantem a ordem de coleta (ja ordenada por taskPrio)
-+        if (!hidden[1]) collect(items, shadowD, OWNER_SHADOW, 17, TASK_AUX + 1);       // task 936: _SetObj(17); PlayerState & 0x1000000 a esconde
-+        if (!hidden[0]) collect(items, shadowA, OWNER_SHADOW, 17, TASK_AUX);
-+        if (!hidden[1]) collect(items, opp, OWNER_DEFENDER, oppPrio(), TASK_OPP);
-+        if (!hidden[0]) {
++        if (!hiddenDraw[1]) collect(items, shadowD, OWNER_SHADOW, 17, TASK_AUX + 1);       // task 936: _SetObj(17); PlayerState & 0x1000000 a esconde
++        if (!hiddenDraw[0]) collect(items, shadowA, OWNER_SHADOW, 17, TASK_AUX);
++        if (!hiddenDraw[1]) collect(items, opp, OWNER_DEFENDER, oppPrio(), TASK_OPP);
++        if (!hiddenDraw[0]) {
 +            collect(items, atk, OWNER_ATTACKER, atkPrio(), TASK_ATK);
 +            for (int i = 0; i < auras.size(); i++) collect(items, auras.get(i).sim, auras.get(i).owner, atkPrio(), TASK_AUX);
 +        }
-+        collect(items, grab, OWNER_PROJECTILE, 131, TASK_AUX + 1);                        // md 939: _SetObj(131)
++        if (!grabPaused) collect(items, grab, OWNER_PROJECTILE, 131, TASK_AUX + 1);                        // md 939: _SetObj(131)
 +        for (int i = 0; i < projs.size(); i++) collect(items, projs.get(i).sim, OWNER_PROJECTILE, 153, TASK_PROJ);   // md 970: _SetObj(153 + 4p)
 +        for (int i = 0; i < cuts.size(); i++) {
 +            Cut c = cuts.get(i);
@@ -1455,9 +1857,9 @@ diff -ruN ../app/BattleSim.java app/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-diff -ruN ../app/CharData.java app/CharData.java
---- ../app/CharData.java	2026-10-20 14:58:43.000000000 +0000
-+++ app/CharData.java	2026-10-21 20:33:09.504460561 +0000
+diff -ruN a/CharData.java b/CharData.java
+--- a/CharData.java	2026-10-20 14:58:43.000000000 +0000
++++ b/CharData.java	2026-10-21 20:33:09.504460561 +0000
 @@ -131,8 +131,9 @@
      private final ReactionTable[] reactions = new ReactionTable[REACTION_COUNT];
      private byte[] h3 = new byte[0];
@@ -1512,10 +1914,10 @@ diff -ruN ../app/CharData.java app/CharData.java
          if (t.size() > 3 && t.bytes(3).length >= 7) cd.flies = (t.bytes(3)[6] & 255) != 0;       // PODE_VOAR (byte 6)
          if (t.size() > 3 && t.bytes(3).length >= 4) cd.halfWidth = (t.bytes(3)[3] & 255) / 2;       // LARGURA (byte 3 / 2)
          return cd;
-diff -ruN ../app/CutsceneInfo.java app/CutsceneInfo.java
---- ../app/CutsceneInfo.java	1970-01-01 00:00:00.000000000 +0000
-+++ app/CutsceneInfo.java	2026-10-21 20:34:36.994324536 +0000
-@@ -0,0 +1,75 @@
+diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
+--- a/CutsceneInfo.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CutsceneInfo.java	2026-10-21 21:59:21.531422696 +0000
+@@ -0,0 +1,80 @@
 +package com.zue.attackeditor;
 +
 +/**
@@ -1526,7 +1928,10 @@ diff -ruN ../app/CutsceneInfo.java app/CutsceneInfo.java
 +    private CutsceneInfo() { }
 +
 +    /** Campos s16 da linha: +0 alvo, +2 sync, +4 z, +6 anim, +8 anim espelhada, +10 cam, +12 stun, +14 mapa. */
-+    static String describe(CharData ch, int ev, int hx, int hy) {
++    static String describe(CharData ch, int ev, int hx, int hy) { return describe(ch, ev, hx, hy, false); }
++
++    /** fromProjectile = a flag 20 esta num ANO de projetil (md 971 pausa o proprio projetil quando algum jogador esta em md 925). */
++    static String describe(CharData ch, int ev, int hx, int hy, boolean fromProjectile) {
 +        if (ch == null) return "Sem dados do personagem: nao da para ler o HDAT 13.";
 +        if (!ch.hasEvent(ev)) {
 +            return "O evento " + ev + " nao existe no HDAT 13 deste personagem (tem " + ch.eventRows() + " linha"
@@ -1548,6 +1953,8 @@ diff -ruN ../app/CutsceneInfo.java app/CutsceneInfo.java
 +        b.append('\n').append(sync > 0 ? "Dura " + sync + " frame(s) do ANO do golpe (frames, nao ticks)" : "Dura enquanto o ANO do golpe nao mudar")
 +                .append(" ou ate o ANO acabar.");
 +        if (stun != 0) b.append("\nCongela o outro lutador (md 925) ate acabar: projeteis, auras e agarrao tambem pausam.");
++        if (stun != 0 && fromProjectile)
++            b.append("\nAviso: num ANO de projetil o stun pausa o proprio projetil, que nunca avanca ate acabar: a cena e o stun ficam presos no jogo.");
 +        if (mapa != 0) b.append("\nFLAG ").append(mapa).append(": ").append(mapaName(mapa));
 +        if (alvo >= 2) b.append("\nALVO ").append(alvo).append(" usa o pack bobjNN do cenario (precisa da pasta bobj* em assets).");
 +        if (animN != 0 && cam != 0 && (hx != 0 || hy != 0) && mapa != 3)
@@ -1591,10 +1998,10 @@ diff -ruN ../app/CutsceneInfo.java app/CutsceneInfo.java
 +        }
 +    }
 +}
-diff -ruN ../app/GameRules.java app/GameRules.java
---- ../app/GameRules.java	1970-01-01 00:00:00.000000000 +0000
-+++ app/GameRules.java	2026-10-21 20:44:40.162310740 +0000
-@@ -0,0 +1,99 @@
+diff -ruN a/GameRules.java b/GameRules.java
+--- a/GameRules.java	1970-01-01 00:00:00.000000000 +0000
++++ b/GameRules.java	2026-10-21 21:59:21.531108998 +0000
+@@ -0,0 +1,101 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -1668,9 +2075,11 @@ diff -ruN ../app/GameRules.java app/GameRules.java
 +            if (m.hasOpt && m.optData[1] > MAX_OPT1 && hasHitbox(m))
 +                out.add(new Issue(ix, p, true, "OPT 1 = " + m.optData[1] + " com hitbox: o grupo " + (m.optData[1] / 50) + " nao existe (maximo " + MAX_OPT1 + ")"));
 +            if (m.hits.length > 0) linkHits |= isLink[ix];
-+            if (m.hasOpt && m.optData[2] != 0 && m.time > 0 && p + 1 < a.mpts.length) {
-+                Ano.Mpt n = a.mpts[p + 1];
-+                if (n.hits.length != m.hits.length && (n.hasRaz || n.hasOpt))
++            if (m.hasOpt && m.optData[2] != 0 && m.time > 0) {
++                // _Hokan: o "proximo" do ultimo frame e o frame 0. So le lixo quando o frame seguinte tem caixas E rotacao/alfa/zoom (campo 128),
++                // porque o laco que pula as caixas usa o iHitNum do frame ATUAL; o OPT (64) so avanca o ponteiro, sem ler nada.
++                Ano.Mpt n = a.mpts[(p + 1) % a.mpts.length];
++                if (n.hasRaz && n.hits.length > 0 && n.hits.length != m.hits.length)
 +                    out.add(new Issue(ix, p, true, "interpolacao: o jogo le o frame seguinte pulando " + m.hits.length + " caixa(s) (as do frame ATUAL) em vez de " + n.hits.length
 +                            + "; a rotacao/alfa/zoom do alvo saem errados"));
 +            }
@@ -1694,9 +2103,9 @@ diff -ruN ../app/GameRules.java app/GameRules.java
 +        return (fatal > 0 ? "O JOGO FECHA/ERRA: " : "Aviso do jogo: ") + first + (issues.size() > 1 ? " (+" + (issues.size() - 1) + ")" : "");
 +    }
 +}
-diff -ruN ../app/GameTables.java app/GameTables.java
---- ../app/GameTables.java	1970-01-01 00:00:00.000000000 +0000
-+++ app/GameTables.java	2026-10-21 20:43:03.255385041 +0000
+diff -ruN a/GameTables.java b/GameTables.java
+--- a/GameTables.java	1970-01-01 00:00:00.000000000 +0000
++++ b/GameTables.java	2026-10-21 20:43:03.255385041 +0000
 @@ -0,0 +1,98 @@
 +package com.zue.attackeditor;
 +
@@ -1796,10 +2205,241 @@ diff -ruN ../app/GameTables.java app/GameTables.java
 +        return s;
 +    }
 +}
-diff -ruN ../app/LayoutManager.java app/LayoutManager.java
---- ../app/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ app/LayoutManager.java	2026-10-21 20:37:14.176483880 +0000
-@@ -1235,7 +1235,7 @@
+diff -ruN a/HelpText.java b/HelpText.java
+--- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
++++ b/HelpText.java	2026-10-21 22:30:46.827112994 +0000
+@@ -0,0 +1,129 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Texto do menu AJUDA: o que cada botao do menu superior e da tela faz, visto pela utilidade em editar e executar um golpe.
++ * Java puro (testado sem Android). Os ids dos botoes do menu superior sao os de {@link ToolbarOrder}.
++ */
++final class HelpText {
++    private HelpText() { }
++
++    static final class Section {
++        /** id de {@link ToolbarOrder} se a secao descreve um botao do menu superior; null nas demais. */
++        final String button;
++        final String title, body;
++
++        Section(String button, String title, String body) {
++            this.button = button;
++            this.title = title;
++            this.body = body;
++        }
++    }
++
++    /** Dica de como mexer na propria barra (vai no topo da ajuda). */
++    static final String REORDER_TIP =
++            "ORDEM DOS BOTÕES: segure um botão do menu superior e arraste para frente ou para trás para mudar a ordem; "
++            + "perto da borda a barra rola sozinha. O primeiro botão fica fixo no início da linha (hoje, por padrão, o SALVAR): "
++            + "solte qualquer botão em cima dele para ele virar o fixo. A ordem fica salva no aparelho. "
++            + "RESTAURAR ORDEM volta ao padrão.";
++
++    /** Menu superior, na ordem de fabrica. */
++    static List<Section> toolbar() {
++        List<Section> s = new ArrayList<Section>();
++        s.add(new Section(ToolbarOrder.SAVE, "SALVAR",
++                "Grava as edições em .txt: o golpe atual (HDAT 4 + os ANOs dele), só o ANO atual, todos os golpes, todos os ANOs ou tudo. "
++                + "Dá para salvar numa pasta separada (não mexe no original) ou sobrescrever os .txt do Runtime. "
++                + "Ao salvar, o app confere os limites do jogo (hitboxes por frame, links, tempo...) e avisa o que faria o jogo fechar."));
++        s.add(new Section(ToolbarOrder.CHAR, "CHAR",
++                "Escolhe o ATACANTE e o OPONENTE (cada um com os próprios dados e sprites). POS ajusta a distância entre eles e a altura de cada um "
++                + "arrastando na tela (as linhas são as posições do jogo: perto, médio, longe) e tem o FLY, que deixa o atacante voando em vez de cair. "
++                + "CHAR OBJ mostra a caixa do corpo (HDAT 3) e as âncoras dos sprites, hurtboxes, hitboxes, efeitos e projéteis, e permite mudar o tamanho do corpo. "
++                + "Use para testar o golpe contra outros lutadores e em outras alturas: a altura relativa decide qual ANO de projétil nasce (normal, de baixo ou de cima)."));
++        s.add(new Section(ToolbarOrder.SPRITES, "SPRITES",
++                "Lista os sprites (SPR_0, SPR_1...) do personagem atacante, já recortados pelo CNV; as folhas ficam intactas no disco. "
++                + "Serve para adicionar, substituir e remover sprites, mudar o recorte e o índice, e para escolher qual sprite entra num frame do golpe."));
++        s.add(new Section(ToolbarOrder.LINKS, "LINKS",
++                "Mostra e edita os links do ANO atual: objetos filhos (efeitos, partes do corpo, auras) que o jogo cria junto com a animação e que seguem o pai. "
++                + "O jogo aceita no máximo 13 por ANO e só 1 nível (link de link não nasce). Use para montar efeitos que acompanham o golpe."));
++        s.add(new Section(ToolbarOrder.MOVE, "GOLPE SET",
++                "Opções do golpe (ATK_FLAGS do HDAT 4): agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, "
++                + "lançar 3 projéteis (usa ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente e atravessar o oponente. "
++                + "Só vale para o ANO inicial de um golpe. Define como o golpe é executado no jogo, não como ele é desenhado."));
++        s.add(new Section(ToolbarOrder.HITBOX, "HITBOX",
++                "Liga e desliga o desenho das caixas na preview: vermelha = hitbox (onde o golpe acerta), azul = hurtbox (onde o personagem leva dano) "
++                + "e amarela = as demais caixas de flag. Ligado ajuda a posicionar o alcance; desligado deixa ver só a arte."));
++        s.add(new Section(ToolbarOrder.TIME, "TEMPO",
++                "Muda como o tempo corre na simulação. NORMAL: o golpe roda como no jogo e a preview termina quando tudo acaba. "
++                + "ESTENDIDO: o atacante fica parado no último frame quando o ANO acaba, para você ver projéteis e a reação do oponente até o fim. "
++                + "ATAQUE: como estendido, mas a reprodução para sozinha no pouso (a barra continua livre)."));
++        s.add(new Section(ToolbarOrder.CENTER, "CENTRO",
++                "Câmera da preview. NORMAL: livre; você arrasta e dá zoom com os dedos, e o mapa inteiro fica enquadrado ao centralizar. "
++                + "TELA: segue o recorte que o jogo realmente mostra (480x320, com a rolagem, o zoom e o tremor da câmera do jogo). "
++                + "CHAR: enquadra os dois lutadores com zoom automático, bom para golpes de longe ou de ar."));
++        s.add(new Section(ToolbarOrder.LAND, "POUSO",
++                "ON: o atacante cai e pousa como no jogo, e a troca de ANO de pouso/queda acontece (SEQ e END de ar/chão). "
++                + "OFF: só zera a velocidade no chão e segue no mesmo ANO. Desligue para editar um ANO sem a queda interferir."));
++        s.add(new Section(ToolbarOrder.LOCK, "TRANSIÇÃO",
++                "LIVRE: o fluxo do golpe acontece (SEQ, fim, pouso, queda trocam de ANO sozinhos). "
++                + "TRAVADA: congela as trocas a partir do frame atual, para você editar um ANO sem a simulação sair dele. Travar desliga o POUSO; destravar devolve o estado anterior."));
++        s.add(new Section(ToolbarOrder.FLIP, "VIRAR",
++                "Vira o lado da luta: o atacante passa a olhar para o outro lado e o oponente fica do lado oposto. "
++                + "Útil para conferir espelhamentos, ANO espelhado, projéteis indo para trás e efeitos com flip."));
++        s.add(new Section(ToolbarOrder.HIDE, "HIDE-EFF",
++                "Esconde efeitos, auras, cenas (bobj) e projéteis e deixa só atacante e oponente. Serve para ver o que é do personagem e o que é do efeito."));
++        s.add(new Section(ToolbarOrder.GHOST, "FR-PREVIEW",
++                "Frame preview: desenha o frame anterior (PREV) ou o próximo (NEXT) em transparência por cima do atual, para alinhar sprites e hitboxes entre frames. "
++                + "Em TELA > FR-PREVIEW SET dá para ajustar a transparência e incluir projéteis e efeitos."));
++        s.add(new Section(ToolbarOrder.SCREEN, "TELA",
++                "Opções do que aparece na preview: grade, sons, cenas (cutscenes da flag 20), travar (modo cinemático do jogo), box amarela de todos os sprites e FR-PREVIEW SET. "
++                + "Desligar cenas ou sons ajuda a editar sem distração; o jogo sempre os executa."));
++        s.add(new Section(ToolbarOrder.HELP, "AJUDA",
++                "Abre este menu de ajuda: descreve cada botão do menu superior e do resto da tela e tem o botão RESTAURAR ORDEM, que devolve os botões do menu à ordem padrão."));
++        return s;
++    }
++
++    /** Resto da tela (nao e botao do menu superior). */
++    static List<Section> screen() {
++        List<Section> s = new ArrayList<Section>();
++        s.add(new Section(null, "MODO: GOLPES / ANO",
++                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, "
++                + "sem o golpe em volta. Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO."));
++        s.add(new Section(null, "Barra de tempo e transporte",
++                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), "
++                + "PAUSAR/PLAY reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
++                + "A preview roda a batalha inteira: atacante, oponente, projéteis, efeitos, câmera, zoom, tremor e cutscenes, como o jogo."));
++        s.add(new Section(null, "DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
++                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto "
++                + "selecionado, separa o objeto na divisa de frames mais próxima; DUPLICAR copia o sprite ou o objeto para o frame seguinte; "
++                + "EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição."));
++        s.add(new Section(null, "Timeline  ＋  e  #",
++                "A timeline mostra, por frame, os sprites, hitboxes, hurtboxes, projéteis, efeitos, sons e velocidades do ANO. Toque num item para editar nas ferramentas abaixo. "
++                + "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial "
++                + "(tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). "
++                + "O # escolhe o que a timeline mostra."));
++        s.add(new Section(null, "Ferramentas (faixa de ícones)",
++                "Ao selecionar um item, a faixa abaixo da timeline abre o inspetor dele: sprite (imagem, tempo, mover, estilo, som, rotação/alfa/zoom), "
++                + "hitbox (alcance, dano, flags de golpe, reação), projétil, efeito e links. Use APLICAR para manter as mudanças ou feche para descartar."));
++        s.add(new Section(null, "DADOS / EDITAR",
++                "Painel recolhido com os dados do DAC em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. "
++                + "O lápis abre o editor em texto para mudar o valor direto."));
++        s.add(new Section(null, "Avisos na tela",
++                "A barra de aviso fica amarela quando o editor vê algo que o jogo trata diferente (limites estourados, animação que cai antes do fim, "
++                + "projétil que não nasce) e vermelha quando o jogo fecharia ou erraria. Toque no aviso para ler inteiro; alguns têm um botão que leva direto ao ajuste (POS)."));
++        return s;
++    }
++
++    /** Todas as secoes: menu superior, depois a tela. */
++    static List<Section> all() {
++        List<Section> s = toolbar();
++        s.addAll(screen());
++        return s;
++    }
++
++    static Section forButton(String id) {
++        for (Section s : toolbar()) if (s.button != null && s.button.equals(id)) return s;
++        return null;
++    }
++}
+diff -ruN a/LayoutManager.java b/LayoutManager.java
+--- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
++++ b/LayoutManager.java	2026-10-21 22:30:12.610404879 +0000
+@@ -295,24 +295,39 @@
+         final TextView bSave = button(a, "SALVAR", false);
+         final TextView bSpr = button(a, "SPRITES", false);
+         final TextView bLinks = button(a, "LINKS", false);
++        final TextView bHelp = button(a, "AJUDA", false);
+         lockBtnRef = bLock;
+-        TextView[] tbBtns = {bChar, bSpr, bLinks, bOpt, bHit, bTime, bCtr, bLand, bLock, bFlip, bHide, bGhost, bScr};
++        // ordem editavel: segurar e arrastar. O 1o botao fica no slot fixo (fora da rolagem); soltar qualquer botao nele troca o fixo.
++        java.util.LinkedHashMap<String, TextView> tbMap = new java.util.LinkedHashMap<String, TextView>();
++        tbMap.put(ToolbarOrder.SAVE, bSave);
++        tbMap.put(ToolbarOrder.CHAR, bChar);
++        tbMap.put(ToolbarOrder.SPRITES, bSpr);
++        tbMap.put(ToolbarOrder.LINKS, bLinks);
++        tbMap.put(ToolbarOrder.MOVE, bOpt);
++        tbMap.put(ToolbarOrder.HITBOX, bHit);
++        tbMap.put(ToolbarOrder.TIME, bTime);
++        tbMap.put(ToolbarOrder.CENTER, bCtr);
++        tbMap.put(ToolbarOrder.LAND, bLand);
++        tbMap.put(ToolbarOrder.LOCK, bLock);
++        tbMap.put(ToolbarOrder.FLIP, bFlip);
++        tbMap.put(ToolbarOrder.HIDE, bHide);
++        tbMap.put(ToolbarOrder.GHOST, bGhost);
++        tbMap.put(ToolbarOrder.SCREEN, bScr);
++        tbMap.put(ToolbarOrder.HELP, bHelp);
+         android.widget.HorizontalScrollView tbs = new android.widget.HorizontalScrollView(a);
+         tbs.setHorizontalScrollBarEnabled(false);
+         LinearLayout trow = row(a);
+-        for (int q = 0; q < tbBtns.length; q++) {
+-            tbBtns[q].setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+-            tbBtns[q].setPadding(dp(14), dp(9), dp(14), dp(9));
+-            trow.addView(tbBtns[q], lp(-2, -2, 0, 0, q == tbBtns.length - 1 ? 0 : 5, 0));
+-        }
+         tbs.addView(trow);
+-        // SALVAR fica fixo no inicio da linha; o resto desliza
+-        bSave.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+-        bSave.setPadding(dp(14), dp(9), dp(14), dp(9));
++        for (TextView tb : tbMap.values()) {
++            tb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++            tb.setPadding(dp(14), dp(9), dp(14), dp(9));
++        }
++        LinearLayout pinned = row(a);
+         LinearLayout topRow = row(a);
+-        topRow.addView(bSave, lp(-2, -2, 0, 0, 5, 0));
++        topRow.addView(pinned, lp(-2, -2, 0, 0, 5, 0));
+         topRow.addView(tbs, new LinearLayout.LayoutParams(0, -2, 1f));
+         r.addView(topRow, lp(-1, -2, 0, 0, 0, 5));
++        toolbar = new ReorderBar(a, pinned, tbs, trow, tbMap);
+         LinearLayout mrow = row(a);
+         final TextView modeBtn = button(a, "MODO: GOLPES", false);
+         modeBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+@@ -596,6 +611,8 @@
+             }
+         });
+         bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
++        bHelp.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHelp(a); } });
++        toolbar.hintOnce();
+         bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
+             LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
+         } });
+@@ -884,6 +901,38 @@
+     }
+ 
+     /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
++    /** Linha do menu superior com a ordem editavel (ReorderBar). */
++    private ReorderBar toolbar;
++
++    /** AJUDA: o que cada botao do menu e da tela faz. */
++    private void showHelp(final Activity a) {
++        LinearLayout box = new LinearLayout(a);
++        box.setOrientation(LinearLayout.VERTICAL);
++        box.setPadding(dp(16), dp(8), dp(16), dp(8));
++        box.addView(text(a, HelpText.REORDER_TIP, 12, WARN), lp(-1, -2, 0, 0, 0, 10));
++        box.addView(text(a, "Menu superior", 14, ACCENT), lp(-1, -2, 0, 4, 0, 2));
++        for (HelpText.Section s : HelpText.toolbar()) addHelp(a, box, s);
++        box.addView(text(a, "Resto da tela", 14, ACCENT), lp(-1, -2, 0, 14, 0, 2));
++        for (HelpText.Section s : HelpText.screen()) addHelp(a, box, s);
++        android.widget.ScrollView sv = new android.widget.ScrollView(a);
++        sv.addView(box);
++        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Ajuda")
++                .setView(sv).setPositiveButton("FECHAR", null)
++                .setNeutralButton("RESTAURAR ORDEM", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int which) {
++                        toolbar.reset();
++                        android.widget.Toast.makeText(a, "Ordem padrao restaurada", android.widget.Toast.LENGTH_SHORT).show();
++                    }
++                }).show();
++    }
++
++    private void addHelp(Activity a, LinearLayout box, HelpText.Section s) {
++        TextView t = text(a, s.title, 13, TEXT);
++        t.setTypeface(Typeface.DEFAULT_BOLD);
++        box.addView(t, lp(-1, -2, 0, 8, 0, 0));
++        box.addView(text(a, s.body, 12, DIM), lp(-1, -2, 0, 0, 0, 2));
++    }
++
+     private void showSaveMenu(final Activity a, final AttackView view) {
+         final AttackData d = view.attackData();
+         if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
+@@ -1235,7 +1284,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -1808,9 +2448,9 @@ diff -ruN ../app/LayoutManager.java app/LayoutManager.java
          String note = "Arraste o atacante (azul) e o oponente (vermelho). As linhas sao as posicoes do jogo e o personagem gruda nelas."
                  + (PosPresets.fromGame(gd) ? " LONGE = medio + (medio - perto): o jogo so guarda perto e medio."
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
-diff -ruN ../app/LinkScreen.java app/LinkScreen.java
---- ../app/LinkScreen.java	2026-10-20 10:46:55.000000000 +0000
-+++ app/LinkScreen.java	2026-10-21 20:36:29.750728311 +0000
+diff -ruN a/LinkScreen.java b/LinkScreen.java
+--- a/LinkScreen.java	2026-10-20 10:46:55.000000000 +0000
++++ b/LinkScreen.java	2026-10-21 20:36:29.750728311 +0000
 @@ -138,7 +138,7 @@
      }
  
@@ -1829,9 +2469,9 @@ diff -ruN ../app/LinkScreen.java app/LinkScreen.java
  
          TextView ph = tv("Posição (BX, BY)", 13, ACCENT, true);
          ph.setPadding(0, dp(14), 0, dp(4));
-diff -ruN ../app/MainActivity.java app/MainActivity.java
---- ../app/MainActivity.java	2026-10-20 11:18:53.000000000 +0000
-+++ app/MainActivity.java	2026-10-21 20:45:22.765644820 +0000
+diff -ruN a/MainActivity.java b/MainActivity.java
+--- a/MainActivity.java	2026-10-20 11:18:53.000000000 +0000
++++ b/MainActivity.java	2026-10-21 20:45:22.765644820 +0000
 @@ -32,6 +32,8 @@
      private CharAssets opponent;
      private CharAssets effects;
@@ -1893,9 +2533,9 @@ diff -ruN ../app/MainActivity.java app/MainActivity.java
              if (charf == null) warns.add("sem " + charfNote + " (hitbox flags 41-70 sem animacao)");
              loadedAttack = i;
              ui.attackView.setData(data);
-diff -ruN ../app/ObjModel.java app/ObjModel.java
---- ../app/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
-+++ app/ObjModel.java	2026-10-21 20:43:39.056623058 +0000
+diff -ruN a/ObjModel.java b/ObjModel.java
+--- a/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
++++ b/ObjModel.java	2026-10-21 20:43:39.056623058 +0000
 @@ -41,7 +41,7 @@
              case 30: return "Zoom de camera";
              case 31: return "Zoom de camera";
@@ -1905,9 +2545,235 @@ diff -ruN ../app/ObjModel.java app/ObjModel.java
              case 34: return "Curar vida";
              case 37: return "Sem contagem de combo";
              case 38: return "Bloquear sequencia";
-diff -ruN ../app/Saver.java app/Saver.java
---- ../app/Saver.java	2026-10-20 14:58:43.000000000 +0000
-+++ app/Saver.java	2026-10-21 20:45:22.766088156 +0000
+diff -ruN a/ReorderBar.java b/ReorderBar.java
+--- a/ReorderBar.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReorderBar.java	2026-10-21 22:28:37.440162865 +0000
+@@ -0,0 +1,222 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.content.ClipData;
++import android.content.Context;
++import android.content.SharedPreferences;
++import android.os.Build;
++import android.os.Handler;
++import android.os.Looper;
++import android.view.DragEvent;
++import android.view.HapticFeedbackConstants;
++import android.view.View;
++import android.widget.HorizontalScrollView;
++import android.widget.LinearLayout;
++import android.widget.TextView;
++import java.util.List;
++import java.util.Map;
++
++/**
++ * Linha de botoes do menu superior com a ordem editavel: segurar um botao e arrastar para frente ou para tras muda a ordem
++ * (salva no aparelho). O primeiro botao fica fixo fora da rolagem; soltar qualquer botao nele troca o botao fixo.
++ * Quem usa so cria os botoes e liga os cliques; a posicao deles e daqui.
++ */
++final class ReorderBar {
++    private static final String PREFS = "toolbar", KEY = "order", KEY_HINT = "hint";
++
++    private static final int NEAREST = -1;
++
++    private final Activity act;
++    private final LinearLayout pinnedBox;
++    private final HorizontalScrollView scroll;
++    private final LinearLayout strip;
++    private final Map<String, TextView> buttons;
++    private final SharedPreferences prefs;
++    private final float density;
++    private final Handler handler = new Handler(Looper.getMainLooper());
++    private List<String> order;
++    private String dragging;
++    private int edge;       // -1 rola para a esquerda, 1 para a direita, 0 parado
++    private View hot;       // alvo destacado
++    private final Runnable autoScroll = new Runnable() {
++        @Override public void run() {
++            if (dragging == null || edge == 0) return;
++            scroll.scrollBy(edge * dp(16), 0);
++            handler.postDelayed(this, 16);
++        }
++    };
++
++    ReorderBar(Activity a, LinearLayout pinnedBox, HorizontalScrollView scroll, LinearLayout strip, Map<String, TextView> buttons) {
++        this.act = a;
++        this.pinnedBox = pinnedBox;
++        this.scroll = scroll;
++        this.strip = strip;
++        this.buttons = buttons;
++        this.prefs = a.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
++        this.density = a.getResources().getDisplayMetrics().density;
++        List<String> def = ToolbarOrder.defaults();
++        // so aceita ids que existem de fato (um botao pode faltar numa build)
++        for (int i = def.size() - 1; i >= 0; i--) if (!buttons.containsKey(def.get(i))) def.remove(i);
++        this.order = ToolbarOrder.restore(prefs.getString(KEY, ""), def);
++        for (final Map.Entry<String, TextView> e : buttons.entrySet()) {
++            final String id = e.getKey();
++            final TextView b = e.getValue();
++            b.setOnLongClickListener(new View.OnLongClickListener() {
++                @Override public boolean onLongClick(View v) { return begin(v, id); }
++            });
++            b.setOnDragListener(new View.OnDragListener() {
++                @Override public boolean onDrag(View v, DragEvent ev) { return onDrop(v, ev, indexOf(id)); }
++            });
++        }
++        pinnedBox.setOnDragListener(new View.OnDragListener() {
++            @Override public boolean onDrag(View v, DragEvent ev) { return onDrop(v, ev, 0); }
++        });
++        // area vazia da rolagem (frestas entre botoes e o espaco depois do ultimo): vai para o botao mais proximo
++        View.OnDragListener gap = new View.OnDragListener() {
++            @Override public boolean onDrag(View v, DragEvent ev) { return onDrop(v, ev, NEAREST); }
++        };
++        scroll.setOnDragListener(gap);
++        strip.setOnDragListener(gap);
++        layout();
++    }
++
++    List<String> order() { return new java.util.ArrayList<String>(order); }
++
++    /** Ordem de fabrica (SALVAR fixo no inicio). */
++    void reset() {
++        List<String> def = ToolbarOrder.defaults();
++        for (int i = def.size() - 1; i >= 0; i--) if (!buttons.containsKey(def.get(i))) def.remove(i);
++        apply(def);
++    }
++
++    /** Avisa uma unica vez que da para arrastar os botoes. */
++    void hintOnce() {
++        if (prefs.getBoolean(KEY_HINT, false)) return;
++        prefs.edit().putBoolean(KEY_HINT, true).apply();
++        android.widget.Toast.makeText(act, "Dica: segure um botao do menu e arraste para mudar a ordem (AJUDA explica tudo)",
++                android.widget.Toast.LENGTH_LONG).show();
++    }
++
++    private int indexOf(String id) { return order.indexOf(id); }
++
++    private int dp(int v) { return (int) (v * density + 0.5f); }
++
++    private void apply(List<String> next) {
++        order = next;
++        prefs.edit().putString(KEY, ToolbarOrder.save(order)).apply();
++        layout();
++    }
++
++    /** Monta a linha a partir de {@code order}: o 1o no slot fixo, o resto na rolagem. */
++    private void layout() {
++        pinnedBox.removeAllViews();
++        strip.removeAllViews();
++        for (int i = 0; i < order.size(); i++) {
++            TextView b = buttons.get(order.get(i));
++            if (b == null) continue;
++            if (b.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) b.getParent()).removeView(b);
++            b.setAlpha(1f);
++            b.setScaleX(1f);
++            if (i == 0) {
++                pinnedBox.addView(b, new LinearLayout.LayoutParams(-2, -2));
++            } else {
++                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
++                lp.rightMargin = i == order.size() - 1 ? 0 : dp(5);
++                strip.addView(b, lp);
++            }
++        }
++    }
++
++    private boolean begin(View v, String id) {
++        dragging = id;
++        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
++        ClipData data = ClipData.newPlainText("toolbar", id);
++        View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
++        boolean ok;
++        if (Build.VERSION.SDK_INT >= 24) ok = v.startDragAndDrop(data, shadow, id, 0);
++        else ok = v.startDrag(data, shadow, id, 0);
++        if (!ok) dragging = null;
++        return ok;
++    }
++
++    private boolean ours(DragEvent ev) { return ev.getLocalState() instanceof String && ev.getLocalState().equals(dragging); }
++
++    /** Um unico tratador para botoes, slot fixo e area vazia; {@code to} = indice onde o botao arrastado vai ficar se soltar aqui. */
++    private boolean onDrop(View v, DragEvent ev, int to) {
++        if (!ours(ev)) return false;
++        switch (ev.getAction()) {
++            case DragEvent.ACTION_DRAG_STARTED: {
++                TextView d = buttons.get(dragging);
++                if (d != null) d.setAlpha(0.35f);
++                return true;
++            }
++            case DragEvent.ACTION_DRAG_ENTERED:
++                if (v != scroll) highlight(v);
++                return true;
++            case DragEvent.ACTION_DRAG_LOCATION: {
++                // posicao do dedo na janela da rolagem (o slot fixo nao anda com ela)
++                float inView = v == pinnedBox || v.getParent() == pinnedBox ? -1 : stripX(v, ev.getX()) - scroll.getScrollX();
++                int dir = 0;
++                if (inView >= 0) {
++                    if (inView < dp(48)) dir = -1;
++                    else if (inView > scroll.getWidth() - dp(48)) dir = 1;
++                }
++                if (dir != edge) {
++                    edge = dir;
++                    handler.removeCallbacks(autoScroll);
++                    if (dir != 0) handler.post(autoScroll);
++                }
++                return true;
++            }
++            case DragEvent.ACTION_DRAG_EXITED:
++                if (hot == v) highlight(null);
++                return true;
++            case DragEvent.ACTION_DROP: {
++                final int from = indexOf(dragging);
++                final int dest = to == NEAREST ? nearest(stripX(v, ev.getX())) : to;
++                highlight(null);
++                // remonta a linha depois que o jogo de eventos de arrastar termina (nao mexer nas views no meio dele)
++                if (from >= 0 && dest >= 0 && from != dest) handler.post(new Runnable() {
++                    @Override public void run() { apply(ToolbarOrder.move(order, from, dest)); }
++                });
++                return true;
++            }
++            case DragEvent.ACTION_DRAG_ENDED: {
++                edge = 0;
++                handler.removeCallbacks(autoScroll);
++                highlight(null);
++                TextView d = dragging == null ? null : buttons.get(dragging);
++                if (d != null) d.setAlpha(1f);
++                dragging = null;
++                return true;
++            }
++            default: return true;
++        }
++    }
++
++    /** x do dedo no sistema da faixa de botoes (dentro da rolagem, sem descontar a rolagem). */
++    private float stripX(View v, float x) {
++        if (v == scroll) return x + scroll.getScrollX();
++        if (v == strip) return x;
++        return v.getLeft() + x;
++    }
++
++    /** Indice (em {@code order}) do botao da rolagem cujo centro fica mais perto de {@code x}; -1 se nao ha botoes na rolagem. */
++    private int nearest(float x) {
++        int best = -1;
++        float bestD = Float.MAX_VALUE;
++        for (int i = 1; i < order.size(); i++) {
++            TextView b = buttons.get(order.get(i));
++            if (b == null || b.getParent() != strip) continue;
++            float d = Math.abs(b.getLeft() + b.getWidth() / 2f - x);
++            if (d < bestD) { bestD = d; best = i; }
++        }
++        return best;
++    }
++
++    private void highlight(View v) {
++        if (hot != null) hot.setScaleX(1f);
++        hot = v;
++        if (v != null) v.setScaleX(1.12f);
++    }
++}
+diff -ruN a/Saver.java b/Saver.java
+--- a/Saver.java	2026-10-20 14:58:43.000000000 +0000
++++ b/Saver.java	2026-10-21 20:45:22.766088156 +0000
 @@ -23,12 +23,15 @@
      // ---- quais ANOs um golpe usa ----
  
@@ -1967,9 +2833,9 @@ diff -ruN ../app/Saver.java app/Saver.java
          sb.append(DacText.move(m, idx)).append("\n\n");
          TreeSet<Integer> rs = reactionsUsed(dac, anos);
          if (!rs.isEmpty()) {
-diff -ruN ../app/TimelineTools.java app/TimelineTools.java
---- ../app/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ app/TimelineTools.java	2026-10-21 20:43:39.056129166 +0000
+diff -ruN a/TimelineTools.java b/TimelineTools.java
+--- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
++++ b/TimelineTools.java	2026-10-21 21:59:21.533097144 +0000
 @@ -1716,20 +1716,20 @@
      private String describe(int f) {
          switch (f) {
@@ -2000,7 +2866,7 @@ diff -ruN ../app/TimelineTools.java app/TimelineTools.java
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
 +            AttackData ad20 = view.attackData();
-+            if (ad20 != null && ad20.attacker != null) note(CutsceneInfo.describe(ad20.attacker.data, h.width, h.x, h.y));
++            if (ad20 != null && ad20.attacker != null) note(CutsceneInfo.describe(ad20.attacker.data, h.width, h.x, h.y, isProjectileAno(a.index, ad20.move)));
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -2013,10 +2879,87 @@ diff -ruN ../app/TimelineTools.java app/TimelineTools.java
          r.addView(btn("segue o personagem", l.syncXY(), new View.OnClickListener() { public void onClick(View v) { linkFlag(a, 0x4000); } }));
          r.addView(btn("sincroniza sprites", l.syncMpt(), new View.OnClickListener() { public void onClick(View v) { linkFlag(a, 0x8000); } }));
      }
-diff -ruN ../app/test/BattleTest.java app/test/BattleTest.java
---- ../app/test/BattleTest.java	2026-10-20 14:59:24.000000000 +0000
-+++ app/test/BattleTest.java	2026-10-21 20:41:54.812732283 +0000
-@@ -472,6 +472,9 @@
+diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
+--- a/ToolbarOrder.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ToolbarOrder.java	2026-10-21 22:27:41.743562155 +0000
+@@ -0,0 +1,57 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++
++/**
++ * Ordem dos botoes do menu superior. O primeiro da lista fica fixo no inicio da linha (fora da rolagem); o resto desliza.
++ * Java puro (testado sem Android). Os ids sao fixos e independem do texto do botao, que muda ("TEMPO: NORMAL" ...).
++ */
++final class ToolbarOrder {
++    private ToolbarOrder() { }
++
++    static final String SAVE = "save", CHAR = "char", SPRITES = "spr", LINKS = "links", MOVE = "opt", HITBOX = "hit", TIME = "time",
++            CENTER = "ctr", LAND = "land", LOCK = "lock", FLIP = "flip", HIDE = "hide", GHOST = "ghost", SCREEN = "scr", HELP = "help";
++
++    /** Ordem de fabrica: SALVAR fixo no inicio, AJUDA no fim da rolagem. */
++    static List<String> defaults() {
++        return new ArrayList<String>(Arrays.asList(SAVE, CHAR, SPRITES, LINKS, MOVE, HITBOX, TIME, CENTER, LAND, LOCK, FLIP, HIDE, GHOST, SCREEN, HELP));
++    }
++
++    /**
++     * Texto salvo ("id,id,...") + ordem de fabrica => ordem valida: ids desconhecidos e repetidos saem, ids que faltam
++     * (botao novo numa versao futura) entram no fim, na ordem de fabrica. saved nulo/vazio => ordem de fabrica.
++     */
++    static List<String> restore(String saved, List<String> defaults) {
++        List<String> out = new ArrayList<String>();
++        if (saved != null && saved.length() > 0) {
++            for (String id : saved.split(",")) {
++                id = id.trim();
++                if (defaults.contains(id) && !out.contains(id)) out.add(id);
++            }
++        }
++        for (String id : defaults) if (!out.contains(id)) out.add(id);
++        return out;
++    }
++
++    static String save(List<String> order) {
++        StringBuilder b = new StringBuilder();
++        for (int i = 0; i < order.size(); i++) b.append(i > 0 ? "," : "").append(order.get(i));
++        return b.toString();
++    }
++
++    /**
++     * Tira o item de {@code from} e o poe em {@code to} (indice na lista final): arrastar para tras fica antes do alvo,
++     * para frente fica depois dele. Indices fora da lista sao presos as pontas. Devolve uma copia.
++     */
++    static List<String> move(List<String> order, int from, int to) {
++        List<String> out = new ArrayList<String>(order);
++        if (out.isEmpty() || from < 0 || from >= out.size()) return out;
++        if (to < 0) to = 0;
++        if (to > out.size() - 1) to = out.size() - 1;
++        String id = out.remove(from);
++        out.add(to, id);
++        return out;
++    }
++}
+diff -ruN a/test/BattleTest.java b/test/BattleTest.java
+--- a/test/BattleTest.java	2026-10-20 14:59:24.000000000 +0000
++++ b/test/BattleTest.java	2026-10-21 21:58:08.619265407 +0000
+@@ -408,9 +408,12 @@
+         BattleSim g1 = new BattleSim(dac(gq), chG, chG.moves[0], false, defDac, fxDac, g, 30, 0, 0);
+         for (int i = 0; i < 6; i++) g1.step();
+         check("melee vai direto para a SEQ (AO_ACERTAR so em projetil)", g1.attacker().root().ano.index, 41);
+-        check("sprite de agarrar existe na SEQ", nl(g1) >= 3, true);
+-        for (int i = 0; i < 80 && g1.attacker().root().ano.index == 41; i++) g1.step();
+-        check("agarrar some quando a SEQ acaba", nl(g1) <= 3, true);
++        check("agarrar fica sem imagem durante o hitstop (o md 941 refaz o _SetAct e pausa)", nl(g1), 2);
++        boolean grabShown = false;
++        for (int i = 0; i < 40 && !grabShown; i++) { g1.step(); grabShown = nl(g1) >= 3; }
++        check("sprite de agarrar aparece depois do hitstop, com o defensor em dano", grabShown, true);
++        for (int i = 0; i < 80 && nl(g1) >= 3; i++) g1.step();
++        check("agarrar some quando o defensor sai do estado de dano", nl(g1), 2);
+ 
+         // projetil acertando: AO_ACERTAR e, se houver SEQ, ela assume na mesma hora
+         CharData chP = chr(move(new int[]{2, 40}, new int[]{4, 30}, new int[]{32, 43}), new byte[][] {});
+@@ -472,6 +475,9 @@
          check("flag 40 espelha com o flip", t2.opponentX() - (t2.attacker().root().x >> 16), -25);
          tp[40] = new A().mpt(new M().time(5).hit(39, 0, 0, 0, 0)).mpt(new M().time(5));
          BattleSim t3 = new BattleSim(dac(tp), chT, chT.moves[0], false, defDac, fxDac, g, 200, 0, 0);
@@ -2026,7 +2969,7 @@ diff -ruN ../app/test/BattleTest.java app/test/BattleTest.java
          check("flag 39 leva o atacante ao oponente", t3.attacker().root().x >> 16, 120);   // oponente nasce a +120 (spawn do jogo)
  
          // ---- SE do DAC: id-1 para < 80; 80 = primeiro audio do personagem
-@@ -1107,7 +1110,7 @@
+@@ -1107,7 +1113,7 @@
              }
              if (mode == 0) { check("agarrao 8 com frame 512 puxa logo", pulledAt > 0 && pulledAt <= 2, true);
                  int ox = 0; try { java.lang.reflect.Field fo = BattleSim.class.getDeclaredField("oppX"); fo.setAccessible(true); ox = fo.getInt(gs); } catch (Exception ex) { }
@@ -2035,10 +2978,10 @@ diff -ruN ../app/test/BattleTest.java app/test/BattleTest.java
              else if (mode == 1) check("agarrao 8 sem 512 puxa no fim do ANO (10 ticks)", pulledAt >= 9 && pulledAt <= 11, true);
              else if (mode == 2) check("agarrao 8 sem acertar tambem puxa", pulledAt > 0, true);
              else if (mode == 3) check("agarrao 128 sem hit nao puxa", pulledAt, -1);
-diff -ruN ../app/test/CutsceneTest.java app/test/CutsceneTest.java
---- ../app/test/CutsceneTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ app/test/CutsceneTest.java	2026-10-21 20:47:13.674872079 +0000
-@@ -0,0 +1,356 @@
+diff -ruN a/test/CutsceneTest.java b/test/CutsceneTest.java
+--- a/test/CutsceneTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/CutsceneTest.java	2026-10-21 22:00:19.081809477 +0000
+@@ -0,0 +1,368 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -2183,9 +3126,11 @@ diff -ruN ../app/test/CutsceneTest.java app/test/CutsceneTest.java
 +            BattleSim s0 = new BattleSim(atkDac(), ch, ch.moves[0], false, defDac(), fxDac(), gd(new byte[][] {}), 300, 0, 0);
 +            int mapLeft0 = s0.mapLeft();
 +            BattleSim s = sim(ch, atkDac(new int[]{20, 5, -10, 0, 0}), fxDac());
-+            int want = s.attacker().root().x + 5 * PX;
++            int want = s0.attacker().root().x + 5 * PX;           // work[10] = PlayerXPos do atacante + x do hit (a cena sem flag 20 mostra onde ele nasce)
 +            check("mapa 3 cam 0: tela salta para o alvo no mesmo tick", s.screenLeft(), want);
 +            check("mapa 3 cam 0: a cutscene nunca aparece", s.cutsceneCount() + ":" + fxLayers(s), "0:0");
++            // o md 19 roda depois da cutscene no mesmo tick: o atacante (5 px fora da tela) e levado para dentro do limite de tela (jogo:29064-29090)
++            check("mapa 3 cam 0: o atacante entra no limite de tela do md 19", s.attacker().root().x - s.screenLeft(), 30 * PX);
 +            check("mapa 3 so mexe em iBackXPos (o mapa/base fica)", s.mapLeft() - mapLeft0, want - s0.screenLeft());
 +        }
 +
@@ -2248,10 +3193,11 @@ diff -ruN ../app/test/CutsceneTest.java app/test/CutsceneTest.java
 +            for (int i = 0; i < 122; i++) s.step();
 +            check("trava acabou", s.cinematicActive(), false);
 +            check("oponente parado durante a trava", s.opponent().root().pat + ":" + s.opponent().root().time, "0:3");
-+            for (int i = 0; i < 10; i++) s.step();
-+            check("oponente continua parado 10 ticks depois da trava", s.opponent().root().pat + ":" + s.opponent().root().time, "0:3");
++            // task 924: o atacante ainda esta em md 928 no 1o tick depois da trava (nao conta); depois 10 ticks e solta no seguinte
++            for (int i = 0; i < 11; i++) s.step();
++            check("oponente continua parado 11 ticks depois da trava", s.opponent().root().pat + ":" + s.opponent().root().time, "0:3");
 +            s.step();
-+            check("e anda no 11o", s.opponent().root().time, 2);
++            check("e anda no 12o", s.opponent().root().time, 2);
 +        }
 +
 +        // ---- flag 20 num ANO de PROJETIL (md 971 chama CheckOptFlag): a cutscene vive enquanto o projetil existir
@@ -2317,7 +3263,7 @@ diff -ruN ../app/test/CutsceneTest.java app/test/CutsceneTest.java
 +            BattleSim s = sim(ch, atkDac(new int[]{20, 0, 0, 0, 0}), fxDac());
 +            int start = sim(ch, atkDac(), fxDac()).screenLeft();
 +            for (int i = 0; i < 5; i++) s.step();
-+            check("mapa 5: tela deslocada 12 px por tick rumo ao oponente", s.screenLeft() - start, 60 * PX);
++            check("mapa 5: 12 px por tick desde o tick 0 (a camera roda depois da cutscene no 1o tick do jogo)", s.screenLeft() - start, 72 * PX);
 +        }
 +
 +        // ---- ordem de desenho: tudo junto por (prio - iActPrio); evento 8 (z 10) fica sob a sombra (17), z 200 sobre os lutadores
@@ -2392,13 +3338,22 @@ diff -ruN ../app/test/CutsceneTest.java app/test/CutsceneTest.java
 +            check("mapa 2: alvo derrotado nao e mais desenhado", seen && !still, true);
 +        }
 +
++        // ---- oponente em stun (md 925): o PlayerTail pula so o _ActReq; o _SetXY continua levando-o para a posicao logica
++        {
++            CharData ch = chrEv(new int[]{0, 2, 0, 20, 21, 0, 1, 10});
++            BattleSim s = sim(ch, atkDac(new int[]{20, 0, 0, 0, 0}), fxDac());
++            for (int i = 0; i < 4; i++) s.step();
++            check("stun + mapa 10: oponente desenhado na posicao logica (borda esquerda)", s.opponent().root().x, s.opponentX() * PX);
++            check("e ela e a borda da tela", s.opponentX() * PX, s.screenLeft() - 120 * PX);
++        }
++
 +        System.out.println("CutsceneTest fails=" + BattleTest.fails);
 +    }
 +}
-diff -ruN ../app/test/FidelityTest.java app/test/FidelityTest.java
---- ../app/test/FidelityTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ app/test/FidelityTest.java	2026-10-21 20:46:57.762625798 +0000
-@@ -0,0 +1,122 @@
+diff -ruN a/test/FidelityTest.java b/test/FidelityTest.java
+--- a/test/FidelityTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/FidelityTest.java	2026-10-21 22:00:45.067941611 +0000
+@@ -0,0 +1,213 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -2512,19 +3467,110 @@ diff -ruN ../app/test/FidelityTest.java app/test/FidelityTest.java
 +            a[55] = new A().mpt(new M().time(60));
 +            CharData ch = chr(move(new int[]{2, ano}, new int[]{10, 41}, new int[]{24, 55}), new byte[][] {});
 +            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 30, 0, 0);
-+            for (int i = 0; i < 8; i++) s.step();
 +            int grabs = 0;
-+            for (BattleSim.Layer l : s.layers()) if (l.owner == BattleSim.OWNER_PROJECTILE) grabs++;
++            for (int i = 0; i < 40; i++) {                       // o objeto fica invisivel durante o hitstop e aparece depois
++                s.step();
++                for (BattleSim.Layer l : s.layers()) if (l.owner == BattleSim.OWNER_PROJECTILE) grabs++;
++            }
 +            check(k == 0 ? "ANO 40 acertou: agarrao nasce" : "ANO 39 acertou: sem agarrao", grabs > 0, k == 0);
++        }
++
++        // ---- projetil principal: nasce no PlayerTail (prio 13312 < 13569), a task so roda no tick seguinte (so carrega o frame 0) e anda a partir do outro
++        {
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            a[40] = new A().mpt(new M().time(2).hit(0, 30, -40, 0, 0)).mpt(new M().time(60));
++            a[30] = new A().mpt(new M().time(60).speedX(2 * PX));
++            CharData ch = chr(move(new int[]{2, 40}, new int[]{4, 30}), new byte[][] {});
++            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 100, 0, 0);
++            int x0 = s.projectileX(0);
++            s.step();
++            check("projetil: 1a execucao so carrega o frame 0 (nao anda)", s.projectileX(0) - x0, 0);
++            s.step();
++            check("projetil: anda a partir da 2a execucao", (s.projectileX(0) - x0) / PX, 2);
++        }
++
++        // ---- reset() limpa a camera vertical da execucao anterior
++        {
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            a[40] = new A().mpt(new M().time(60));
++            CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++            BattleSim fresh = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 100, 200, 0);
++            BattleSim used = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 100, 200, 0);
++            for (int i = 0; i < 20; i++) used.step();
++            used.reset();
++            check("reset: screenTop volta ao de uma simulacao nova", used.screenTop(), fresh.screenTop());
++        }
++
++        // ---- SE do jogador 1: so valores >= 80 (ChrSePlay) recebem o deslocamento dos audios do jogador 0
++        {
++            A[] d = new A[25];
++            for (int i = 0; i < 25; i++) d[i] = new A().mpt(new M().time(30));
++            d[0] = new A().mpt(new M().time(30).se(8).hit(1, -10, -60, 20, 60));
++            CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, dac(d), fxDac(), g, 100, 0, 20);
++            java.util.List<BattleSim.Snd> sl = s.drainSounds();
++            boolean ok = false;
++            for (BattleSim.Snd x : sl) if (x.common && x.id == 7) ok = true;
++            check("SE comum do oponente nao leva o offset dos audios do atacante", ok, true);
++        }
++
++        // ---- melee so acerta com os dois vivos (md 935)
++        {
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            a[40] = new A().mpt(new M().time(2).hit(2, 20, -40, 60, 30).opt1(3).dmg(250)).mpt(new M().time(2).hit(2, 20, -40, 60, 30).opt1(3).dmg(250)).mpt(new M().time(2).hit(2, 20, -40, 60, 30).opt1(3).dmg(250)).mpt(new M().time(40));
++            CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 60, 0, 0);
++            for (int i = 0; i < 40; i++) s.step();
++            check("oponente derrotado no 1o hit", s.opponentDead(), true);
++            check("os frames seguintes nao acertam um oponente derrotado (combo 1)", s.comboCount(), 1);
++        }
++
++        // ---- flag 40 num ANO de projetil: CheckOptFlag usa o jogador dono (PlayerXPos[p]), nao a posicao do projetil
++        {
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            a[40] = new A().mpt(new M().time(2).hit(0, 30, -40, 0, 0)).mpt(new M().time(60));
++            a[30] = new A().mpt(new M().time(60).speedX(2 * PX).hit(40, 80, 0, 0, 0));
++            CharData ch = chr(move(new int[]{2, 40}, new int[]{4, 30}), new byte[][] {});
++            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 100, 0, 0);
++            s.step();
++            check("flag 40 do projetil leva o oponente para o atacante + 80", s.opponentX() - (s.attacker().root().x >> 16), 80);
++        }
++
++        // ---- bit 4 do wActFlag vindo do dado do MPT nao prende o lutador (o PlayerTail o recalcula a cada tick)
++        {
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            a[40] = new A().mpt(new M().time(3).act(4)).mpt(new M().time(3)).mpt(new M().time(40));
++            CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 100, 0, 0);
++            for (int i = 0; i < 4; i++) s.step();
++            check("frame com wActFlag 4 avanca", s.attacker().root().pat, 1);
++        }
++
++        // ---- zoom: o ultimo hit 30/31 do frame vale; FRAMES = 0 nele cancela o zoom do anterior
++        {
++            A[] a = new A[45];
++            for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++            a[40] = new A().mpt(new M().time(100).hit(30, 0, 0, 150, 10).hit(31, 0, 0, 150, 0));
++            CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++            BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, defDac(), fxDac(), g, 100, 0, 0);
++            for (int i = 0; i < 30; i++) s.step();
++            check("ultimo hit de zoom com frames 0 cancela", s.zoomRect() == null, true);
 +        }
 +
 +        System.out.println("FidelityTest fails=" + BattleTest.fails);
 +    }
 +}
-diff -ruN ../app/test/GameRulesTest.java app/test/GameRulesTest.java
---- ../app/test/GameRulesTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ app/test/GameRulesTest.java	2026-10-21 20:45:47.627885204 +0000
-@@ -0,0 +1,114 @@
+diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
+--- a/test/GameRulesTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/GameRulesTest.java	2026-10-21 21:59:45.487250083 +0000
+@@ -0,0 +1,127 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -2619,16 +3665,29 @@ diff -ruN ../app/test/GameRulesTest.java app/test/GameRulesTest.java
 +        List<GameRules.Issue> lk = GameRules.check(d, null, 0);
 +        check("link de link e caixa em link sao avisos", count(lk, false) + ":" + count(lk, true), "2:0");
 +
-+        // quirk do _Hokan: interpolacao com o proximo frame tendo outra quantidade de caixas
++        // quirk do _Hokan: o laco que pula as caixas do frame SEGUINTE usa o iHitNum do frame ATUAL; so le lixo se o seguinte tem caixas e rotacao/alfa/zoom
 +        d = base(20);
-+        Ano.Mpt a0 = mpt(1, 1), a1 = mpt(0, 1);
++        Ano.Mpt a0 = mpt(1, 1), a1 = mpt(2, 1);
 +        a0.hasOpt = true;
 +        a0.optData[2] = 1;
 +        a1.hasRaz = true;
 +        d.setAno(12, new Ano(12, true, 0, 0, null, new Ano.Mpt[]{a0, a1}));
-+        check("interpolacao com contagem de caixas diferente e fatal", count(GameRules.check(d, null, 0), true), 1);
++        check("seguinte com caixas + raz e contagem diferente e fatal", count(GameRules.check(d, null, 0), true), 1);
 +        a1.hits = new Ano.Hit[]{hit(1)};
 +        check("mesma contagem de caixas ok", GameRules.check(d, null, 0).size(), 0);
++        a1.hits = new Ano.Hit[0];
++        check("seguinte sem caixas: o jogo nao pula nada, ok", GameRules.check(d, null, 0).size(), 0);
++        a1.hits = new Ano.Hit[]{hit(1), hit(1)};
++        a1.hasRaz = false;
++        a1.hasOpt = true;
++        check("seguinte so com OPT (sem raz) nao le nada depois das caixas, ok", GameRules.check(d, null, 0).size(), 0);
++        // o proximo do ultimo frame e o frame 0 (pat >= mpt => 0)
++        Ano.Mpt b0 = mpt(2, 1), b1 = mpt(1, 1);
++        b0.hasRaz = true;
++        b1.hasOpt = true;
++        b1.optData[2] = 1;
++        d.setAno(13, new Ano(13, true, 0, 0, null, new Ano.Mpt[]{b0, b1}));
++        check("interpolacao do ultimo frame olha o frame 0", count(GameRules.check(d, java.util.Arrays.asList(Integer.valueOf(13)), 0), true), 1);
 +
 +        // so as ANOs pedidas
 +        d = base(20);
@@ -2637,5 +3696,236 @@ diff -ruN ../app/test/GameRulesTest.java app/test/GameRulesTest.java
 +        check("resumo do fatal", GameRules.summary(GameRules.check(d, null, 0)).startsWith("O JOGO FECHA/ERRA: ANO 3 MPT 0"), true);
 +
 +        System.out.println("GameRulesTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
+--- a/test/SpawnDiagTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/SpawnDiagTest.java	2026-10-21 22:36:27.242104798 +0000
+@@ -0,0 +1,159 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/**
++ * Projetil que o golpe pede (hit flag 0) e nao nasce: o simulador copia o jogo (StartPlayerAttack escolhe PROJETIL_ANIM_NORMAL /
++ * ABAIXO / ACIMA pela altura relativa; zero = nada nasce; BulletNum < 8), entao o aviso diz QUAL campo/limite falhou.
++ */
++public class SpawnDiagTest {
++    static final int N = 60;
++
++    static A[] anos() {
++        A[] a = new A[N];
++        for (int i = 0; i < N; i++) a[i] = new A().mpt(new M().time(1));
++        return a;
++    }
++
++    static BattleSim sim(Dac d, CharData ch, CharData.Move mv, int dist, int atkH, int oppH) throws Exception {
++        A[] def = new A[25];
++        for (int i = 0; i < 25; i++) def[i] = new A().mpt(new M().time(5).hit(1, -10, -60, 20, 60));
++        GameData g = gd(new byte[][] { null, null, null, react(new int[]{4, 4, 20, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}) });
++        Dac fx = dac(new A().mpt(new M().time(4)), new A().mpt(new M().time(4)));
++        // oppHeightPx e estatico e fresh() (usado por measureLength) o le de novo: fica ligado ate o fim da medicao
++        BattleSim.oppHeightPx = oppH;
++        return new BattleSim(d, ch, mv, false, dac(def), fx, g, dist, atkH, 0);
++    }
++
++    static String problem(Dac d, CharData ch, CharData.Move mv, int dist, int atkH, int oppH) throws Exception {
++        try {
++            BattleSim s = sim(d, ch, mv, dist, atkH, oppH);
++            check("antes da medicao nada a avisar", s.spawnProblem(), "");
++            s.measureLength();
++            return s.spawnProblem();
++        } finally { BattleSim.oppHeightPx = 0; }
++    }
++
++    static boolean has(String s, String... parts) {
++        for (String p : parts) if (!s.contains(p)) return false;
++        return true;
++    }
++
++    public static void main(String[] args) throws Exception {
++        A[] a = anos();
++        a[40] = new A().mpt(new M().time(2).hit(0, 10, -30, 4, 4)).mpt(new M().time(20));
++        a[30] = new A().mpt(new M().time(60).speedX(2 << 16).hit(2, 0, -30, 16, 20).opt1(3));
++        Dac d = dac(a);
++
++        // tudo certo: PROJETIL_ANIM_NORMAL = 30 e ANO existe
++        CharData ok = chr(move(new int[]{2, 40}, new int[]{4, 30}), new byte[][] {});
++        check("projetil nasce: sem aviso", problem(d, ok, ok.moves[0], 120, 0, 0), "");
++
++        // campo NORMAL vazio
++        CharData noNormal = chr(move(new int[]{2, 40}, new int[]{36, 30}), new byte[][] {});
++        String p = problem(d, noNormal, noNormal.moves[0], 120, 0, 0);
++        check("NORMAL vazio: aponta o campo", has(p, "PROJETIL_ANIM_NORMAL", "vazio"), true);
++        BattleSim s = sim(d, noNormal, noNormal.moves[0], 120, 0, 0);
++        s.measureLength();
++        check("NORMAL vazio: ajuste nao e a altura", s.spawnProblemByHeight(), false);
++        BattleSim.oppHeightPx = 0;
++
++        // oponente 60 px acima do chao e atacante no chao => atacante 60 px ABAIXO => PROJETIL_ANIM_ABAIXO (offset 34) vazio
++        CharData onlyNormal = chr(move(new int[]{2, 40}, new int[]{4, 30}), new byte[][] {});
++        s = sim(d, onlyNormal, onlyNormal.moves[0], 120, 0, 60);
++        s.measureLength();
++        BattleSim.oppHeightPx = 0;
++        p = s.spawnProblem();
++        check("ABAIXO vazio: campo, diferenca e valor do NORMAL", has(p, "PROJETIL_ANIM_ABAIXO", "60 px abaixo", "PROJETIL_ANIM_NORMAL = 30", "POS"), true);
++        check("ABAIXO vazio: resolve pela altura (botao POS)", s.spawnProblemByHeight(), true);
++        // mesma situacao com o campo preenchido: nasce
++        CharData withBelow = chr(move(new int[]{2, 40}, new int[]{4, 30}, new int[]{34, 30}), new byte[][] {});
++        check("ABAIXO preenchido: sem aviso", problem(d, withBelow, withBelow.moves[0], 120, 0, 60), "");
++
++        // atacante 40 px no ar, oponente no chao => ACIMA (offset 36)
++        p = problem(d, onlyNormal, onlyNormal.moves[0], 120, 40, 0);
++        check("ACIMA vazio: campo e diferenca", has(p, "PROJETIL_ANIM_ACIMA", "40 px acima"), true);
++        CharData withAbove = chr(move(new int[]{2, 40}, new int[]{4, 30}, new int[]{36, 30}), new byte[][] {});
++        check("ACIMA preenchido: sem aviso", problem(d, withAbove, withAbove.moves[0], 120, 40, 0), "");
++        // dentro da faixa NORMAL (30 px acima): usa NORMAL e nasce
++        check("30 px acima ainda e NORMAL: sem aviso", problem(d, onlyNormal, onlyNormal.moves[0], 120, 30, 0), "");
++
++        // limite de 8 projeteis vivos (BulletNum < 8)
++        A[] b = anos();
++        A burst = new A();
++        for (int i = 0; i < 12; i++) burst.mpt(new M().time(1).hit(0, 10, -30, 4, 4));
++        burst.mpt(new M().time(20));
++        b[40] = burst;
++        b[30] = new A().mpt(new M().time(250).speedX(1 << 15));
++        p = problem(dac(b), ok, ok.moves[0], 400, 0, 0);
++        check("9o projetil: limite do jogo", has(p, "8 vivos", "BulletNum"), true);
++        // com 8 ou menos nao avisa
++        A[] c = anos();
++        A few = new A();
++        for (int i = 0; i < 8; i++) few.mpt(new M().time(1).hit(0, 10, -30, 4, 4));
++        few.mpt(new M().time(20));
++        c[40] = few;
++        c[30] = b[30];
++        check("8 projeteis cabem: sem aviso", problem(dac(c), ok, ok.moves[0], 400, 0, 0), "");
++
++        // tiro triplo: ANO+1 e ANO+2 precisam existir (aqui o DAC termina no ANO 45)
++        A[] t = new A[46];
++        for (int i = 0; i < 46; i++) t[i] = new A().mpt(new M().time(1));
++        t[40] = a[40];
++        t[45] = a[30];
++        CharData triple = chr(move(new int[]{0, 4}, new int[]{2, 40}, new int[]{4, 45}), new byte[][] {});
++        p = problem(dac(t), triple, triple.moves[0], 120, 0, 0);
++        check("tiro triplo com ANO+1 inexistente", has(p, "ANO 46", "tiro triplo"), true);
++        A[] t3 = new A[48];
++        for (int i = 0; i < 48; i++) t3[i] = new A().mpt(new M().time(1));
++        t3[40] = a[40];
++        t3[45] = a[30];
++        check("tiro triplo com os 3 ANOs: sem aviso", problem(dac(t3), triple, triple.moves[0], 120, 0, 0), "");
++
++        // projetil que aponta para ANO inexistente
++        CharData ghost = chr(move(new int[]{2, 40}, new int[]{4, 58}), new byte[][] {});
++        A[] g = new A[50];
++        for (int i = 0; i < 50; i++) g[i] = new A().mpt(new M().time(1));
++        g[40] = a[40];
++        p = problem(dac(g), ghost, ghost.moves[0], 120, 0, 0);
++        check("ANO do projetil nao existe", has(p, "ANO 58", "não existe"), true);
++
++        // ANO solto, sem golpe dono: os tres campos zerados
++        CharData.Move solto = CharData.genericFrom(40, null);
++        p = problem(d, ok, solto, 120, 0, 0);
++        check("ANO sem dono: explica", has(p, "não pertence a nenhum golpe"), true);
++        // ANO com dono: herda os campos do golpe e o projetil nasce
++        CharData.Move dono = CharData.genericFrom(40, ok.ownerOf(40));
++        check("ANO com dono: sem aviso", problem(d, ok, dono, 120, 0, 0), "");
++
++        // subprojetil: hit flag 0 dentro do ANO do projetil e SUBPROJETIL_ANIM_ID = 0
++        A[] sp = anos();
++        sp[40] = a[40];
++        sp[30] = new A().mpt(new M().time(3).hit(0, 0, 0, 0, 0)).mpt(new M().time(40).speedX(1 << 16));
++        p = problem(dac(sp), ok, ok.moves[0], 120, 0, 0);
++        check("subprojetil sem ID", has(p, "SUBPROJETIL_ANIM_ID"), true);
++        CharData withSub = chr(move(new int[]{2, 40}, new int[]{4, 30}, new int[]{18, 31}), new byte[][] {});
++        sp[31] = new A().mpt(new M().time(40).speedX(1 << 16));
++        check("subprojetil com ID: sem aviso", problem(dac(sp), withSub, withSub.moves[0], 120, 0, 0), "");
++
++        // regressao do 33: o hit de projetil no frame 0 do ANO do projetil (time 1) era pulado (o app andava um frame antes do 1o _ActReq do jogo)
++        for (int t0 = 1; t0 <= 3; t0++) {
++            A[] q = anos();
++            q[40] = a[40];
++            q[30] = new A().mpt(new M().time(t0).hit(0, 0, 0, 0, 0)).mpt(new M().time(40).speedX(1 << 16));
++            q[31] = new A().mpt(new M().time(40).speedX(1 << 16));
++            BattleSim sq = sim(dac(q), withSub, withSub.moves[0], 300, 0, 0);
++            int most = 0;
++            for (int i = 0; i < 12; i++) { sq.step(); most = Math.max(most, sq.projectileCount()); }
++            check("subprojetil no frame 0 do projetil (time " + t0 + ") nasce", most, 2);
++        }
++
++        // golpe sem hit de projetil nunca avisa, mesmo com os campos vazios
++        A[] nh = anos();
++        nh[40] = new A().mpt(new M().time(5)).mpt(new M().time(5));
++        CharData none = chr(move(new int[]{2, 40}), new byte[][] {});
++        check("sem hit de projetil: sem aviso", problem(dac(nh), none, none.moves[0], 120, 0, 0), "");
++
++        System.out.println("SpawnDiagTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
+--- a/test/ToolbarTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ToolbarTest.java	2026-10-21 22:30:35.435558182 +0000
+@@ -0,0 +1,64 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++
++/** ToolbarOrder (ordem dos botoes do menu superior) e HelpText (menu AJUDA). */
++public class ToolbarTest {
++    static String s(List<String> l) { return ToolbarOrder.save(l); }
++
++    public static void main(String[] args) throws Exception {
++        List<String> def = ToolbarOrder.defaults();
++        check("padrao: SALVAR fixo no inicio", def.get(0), ToolbarOrder.SAVE);
++        check("padrao: AJUDA no fim", def.get(def.size() - 1), ToolbarOrder.HELP);
++        check("padrao: 15 botoes sem repeticao", def.size() + ":" + new HashSet<String>(def).size(), "15:15");
++
++        // restaurar
++        check("sem nada salvo: padrao", s(ToolbarOrder.restore(null, def)), s(def));
++        check("texto vazio: padrao", s(ToolbarOrder.restore("", def)), s(def));
++        check("ordem salva volta igual", s(ToolbarOrder.restore(s(ToolbarOrder.move(def, 0, 3)), def)), s(ToolbarOrder.move(def, 0, 3)));
++        List<String> junk = ToolbarOrder.restore("hide,xyz,hide, char ,save", def);
++        check("lixo: desconhecido e repetido saem, o resto vem na ordem de fabrica", s(junk),
++                "hide,char,save,spr,links,opt,hit,time,ctr,land,lock,flip,ghost,scr,help");
++        check("lixo: mantem 15 ids", junk.size(), 15);
++        List<String> older = Arrays.asList(ToolbarOrder.SAVE, ToolbarOrder.CHAR);
++        check("botao novo (nao salvo) entra no fim", s(ToolbarOrder.restore("char,save", ToolbarOrder.defaults())).endsWith(",help"), true);
++        check("botao ausente da build nao entra", s(ToolbarOrder.restore("char,save,help", older)), "char,save");
++
++        // mover
++        check("mover para tras fica antes do alvo", s(ToolbarOrder.move(Arrays.asList("a", "b", "c", "d"), 3, 1)), "a,d,b,c");
++        check("mover para frente fica depois do alvo", s(ToolbarOrder.move(Arrays.asList("a", "b", "c", "d"), 0, 2)), "b,c,a,d");
++        check("mover para o slot fixo", s(ToolbarOrder.move(Arrays.asList("a", "b", "c", "d"), 2, 0)), "c,a,b,d");
++        check("mover para o mesmo lugar nao muda", s(ToolbarOrder.move(Arrays.asList("a", "b", "c"), 1, 1)), "a,b,c");
++        check("destino fora da lista prende na ponta", s(ToolbarOrder.move(Arrays.asList("a", "b", "c"), 0, 9)) + "|" + s(ToolbarOrder.move(Arrays.asList("a", "b", "c"), 2, -4)), "b,c,a|c,a,b");
++        check("origem invalida nao muda", s(ToolbarOrder.move(Arrays.asList("a", "b"), 5, 0)), "a,b");
++        check("lista vazia", ToolbarOrder.move(Arrays.<String>asList(), 0, 0).size(), 0);
++        List<String> orig = Arrays.asList("a", "b", "c");
++        ToolbarOrder.move(orig, 0, 2);
++        check("move devolve copia", s(orig), "a,b,c");
++        // salvar + restaurar com varios movimentos (arrastar o botao fixo, depois outro para o fixo)
++        List<String> o = ToolbarOrder.move(def, 0, def.size() - 1);
++        o = ToolbarOrder.move(o, 5, 0);
++        check("viagem de ida e volta", s(ToolbarOrder.restore(s(o), ToolbarOrder.defaults())), s(o));
++        check("o primeiro e o que foi solto no slot fixo", o.get(0), def.get(6));
++
++        // ajuda
++        Set<String> ids = new HashSet<String>();
++        for (HelpText.Section sec : HelpText.toolbar()) {
++            check("ajuda " + sec.title + ": tem texto", sec.body.length() > 40 && sec.title.length() > 0, true);
++            ids.add(sec.button);
++        }
++        check("ajuda: um item para cada botao do menu, na ordem de fabrica", HelpText.toolbar().size() + ":" + ids.containsAll(def), "15:true");
++        for (String id : def) check("ajuda do botao " + id, HelpText.forButton(id) != null, true);
++        check("ajuda de id desconhecido", HelpText.forButton("nao-existe"), null);
++        check("ajuda da tela nao tem botao do menu", HelpText.screen().get(0).button, null);
++        check("ajuda: tudo = menu + tela", HelpText.all().size(), HelpText.toolbar().size() + HelpText.screen().size());
++        check("ajuda: dica de reordenar fala em arrastar e no botao fixo", HelpText.REORDER_TIP.contains("arraste") && HelpText.REORDER_TIP.contains("fixo"), true);
++
++        System.out.println("ToolbarTest fails=" + BattleTest.fails);
 +    }
 +}
