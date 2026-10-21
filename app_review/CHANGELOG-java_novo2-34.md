@@ -1,0 +1,97 @@
+# Changelog — java_novo2-33 → java_novo2-34
+
+Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBManajer.java` de `CodigoFonteLimpo.zip`).
+Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
+que não ficavam iguais ao jogo.
+
+Baseline do 33: 347 testes OK. Agora: ver a seção *Testes*.
+
+---
+
+## 1. Cutscenes (flag 20 → task md 996) — o que divergia
+
+A task nasce em `CheckOptFlag` (jogo:844, criação em jogo:959-973) com prioridade 13729, **roda no mesmo tick** (depois dos lutadores 13569/13570,
+dos projéteis 13312+p e do hit-detect md 935 = 13728; antes da câmera md 19 = 13745) e faz, a cada tick, `_SetXY` → `_ActReq` → mapa/stun → teste de término (jogo:16470-16760).
+
+| # | Antes (app 33) | Jogo | Agora (app 34) |
+|---|---|---|---|
+| 1 | O app dava o passo da animação e **depois** forçava só a raiz na âncora; links acumulavam velocidade. | `_SetXY` vem **antes** do `_ActReq` e reposiciona raiz **e links** (jogo:16572-16586; no PlayerTail: jogo:2016-2032). | `AttackSim.pinTo()` antes do passo: a raiz fica em âncora + 1 tick de velocidade e os links voltam à raiz a cada tick (não acumulam). |
+| 2 | A cutscene era desenhada 1 tick **depois** de morrer (`dying`); cutscene criada no frame 0 rodava 1 tick tarde (câmera/stun/SE). | `_TKill` → `_KillObj` tira o objeto da lista de desenho na hora (jogo:29317, 29457) e o `DrawExec` roda depois de todas as tasks (jogo:30190). A task criada no PlayerTail roda no mesmo tick. | A cutscene morre sem ser desenhada no tick do fim; a primeira execução acontece no tick de criação, inclusive no `reset()` (= 1º tick do jogo). O passo extra `ticks<=1` foi removido. |
+| 3 | **Mapa 3** (câmera): deslizava 10 px/tick mesmo com cam 0, mexia no `camBase`, usava o x do hit mesmo com stun, soltava o oponente. | Com cam 0 faz `iBackXPos = alvo` e termina no mesmo tick (a cena nunca aparece); só `iBackXPos` muda; `work[7]` vira o md do alvo quando há stun (jogo:16551-16553); a câmera anda 10 px/tick ou salta (jogo:16688-16730); **nunca** devolve o md (a restauração, jogo:16745-16750, só existe no ramo dos outros mapas). | Snap com cam 0 (cena nunca aparece), 10 px/tick com cam ≠ 0, `camBase` intacto, offset ≈ 0 com stun, stun do mapa 3 não é desfeito. |
+| 4 | **Mapas 10-15**: `ScreenEdgeOff` só no 1º tick (o lutador "voltava" à borda no 2º); teleporte aplicado e hit do mesmo frame perdido. | `ScreenEdgeOff[...] = true` **todo tick**; 10-12 reposicionam todo tick, 13-15 só no 1º; `PlayerXPos` muda depois do `_SetXY` do PlayerTail → aparece **no tick seguinte** e o hit-detect do mesmo tick usa a posição antiga (jogo:16615-16690). | Edge-off todo tick; posição lógica muda no tick e a desenhada só no PlayerTail seguinte (`applyPendingMoves()` logo após o `detect()`). |
+| 5 | **Stun** congelava o oponente no mesmo tick, soltava no primeiro `end` de qualquer cutscene, não pausava projéteis/auras/agarrão. | `md = 925` só vale a partir do tick seguinte (o PlayerTail dele já rodou), o **primeiro** stun guarda o md e é o único que devolve (`work[7] != 925`); em md 925 o PlayerTail pula o `ActReq` (jogo:2032) e projéteis (jogo:15960), auras (jogo:16197, 16267) e agarrão (jogo:14988) pausam quando **qualquer** jogador está em 925. Um hit sobre o alvo troca o md na hora. | `stunned[]` por jogador, dono do stun (`stunSaved`), pausa de projéteis/auras/agarrão, hit tira o alvo do stun. Após a trava cinemática (md 923/926) o oponente fica parado mais 10 ticks (task 924, jogo:14409-14426): `oppHold`. |
+| 6 | Só o atacante disparava flag 20. | `CheckOptFlag` também roda nos projéteis (md 971/972: jogo:16014, 16064; **não** roda com `wActFlag&4`) e no PlayerTail do oponente (usa o HDAT 13 **dele**; o alvo do stun/mapas vira o atacante). A cutscene vive enquanto o ANO do projétil existir; se o projétil morre a task morre **sem devolver o md** (`_TKill` zera `obj`: jogo:29317). | Gatilhos de projétil e de oponente; cutscene acompanha o ANO/pat do dono certo. |
+| 7 | Frame com OPT 2048 disparava normalmente. | `CheckOptFlag` volta antes de olhar os hits se `wOptFlag&2048` e não há `DamageWall` (jogo:872-884). | `optAbort()` (vale para teleporte, tremor, flag 20, dano próprio). |
+| 8 | Mapas 1, 2, 5, 6 sem suporte. | 1: adia o KO (jogo:6944); 2: esconde o alvo derrotado para sempre (`PlayerState&0x1000000`, jogo:16599, 2109, 14868); 5: `iScrollTarget` → câmera de deslocamento `iBackXOffset` centra o alvo (jogo:28971-29030); 6: `bForceWall` (jogo:12487, 12757). | 2 (alvo some com sombra/auras), 5 (câmera de deslocamento com degraus 12/8/4/2 px), 6 (parede em qualquer ponto). 1 só no log. |
+| 9 | ALVO ≥ 2 (pack `bobj`) não desenhava nada. | `acttype 2` = pack `bobjNN` do cenário (jogo:523 `strDataFolder2`, `GetResName2` 29351). | O app carrega a 1ª pasta `bobj*` de `assets` (`OWNER_BOBJ`); sem a pasta o log avisa. |
+| 10 | Cutscene desenhada sempre antes/depois de grupos fixos. | `DrawExec` ordena **todos** os objetos por `prio − iActPrio`, desempate por `iTaskPrio` (`prio*13+12` raiz, `+11−i` links). Prios: atacante atacando 150+4p (jogo:2558), parado 130+4(1−p) (jogo:12101), dano/DamageEnd/925 130−4p (jogo:2383, 12370, 14430), projétil 153+4p (jogo:15899), sombra 17 (jogo:14876), agarrão 131 (jogo:14929), efeito de hit 200 (328 na ANO 2) (jogo:15854), cutscene z (200 / 10 nos eventos 8-9 / 17-19-21 / 400). | `layers()` virou uma lista única por objeto com essa chave. |
+| 11 | Geometria do HDAT 13 por `length/rows`; `hasEvent` aceitava id == linhas; `eventField` podia estourar. | Linha = `2*XSize` bytes, `n56 >= YSize` mata a task; os campos são lidos do arquivo inteiro (jogo:16470+). | `CharData` lê `XSize/YSize` do cabeçalho e lê do arquivo inteiro como o jogo. |
+| 12 | Overlay da flag 20 era um retângulo com largura = id. | `CheckOptFlag` usa só x/y, espelhados por `wObjFlag&16` (jogo:959-973). | Ponto com cruz e rótulo "20 · evento N". |
+| 13 | Painel da flag 20 não explicava o evento. | — | `CutsceneInfo`: decodifica a linha (alvo, anim, camada, cam, sync, stun, FLAG) e avisa: evento inexistente, x/y ignorados com cam ≠ 0, eventos 8/9, mapa 3 + stun, bobj. |
+| 14 | `Saver` não incluía as ANOs da cutscene (ALVO 1) nem a ANO do oponente agarrado (coluna 24 do HDAT 4). | — | `Saver.anosOfMove(dac, move, char)` inclui as duas. |
+
+## 2. Outras correções de fidelidade (fora das cutscenes)
+
+- **Links de lutadores/agarrão/efeitos de hit**: PlayerTail e md 941 chamam `_SetXY` **antes** do `_ActReq` (jogo:2016-2032, 15006); o md 966 chama **depois** (jogo:15864): efeitos de hit ficam parados no ponto do impacto. Links de lutadores não acumulam velocidade. (`AttackSim.rebaseLinks/pinTo/settle`.)
+- **SEQ/END chão × ar** decididos só pela altura (`PlayerYPos == chão`, jogo:13255-13266); `FLY` não influencia (só "não cai"/"não pousa").
+- **Flags 39/40** com o oponente morto não teleportam e encerram o ANO (`wActFlag |= 2`, jogo:976-990).
+- **Aura charf (41-70)** nunca vira (md 978); aura de effect/char herda o flip do dono, menos com hit flag 0 no frame dela (md 977/978, jogo:16115-16290). Auras pausam por md 925 de qualquer jogador.
+- **Tremor (3-5)** é re-armado a cada tick enquanto o frame existe (os hits 3-5 não são consumidos), inclusive em projéteis fora da pausa.
+- **Zoom 30/31**: só vale com FRAMES > 0; W = 100 não muda o alvo; vale o último hit do frame (jogo:16915-16945).
+- **Agarrão**: o objeto só nasce se o ANO que acertou está em 40..62 (jogo:14948); acerta pelo caminho dos projéteis (defensor 10 de hitstop, objeto 5, atacante nenhum) e marca `hitConfirmed` (jogo:14750-14765).
+- **Separação de corpos (md 19, jogo:28704-28790)**: no chão, quem anda para dentro do outro o empurra (metade do passo; passo inteiro se o outro está em dano); a flag 16 do golpe ("fantasma") atravessa; se ainda sobrepõem, o outro vai para uma largura de corpo respeitando as bordas.
+- **Câmera de deslocamento `iBackXOffset`**: seguir o defensor que bateu na parede (WALL 1 após DamageWall) ou o alvo do mapa 5; desliga parede/rolagem/limite de tela e leva `iBaseXPos` ao meio; limite de tela só vale com o outro lutador vivo.
+- **OPT 1024** também desliga o impacto na parede dos dois lutadores (jogo:12500, 12772).
+- **Homing**: tabelas exatas do jogo (`SinTable` assimétrica na metade negativa, `AtanTable`/`GetAtanTable` truncados) em vez de `Math.sin/atan2` (`GameTables`).
+- **Prioridade de desenho** dos lutadores (ver item 10).
+
+## 3. Textos e interface
+
+- Flag de link `0x1000` (SPAWN_POS) estava descrita **ao contrário**: bit ligado = o link **não** copia a posição do pai ao nascer (jogo:30047-30056).
+- Flag 26: vale para qualquer defensor (humano ou CPU). Flag 33: o bit que ela liga não é lido por ninguém (sem efeito). OPT 1024: também desliga o impacto na parede. Nota do FLY corrigida.
+- Painel da flag 20 e overlay da flag 20/40 (itens 12-13).
+
+## 4. Validador `GameRules` (novo)
+
+Avisos na barra ao abrir o golpe, aviso na prévia ao editar e linha de ATENÇÃO ao salvar. "Fecha o jogo" = exceção dentro do `Run()` (`bThreadActive = false`).
+
+- > 10 caixas por frame (`hit[50]`) · > 13 links (`lnk[13]`) · > 255 frames · tempo > 255 · OPT 1 > 249 com hitbox → **o jogo fecha/erra**.
+- Imagem fora do CNV (frame fica sem desenho) · link de link e caixas em ANO de link (ignorados: o jogo só olha a ANO raiz, `CheckObjHit` jogo:2468).
+- Interpolação (`OPT[2]`) com o frame seguinte tendo outra quantidade de caixas: o `_Hokan` lê o frame seguinte pulando as caixas do frame **atual** (jogo:29790-29800) → rotação/alfa/zoom errados.
+
+## 5. Testes
+
+Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o app estava errado: flag 39 aparece no tick seguinte; agarrão com distância 0 é afastado pela separação de corpos.
+
+| Teste | OK |
+|---|---|
+| BattleTest | 237 |
+| FrameOpsTest | 56 |
+| SpriteMassTest | 23 |
+| AudioTest | 20 |
+| SpriteAllocTest | 13 |
+| OptimizeTest | 13 |
+| EffectsTest | 12 |
+| GroupsTest | 4 |
+| **CutsceneTest (novo)** | 62 |
+| **FidelityTest (novo)** | 17 |
+| **GameRulesTest (novo)** | 17 |
+
+## 6. Já estava conforme (conferido, sem mudança)
+
+Parser do DAC, `_ActReqMain`/`_Hokan` (exceto o quirk acima), desenho (flip/zoom/rotação/alfa/blend), escala ×2 só de personagem, `CheckObjHit`, hitstop, OPT 1, dano (inclui a escala de combo do HDAT 5: `XSize` conta *shorts* nas tabelas de 16 bits, então `XSize*2` bytes é uma linha), spawn de projétil, md 971/882/883/876/877, offsets de HDAT 2/3/4/7/13, auras 10-17/71-125, poeira por OPT, início de batalha, áudio e textos das flags de hitbox.
+
+## 7. Não simulado / limitações
+
+- Recorte de 480×320 e `bEffectFullScreen` (cam 1); z = 400 isento do zoom; cutscene de tela travada não acompanha o retângulo do zoom.
+- Fila de SE (4 itens, 1 por frame); tremor de ±1 px do defensor no hitstop (só usado como condição da separação de corpos).
+- Auras pedidas por projéteis (`tcbReqHit`) e md 918/911-915.
+- Mapa 1 só aparece no log (o app não decide o fim da luta).
+- Stun + projétil: o jogo pode travar a luta (projétil pausado nunca termina). O app reproduz.
+- Se o dono morre (projétil) com stun ativo, o jogo não devolve o md do alvo; o app reproduz e o alvo fica parado.
+- Cutscene num pack de efeito editado só no `.txt` não é recompilada (precisa recarregar o personagem).
+
+## 8. Arquivos
+
+Alterados: `Ano`, `AttackData`, `AttackRenderer`, `AttackSim`, `AttackView`, `BattleSim`, `CharData`, `LayoutManager`, `LinkScreen`, `MainActivity`, `ObjModel`, `Saver`, `TimelineTools`, `test/BattleTest`.
+Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`.
