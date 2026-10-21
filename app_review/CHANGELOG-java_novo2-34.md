@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: ver a seção *Testes*.
+Baseline do 33: 347 testes OK. Agora: 490 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -44,6 +44,17 @@ dos projéteis 13312+p e do hit-detect md 935 = 13728; antes da câmera md 19 = 
 - **OPT 1024** também desliga o impacto na parede dos dois lutadores (jogo:12500, 12772).
 - **Homing**: tabelas exatas do jogo (`SinTable` assimétrica na metade negativa, `AtanTable`/`GetAtanTable` truncados) em vez de `Math.sin/atan2` (`GameTables`).
 - **Prioridade de desenho** dos lutadores (ver item 10).
+- **Oponente/atacante em stun (md 925)** continuam seguindo a posição lógica (`PlayerTail` só pula o `_ActReq`, `_SetXY` fica: jogo:2016-2032). Task 924 pós-trava conta 10 ticks a partir do 1º tick em md 881 (o atacante ainda está em md 928 no tick seguinte à trava: jogo:14414-14422), ou seja, solta no 12º tick depois da trava.
+- **Projétil principal**: nasce no PlayerTail (task 970, prio 13312 < 13569), então só roda no tick seguinte (1ª execução só carrega o frame 0, jogo:15894-15908) e anda a partir do outro. Sub-projéteis (criados por outro projétil de mesma prio) rodam no mesmo tick.
+- **1º tick do jogo** (`reset()`): câmera, zoom e tremor agora rodam depois da cutscene também no tick 0.
+- **Agarrão (md 939-941)** reescrito: nasce com o defensor em dano e o ANO que acertou entre 40 e 62 (`DamageHitActNo`, jogo:14948) e `SpecialType ≤ 12` (jogo:2292), independe de SEQ/END; nunca é espelhado; fica sem imagem e recomeça do frame 0 enquanto há hitstop do atacante/do objeto ou md 925 (jogo:14988-14996); morre ao sair de md 876/877/925; som com o deslocamento do jogador 1.
+- **Flags 39/40 em ANO de projétil ou do oponente**: usam o jogador dono (`PlayerXPos[p]`) e só aparecem no mesmo tick se o PlayerTail do alvo roda depois da fonte.
+- **Melee** só detecta com os dois lutadores vivos (jogo:14601-14607); o tremor do defensor no hitstop (`wObjFlag & 8`) bloqueia a detecção naquele tick (jogo:14692, 14722); `HitTarget` (projétil/agarrão = 1, melee = 0) comanda o recuo do atacante na parede; `bScrollLock` do agarrão simples zera a rolagem.
+- **SE comum (< 80)** do jogador 1 não recebe o deslocamento de áudios (só os ≥ 80, `ChrSePlay` jogo:2919-2928, `_ActReqMain` jogo:29600-29609).
+- **Bit 4 do wActFlag vindo do dado do MPT** não prende mais lutadores, projéteis, auras e agarrão (o PlayerTail/md 971/977/941 recalculam a pausa a cada tick).
+- **Estado entre `reset()`s**: câmera vertical, velocidades de reação e zoom são zerados (antes o quadro 0 de um replay herdava a câmera da execução anterior).
+- **Homing** para quando o projétil liga o `work[10]` (só com `CancelTime == 0`), não em qualquer hit.
+- **`sceneHidden` (OPT 1024)** olha só os lutadores e vale mesmo com OPT 2048 no frame (jogo:855 vem antes do aborto em 884).
 
 ## 3. Textos e interface
 
@@ -65,7 +76,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 
 | Teste | OK |
 |---|---|
-| BattleTest | 237 |
+| BattleTest | 238 |
 | FrameOpsTest | 56 |
 | SpriteMassTest | 23 |
 | AudioTest | 20 |
@@ -73,9 +84,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | OptimizeTest | 13 |
 | EffectsTest | 12 |
 | GroupsTest | 4 |
-| **CutsceneTest (novo)** | 62 |
-| **FidelityTest (novo)** | 17 |
-| **GameRulesTest (novo)** | 17 |
+| **CutsceneTest (novo)** | 65 |
+| **FidelityTest (novo)** | 26 |
+| **GameRulesTest (novo)** | 20 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
