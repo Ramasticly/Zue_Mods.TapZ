@@ -2632,7 +2632,7 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-22 10:20:18.528942933 +0000
++++ b/HelpText.java	2026-10-22 10:44:40.432114143 +0000
 @@ -0,0 +1,140 @@
 +package com.zue.attackeditor;
 +
@@ -2752,7 +2752,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; "
 +                + "isso vale só para aquela abertura. Y (na borda, à direita) grava a altura atual como a nova altura padrão. "
 +                + "T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela e o menu superior some para liberar espaço; tocar em T de novo volta ao modo normal. "
-+                + "Cada modo guarda a própria altura padrão e o modo fica salvo no aparelho."));
++                + "Cada modo guarda a própria altura padrão (o Y salva só a altura); o modo T nunca fica salvo: o app sempre abre com ele desligado."));
 +        s.add(new Section(null, "DADOS / EDITAR",
 +                "Painel recolhido com os dados do DAC em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. "
 +                + "O lápis abre o editor em texto para mudar o valor direto."));
@@ -2880,7 +2880,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-22 10:37:59.591029871 +0000
++++ b/LayoutManager.java	2026-10-22 10:44:40.430797887 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3023,7 +3023,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          } });
          r.addView(wr, lp(-1, -2, 0, 0, 0, 4));
  
-@@ -506,7 +557,81 @@
+@@ -506,7 +557,80 @@
          toolsRef[0] = tools;
          hsRef[0] = hs;
          // gaveta entre a area que rola e a barra de controle (que continua na base)
@@ -3079,7 +3079,6 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +            for (View v : topStuff) v.setVisibility(t ? View.GONE : (v == st || v == in || v == wr ? v.getVisibility() : View.VISIBLE));
 +            tools.setTOn(t);
 +            lanes.run();
-+            sheetPrefs.edit().putBoolean("t", t).apply();
 +            frame.post(new Runnable() { public void run() { placeSheet.run(); tools.refit(); } });
 +        } };
 +        tools.setGeometry(new TimelineTools.Geo() {
@@ -3101,12 +3100,12 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                android.widget.Toast.makeText(a, "Altura padrão do menu salva", android.widget.Toast.LENGTH_SHORT).show();
 +            }
 +        } }, new Runnable() { public void run() { tMode[0] = !tMode[0]; applyMode.run(); } });
-+        // restaura o modo salvo depois do 1o layout (as views precisam estar medidas)
-+        frame.post(new Runnable() { public void run() { if (sheetPrefs.getBoolean("t", false)) { tMode[0] = true; applyMode.run(); } else placeSheet.run(); } });
++        // o modo T nunca e salvo: o app sempre abre com ele desligado (nao afeta o menu superior)
++        frame.post(new Runnable() { public void run() { placeSheet.run(); } });
          tools.setSheetHost(scroll, new Runnable() {
              @Override public void run() {
                  tl.clearSelection();
-@@ -523,6 +648,7 @@
+@@ -523,6 +647,7 @@
          final TimelineOps ops = new TimelineOps(view, tl, new TimelineOps.Host() {
              @Override public void show(int type, int index, int flag, int occ) {
                  tl.select(type, index, flag, occ);
@@ -3114,7 +3113,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -596,6 +722,8 @@
+@@ -596,6 +721,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -3123,7 +3122,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -856,7 +984,9 @@
+@@ -856,7 +983,9 @@
              }
          });
  
@@ -3134,7 +3133,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -884,6 +1014,56 @@
+@@ -884,6 +1013,56 @@
      }
  
      /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
@@ -3191,7 +3190,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -1045,22 +1225,49 @@
+@@ -1045,22 +1224,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3251,7 +3250,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1442,7 @@
+@@ -1235,7 +1441,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
