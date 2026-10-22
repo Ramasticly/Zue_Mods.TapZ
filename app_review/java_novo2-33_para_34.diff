@@ -9,6 +9,45 @@ diff -ruN a/Ano.java b/Ano.java
          public boolean spawnPos() { return (flags & 0x1000) != 0; }
          public boolean syncXY() { return (flags & 0x4000) != 0; }
          public boolean syncMpt() { return (flags & 0x8000) != 0; }
+diff -ruN a/AnoPicker.java b/AnoPicker.java
+--- a/AnoPicker.java	2026-10-20 12:03:57.000000000 +0000
++++ b/AnoPicker.java	2026-10-22 07:55:53.653533635 +0000
+@@ -15,7 +15,7 @@
+ import android.widget.TextView;
+ 
+ /**
+- * Lista independente de ANOs (0 a 255) de um DAC: cada uma com a previa do primeiro frame; tocar numa a expande e toca a ANO inteira,
++ * Lista independente de ANOs (todas as do DAC, no minimo 0 a 255): cada uma com a previa do primeiro frame; tocar numa a expande e toca a ANO inteira,
+  * com o botao para usa-la. Serve para qualquer tela que precise escolher uma ANO.
+  */
+ final class AnoPicker {
+@@ -103,7 +103,7 @@
+         x.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } });
+         h.addView(x, new LinearLayout.LayoutParams(dp(44), dp(40)));
+         root.addView(h);
+-        TextView hint = tv(all ? "Todas as ANOs do DAC (" + dac.size() + "). ANO vazia também pode ser aberta, para criar frames nela. Toque numa para ver a animação completa." : "Todas as ANOs de 0 a 255 (a prévia é do primeiro frame). Toque numa para ver a animação completa.", 11, LayoutManager.DIM, false);
++        TextView hint = tv(all ? "Todas as ANOs do DAC (" + dac.size() + "). ANO vazia também pode ser aberta, para criar frames nela. Toque numa para ver a animação completa." : "Todas as ANOs do DAC (" + Math.max(256, dac.size()) + "; a prévia é do primeiro frame). Toque numa para ver a animação completa.", 11, LayoutManager.DIM, false);
+         hint.setPadding(dp(2), dp(2), dp(2), dp(8));
+         root.addView(hint);
+         if (allowClear) {
+@@ -119,7 +119,7 @@
+         gv.setVerticalSpacing(dp(6));
+         gv.setHorizontalSpacing(dp(6));
+         gv.setAdapter(new BaseAdapter() {
+-            @Override public int getCount() { return all ? Math.max(1, dac.size()) : 256; }
++            @Override public int getCount() { return all ? Math.max(1, dac.size()) : Math.max(256, dac.size()); }
+             @Override public Object getItem(int i) { return Integer.valueOf(i); }
+             @Override public long getItemId(int i) { return i; }
+             @Override public View getView(final int i, View cv, ViewGroup parent) {
+@@ -159,7 +159,7 @@
+         root.addView(gv, new LinearLayout.LayoutParams(-1, 0, 1f));
+         root.addView(button("VOLTAR", LayoutManager.DIM, new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }));
+         dlg.show();
+-        if (selected >= 0 && selected < 256) gv.setSelection(Math.max(0, selected - 4));
++        if (selected >= 0 && selected < (all ? dac.size() : Math.max(256, dac.size()))) gv.setSelection(Math.max(0, selected - 4));
+     }
+ 
+     /** A ANO inteira, em laco, maior; com o botao para usar. */
 diff -ruN a/AttackData.java b/AttackData.java
 --- a/AttackData.java	2026-10-09 10:00:35.000000000 +0000
 +++ b/AttackData.java	2026-10-21 20:29:04.495322788 +0000
@@ -137,7 +176,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-21 22:32:45.745760275 +0000
++++ b/AttackView.java	2026-10-22 07:55:53.652162568 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -194,6 +233,15 @@ diff -ruN a/AttackView.java b/AttackView.java
      // aviso de pouso
  
      private static final String LAND_MSG = "Animação/golpe acabou antes por causa do pouso. Experimente mudar a posição do personagem para ver o movimento completo.";
+@@ -1127,7 +1152,7 @@
+ 
+     public interface MoveEdit { void apply(CharData.Move m); }
+ 
+-    /** Edita campos do golpe (HDAT 4) em runtime, com desfazer; valores limitados a 255 como no BIN. */
++    /** Edita campos do golpe (HDAT 4) em runtime, com desfazer; campos de 16 bits (maximo 32767). */
+     public void editMove(MoveEdit e) {
+         if (data == null || data.move == null) return;
+         final CharData.Move mv = data.move;
 @@ -1349,6 +1374,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
@@ -204,7 +252,7 @@ diff -ruN a/AttackView.java b/AttackView.java
  
 diff -ruN a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-10-21 22:32:45.745163919 +0000
++++ b/BattleSim.java	2026-10-22 07:57:28.859706446 +0000
 @@ -25,6 +25,8 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -350,7 +398,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      /** Camera vertical (iBackYPos, 16.16, <= 0) e iBackYOffset (px inteiros): ver updateCamY(). */
      private int camYFix, camYOff;
      private final List<Fx> fxs = new ArrayList<Fx>();
-@@ -178,6 +240,23 @@
+@@ -178,6 +240,58 @@
      private int lastSerial, spawnedSerial;
      private boolean armed;
      private int bulletAno;
@@ -366,6 +414,41 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +    /** O motivo se resolve mudando a altura relativa dos lutadores (botao POS). */
 +    public boolean spawnProblemByHeight() { return measuredSpawnByHeight; }
 +
++    /** ANOs que o atacante tocou e se algum projetil principal chegou a nascer (para explicar um projetil que nunca saiu). */
++    private final java.util.HashSet<Integer> visitedAnos = new java.util.HashSet<Integer>();
++    private boolean spawnedAny;
++
++    /**
++     * Fim da medicao: o golpe tem hit de projetil (flag 0) num ANO do fluxo do atacante (SEQ, END, AO_ACERTAR, pouso...) que
++     * nunca tocou, e nada nasceu. Diz por que a execucao nao chegou la.
++     */
++    private void explainUnreachedSpawn() {
++        if (spawnProblem.length() > 0 || spawnedAny || bulletAno == 0 || move == null || move.generic) return;
++        int[] flow = {move.animAoAcertar, move.animSeqChao, move.animEndChao, move.animSeqAr, move.animEndAr, move.pousoErrar, move.pousoAcertar};
++        for (int ano : flow) {
++            if (ano <= 0 || visitedAnos.contains(ano)) continue;
++            Ano a = atkDac.getAno(ano);
++            if (a == null || !a.present || !hasSpawnHit(a)) continue;
++            String where = "ele nasce no ANO " + ano + (ano == move.animSeqChao || ano == move.animSeqAr ? " (ANIM_SEQ)"
++                    : ano == move.animEndChao || ano == move.animEndAr ? " (ANIM_END)" : ano == move.animAoAcertar ? " (ANIM_AO_ACERTAR)" : " (pouso)");
++            if (lockFromTick >= 0)
++                noteSpawn("O projétil não nasceu: " + where + ", que não tocou porque TRANSIÇÃO está TRAVADA. Destrave para ver o fluxo completo.", false);
++            else if (lifeO <= 0)
++                noteSpawn("O projétil não nasceu: " + where + ", mas o oponente foi derrotado antes (flags 39/40 encerram o ANO quando o alvo morre, como no jogo).", false);
++            else if (!everHit)
++                noteSpawn("O projétil não nasceu: " + where + ", que só toca depois que o golpe acerta, e aqui o golpe errou. Ajuste a distância/altura em POS.", true);
++            else
++                noteSpawn("O projétil não nasceu: " + where + ", mas essa execução não chegou ao frame com o hit de projétil (flag 0).", false);
++            return;
++        }
++    }
++
++    private static boolean hasSpawnHit(Ano a) {
++        for (int p = 0; p < a.mpts.length; p++)
++            for (int h = 0; h < a.mpts[p].hits.length; h++) if (a.mpts[p].hits[h].flag == 0) return true;
++        return false;
++    }
++
 +    private void noteSpawn(String text, boolean byHeight) {
 +        if (spawnProblem.length() > 0) return;
 +        spawnProblem = text;
@@ -374,7 +457,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      // dano do defensor
      private boolean inDamage;
-@@ -197,7 +276,14 @@
+@@ -197,7 +311,14 @@
      }
      private final List<Aura> auras = new ArrayList<Aura>();
      private Dac charfDac;
@@ -389,7 +472,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean everHit;                     // o golpe acertou o oponente em algum momento
      private boolean flies = true;     // AirType: HDAT 3 linha 0 coluna 6
  
-@@ -207,6 +293,12 @@
+@@ -207,6 +328,12 @@
          reset();
      }
  
@@ -402,7 +485,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      /** Personagem do oponente (largura do corpo para as paredes). Reinicia a simulacao. */
      public void setOpponentChar(CharData c) {
          oppChar = c;
-@@ -214,6 +306,14 @@
+@@ -214,6 +341,14 @@
      }
  
      private AttackSim grab;      // OPONENTE_ANIM_SENDO_AGARRADO
@@ -417,7 +500,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private int grabSerial = -1;
      private boolean grabArmed;
      private int phase;           // 0 = ANIM_INICIAL, 1 = ANIM_SEQ, 2 = ANIM_END
-@@ -265,11 +365,33 @@
+@@ -265,11 +400,33 @@
          grab = null;
          grabSerial = -1;
          grabArmed = false;
@@ -452,7 +535,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          everHit = false;
          attackOver = false;
          flies = flyMode;
-@@ -286,6 +408,7 @@
+@@ -286,6 +443,7 @@
  
          int atkY = -heightPx * PX;
          atk = new AttackSim(atkDac, move.animInicial, atkLeft, 0, atkY);
@@ -460,7 +543,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          cineLeft = 0;
  
          oppX = (atkLeft ? -distancePx : distancePx) * PX;
-@@ -295,18 +418,21 @@
+@@ -295,18 +453,23 @@
          setOppAct(0);
  
          // animacao do projetil escolhida no inicio do golpe (altura relativa ao oponente)
@@ -473,6 +556,8 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +        else { bulletAno = move.projNormal; bulletField = "PROJETIL_ANIM_NORMAL"; }
 +        spawnProblem = "";
 +        spawnByHeight = false;
++        visitedAnos.clear();
++        spawnedAny = false;
  
          airborne = heightPx > 0;
          if (cinematic && hasCinematic()) {
@@ -487,7 +572,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (f.sim.root() != null) fxs.add(f);
              }
          }
-@@ -314,10 +440,14 @@
+@@ -314,10 +477,14 @@
          consumeSe(atk, 0);
          consumeSe(opp, 1);
          updateAuras();
@@ -502,7 +587,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      /** Travamento cinematico do especial (md 923/926 do jogo): liga/desliga a simulacao dele. */
      public static boolean cinematic = true;
-@@ -360,21 +490,33 @@
+@@ -360,21 +527,33 @@
  
      private void stepImpl() {
          ticks++;
@@ -537,7 +622,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // 1. atacante
          AttackSim.Obj r0 = atk.root();
          atkFrozen = extendTime && !idleMode && r0 != null && r0.isDone() && !atk.hasWrapped() && grounded(r0);
-@@ -383,6 +525,7 @@
+@@ -383,6 +562,7 @@
              if (idle != null && idle.present) {
                  preIdle = physHold != null ? physHold : atk;
                  atk = new AttackSim(atkDac, 0, atkLeft, r0.x, r0.y);
@@ -545,7 +630,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  idleMode = true;
                  lastSerial = -1;
                  spawnedSerial = -1;
-@@ -390,8 +533,10 @@
+@@ -390,8 +570,10 @@
                  atkFrozen = false;
              }
          }
@@ -558,7 +643,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              updateAuras();
          } else {
              atk.step(hsAtk > 0);
-@@ -399,34 +544,76 @@
+@@ -399,34 +581,76 @@
              tryPull();
              checkEnd();
              checkAttackOver();
@@ -646,7 +731,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private boolean looping;
-@@ -442,6 +629,7 @@
+@@ -442,6 +666,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, move, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -654,7 +739,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          return s;
      }
-@@ -492,7 +680,13 @@
+@@ -492,7 +717,14 @@
  
      public int measureLength() {
          BattleSim s = fresh();
@@ -663,13 +748,18 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            realTrans = new ArrayList<Trans>(s.trans);
 +            measuredLandedEarly = s.landedEarly;
 +            measuredLandTick = s.landTick;
++            s.explainUnreachedSpawn();
 +            measuredSpawnProblem = s.spawnProblem;
 +            measuredSpawnByHeight = s.spawnByHeight;
 +        }
      }
  
      private int measure(BattleSim s) {
-@@ -584,56 +778,121 @@
+@@ -581,59 +813,125 @@
+         }
+         if (spawnedSerial != r.serial) {
+             spawnedSerial = r.serial;
++            visitedAnos.add(r.ano.index);
              for (int i = 0; i < r.hits.length; i++) {
                  if (r.hits[i].flag == 0) spawnMain(r, r.hits[i]);
              }
@@ -729,17 +819,20 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-             }
++            }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-+            }
-+        }
-+    }
-+
+             }
+         }
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -764,17 +857,14 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-         }
++        }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
 +        if (setX) pendAX = x;
 +        if (setY) pendAY = y;
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++    }
++
 +    /** _SetXY do PlayerTail (inicio do tick, depois do hit-detect do tick anterior): o atacante vai para a posicao logica. */
 +    private void applyPendingMoves() {
 +        if (!pendA) return;
@@ -821,7 +911,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -643,123 +902,145 @@
+@@ -643,123 +941,145 @@
              int anim = c.flipped ? animF : animN;
              String why = "";
              if (animN == 0) why = " (sem animação: ANIM_ID = 0)";
@@ -1054,7 +1144,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int count = (move.flags & 4) != 0 ? 3 : 1;
          for (int k = 0; k < count; k++) {
              int x, y;
-@@ -779,18 +1060,51 @@
+@@ -779,18 +1099,52 @@
              else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
  
              Proj p = new Proj();
@@ -1072,6 +1162,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +                        + " não existe ou está vazio no DAC: ele morre sem aparecer. "
 +                        + (k > 0 ? "Com \"Lançar 3 projéteis\" os ANOs ANO, ANO+1 e ANO+2 precisam existir." : "Crie esse ANO ou aponte o campo para outro."), false);
              projs.add(p);
++            spawnedAny = true;
          }
      }
  
@@ -1107,7 +1198,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int dx = h.x << 16;
          int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
          int y = o.y + (h.y << 16);
-@@ -801,17 +1115,21 @@
+@@ -801,17 +1155,21 @@
          p.globalAno = move.projGlobal;
          p.groundAno = move.subChao;
          p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
@@ -1129,7 +1220,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          p.life++;
          AttackSim.Obj o = p.sim.root();
          if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
-@@ -844,19 +1162,19 @@
+@@ -844,19 +1202,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -1153,7 +1244,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -869,7 +1187,7 @@
+@@ -869,7 +1227,7 @@
          }
          if (p.firstX != o.x) p.moved = true;
  
@@ -1162,7 +1253,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          o = p.sim.root();
          if (o != null) {
              if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
-@@ -890,22 +1208,19 @@
+@@ -890,22 +1248,19 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
@@ -1190,7 +1281,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // projeteis
          for (int i = 0; i < projs.size(); i++) {
              Proj p = projs.get(i);
-@@ -920,13 +1235,14 @@
+@@ -920,13 +1275,14 @@
                  p.hs = HIT_STOP / 2;
                  hsDef = HIT_STOP;
              }
@@ -1206,7 +1297,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int[] pos = checkObjHit(r, def);
              if (pos != null) {
                  armed = false;
-@@ -936,6 +1252,7 @@
+@@ -936,6 +1292,7 @@
                      hsAtk = hs;
                      hsDef = hs;
                  }
@@ -1214,7 +1305,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  applyHit(op, pos, "golpe", r.optData[0], r.ano.index);
                  if (inDamage) onHitConfirmed(false, r.ano.index, null);
              }
-@@ -989,7 +1306,7 @@
+@@ -989,7 +1346,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
@@ -1223,7 +1314,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1316,7 @@
+@@ -999,7 +1356,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
@@ -1232,7 +1323,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1335,7 @@
+@@ -1018,7 +1375,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
@@ -1241,7 +1332,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1347,6 @@
+@@ -1030,7 +1387,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
@@ -1249,7 +1340,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1063,6 +1379,7 @@
+@@ -1063,6 +1419,7 @@
          transKind = -1;
          if (switchAtk(next)) {
              hitConfirmed = false;                 // work[10] = 0
@@ -1257,7 +1348,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
          } else {
              r.x = ox;
-@@ -1117,6 +1434,7 @@
+@@ -1117,6 +1474,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -1265,7 +1356,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1469,7 @@
+@@ -1151,7 +1509,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
@@ -1274,7 +1365,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1208,7 +1526,6 @@
+@@ -1208,7 +1566,6 @@
              r.speedX = 0;
              r.accelX = 0;
              sounds.add(new Snd(true, 12, 0));
@@ -1282,7 +1373,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
              if (land == 0) land = 13;
              transKind = 3;
-@@ -1222,7 +1539,7 @@
+@@ -1222,7 +1579,7 @@
          // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
          if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
              transKind = 4;
@@ -1291,7 +1382,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1232,11 +1549,11 @@
+@@ -1232,11 +1589,11 @@
          AttackSim.Obj r = atk.root();
          // chaves ativas no frame atual (so a raiz, como o jogo)
          java.util.LinkedHashMap<Integer, Ano.Hit> active = new java.util.LinkedHashMap<Integer, Ano.Hit>();
@@ -1305,7 +1396,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              }
          }
          for (int i = auras.size() - 1; i >= 0; i--) {
-@@ -1255,7 +1572,8 @@
+@@ -1255,7 +1612,8 @@
              if (a != null) {
                  AttackSim.Obj o = a.sim.root();
                  if (o != null) { o.x = x; o.y = y; }
@@ -1315,7 +1406,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  consumeSe(a.sim, 0);
                  continue;
              }
-@@ -1270,21 +1588,22 @@
+@@ -1270,21 +1628,22 @@
              a = new Aura();
              a.key = f;
              a.owner = owner;
@@ -1348,7 +1439,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private void afterGrabFrame() {
-@@ -1296,20 +1615,50 @@
+@@ -1296,20 +1655,50 @@
          }
      }
  
@@ -1410,7 +1501,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
-@@ -1331,6 +1680,7 @@
+@@ -1331,6 +1720,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
@@ -1418,7 +1509,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1341,14 +1691,17 @@
+@@ -1341,14 +1731,17 @@
  
      private void detectGrab(AttackSim.Obj def) {
          AttackSim.Obj g = grab == null ? null : grab.root();
@@ -1440,7 +1531,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** CheckObjHit: hitbox (flag 2) do atacante contra hurtbox (flag 1) do alvo; devolve o centro do impacto em px. */
-@@ -1446,9 +1799,7 @@
+@@ -1446,9 +1839,7 @@
          }
          // efeito e som de impacto
          if (op.effectAno >= 0 && fxDac != null) {
@@ -1451,7 +1542,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
          if (op.sound >= 0) sounds.add(new Snd(true, op.sound, 0));
          // o defensor vira para o atacante e entra no estado de dano
-@@ -1457,6 +1808,9 @@
+@@ -1457,6 +1848,9 @@
          if (oppX != flipRef) oppFlip = oppX >= flipRef;
          applyFlip(opp, oppFlip);
          inDamage = true;
@@ -1461,7 +1552,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1481,6 +1835,7 @@
+@@ -1481,6 +1875,7 @@
  
      private void setOppAct(int ano) {
          opp = new AttackSim(defDac, ano, oppFlip, oppX, oppY);
@@ -1469,7 +1560,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1601,7 +1956,7 @@
+@@ -1601,7 +1996,7 @@
          int comp = tb.u8(dIdx, 11);
          int wall = tb.u8(dIdx, 12);
          if (comp > 0 && comp < 50) {
@@ -1478,7 +1569,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1634,8 +1989,9 @@
+@@ -1634,8 +2029,9 @@
                  dTime = 0;
                  tickDamage(depth + 1);
                  return;
@@ -1489,7 +1580,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp < 30) { dCharSrc = false; dType = comp; }
                  else if (dCharSrc) dType = comp - 30;
                  else { endDamage(864, -1); return; }
-@@ -1701,16 +2057,28 @@
+@@ -1701,16 +2097,28 @@
          float tw = 100f, tx = nx, ty = ny;
          int n = 12;
          AttackSim.Obj r = atk.root();
@@ -1527,7 +1618,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
              int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
              if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1761,11 +2129,8 @@
+@@ -1761,11 +2169,8 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -1540,7 +1631,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              refAtkX = ra.x;
          }
          oldAx = ra == null ? 0 : ra.x;
-@@ -1785,15 +2150,12 @@
+@@ -1785,15 +2190,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -1560,7 +1651,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1802,14 +2164,14 @@
+@@ -1802,14 +2204,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -1577,7 +1668,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2179,7 @@
+@@ -1817,7 +2219,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -1586,7 +1677,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,42 +2199,47 @@
+@@ -1837,42 +2239,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -1644,7 +1735,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2251,117 @@
+@@ -1884,21 +2291,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -1770,7 +1861,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,7 +2382,7 @@
+@@ -1919,7 +2422,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
@@ -1779,7 +1870,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              if (se < 80) pushRaw(se - 1);
              else pushRaw(se);
          }
-@@ -1979,55 +2442,47 @@
+@@ -1979,55 +2482,47 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -1859,8 +1950,22 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
 diff -ruN a/CharData.java b/CharData.java
 --- a/CharData.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/CharData.java	2026-10-21 20:33:09.504460561 +0000
-@@ -131,8 +131,9 @@
++++ b/CharData.java	2026-10-22 07:55:53.651685766 +0000
+@@ -49,8 +49,11 @@
+             unk44 = o.unk44; unk46 = o.unk46;
+         }
+ 
+-        /** O BIN guarda cada valor do golpe em ate 255: acima disso e cortado. */
+-        public static final int MAX = 255;
++        /**
++         * Cada campo do golpe (HDAT 4, 24 colunas de 2 bytes) e um short: o jogo monta o valor com dois bytes (BulletAction jogo:2590-2591,
++         * ANIM_INICIAL 2569-2570, SEQ/END 13260-13265, ...). ANOs acima de 255 sao normais (ex.: 310, 342, 368).
++         */
++        public static final int MAX = 32767;
+ 
+         public void clamp() {
+             flags = Math.min(MAX, flags); animInicial = Math.min(MAX, animInicial); projNormal = Math.min(MAX, projNormal);
+@@ -131,8 +134,9 @@
      private final ReactionTable[] reactions = new ReactionTable[REACTION_COUNT];
      private byte[] h3 = new byte[0];
      private byte[] h7 = new byte[0];
@@ -1872,7 +1977,7 @@ diff -ruN a/CharData.java b/CharData.java
      private int h7Stride = 0;
  
      private static int u(byte[] b, int i) { return i >= 0 && i < b.length ? (b[i] & 255) : 0; }
-@@ -167,17 +168,26 @@
+@@ -167,17 +171,26 @@
      /** GetDeffence: HDAT 3 byte 14 + coluna 3 do HDAT 7. */
      public int defenceMul(int level) { return h3.length > 14 ? u(h3, 14) + levelSum(3, level) : 0; }
  
@@ -1905,7 +2010,7 @@ diff -ruN a/CharData.java b/CharData.java
          if (t.size() > 7 && t.rows(7) > 0) { h7 = t.bytes(7); h7Stride = h7.length / t.rows(7); }
          for (int i = 0; i < REACTION_COUNT; i++) {
              int h = FIRST_REACTION_HDAT + i;
-@@ -219,7 +229,7 @@
+@@ -219,7 +232,7 @@
              if (p + 48 <= b.length) { m.unk44 = s16(b, p + 44); m.unk46 = s16(b, p + 46); }
              moves[i] = m;
          }
@@ -1998,6 +2103,18 @@ diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 +        }
 +    }
 +}
+diff -ruN a/DacText.java b/DacText.java
+--- a/DacText.java	2026-10-13 10:43:29.000000000 +0000
++++ b/DacText.java	2026-10-22 07:55:53.652520198 +0000
+@@ -418,7 +418,7 @@
+                 default: m.unk46 = v; break;
+             }
+         }
+-        m.clamp();                    // o BIN nao passa de 255 por valor
++        m.clamp();                    // campos de 16 bits (short), nao de 1 byte
+         dst.copyFrom(m);
+     }
+ }
 diff -ruN a/GameRules.java b/GameRules.java
 --- a/GameRules.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/GameRules.java	2026-10-21 21:59:21.531108998 +0000
@@ -2545,6 +2662,47 @@ diff -ruN a/ObjModel.java b/ObjModel.java
              case 34: return "Curar vida";
              case 37: return "Sem contagem de combo";
              case 38: return "Bloquear sequencia";
+diff -ruN a/ReactionEditor.java b/ReactionEditor.java
+--- a/ReactionEditor.java	2026-10-12 23:53:53.000000000 +0000
++++ b/ReactionEditor.java	2026-10-22 07:58:27.951695679 +0000
+@@ -22,10 +22,10 @@
+  * Tabelas do char do atacante sao editaveis; as do gamedata sao fixas (so visualizacao).
+  */
+ final class ReactionEditor {
+-    private static final String[] COLS = {"duracao no chao", "duracao no ar (255 = ate cair)", "ANO do oponente (negativo = vira)",
++    private static final String[] COLS = {"duracao no chao", "duracao no ar (255 = ate cair)", "ANO do oponente (-127..127; negativo = vira)",
+             "chao: veloc. x", "chao: veloc. y", "chao: acel. x", "chao: acel. y",
+             "ar: veloc. x", "ar: veloc. y", "ar: acel. x", "ar: acel. y",
+-            "proxima reacao (0 = nenhuma)", "parede", "voz"};
++            "proxima reacao (0 = nenhuma)", "parede", "voz (1..127; o jogo le com sinal)"};
+     private static final boolean[] SIGNED = {false, false, true, true, true, true, true, true, true, true, true, false, false, false};
+ 
+     private final Context c;
+@@ -216,7 +216,7 @@
+         final Runnable commit = new Runnable() { public void run() {
+             int v;
+             try { v = Integer.parseInt(et.getText().toString().trim()); } catch (NumberFormatException e) { et.setText(String.valueOf(cur[0])); return; }
+-            v = SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
++            v = limit(col, v);
+             if (v == cur[0]) return;
+             cur[0] = v;
+             apply(col, v);
+@@ -235,8 +235,14 @@
+         return l;
+     }
+ 
++    /** Colunas de 1 byte: o jogo le o ANO e a voz com sinal ((byte), jogo:12378-12379), entao a voz acima de 127 nunca toca. */
++    private static int limit(int col, int v) {
++        if (col == 13) return Math.max(0, Math.min(127, v));
++        return SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
++    }
++
+     private void commit2(int col, int v) {
+-        v = SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
++        v = limit(col, v);
+         apply(col, v);
+     }
+ 
 diff -ruN a/ReorderBar.java b/ReorderBar.java
 --- a/ReorderBar.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ReorderBar.java	2026-10-21 22:28:37.440162865 +0000
@@ -2835,7 +2993,36 @@ diff -ruN a/Saver.java b/Saver.java
          if (!rs.isEmpty()) {
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-21 21:59:21.533097144 +0000
++++ b/TimelineTools.java	2026-10-22 07:56:02.360147403 +0000
+@@ -1144,8 +1144,8 @@
+         col.setOrientation(LinearLayout.VERTICAL);
+         col.setPadding(dp(16), dp(8), dp(16), dp(4));
+         TextView info = new TextView(c);
+-        info.setText(kind == SeqMark.SEQ ? "Para qual ANO o golpe vai quando um hit conecta (0 = nenhuma). Máximo " + CharData.Move.MAX + "."
+-                : "Para qual ANO o golpe vai num novo hit durante a SEQ (0 = nenhuma). Máximo " + CharData.Move.MAX + ".");
++        info.setText(kind == SeqMark.SEQ ? "Para qual ANO o golpe vai quando um hit conecta (0 = nenhuma). Aceita qualquer ANO do DAC (campo de 16 bits)."
++                : "Para qual ANO o golpe vai num novo hit durante a SEQ (0 = nenhuma). Aceita qualquer ANO do DAC (campo de 16 bits).");
+         info.setTextColor(LayoutManager.DIM);
+         info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+         col.addView(info);
+@@ -1483,7 +1483,7 @@
+     private void projSeqBlock(final CharData.Move mv) {
+         head("Sequência do projétil (SEQ_PROJETIL)");
+         note("SEQ_PROJETIL: " + anoText(mv.animAoAcertar));
+-        note("Quando o primeiro acerto de cada projétil conecta, o atacante troca para esta ANO (vale para o golpe todo). A SEQ vem logo depois, a não ser que o primeiro frame desta ANO tenha uma hitbox flag 38. Máximo " + CharData.Move.MAX + ".");
++        note("Quando o primeiro acerto de cada projétil conecta, o atacante troca para esta ANO (vale para o golpe todo). A SEQ vem logo depois, a não ser que o primeiro frame desta ANO tenha uma hitbox flag 38. Aceita qualquer ANO do DAC (campo de 16 bits).");
+         LinearLayout r = line();
+         final boolean any = mv.animAoAcertar != 0;
+         r.addView(btn(any ? "✎ Editar SEQ_PROJETIL" : "+ SEQ_PROJETIL", true, new View.OnClickListener() { public void onClick(View v) { projSeqDialog(mv); } }));
+@@ -1497,7 +1497,7 @@
+         col.setOrientation(LinearLayout.VERTICAL);
+         col.setPadding(dp(16), dp(8), dp(16), dp(4));
+         TextView info = new TextView(c);
+-        info.setText("Para qual ANO o atacante vai quando o projétil acerta (0 = nenhuma). Máximo " + CharData.Move.MAX + ".");
++        info.setText("Para qual ANO o atacante vai quando o projétil acerta (0 = nenhuma). Aceita qualquer ANO do DAC (campo de 16 bits).");
+         info.setTextColor(LayoutManager.DIM);
+         info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+         col.addView(info);
 @@ -1716,20 +1716,20 @@
      private String describe(int f) {
          switch (f) {
@@ -2870,6 +3057,21 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
+@@ -1848,10 +1850,10 @@
+         title.setTextColor(TimelineView.markColor(m));
+         title.setText(m.title() + "  ·  frame " + (m.pat + 1) + (kind == SeqMark.LAND || kind == SeqMark.FALL ? "" : (m.air ? "  ·  no ar" : "  ·  no chao")) + (m.projectile ? "  ·  projetil" : ""));
+         switch (kind) {
+-            case SeqMark.SEQ: note("Se o hit conectar aqui, o golpe segue para a ANO abaixo (ANIM_SEQ do BIN). Maximo 255."); break;
+-            case SeqMark.END: note("Hit durante a sequencia: leva a ANO abaixo (ANIM_END do BIN). Maximo 255."); break;
+-            case SeqMark.HIT: note("SEQ_PROJETIL: o primeiro acerto do projetil troca o atacante para esta ANO (ANIM_AO_ACERTAR do BIN, vale para o golpe todo). Maximo 255."); break;
+-            case SeqMark.LAND: note("Onde o atacante toca o chao. ANO do pouso ao errar / ao acertar (0 = pouso padrao, ANO 13). Maximo 255."); break;
++            case SeqMark.SEQ: note("Se o hit conectar aqui, o golpe segue para a ANO abaixo (ANIM_SEQ do BIN). Aceita qualquer ANO do DAC (campo de 16 bits)."); break;
++            case SeqMark.END: note("Hit durante a sequencia: leva a ANO abaixo (ANIM_END do BIN). Aceita qualquer ANO do DAC (campo de 16 bits)."); break;
++            case SeqMark.HIT: note("SEQ_PROJETIL: o primeiro acerto do projetil troca o atacante para esta ANO (ANIM_AO_ACERTAR do BIN, vale para o golpe todo). Aceita qualquer ANO do DAC (campo de 16 bits)."); break;
++            case SeqMark.LAND: note("Onde o atacante toca o chao. ANO do pouso ao errar / ao acertar (0 = pouso padrao, ANO 13). Aceita qualquer ANO do DAC (campo de 16 bits)."); break;
+             default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
+         }
+         if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
 @@ -1918,7 +1920,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
@@ -2942,7 +3144,7 @@ diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 +}
 diff -ruN a/test/BattleTest.java b/test/BattleTest.java
 --- a/test/BattleTest.java	2026-10-20 14:59:24.000000000 +0000
-+++ b/test/BattleTest.java	2026-10-21 21:58:08.619265407 +0000
++++ b/test/BattleTest.java	2026-10-22 07:58:27.949392323 +0000
 @@ -408,9 +408,12 @@
          BattleSim g1 = new BattleSim(dac(gq), chG, chG.moves[0], false, defDac, fxDac, g, 30, 0, 0);
          for (int i = 0; i < 6; i++) g1.step();
@@ -2969,6 +3171,18 @@ diff -ruN a/test/BattleTest.java b/test/BattleTest.java
          check("flag 39 leva o atacante ao oponente", t3.attacker().root().x >> 16, 120);   // oponente nasce a +120 (spawn do jogo)
  
          // ---- SE do DAC: id-1 para < 80; 80 = primeiro audio do personagem
+@@ -844,9 +850,9 @@
+             check("sequencia: ha marcadores", ev.size() >= 1, true);
+             check("sequencia: tipo SEQ para a ANO 41", ev.get(0).kind + "/" + ev.get(0).target, "0/41");
+             check("sequencia: sonda nao troca de ANO no combate original", bsq.attacker().root().ano.index, 40);
+-            mseq.animSeqChao = 999; mseq.homingSpeed = 300;
++            mseq.animSeqChao = 999; mseq.homingSpeed = 40000;
+             mseq.clamp();
+-            check("BIN: maximo 255", mseq.animSeqChao + "/" + mseq.homingSpeed, "255/255");
++            check("HDAT 4: campos de 16 bits (999 passa, acima de 32767 corta)", mseq.animSeqChao + "/" + mseq.homingSpeed, "999/32767");
+             CharData.Move mh = ch.moves[0].copy();
+             mh.animSeqChao = 0; mh.animEndChao = 0; mh.animSeqAr = 0; mh.animEndAr = 0; mh.animAoAcertar = 41;
+             BattleSim bsh = new BattleSim(dac(aq), ch, mh, false, defDac, fxDac, g, 30, 0, 0);
 @@ -1107,7 +1113,7 @@
              }
              if (mode == 0) { check("agarrao 8 com frame 512 puxa logo", pulledAt > 0 && pulledAt <= 2, true);
@@ -3700,8 +3914,8 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 --- a/test/SpawnDiagTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/SpawnDiagTest.java	2026-10-21 22:36:27.242104798 +0000
-@@ -0,0 +1,159 @@
++++ b/test/SpawnDiagTest.java	2026-10-22 07:56:59.006015591 +0000
+@@ -0,0 +1,206 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -3857,6 +4071,53 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +        nh[40] = new A().mpt(new M().time(5)).mpt(new M().time(5));
 +        CharData none = chr(move(new int[]{2, 40}), new byte[][] {});
 +        check("sem hit de projetil: sem aviso", problem(dac(nh), none, none.moves[0], 120, 0, 0), "");
++
++        // ---- campos do golpe sao de 16 bits (HDAT 4): ANOs > 255 nao podem ser cortados em 255 (golpe 11: projetil 342)
++        {
++            CharData wide = chr(move(new int[]{2, 95}, new int[]{4, 342}, new int[]{34, 342}, new int[]{36, 342}, new int[]{10, 310}, new int[]{12, 368}), new byte[][] {});
++            CharData.Move wm = wide.moves[0];
++            check("HDAT 4 le 16 bits", wm.projNormal + ":" + wm.projAbaixo + ":" + wm.projAcima + ":" + wm.animSeqChao + ":" + wm.animEndChao, "342:342:342:310:368");
++            CharData.Move cm = wm.copy();
++            cm.clamp();
++            check("clamp nao corta ANO acima de 255", cm.projNormal + ":" + cm.projAbaixo + ":" + cm.projAcima + ":" + cm.animSeqChao, "342:342:342:310");
++            DacText.parseMove("$GOLPE_0:{ $ATK_FLAGS: 16, $ANIM_INICIAL: 95, $PROJETIL_ANIM_NORMAL: 342, $ANIM_SEQ_CHAO: 310 }", cm);
++            check("parseMove aceita ANO 342", cm.projNormal + ":" + cm.animSeqChao + ":" + cm.flags, "342:310:16");
++            A[] big = new A[346];
++            for (int i = 0; i < 346; i++) big[i] = new A().mpt(new M().time(1));
++            big[95] = a[40];
++            big[342] = a[30];
++            BattleSim bs = sim(dac(big), wide, wm, 120, 0, 0);
++            bs.measureLength();
++            BattleSim.oppHeightPx = 0;
++            bs.reset();
++            int ano = -1;
++            for (int i = 0; i < 40 && ano < 0; i++) {
++                bs.step();
++                for (BattleSim.Layer l : bs.layers()) if (l.owner == BattleSim.OWNER_PROJECTILE) ano = l.sim.root().ano.index;
++            }
++            check("projetil 342 nasce com o ANO 342 (nao o 255)", ano, 342);
++            check("golpe com ANO > 255: sem aviso", bs.spawnProblem(), "");
++        }
++
++        // ---- projetil que nasce na SEQ: so existe depois que o golpe acerta
++        {
++            A[] q = anos();
++            q[40] = new A().mpt(new M().time(3).hit(2, 20, -40, 40, 20).opt1(3)).mpt(new M().time(30));
++            q[31] = new A().mpt(new M().time(2).hit(0, 10, -30, 4, 4)).mpt(new M().time(10));
++            q[30] = a[30];
++            CharData seq = chr(move(new int[]{2, 40}, new int[]{4, 30}, new int[]{10, 31}, new int[]{14, 31}), new byte[][] {});
++            check("SEQ com projetil: acertou, sem aviso", problem(dac(q), seq, seq.moves[0], 30, 0, 0), "");
++            String miss = problem(dac(q), seq, seq.moves[0], 400, 0, 0);
++            check("SEQ com projetil: errou, explica", has(miss, "ANO 31", "ANIM_SEQ", "errou", "POS"), true);
++            BattleSim ms = sim(dac(q), seq, seq.moves[0], 400, 0, 0);
++            ms.measureLength();
++            check("SEQ errada: resolve pela distancia (POS)", ms.spawnProblemByHeight(), true);
++            BattleSim.lockFromTick = 0;
++            try {
++                String lock = problem(dac(q), seq, seq.moves[0], 30, 0, 0);
++                check("TRANSICAO travada: explica", has(lock, "TRAVADA", "ANO 31"), true);
++            } finally { BattleSim.lockFromTick = -1; }
++        }
 +
 +        System.out.println("SpawnDiagTest fails=" + BattleTest.fails);
 +    }

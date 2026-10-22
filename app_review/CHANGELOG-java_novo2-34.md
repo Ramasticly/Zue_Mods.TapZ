@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 583 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 595 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -62,6 +62,14 @@ dos projéteis 13312+p e do hit-detect md 935 = 13728; antes da câmera md 19 = 
 ### 3.1 Projétil que não nasce: agora o app diz por quê
 Quando um hit de projétil (flag 0) existe mas **nada nasce**, uma faixa âmbar aparece na prévia (junto dos avisos do `GameRules`; o que fecha o jogo tem prioridade) e diz **qual** é o motivo. Casos: (a) o campo escolhido pela **altura relativa** está vazio, com o nome do campo e a diferença em px (a faixa `NORMAL` vale entre 37 px acima e 51 px abaixo do oponente) — nesse caso o botão **POS** abre o ajuste de altura; (b) `PROJETIL_ANIM_NORMAL` vazio; (c) o ANO do projétil não existe/está vazio, ou, no tiro triplo, falta o ANO+1/ANO+2; (d) já há 8 projéteis vivos; (e) hit de projétil dentro do ANO de projétil com `SUBPROJETIL_ANIM_ID = 0`; (f) ANO solto (modo ANO) sem golpe dono. O aviso vem da execução completa do golpe (`BattleSim.spawnProblem()`), então não depende de onde está a barra de tempo. O jogo se comporta do mesmo jeito nesses casos: o aviso só deixa de ser silencioso. `OCULTAR` esconde o aviso para aquela mensagem.
 
+### 3.1b Golpe com ANO acima de 255 (golpe 11: projétil 342 virava 255)
+- **Bug:** `CharData.Move.MAX = 255` + `clamp()` ("o BIN guarda cada valor em até 255"). Os 24 campos do HDAT 4 são `short` de 16 bits (o jogo monta o valor com dois bytes: `BulletAction` jogo:2590-2591, ANIM_INICIAL 2569-2570, SEQ/END 13260-13265, AO_ACERTAR/pouso/agarrão 14951-16049; a classe `hdat4` do projeto lê/escreve do mesmo jeito). Qualquer edição do golpe pelo app (caixas do GOLPE SET, DADOS/EDITAR, texto do golpe) cortava `PROJETIL_ANIM_NORMAL/ABAIXO/ACIMA = 342` para **255**, e o app lançava o ANO 255 (efeito em laço), não o raio do 342. Verificado com os arquivos do usuário: antes da correção o projétil nascia com o ANO 255; agora com o 342.
+- **Correção:** limite passa a 32767 (short). O seletor de ANO (`AnoPicker`, usado para escolher o projétil, SEQ, END, AO_ACERTAR...) listava só 0..255: agora lista todas as ANOs do DAC. Textos "Máximo 255" da timeline trocados.
+- **Conferidas as outras tabelas:** HDAT 13 (cutscenes, flag 20) = 8 campos `short` de 16 bits, sem limite de 255 no app. Reações de dano (HDAT 10+ / 14-33) = 14 campos de **1 byte**, e isso é limite real do jogo: o ANO é lido como `(byte)` com sinal (-127..127; negativo = espelhado, jogo:12378/12644) e a voz também com sinal (`if (n > 0)`, jogo:12379): voz acima de 127 nunca toca; o editor agora limita a voz a 0..127 e os rótulos mostram as faixas.
+
+### 3.1c Projétil que nunca saiu: agora o aviso explica
+Quando o hit de projétil está num ANO de SEQ/END/AO_ACERTAR/pouso e a execução não chegou lá, o aviso diz o motivo: golpe errou (botão POS), TRANSIÇÃO TRAVADA, ou oponente derrotado (flags 39/40 encerram o ANO, como no jogo, jogo:976-990).
+
 ### 3.2 Menu superior reordenável
 - **Segure** um botão do menu superior e **arraste** para frente ou para trás; a barra rola sozinha perto das bordas e o botão de origem fica translúcido durante o arraste. Soltar em cima de outro botão põe o arrastado naquela posição; soltar nas frestas/depois do último vai para o botão mais próximo.
 - O **primeiro botão** fica fixo fora da rolagem (por padrão, SALVAR). **Soltar qualquer botão no slot fixo troca o botão fixo.**
@@ -102,7 +110,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CutsceneTest (novo)** | 65 |
 | **FidelityTest (novo)** | 26 |
 | **GameRulesTest (novo)** | 20 |
-| **SpawnDiagTest (novo)** | 38 |
+| **SpawnDiagTest (novo)** | 50 |
 | **ToolbarTest (novo)** | 55 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
