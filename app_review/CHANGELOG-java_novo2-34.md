@@ -103,6 +103,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Arrastar a borda** sobe ou desce a gaveta livremente por toda a tela (até por cima da prévia); vale só para aquela abertura. Toque curto na borda alterna mínimo → padrão → máximo; arrastar rápido para baixo fecha (como antes).
 - **Y** (botãozinho na borda, à direita): grava a altura atual como a nova altura padrão (uma por modo, `SharedPreferences "sheet"`).
 - **T** (ao lado do Y): põe a **timeline acima do menu**. A gaveta entra no fluxo da tela (sobe no máximo metade dela), a prévia (quadrada) diminui proporcionalmente, a área de rolagem e o menu superior (botões, status, info) somem para liberar espaço; a barra de título e a de controle ficam. T de novo volta ao modo normal. O modo fica salvo no aparelho.
+- **Preview no modo T**: em vez de re-medir a view (o que descentralizava câmera/enquadramento), a view continua medida e desenhada no tamanho de referência e o `SquareHolder` só aplica uma escala uniforme (`scaleX/Y`, pivô no topo e no centro). Câmera, zoom e posições ficam idênticos, só menores; o toque é mapeado pelo próprio Android.
 - Código: `LayoutManager` (modo, reparentamento, `placeSheet`) e `TimelineTools` (`Geo`, `setGeometry`, `setTOn`, `refit`, botões Y/T). Texto novo no AJUDA ("Altura da gaveta: Y e T").
 - **Não executado num aparelho** (só compilado contra o `android-all` 13 e revisado): o reparentamento ao alternar o modo e a medida da prévia no modo T precisam de um teste manual.
 

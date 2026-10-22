@@ -2880,7 +2880,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-22 10:17:55.729382689 +0000
++++ b/LayoutManager.java	2026-10-22 10:33:50.029101026 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -2899,15 +2899,47 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      public final Spinner characterSpinner;
      public final Spinner attackSpinner;
      /** Personagem oponente (defensor, ANO 0). */
-@@ -78,6 +80,7 @@
+@@ -72,20 +74,35 @@
+     }
+ 
+     /** Segura a preview em proporcao 1:1: lado = o menor entre largura e altura disponiveis, no topo e centralizada. */
++    /**
++     * Preview quadrada. O filho e sempre medido e desenhado no tamanho de referencia (o do modo normal); quando o espaco e menor
++     * (modo T) o holder so reduz o filho por igual (escala da view inteira), entao camera, zoom e enquadramento ficam como estavam.
++     */
+     private static final class SquareHolder extends android.widget.FrameLayout {
++        private int ref = 1;
+         SquareHolder(Context c) { super(c); }
+         @Override protected void onMeasure(int ws, int hs) {
              int w = MeasureSpec.getSize(ws);
              int screenH = getResources().getDisplayMetrics().heightPixels;
-             int side = Math.min(w, (int) (screenH * 0.72f));      // 1:1 preenchendo a largura (limitado em telas baixas)
-+            if (MeasureSpec.getMode(hs) == MeasureSpec.EXACTLY) side = Math.max(1, Math.min(w, MeasureSpec.getSize(hs)));   // modo T: o espaco que sobra
+-            int side = Math.min(w, (int) (screenH * 0.72f));      // 1:1 preenchendo a largura (limitado em telas baixas)
++            ref = Math.max(1, Math.min(w, (int) (screenH * 0.72f)));       // 1:1 preenchendo a largura (limitado em telas baixas)
++            int side = ref;
++            if (MeasureSpec.getMode(hs) == MeasureSpec.EXACTLY) side = Math.max(1, Math.min(ref, MeasureSpec.getSize(hs)));   // modo T: o espaco que sobra
              setMeasuredDimension(w, side);
              for (int i = 0; i < getChildCount(); i++)
-                 getChildAt(i).measure(MeasureSpec.makeMeasureSpec(side, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(side, MeasureSpec.EXACTLY));
-@@ -262,6 +265,27 @@
+-                getChildAt(i).measure(MeasureSpec.makeMeasureSpec(side, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(side, MeasureSpec.EXACTLY));
++                getChildAt(i).measure(MeasureSpec.makeMeasureSpec(ref, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(ref, MeasureSpec.EXACTLY));
+         }
+         @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
+             int w = r - l, side = b - t;
+-            int x = (w - side) / 2;
+-            for (int i = 0; i < getChildCount(); i++) getChildAt(i).layout(x, 0, x + side, side);
++            int x = (w - ref) / 2;
++            float k = Math.min(1f, side / (float) ref);
++            for (int i = 0; i < getChildCount(); i++) {
++                View ch = getChildAt(i);
++                ch.layout(x, 0, x + ref, ref);
++                ch.setPivotX(ref / 2f);
++                ch.setPivotY(0f);
++                ch.setScaleX(k);
++                ch.setScaleY(k);
++            }
+         }
+     }
+ 
+@@ -262,6 +279,27 @@
          r.setPadding(pad, pad, pad, pad);
          applyInsets(r, pad);
  
@@ -2935,7 +2967,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          // ---- topo: estado, titulo do golpe, aviso e espaco reservado para opcoes futuras
          backBar = button(a, "", true);
          backBar.setVisibility(View.GONE);
-@@ -296,23 +320,36 @@
+@@ -296,23 +334,36 @@
          final TextView bSpr = button(a, "SPRITES", false);
          final TextView bLinks = button(a, "LINKS", false);
          lockBtnRef = bLock;
@@ -2982,7 +3014,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          LinearLayout mrow = row(a);
          final TextView modeBtn = button(a, "MODO: GOLPES", false);
          modeBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-@@ -338,7 +375,7 @@
+@@ -338,7 +389,7 @@
          wr.setClickable(true);
          wr.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              warnExpanded = !warnExpanded;
@@ -2991,7 +3023,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          } });
          r.addView(wr, lp(-1, -2, 0, 0, 0, 4));
  
-@@ -506,7 +543,75 @@
+@@ -506,7 +557,75 @@
          toolsRef[0] = tools;
          hsRef[0] = hs;
          // gaveta entre a area que rola e a barra de controle (que continua na base)
@@ -3068,7 +3100,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          tools.setSheetHost(scroll, new Runnable() {
              @Override public void run() {
                  tl.clearSelection();
-@@ -523,6 +628,7 @@
+@@ -523,6 +642,7 @@
          final TimelineOps ops = new TimelineOps(view, tl, new TimelineOps.Host() {
              @Override public void show(int type, int index, int flag, int occ) {
                  tl.select(type, index, flag, occ);
@@ -3076,7 +3108,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -596,6 +702,8 @@
+@@ -596,6 +716,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -3085,7 +3117,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -856,7 +964,9 @@
+@@ -856,7 +978,9 @@
              }
          });
  
@@ -3096,7 +3128,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -884,6 +994,56 @@
+@@ -884,6 +1008,56 @@
      }
  
      /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
@@ -3153,7 +3185,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -1045,22 +1205,49 @@
+@@ -1045,22 +1219,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3213,7 +3245,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1422,7 @@
+@@ -1235,7 +1436,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
