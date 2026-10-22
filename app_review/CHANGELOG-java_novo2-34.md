@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 613 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 649 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -81,6 +81,16 @@ Quando o hit de projétil está num ANO de SEQ/END/AO_ACERTAR/pouso e a execuç�
 - Nova barra no topo: "Attack Editor by **Zue Mods**" (Zue Mods em azul; toque abre `https://www.youtube.com/@zuemods/videos` no app do YouTube, ou no navegador se não houver) e o botão **AJUDA** à direita. A AJUDA saiu do menu movível (ordens salvas com ela são ignoradas).
 - Avisos expandidos mostram **todos** os itens, um por linha, em vez de "+N": o aviso sobre a prévia (`QuickNotice.full`) e a linha de aviso acima da prévia (agora recebe a lista inteira; antes só o primeiro). Recolhidos continuam com o resumo "(+N)".
 
+### 3.1f Menu da sprite repaginado (gaveta da timeline)
+Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imagem (amarelo), Tempo (verde), Som (vermelho), Movimento (verde), Efeitos (cinza), Copiar (azul). Cada um abre uma **página dentro da gaveta** (a prévia continua visível; ◀ volta à grade). Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele.
+- **Imagem:** thumb da sprite; `− N +` (segura repete; tocar no número abre a grade de sprites, nunca o teclado); posição x/y e zoom com teclado; "unir zoom X e Y" (marcada; desmarcar mostra x e y); rotação; alpha; **mover links junto** (soma o deslocamento no bx/by dos links da ANO); **Editar posição do Link** (tela com a animação principal de base e controles de bx/by, sprite, tempo e posição do frame do link); Remover imagem (`image = -1`). Mexer em posição/zoom/rotação/alpha liga o MID/RAZ sozinho.
+- **Tempo:** `− ticks +`; **0 apaga o TIME** (aviso: frame travado); duração em N.Ns; Remover Frame.
+- **Som:** cartão do som atual no mesmo desenho da lista de sons (play/pausa, cortar, mais, substituir, mutar), `−`/`+` nas laterais só pelos ids que existem (0 → sons comuns → 80 → sons do personagem; sem segurar), Escolher e Remover Áudio.
+- **Movimento:** velocidade x/y; frame com `64` (recebe do anterior) tem campos zerados que **somam** à recebida, com a linha amarela "N speed x/y mantidos do frame anterior" + Remover e "N recebido do frame anterior, total: N"; aceleração só aparece com speed; frame inicial e duração do trecho; Manter velocidade; total em px; Remover speed.
+- **Efeitos:** Flip X/Y e Interpolação (+ explicação). **Copiar:** igual ao antigo ALL.
+- **Velocidade recebida (análise do jogo):** ao carregar o frame, sem o bit 64 `speed = 0`; `accel = 0` sempre; cada campo do MOVE **atribui**. Então a recebida conta como **speed** (`v + accel × ticks` do frame anterior), mudar o speed **substitui**, e a accel **não** é herdada. O picker zerado grava `recebida + acréscimo` (valor absoluto, que é o que o jogo entende); se o frame anterior mudar depois, o valor gravado não acompanha.
+- Código: `FrameTools` (regras puras, testadas), `Stepper`, `IconView`, `ThumbView`, `LinkPosDialog`, `SoundDialog.embed`. Fora desta rodada (próximas): menus de boxes e efeitos de hit; mover/duplicar frame ficam para a barra sob a prévia.
+
 ### 3.2 Menu superior reordenável
 - **Segure** um botão do menu superior e **arraste** para frente ou para trás; a barra rola sozinha perto das bordas e o botão de origem fica translúcido durante o arraste. Soltar em cima de outro botão põe o arrastado naquela posição; soltar nas frestas/depois do último vai para o botão mais próximo.
 - O **primeiro botão** fica fixo fora da rolagem (por padrão, SALVAR). **Soltar qualquer botão no slot fixo troca o botão fixo.**
@@ -123,6 +133,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **GameRulesTest (novo)** | 31 |
 | **SpawnDiagTest (novo)** | 50 |
 | **LinkHierarchyTest (novo)** | 8 |
+| **FrameToolsTest (novo)** | 36 |
 | **ToolbarTest (novo)** | 54 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
@@ -143,4 +154,4 @@ Parser do DAC, `_ActReqMain`/`_Hokan` (exceto o quirk acima), desenho (flip/zoom
 ## 8. Arquivos
 
 Alterados: `Ano`, `AttackData`, `AttackRenderer`, `AttackSim`, `AttackView`, `BattleSim`, `CharData`, `LayoutManager`, `LinkScreen`, `MainActivity`, `ObjModel`, `Saver`, `TimelineTools`, `test/BattleTest`.
-Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `test/LinkHierarchyTest`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`.
+Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `FrameTools`, `Stepper`, `IconView`, `ThumbView`, `LinkPosDialog`, `LayoutManagerFmt`, `test/LinkHierarchyTest`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`.

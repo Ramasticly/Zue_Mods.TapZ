@@ -2151,6 +2151,230 @@ diff -ruN a/DacText.java b/DacText.java
          dst.copyFrom(m);
      }
  }
+diff -ruN a/FrameTools.java b/FrameTools.java
+--- a/FrameTools.java	1970-01-01 00:00:00.000000000 +0000
++++ b/FrameTools.java	2026-10-22 09:51:09.127228289 +0000
+@@ -0,0 +1,220 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Regras puras (sem Android) das paginas Tempo / Movimento / Som da gaveta de sprite.
++ * Velocidade como o jogo: ao carregar um frame, sem o bit 64 (manter velocidade) speed = 0; accel = 0 sempre; depois cada campo do MOVE
++ * ATRIBUI (substitui) o valor. A cada tick com tempo > 0: x += speed, depois speed += accel. Logo a velocidade que o proximo frame recebe
++ * e (speed inicial + accel * ticks) do anterior: conta como SPEED, nao como accel, e e substituida se o frame tem speed proprio.
++ */
++final class FrameTools {
++    private FrameTools() { }
++
++    static final double ONE = 65536.0;
++
++    /** Ticks que o frame realmente anda (sem TIME o jogo nao avanca nem soma accel). */
++    static int ticks(Ano.Mpt m) { return m.hasTime ? Math.max(0, m.time) : 0; }
++
++    /** O frame {@code f} carrega o bit 64 (manter velocidade do anterior)? */
++    static boolean keeps(Ano.Mpt[] m, int f) {
++        return f > 0 && f < m.length && (m[f].flags & 2) != 0 && (m[f].wActFlag & 64) != 0;
++    }
++
++    private static boolean has(Ano.Mpt m, int bit) { return (m.flags & 4) != 0 && (m.moveMask & bit) != 0; }
++
++    /** Velocidade (px/tick) no inicio do frame, ja com a substituicao do speed proprio. */
++    static double[] startSpeed(Ano.Mpt[] m, int f) {
++        double[] v = keeps(m, f) ? endSpeed(m, f - 1) : new double[]{0, 0};
++        if (has(m[f], 1)) v[0] = m[f].speedX / ONE;
++        if (has(m[f], 2)) v[1] = m[f].speedY / ONE;
++        return v;
++    }
++
++    /** Velocidade no fim do frame (a que o proximo frame recebe se mantiver). */
++    static double[] endSpeed(Ano.Mpt[] m, int f) {
++        double[] v = startSpeed(m, f);
++        int t = ticks(m[f]);
++        if (has(m[f], 4)) v[0] += m[f].accelX / ONE * t;
++        if (has(m[f], 8)) v[1] += m[f].accelY / ONE * t;
++        return v;
++    }
++
++    /** Velocidade recebida do frame anterior (0,0 se o frame nao mantem). */
++    static double[] received(Ano.Mpt[] m, int f) {
++        return keeps(m, f) ? endSpeed(m, f - 1) : new double[]{0, 0};
++    }
++
++    /** Deslocamento total {dx, dy} em px e ticks, dos frames head..last. */
++    static double[] totalPixels(Ano.Mpt[] m, int head, int last) {
++        double x = 0, y = 0;
++        int ticks = 0;
++        for (int f = head; f <= last && f < m.length; f++) {
++            double[] v = startSpeed(m, f);
++            double ax = has(m[f], 4) ? m[f].accelX / ONE : 0, ay = has(m[f], 8) ? m[f].accelY / ONE : 0;
++            int t = ticks(m[f]);
++            for (int k = 0; k < t; k++) { x += v[0]; y += v[1]; v[0] += ax; v[1] += ay; }
++            ticks += t;
++        }
++        return new double[]{x, y, ticks};
++    }
++
++    /** O frame tem speed proprio (x ou y)? */
++    static boolean ownSpeed(Ano.Mpt m) { return (m.flags & 4) != 0 && (m.moveMask & 3) != 0; }
++
++    /** Aceleracao so aparece se o frame ja tem speed normal (proprio e diferente de 0) ou ja tinha accel. */
++    static boolean showAccel(Ano.Mpt m) {
++        boolean speed = ownSpeed(m) && ((has(m, 1) && m.speedX != 0) || (has(m, 2) && m.speedY != 0));
++        return speed || (m.flags & 4) != 0 && (m.moveMask & 12) != 0;
++    }
++
++    /** Liga (on) ou apaga o campo de speed do eixo (0 = x, 1 = y), em px/tick absolutos. */
++    static Ano.Mpt setSpeed(Ano.Mpt cur, int axis, double pxPerTick, boolean on) {
++        Ano.Mpt c = cur.copy();
++        int bit = axis == 0 ? 1 : 2;
++        int raw = (int) Math.round(pxPerTick * ONE);
++        if (on) {
++            c.flags |= 4;
++            c.moveMask |= bit;
++            if (axis == 0) c.speedX = raw; else c.speedY = raw;
++        } else {
++            c.moveMask &= ~bit;
++            if (axis == 0) c.speedX = 0; else c.speedY = 0;
++            if (c.moveMask == 0) c.flags &= ~4;
++        }
++        c.normalize();
++        return c;
++    }
++
++    /** Aceleracao (px/tick^2) do eixo; 0 apaga o campo. */
++    static Ano.Mpt setAccel(Ano.Mpt cur, int axis, double v) {
++        Ano.Mpt c = cur.copy();
++        int bit = axis == 0 ? 4 : 8;
++        int raw = (int) Math.round(v * ONE);
++        if (raw != 0) {
++            c.flags |= 4;
++            c.moveMask |= bit;
++            if (axis == 0) c.accelX = raw; else c.accelY = raw;
++        } else {
++            c.moveMask &= ~bit;
++            if (axis == 0) c.accelX = 0; else c.accelY = 0;
++            if (c.moveMask == 0) c.flags &= ~4;
++        }
++        c.normalize();
++        return c;
++    }
++
++    /** Tempo 0 = sem o campo TIME (o frame fica travado). */
++    static Ano.Mpt setTime(Ano.Mpt cur, int ticks) {
++        Ano.Mpt c = cur.copy();
++        if (ticks <= 0) { c.flags &= ~0x20; c.time = 0; }
++        else { c.flags |= 0x20; c.time = Math.min(255, ticks); }
++        c.normalize();
++        return c;
++    }
++
++    /** O frame seguinte mantem a velocidade deste? */
++    static boolean keepsNext(Ano.Mpt[] m, int f) { return keeps(m, f + 1); }
++
++    /**
++     * Liga/desliga "manter velocidade" deste frame para o seguinte. Desligar corta o trecho aqui: os frames depois dele que
++     * dependiam do trecho tambem perdem o bit 64. Devolve null se nao ha frame seguinte (ligar) ou nada a fazer.
++     */
++    static Ano.Mpt[] setKeepNext(Ano.Mpt[] m, int f, boolean on) {
++        if (f < 0 || f >= m.length) return null;
++        int head = FrameOps.moveHeadOf(m, f);
++        if (on) {
++            if (f + 1 >= m.length) return null;
++            if (head >= 0) return FrameOps.setMoveRun(m, head, f + 1);
++            Ano.Mpt[] out = m.clone();
++            Ano.Mpt c = m[f + 1].copy();
++            c.flags |= 2;
++            c.wActFlag |= 64;
++            c.normalize();
++            out[f + 1] = c;
++            return out;
++        }
++        if (head >= 0) return FrameOps.setMoveRun(m, head, f);
++        if (!keeps(m, f + 1)) return null;
++        Ano.Mpt[] out = m.clone();
++        Ano.Mpt c = m[f + 1].copy();
++        c.wActFlag &= ~64;
++        if (c.wActFlag == 0) c.flags &= ~2;
++        c.normalize();
++        out[f + 1] = c;
++        return out;
++    }
++
++    /** Desliga o bit 64 do frame {@code f} e de todo o trecho depois dele (botao "Remover" da velocidade recebida). */
++    static Ano.Mpt[] removeReceived(Ano.Mpt[] m, int f) {
++        if (!keeps(m, f)) return null;
++        Ano.Mpt[] out = m.clone();
++        for (int k = f; k < m.length && keeps(m, k); k++) {
++            Ano.Mpt c = m[k].copy();
++            c.wActFlag &= ~64;
++            if (c.wActFlag == 0) c.flags &= ~2;
++            if ((c.flags & 4) != 0 && (c.moveMask & 3) == 0) { c.flags &= ~4; c.moveMask = 0; c.accelX = c.accelY = 0; }
++            c.normalize();
++            out[k] = c;
++        }
++        return out;
++    }
++
++    /** Move o inicio do trecho de velocidade para outro frame mantendo a quantidade de frames; null se nao cabe ou bate em outra velocidade. */
++    static Ano.Mpt[] moveRunTo(Ano.Mpt[] m, int head, int newHead) {
++        if (head < 0 || head >= m.length || newHead < 0 || newHead >= m.length || !FrameOps.isMoveHead(m[head])) return null;
++        if (newHead == head) return m;
++        int n = FrameOps.moveRunEnd(m, head) - head + 1;
++        Ano.Mpt src = m[head].copy();
++        Ano.Mpt[] out = FrameOps.setMoveRun(m, head, head);
++        Ano.Mpt h0 = out[head].copy();
++        FrameOps.clear(FrameOps.MOV, h0);
++        out[head] = h0;
++        int last = Math.min(out.length - 1, newHead + n - 1);
++        for (int f = newHead; f <= last; f++) if (FrameOps.isMoveHead(out[f])) return null;
++        Ano.Mpt t = out[newHead].copy();
++        FrameOps.copyProp(FrameOps.MOV, src, t);
++        t.wActFlag &= ~64;
++        if (t.wActFlag == 0) t.flags &= ~2;
++        t.normalize();
++        out[newHead] = t;
++        return FrameOps.setMoveRun(out, newHead, last);
++    }
++
++    // ---- sons: ids validos 0 -> se_max -> 80 -> 80 + wav - 1 ----
++
++    static List<Integer> soundIds(int seMax, int wavCount) {
++        List<Integer> l = new ArrayList<Integer>();
++        for (int i = 0; i <= Math.min(79, Math.max(0, seMax)); i++) l.add(Integer.valueOf(i));
++        for (int i = 0; i < wavCount; i++) l.add(Integer.valueOf(80 + i));
++        return l;
++    }
++
++    /** Proximo id valido na direcao dir (+1/-1); se o atual nao e valido, vai para o mais proximo na direcao; nas pontas fica. */
++    static int stepSound(int cur, int dir, int seMax, int wavCount) {
++        List<Integer> l = soundIds(seMax, wavCount);
++        int idx = l.indexOf(Integer.valueOf(cur));
++        if (idx < 0) {
++            if (dir > 0) { for (Integer v : l) if (v.intValue() > cur) return v.intValue(); return l.get(l.size() - 1).intValue(); }
++            for (int i = l.size() - 1; i >= 0; i--) if (l.get(i).intValue() < cur) return l.get(i).intValue();
++            return l.get(0).intValue();
++        }
++        return l.get(Math.max(0, Math.min(l.size() - 1, idx + (dir > 0 ? 1 : -1)))).intValue();
++    }
++
++    /** O frame e inicio de trecho de velocidade (tem speed proprio, mesmo mantendo a do anterior)? */
++    static boolean moveRunHeadOk(Ano.Mpt[] m, int f) { return FrameOps.isMoveHead(m[f]); }
++
++    /** "N.Ns" (ticks a 60 por segundo, uma casa). */
++    static String seconds(int ticks) {
++        return String.format(java.util.Locale.US, "%.1fs", ticks / 60.0);
++    }
++
++    /** px/tick com ate 2 casas, sem zeros sobrando. */
++    static String px(double v) {
++        String s = String.format(java.util.Locale.US, "%.2f", v);
++        while (s.contains(".") && (s.endsWith("0") || s.endsWith("."))) s = s.substring(0, s.length() - 1);
++        return s.equals("-0") ? "0" : s;
++    }
++}
 diff -ruN a/GameRules.java b/GameRules.java
 --- a/GameRules.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/GameRules.java	2026-10-22 08:40:32.981997767 +0000
@@ -2408,8 +2632,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-22 08:42:37.599733351 +0000
-@@ -0,0 +1,130 @@
++++ b/HelpText.java	2026-10-22 09:57:13.810836210 +0000
+@@ -0,0 +1,135 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2516,9 +2740,14 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial "
 +                + "(tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). "
 +                + "O # escolhe o que a timeline mostra."));
-+        s.add(new Section(null, "Ferramentas (faixa de ícones)",
-+                "Ao selecionar um item, a faixa abaixo da timeline abre o inspetor dele: sprite (imagem, tempo, mover, estilo, som, rotação/alfa/zoom), "
-+                + "hitbox (alcance, dano, flags de golpe, reação), projétil, efeito e links. Use APLICAR para manter as mudanças ou feche para descartar."));
++        s.add(new Section(null, "Menu da sprite (gaveta)",
++                "Tocar numa sprite da timeline abre uma grade de botões: Imagem, Tempo, Som, Movimento, Efeitos e Copiar. Cada um abre uma página dentro da gaveta (a prévia continua visível; ◀ volta à grade). "
++                + "IMAGEM: thumb, − N + (segure; tocar no número abre a grade de sprites), posição, zoom (unir X e Y), rotação, alpha, \"mover links junto\", \"Editar posição do Link\" e Remover imagem. "
++                + "TEMPO: ticks do frame (0 = frame travado, sem TIME), duração em segundos e Remover Frame. "
++                + "SOM: o som do frame no estilo da lista de sons, − e + só pelos ids que existem, Escolher e Remover Áudio. "
++                + "MOVIMENTO: velocidade x/y; num frame que recebe a velocidade do anterior os campos ficam zerados e somam à recebida (aparece em amarelo, com Remover); aceleração só aparece com speed; frame inicial e duração do trecho, Manter velocidade (passa a velocidade deste frame ao próximo), total de pixels e Remover speed. "
++                + "EFEITOS: Flip X/Y e Interpolação. COPIAR: aplica as coisas do frame em outros frames. "
++                + "Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele. Os itens de caixas (hitbox/hurtbox), efeitos de hit e links da timeline continuam com as ferramentas de antes."));
 +        s.add(new Section(null, "DADOS / EDITAR",
 +                "Painel recolhido com os dados do DAC em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. "
 +                + "O lápis abre o editor em texto para mudar o valor direto."));
@@ -2540,9 +2769,113 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        return null;
 +    }
 +}
+diff -ruN a/IconView.java b/IconView.java
+--- a/IconView.java	1970-01-01 00:00:00.000000000 +0000
++++ b/IconView.java	2026-10-22 09:53:19.675728643 +0000
+@@ -0,0 +1,100 @@
++package com.zue.attackeditor;
++
++import android.content.Context;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.Path;
++import android.graphics.RectF;
++import android.view.View;
++
++/** Icones simples da grade da sprite, desenhados em Canvas (sem imagens): imagem, relogio, alto-falante, setas, brilho, copia. */
++final class IconView extends View {
++    static final int IMAGE = 0, CLOCK = 1, SOUND = 2, MOVE = 3, FX = 4, COPY = 5;
++
++    private final int kind;
++    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Path path = new Path();
++    private final RectF r = new RectF();
++
++    IconView(Context c, int kind, int color) {
++        super(c);
++        this.kind = kind;
++        p.setColor(color);
++    }
++
++    @Override protected void onDraw(Canvas cv) {
++        float w = getWidth(), h = getHeight(), s = Math.min(w, h), u = s / 10f;
++        float ox = (w - s) / 2f, oy = (h - s) / 2f;
++        cv.translate(ox, oy);
++        p.setStrokeWidth(u * 0.8f);
++        p.setStrokeCap(Paint.Cap.ROUND);
++        p.setStrokeJoin(Paint.Join.ROUND);
++        switch (kind) {
++            case IMAGE:
++                p.setStyle(Paint.Style.STROKE);
++                r.set(1 * u, 1.5f * u, 9 * u, 8.5f * u);
++                cv.drawRoundRect(r, u, u, p);
++                p.setStyle(Paint.Style.FILL);
++                cv.drawCircle(3.4f * u, 4f * u, 0.9f * u, p);
++                path.reset();
++                path.moveTo(1.8f * u, 8f * u); path.lineTo(4.5f * u, 5.2f * u); path.lineTo(6.2f * u, 7f * u);
++                path.lineTo(7.2f * u, 6f * u); path.lineTo(8.4f * u, 8f * u); path.close();
++                cv.drawPath(path, p);
++                break;
++            case CLOCK:
++                p.setStyle(Paint.Style.STROKE);
++                cv.drawCircle(5 * u, 5 * u, 4 * u, p);
++                cv.drawLine(5 * u, 5 * u, 5 * u, 2.6f * u, p);
++                cv.drawLine(5 * u, 5 * u, 6.8f * u, 5.9f * u, p);
++                break;
++            case SOUND:
++                p.setStyle(Paint.Style.FILL);
++                path.reset();
++                path.moveTo(1 * u, 3.8f * u); path.lineTo(3.2f * u, 3.8f * u); path.lineTo(5.6f * u, 1.6f * u);
++                path.lineTo(5.6f * u, 8.4f * u); path.lineTo(3.2f * u, 6.2f * u); path.lineTo(1 * u, 6.2f * u); path.close();
++                cv.drawPath(path, p);
++                p.setStyle(Paint.Style.STROKE);
++                r.set(4.4f * u, 3.2f * u, 7.4f * u, 6.8f * u);
++                cv.drawArc(r, -50, 100, false, p);
++                r.set(3.6f * u, 1.8f * u, 8.8f * u, 8.2f * u);
++                cv.drawArc(r, -50, 100, false, p);
++                break;
++            case MOVE:
++                p.setStyle(Paint.Style.STROKE);
++                cv.drawLine(1 * u, 5 * u, 9 * u, 5 * u, p);
++                cv.drawLine(5 * u, 1 * u, 5 * u, 9 * u, p);
++                arrow(cv, 9 * u, 5 * u, -1, 0, u);
++                arrow(cv, 1 * u, 5 * u, 1, 0, u);
++                arrow(cv, 5 * u, 1 * u, 0, 1, u);
++                arrow(cv, 5 * u, 9 * u, 0, -1, u);
++                break;
++            case FX:
++                p.setStyle(Paint.Style.FILL);
++                star(cv, 4.2f * u, 5.8f * u, 3.6f * u, u);
++                star(cv, 7.8f * u, 2.6f * u, 1.7f * u, u);
++                break;
++            default:
++                p.setStyle(Paint.Style.STROKE);
++                r.set(1 * u, 3 * u, 6.2f * u, 9 * u);
++                cv.drawRoundRect(r, u * 0.8f, u * 0.8f, p);
++                r.set(3.8f * u, 1 * u, 9 * u, 7 * u);
++                cv.drawRoundRect(r, u * 0.8f, u * 0.8f, p);
++                break;
++        }
++    }
++
++    /** Ponta de seta em (x, y) apontando para o lado oposto de (dx, dy). */
++    private void arrow(Canvas cv, float x, float y, int dx, int dy, float u) {
++        float k = 1.5f * u;
++        cv.drawLine(x, y, x + dx * k + dy * k, y + dy * k + dx * k, p);
++        cv.drawLine(x, y, x + dx * k - dy * k, y + dy * k - dx * k, p);
++    }
++
++    private void star(Canvas cv, float cx, float cy, float R, float u) {
++        float in = R * 0.28f;
++        path.reset();
++        path.moveTo(cx, cy - R); path.lineTo(cx + in, cy - in); path.lineTo(cx + R, cy); path.lineTo(cx + in, cy + in);
++        path.lineTo(cx, cy + R); path.lineTo(cx - in, cy + in); path.lineTo(cx - R, cy); path.lineTo(cx - in, cy - in); path.close();
++        cv.drawPath(path, p);
++    }
++}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-22 08:41:21.680302434 +0000
++++ b/LayoutManager.java	2026-10-22 09:56:51.872110873 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -2636,7 +2969,15 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          } });
          r.addView(wr, lp(-1, -2, 0, 0, 0, 4));
  
-@@ -596,6 +632,8 @@
+@@ -523,6 +559,7 @@
+         final TimelineOps ops = new TimelineOps(view, tl, new TimelineOps.Host() {
+             @Override public void show(int type, int index, int flag, int occ) {
+                 tl.select(type, index, flag, occ);
++                if (type == TimelineView.T_SPRITE) tools.gridFirst();
+                 tools.show(type, index, flag, occ);
+                 tools.openSheet();
+             }
+@@ -596,6 +633,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -2645,7 +2986,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -884,6 +922,56 @@
+@@ -884,6 +923,56 @@
      }
  
      /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
@@ -2702,7 +3043,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -1045,22 +1133,49 @@
+@@ -1045,22 +1134,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -2762,7 +3103,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1350,7 @@
+@@ -1235,7 +1351,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -2771,6 +3112,236 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String note = "Arraste o atacante (azul) e o oponente (vermelho). As linhas sao as posicoes do jogo e o personagem gruda nelas."
                  + (PosPresets.fromGame(gd) ? " LONGE = medio + (medio - perto): o jogo so guarda perto e medio."
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
+diff -ruN a/LayoutManagerFmt.java b/LayoutManagerFmt.java
+--- a/LayoutManagerFmt.java	1970-01-01 00:00:00.000000000 +0000
++++ b/LayoutManagerFmt.java	2026-10-22 09:53:19.674130398 +0000
+@@ -0,0 +1,15 @@
++package com.zue.attackeditor;
++
++import java.util.Locale;
++
++/** Formatacao numerica compartilhada pelas paginas da gaveta. */
++final class LayoutManagerFmt {
++    private LayoutManagerFmt() { }
++
++    static String fmt(double v) {
++        if (v == Math.rint(v) && Math.abs(v) < 1e9) return String.valueOf((long) v);
++        String s = String.format(Locale.US, "%.3f", v);
++        while (s.endsWith("0")) s = s.substring(0, s.length() - 1);
++        return s;
++    }
++}
+diff -ruN a/LinkPosDialog.java b/LinkPosDialog.java
+--- a/LinkPosDialog.java	1970-01-01 00:00:00.000000000 +0000
++++ b/LinkPosDialog.java	2026-10-22 09:56:51.873748158 +0000
+@@ -0,0 +1,207 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.app.Dialog;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++
++/**
++ * Editar posicao do Link: mostra a animacao principal (a ANO atual, com o link por cima) como base e controles do link escolhido:
++ * posicao (bx/by do link), sprite, tempo e posicao (centro) do frame do link que acompanha o frame atual.
++ */
++final class LinkPosDialog {
++    private final Activity a;
++    private final AttackView view;
++    private final int parent, pat;
++    private final Runnable changed;
++    private final float d;
++    private Dialog dlg;
++    private int link;
++    private LinearLayout body;
++    private AnimPreview pv;
++
++    private LinkPosDialog(Activity a, AttackView view, int parent, int pat, Runnable changed) {
++        this.a = a; this.view = view; this.parent = parent; this.pat = pat; this.changed = changed;
++        this.d = a.getResources().getDisplayMetrics().density;
++    }
++
++    static void show(Activity a, AttackView view, int parent, int pat, Runnable changed) {
++        new LinkPosDialog(a, view, parent, pat, changed).open();
++    }
++
++    private int dp(int v) { return Math.round(v * d); }
++    private Dac dac() { return view.packDac(2); }
++
++    private TextView tv(String s, int sp, int color, boolean bold) {
++        TextView t = new TextView(a);
++        t.setText(s);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
++        t.setTextColor(color);
++        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
++        return t;
++    }
++
++    private Ano pa() { return dac().getAno(parent); }
++
++    private Ano childAno() {
++        Ano p = pa();
++        return p == null || link >= p.links.length ? null : dac().getAno(p.links[link].getAno());
++    }
++
++    /** Frame do link que acompanha o frame atual do pai (mesmo indice se sincroniza sprites; senao o primeiro). */
++    private int childPat(Ano ch) {
++        Ano p = pa();
++        int want = p.links[link].syncMpt() ? pat : 0;
++        return Math.max(0, Math.min(ch.mpts.length - 1, want));
++    }
++
++    private void open() {
++        Ano p = pa();
++        if (p == null || p.links.length == 0) return;
++        dlg = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
++        LinearLayout root = new LinearLayout(a);
++        root.setOrientation(LinearLayout.VERTICAL);
++        root.setBackgroundColor(LayoutManager.BG);
++        root.setPadding(dp(10), dp(12), dp(10), dp(10));
++        dlg.setContentView(root);
++        LinearLayout h = new LinearLayout(a);
++        h.setGravity(Gravity.CENTER_VERTICAL);
++        h.addView(tv("Editar posição do Link  ·  ANO " + parent, 16, LayoutManager.TEXT, true), new LinearLayout.LayoutParams(0, -2, 1f));
++        TextView x = tv("✕", 20, LayoutManager.TEXT, true);
++        x.setGravity(Gravity.CENTER);
++        x.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } });
++        h.addView(x, new LinearLayout.LayoutParams(dp(44), dp(40)));
++        root.addView(h);
++        pv = new AnimPreview(a);
++        pv.setAutoReplay(true);
++        AttackData ad = view.attackData();
++        pv.set(dac(), view.packSprites(2), parent, false);
++        int side = Math.min(Math.round(a.getResources().getDisplayMetrics().widthPixels * 0.9f), Math.round(a.getResources().getDisplayMetrics().heightPixels * 0.34f));
++        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(side, side);
++        pl.gravity = Gravity.CENTER_HORIZONTAL;
++        pl.setMargins(0, dp(6), 0, dp(6));
++        root.addView(pv, pl);
++        ScrollView sv = new ScrollView(a);
++        body = new LinearLayout(a);
++        body.setOrientation(LinearLayout.VERTICAL);
++        sv.addView(body);
++        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++        TextView close = tv("VOLTAR", 13, LayoutManager.DIM, true);
++        close.setGravity(Gravity.CENTER);
++        close.setPadding(dp(10), dp(11), dp(10), dp(11));
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(LayoutManager.PANEL_HI);
++        g.setCornerRadius(dp(8));
++        close.setBackground(g);
++        close.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } });
++        root.addView(close);
++        dlg.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
++            public void onDismiss(android.content.DialogInterface i) { if (changed != null) changed.run(); }
++        });
++        link = 0;
++        dlg.show();
++        render();
++    }
++
++    private void lab(String s) {
++        TextView t = tv(s, 11, LayoutManager.DIM, false);
++        t.setPadding(dp(6), dp(8), dp(6), 0);
++        body.addView(t);
++    }
++
++    private void put(Stepper st) {
++        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++        lp.setMargins(dp(4), dp(2), dp(4), dp(2));
++        body.addView(st.view(), lp);
++    }
++
++    private void refreshPreview() {
++        pv.set(dac(), view.packSprites(2), parent, false);
++        pv.replay();
++    }
++
++    private void setBase(final Integer x, final Integer y) {
++        Ano p = pa();
++        Ano.Link[] n = p.links.clone();
++        Ano.Link o = n[link];
++        n[link] = new Ano.Link(x != null ? x : o.baseX, y != null ? y : o.baseY, o.flags);
++        view.replaceAno(new Ano(p.index, true, p.flags, p.priority, n, p.mpts));
++        refreshPreview();
++    }
++
++    private interface Mut { void apply(Ano.Mpt m); }
++
++    private void editChild(Mut mu) {
++        Ano ch = childAno();
++        if (ch == null || ch.mpts.length == 0) return;
++        int k = childPat(ch);
++        Ano.Mpt[] mp = ch.mpts.clone();
++        Ano.Mpt n = mp[k].copy();
++        mu.apply(n);
++        n.normalize();
++        mp[k] = n;
++        view.replaceAnoAt(new Ano(ch.index, true, ch.flags, ch.priority, ch.links, mp));
++        refreshPreview();
++    }
++
++    private void render() {
++        body.removeAllViews();
++        final Ano p = pa();
++        if (p.links.length > 1) {
++            lab("link");
++            put(new Stepper(a).range(1, p.links.length).step(1).hold(false).keyboard(new Stepper.OnValue() { public void on(double v) {
++                link = (int) v - 1;
++                render();
++            } }).value(link + 1));
++        }
++        Ano.Link l = p.links[link];
++        Ano ch = childAno();
++        TextView info = tv("Link " + (link + 1) + " → ANO " + l.getAno() + (l.syncMpt() ? "  ·  acompanha o frame " + (pat + 1) + " do pai" : "  ·  anda no próprio relógio (usa o 1º frame)"), 12, LayoutManager.TEXT, true);
++        info.setPadding(dp(6), dp(6), dp(6), 0);
++        body.addView(info);
++        lab("POSIÇÃO DO LINK (bx / by, todos os frames da ANO " + parent + ")");
++        LinearLayout r = new LinearLayout(a);
++        r.setGravity(Gravity.CENTER_VERTICAL);
++        body.addView(r);
++        r.addView(tv("bx", 12, LayoutManager.DIM, false));
++        r.addView(new Stepper(a).range(-9999, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(double v) { setBase(Integer.valueOf((int) v), null); } }).value(l.baseX).view(), new LinearLayout.LayoutParams(0, -2, 1f));
++        r.addView(tv("by", 12, LayoutManager.DIM, false));
++        r.addView(new Stepper(a).range(-9999, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(double v) { setBase(null, Integer.valueOf((int) v)); } }).value(l.baseY).view(), new LinearLayout.LayoutParams(0, -2, 1f));
++        if (ch == null || ch.mpts.length == 0) { lab("O ANO do link está vazio."); return; }
++        Ano.Mpt m = ch.mpts[childPat(ch)];
++        lab("FRAME " + (childPat(ch) + 1) + " DA ANO " + ch.index + " — SPRITE");
++        AttackData ad = view.attackData();
++        int maxImg = ad != null && ad.attacker.cnv != null ? Math.max(0, ad.attacker.cnv.size() - 1) : 9999;
++        put(new Stepper(a).range(-1, maxImg).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            editChild(new Mut() { public void apply(Ano.Mpt n) { n.image = (int) v; } });
++        } }).value(m.image));
++        lab("TEMPO (ticks; 0 = travado)");
++        put(new Stepper(a).range(0, 255).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            editChild(new Mut() { public void apply(Ano.Mpt n) {
++                Ano.Mpt t = FrameTools.setTime(n, (int) v);
++                n.flags = t.flags; n.time = t.time;
++            } });
++        } }).value(FrameTools.ticks(m)));
++        lab("POSIÇÃO DA SPRITE DO LINK (centro x / y)");
++        LinearLayout r2 = new LinearLayout(a);
++        r2.setGravity(Gravity.CENTER_VERTICAL);
++        body.addView(r2);
++        r2.addView(tv("x", 12, LayoutManager.DIM, false));
++        r2.addView(new Stepper(a).range(-9999, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            editChild(new Mut() { public void apply(Ano.Mpt n) { if ((n.flags & 1) == 0) { n.flags |= 1; n.midY = 0; } n.midX = (int) v; } });
++        } }).value(m.midX).view(), new LinearLayout.LayoutParams(0, -2, 1f));
++        r2.addView(tv("y", 12, LayoutManager.DIM, false));
++        r2.addView(new Stepper(a).range(-9999, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            editChild(new Mut() { public void apply(Ano.Mpt n) { if ((n.flags & 1) == 0) { n.flags |= 1; n.midX = 0; } n.midY = (int) v; } });
++        } }).value(m.midY).view(), new LinearLayout.LayoutParams(0, -2, 1f));
++        TextView nt = tv("O link mostra só as sprites dele: links do link e animações/efeitos de flags dentro dele não aparecem no jogo.", 10, LayoutManager.DIM, false);
++        nt.setPadding(dp(6), dp(8), dp(6), dp(8));
++        body.addView(nt);
++    }
++}
 diff -ruN a/LinkScreen.java b/LinkScreen.java
 --- a/LinkScreen.java	2026-10-20 10:46:55.000000000 +0000
 +++ b/LinkScreen.java	2026-10-22 08:41:57.777185925 +0000
@@ -3331,10 +3902,1224 @@ diff -ruN a/Saver.java b/Saver.java
          sb.append(DacText.move(m, idx)).append("\n\n");
          TreeSet<Integer> rs = reactionsUsed(dac, anos);
          if (!rs.isEmpty()) {
+diff -ruN a/SoundDialog.java b/SoundDialog.java
+--- a/SoundDialog.java	2026-10-18 13:50:55.000000000 +0000
++++ b/SoundDialog.java	2026-10-22 09:53:44.216470108 +0000
+@@ -54,6 +54,80 @@
+         new SoundDialog(a, view, dir, currentSe, choose).open();
+     }
+ 
++    // ---- modo embutido: so o cartao de UM som (pagina SOM da gaveta), com as mesmas opcoes da lista ----
++
++    private boolean embedded;
++    private LinearLayout cardHost;
++    private int cardSe;
++    private Runnable onChange;
++
++    /** Cartao do som {@code se} (play/pausa, cortar, mais, substituir, mutar); {@code onChange} roda depois de mudar o arquivo. */
++    static SoundDialog embed(Activity a, AttackView view, File dir, int se, Runnable onChange) {
++        SoundDialog s = new SoundDialog(a, view, dir, se, new Choose() { public void on(int x) { } });
++        s.embedded = true;
++        s.onChange = onChange;
++        s.cardSe = se;
++        s.cardHost = new LinearLayout(a);
++        s.cardHost.setOrientation(LinearLayout.VERTICAL);
++        s.rebuildCard();
++        return s;
++    }
++
++    View cardView() { return cardHost; }
++
++    /** Para o som que estiver tocando (ao sair da pagina). */
++    void stop() { stopPlay(); }
++
++    private void close() { if (dlg != null) dlg.dismiss(); }
++
++    private void rebuildCard() {
++        cardHost.removeAllViews();
++        btns.clear();
++        int se = cardSe;
++        File[] wavs = CharSounds.list(dir);
++        LinearLayout row = row(false);
++        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++        if (se >= 80 && se - 80 < wavs.length) {
++            final int idx = se - 80;
++            final File f = wavs[idx];
++            boolean muted = CharSounds.isEmpty(f);
++            row.addView(playBtn("c" + idx, f), playLp());
++            LinearLayout col = new LinearLayout(a);
++            col.setOrientation(LinearLayout.VERTICAL);
++            col.addView(tv("Som " + se + (muted ? "  [vazio]" : ""), 14, muted ? LayoutManager.DIM : LayoutManager.TEXT, true));
++            col.addView(tv(f.getName() + "  \u00b7  " + String.format(Locale.US, "%.2f s", AudioConvert.seconds(f.length())), 11, LayoutManager.DIM, false));
++            row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
++            row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { options(idx, f); } });
++        } else {
++            SoundPlayer sp = view.soundPlayer();
++            File[] commons = sp == null ? new File[0] : sp.commonFiles();
++            File hit = null;
++            for (File f : commons) if (SoundPlayer.commonNumber(f) + 1 == se) hit = f;
++            if (hit != null) {
++                final File f = hit;
++                final int fse = se;
++                row.addView(playBtn("s" + se, f), playLp());
++                LinearLayout col = new LinearLayout(a);
++                col.setOrientation(LinearLayout.VERTICAL);
++                col.addView(tv("Som " + se + "  (comum do jogo)", 14, LayoutManager.TEXT, true));
++                col.addView(tv(f.getName() + "  \u00b7  " + Math.max(1, f.length() / 1024) + " KB", 11, LayoutManager.DIM, false));
++                row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
++                row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { commonOptions(fse, f); } });
++            } else {
++                LinearLayout col = new LinearLayout(a);
++                col.setOrientation(LinearLayout.VERTICAL);
++                col.setMinimumHeight(dp(52));
++                col.setGravity(Gravity.CENTER_VERTICAL);
++                col.addView(tv(se < 0 ? "Sem som" : "Som " + se + (se == 0 ? "  (nenhum)" : "  (sem arquivo)"), 14, LayoutManager.DIM, true));
++                row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
++            }
++        }
++        cardHost.addView(row, lp);
++    }
++
++    /** Troca o som mostrado no cartao. */
++    void setSe(int se) { stopPlay(); cardSe = se; rebuildCard(); }
++
+     private int dp(int v) { return Math.round(v * d); }
+ 
+     private TextView tv(String s, int sp, int color, boolean bold) {
+@@ -219,6 +293,7 @@
+     }
+ 
+     private void refill() {
++        if (embedded) { rebuildCard(); if (onChange != null) onChange.run(); return; }
+         list.removeAllViews();
+         btns.clear();
+         final File[] wavs = CharSounds.list(dir);
+@@ -271,7 +346,7 @@
+                 .setTitle("Som " + se + " (" + f.getName() + ")");
+         b.setItems(items, new android.content.DialogInterface.OnClickListener() {
+             @Override public void onClick(android.content.DialogInterface x, int which) {
+-                if (which == 0) { dlg.dismiss(); choose.on(se); }
++                if (which == 0) { close(); choose.on(se); }
+                 else play("s" + se, f, true);
+             }
+         });
+@@ -288,7 +363,7 @@
+             @Override public void onClick(android.content.DialogInterface x, int which) {
+                 if (which == 0) {
+                     if (CharSounds.isEmpty(f)) { toast("Som vazio: substitua por um audio antes de usar."); return; }
+-                    dlg.dismiss(); choose.on(80 + idx);
++                    close(); choose.on(80 + idx);
+                 }
+                 else if (which == 1) play("c" + idx, f, true);
+                 else if (which == 2) trimExisting(f);
+diff -ruN a/Stepper.java b/Stepper.java
+--- a/Stepper.java	1970-01-01 00:00:00.000000000 +0000
++++ b/Stepper.java	2026-10-22 09:55:19.587712620 +0000
+@@ -0,0 +1,162 @@
++package com.zue.attackeditor;
++
++import android.content.Context;
++import android.graphics.Color;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.text.InputType;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.view.inputmethod.EditorInfo;
++import android.widget.EditText;
++import android.widget.LinearLayout;
++import android.widget.TextView;
++
++/**
++ * Seletor "−  valor  +": segurar nos botoes repete (se hold); o numero do meio ou abre o teclado (keyboard) ou so avisa um toque
++ * (tap: abre uma lista, nunca o teclado). Guarda o valor atual; setValue() atualiza o texto sem disparar o listener.
++ */
++final class Stepper {
++    interface OnValue { void on(double v); }
++
++    private final Context c;
++    private final float d;
++    private final LinearLayout row;
++    private final TextView minus, plus;
++    private View center;
++    private EditText edit;
++    private TextView label;
++    private double value, step = 1, min = -1e9, max = 1e9;
++    private boolean hold = true;
++    private OnValue listener;
++    private Runnable onTap;
++    private int color = LayoutManager.TEXT;
++    private String suffix = "";
++
++    Stepper(Context c) {
++        this.c = c;
++        this.d = c.getResources().getDisplayMetrics().density;
++        row = new LinearLayout(c);
++        row.setOrientation(LinearLayout.HORIZONTAL);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        minus = side("−");
++        plus = side("+");
++    }
++
++    private int dp(int v) { return Math.round(v * d); }
++
++    private TextView side(String s) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setGravity(Gravity.CENTER);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
++        t.setTypeface(Typeface.DEFAULT_BOLD);
++        t.setTextColor(LayoutManager.TEXT);
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(LayoutManager.PANEL_HI);
++        g.setCornerRadius(dp(8));
++        t.setBackground(g);
++        t.setClickable(true);
++        return t;
++    }
++
++    /** Botao lateral no mesmo estilo (para quem monta a linha sozinho, ex.: a pagina SOM). */
++    static TextView sideButton(Context c, String s) { return new Stepper(c).side(s); }
++
++    Stepper step(double s) { step = s; return this; }
++    Stepper range(double lo, double hi) { min = lo; max = hi; return this; }
++    Stepper hold(boolean h) { hold = h; return this; }
++    Stepper color(int col) { color = col; if (edit != null) edit.setTextColor(col); if (label != null) label.setTextColor(col); return this; }
++    Stepper suffix(String s) { suffix = s; return this; }
++    Stepper value(double v) { value = clamp(v); show(); return this; }
++
++    /** O numero do meio e um campo de teclado; confirmar (ok ou sair do campo) chama o listener. */
++    Stepper keyboard(OnValue l) {
++        listener = l;
++        edit = new EditText(c);
++        edit.setTextColor(color);
++        edit.setTypeface(Typeface.MONOSPACE);
++        edit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
++        edit.setSingleLine(true);
++        edit.setGravity(Gravity.CENTER);
++        edit.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED | InputType.TYPE_NUMBER_FLAG_DECIMAL);
++        edit.setImeOptions(EditorInfo.IME_ACTION_DONE);
++        edit.setSelectAllOnFocus(true);
++        edit.setPadding(dp(4), dp(8), dp(4), dp(8));
++        final Runnable commit = new Runnable() { public void run() {
++            double v;
++            try { v = Double.parseDouble(edit.getText().toString().trim().replace(',', '.')); } catch (NumberFormatException e) { show(); return; }
++            v = clamp(v);
++            if (v != value) { value = v; if (listener != null) listener.on(v); }
++            show();
++        } };
++        edit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
++            @Override public boolean onEditorAction(TextView v, int a, android.view.KeyEvent k) { commit.run(); return false; }
++        });
++        edit.setOnFocusChangeListener(new View.OnFocusChangeListener() {
++            @Override public void onFocusChange(View v, boolean has) { if (!has) commit.run(); }
++        });
++        center = edit;
++        return this;
++    }
++
++    /** O numero do meio so avisa o toque (sem teclado). */
++    Stepper tap(Runnable r) {
++        onTap = r;
++        label = new TextView(c);
++        label.setTextColor(color);
++        label.setTypeface(Typeface.MONOSPACE);
++        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
++        label.setGravity(Gravity.CENTER);
++        label.setPadding(dp(4), dp(10), dp(4), dp(10));
++        label.setClickable(true);
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(LayoutManager.PANEL);
++        g.setCornerRadius(dp(8));
++        label.setBackground(g);
++        label.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { if (onTap != null) onTap.run(); } });
++        center = label;
++        return this;
++    }
++
++    Stepper onChange(OnValue l) { listener = l; return this; }
++
++    private double clamp(double v) { return Math.max(min, Math.min(max, v)); }
++
++    private void nudge(int dir) {
++        double v = clamp(Math.round((value + dir * step) * 1000.0) / 1000.0);
++        if (v == value) return;
++        value = v;
++        show();
++        if (listener != null) listener.on(v);
++    }
++
++    private void show() {
++        String s = LayoutManagerFmt.fmt(value) + suffix;
++        if (edit != null) { if (!edit.isFocused() || !edit.getText().toString().equals(s)) edit.setText(LayoutManagerFmt.fmt(value)); }
++        if (label != null) label.setText(s);
++    }
++
++    /** Monta (uma vez) e devolve a linha. */
++    LinearLayout view() {
++        if (row.getChildCount() > 0) return row;
++        if (center == null) tap(null);
++        show();
++        if (hold) {
++            Hold.attach(minus, new Runnable() { public void run() { nudge(-1); } });
++            Hold.attach(plus, new Runnable() { public void run() { nudge(1); } });
++        } else {
++            minus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { nudge(-1); } });
++            plus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { nudge(1); } });
++        }
++        row.addView(minus, new LinearLayout.LayoutParams(dp(48), dp(44)));
++        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
++        cp.setMargins(dp(6), 0, dp(6), 0);
++        row.addView(center, cp);
++        row.addView(plus, new LinearLayout.LayoutParams(dp(48), dp(44)));
++        return row;
++    }
++
++    double value() { return value; }
++}
+diff -ruN a/ThumbView.java b/ThumbView.java
+--- a/ThumbView.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ThumbView.java	2026-10-22 09:55:19.573111979 +0000
+@@ -0,0 +1,47 @@
++package com.zue.attackeditor;
++
++import android.content.Context;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.RectF;
++import android.view.View;
++
++/** Miniatura de uma sprite (imagem do CNV) centralizada num fundo escuro; "sem imagem" quando o indice e -1 ou nao carrega. */
++final class ThumbView extends View {
++    private SpriteCache cache;
++    private int image = -1;
++    private final Paint bg = new Paint(), txt = new Paint(Paint.ANTI_ALIAS_FLAG), bmp = new Paint(Paint.FILTER_BITMAP_FLAG);
++    private final RectF dst = new RectF();
++
++    ThumbView(Context c) {
++        super(c);
++        bg.setColor(0xFF0D0F13);
++        txt.setColor(0xFF8A90A0);
++        txt.setTextAlign(Paint.Align.CENTER);
++        txt.setTextSize(13f * c.getResources().getDisplayMetrics().density);
++    }
++
++    void set(SpriteCache cache, int image) {
++        this.cache = cache;
++        this.image = image;
++        invalidate();
++    }
++
++    @Override protected void onDraw(Canvas cv) {
++        float w = getWidth(), h = getHeight();
++        dst.set(0, 0, w, h);
++        float r = 10f * getResources().getDisplayMetrics().density;
++        cv.drawRoundRect(dst, r, r, bg);
++        SpriteCache.Sprite sp = image < 0 || cache == null ? null : cache.get(image);
++        if (sp == null || sp.bitmap == null) {
++            cv.drawText(image < 0 ? "sem imagem" : "imagem " + image + " indisponível", w / 2f, h / 2f, txt);
++            return;
++        }
++        float sw = sp.src.width(), sh = sp.src.height();
++        float k = Math.min((w - 16) / sw, (h - 16) / sh);
++        k = Math.min(k, 4f);
++        float dw = sw * k, dh = sh * k;
++        dst.set((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f);
++        cv.drawBitmap(sp.bitmap, sp.src, dst, bmp);
++    }
++}
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-22 07:56:02.360147403 +0000
-@@ -1144,8 +1144,8 @@
++++ b/TimelineTools.java	2026-10-22 09:56:51.871409635 +0000
+@@ -24,8 +24,7 @@
+     private interface Setter { void set(double v); }
+ 
+     // secoes do inspetor de sprite
+-    private static final int S_IMG = 0, S_TEMPO = 1, S_MOVER = 2, S_ESTILO = 3, S_SOM = 4, S_RAZ = 5, S_ALL = 6;
+-    private static final String[] SEC = {"IMAGEM", "TEMPO", "MOVER", "ESTILO", "SOM", "RAZ", "ALL"};
++    private static final int S_IMG = 0, S_TEMPO = 1, S_MOVER = 2, S_ESTILO = 3, S_SOM = 4, S_ALL = 6;
+     private static final int C_SPRITE = 0xFFE5C100;
+ 
+     private final Context c;
+@@ -306,6 +305,9 @@
+     }
+ 
+     /** O ponteiro mudou de sprite: o inspetor acompanha (so quando nao esta tocando). */
++    /** Tocou numa sprite da timeline: abre a grade de opcoes (as paginas de velocidade, som e estilo abrem direto pelos itens delas). */
++    void gridFirst() { section = G_GRID; }
++
+     void follow(int pat, boolean playing) {
+         if (pat == lastPat) return;
+         lastPat = pat;
+@@ -313,12 +315,13 @@
+         if (type == TimelineView.T_OBJ) { show(type, idx, flag, occ); return; }
+         int ni = pat;
+         Ano fa = cur();
++        int sel = ni;
+         if (type == TimelineView.T_MOVE && fa != null) {
+             int h = FrameOps.moveHeadOf(fa.mpts, pat);
+-            if (h >= 0) ni = h;
++            if (h >= 0) sel = h;
+         }
+         show(type, ni, flag, occ);
+-        tl.select(type, ni, flag, occ);
++        tl.select(type, sel, flag, occ);
+     }
+ 
+     private Ano cur() { return view.currentAno(); }
+@@ -392,6 +395,7 @@
+         idx = i;
+         flag = fl;
+         occ = oc;
++        stopSoundCard();
+         body.removeAllViews();
+         if (ty == TimelineView.T_NONE) return;
+         Ano a = cur();
+@@ -405,7 +409,7 @@
+         if (ty == TimelineView.T_MOVE) section = S_MOVER;
+         else if (ty == TimelineView.T_STYLE) section = S_ESTILO;
+         else if (ty == TimelineView.T_SOUND) section = S_SOM;
+-        else if (section == S_MOVER || section == S_ESTILO || section == S_SOM) section = S_IMG;
++        else if (section == S_MOVER || section == S_ESTILO || section == S_SOM) section = G_GRID;
+         if (idx < 0 || idx >= a.mpts.length) return;
+         title.setTextColor(C_SPRITE);
+         title.setText("SPRITE " + (idx + 1) + "/" + a.mpts.length + "  ·  " + ObjModel.seconds(FrameOps.span(a.mpts[idx])));
+@@ -414,34 +418,489 @@
+ 
+     // ---- sprite ----
+ 
++    // ---- gaveta da sprite: grade de botoes + paginas (Imagem, Tempo, Som, Movimento, Efeitos, Copiar) ----
++
++    private static final int G_GRID = -1;
++    private static final int C_GREEN = 0xFF3DDC84, C_RED = 0xFFE5484D, C_GRAY = 0xFFA0A4AC, C_BLUE = 0xFF4C8DFF, C_AMBER = 0xFFFFB454, C_RECV = 0xFFFFD84C;
++    private SoundDialog soundCard;
++
+     private void sprite(final Ano a) {
+-        LinearLayout tabs = new LinearLayout(c);
+-        tabs.setOrientation(LinearLayout.HORIZONTAL);
+-        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(c);
+-        hs.setHorizontalScrollBarEnabled(false);
+-        for (int k = 0; k < SEC.length; k++) {
+-            final int kk = k;
+-            tabs.addView(btn(SEC[k], section == k, new View.OnClickListener() { public void onClick(View v) {
+-                section = kk;
+-                type = kk == S_MOVER ? TimelineView.T_MOVE : kk == S_ESTILO ? TimelineView.T_STYLE : kk == S_SOM ? TimelineView.T_SOUND : TimelineView.T_SPRITE;
+-                tl.select(type, idx, -1, -1);
+-                show(type, idx, -1, -1);
++        if (section != S_IMG && section != S_TEMPO && section != S_MOVER && section != S_ESTILO && section != S_SOM && section != S_ALL) section = G_GRID;
++        switch (section) {
++            case S_IMG: pgImagem(a); break;
++            case S_TEMPO: pgTempo(a); break;
++            case S_SOM: pgSom(a); break;
++            case S_MOVER: pgMover(a); break;
++            case S_ESTILO: pgEfeitos(a); break;
++            case S_ALL: pageHead("Copiar", C_BLUE); secAll(a); break;
++            default: grid(a); break;
++        }
++    }
++
++    private void stopSoundCard() {
++        if (soundCard != null) { soundCard.stop(); soundCard = null; }
++    }
++
++    private View tile(String name, int kind, int color, View.OnClickListener l) {
++        LinearLayout t = new LinearLayout(c);
++        t.setOrientation(LinearLayout.VERTICAL);
++        t.setGravity(Gravity.CENTER);
++        t.setPadding(dp(4), dp(6), dp(4), dp(6));
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(LayoutManager.PANEL);
++        g.setCornerRadius(dp(12));
++        t.setBackground(g);
++        t.addView(new IconView(c, kind, color), new LinearLayout.LayoutParams(dp(38), dp(38)));
++        TextView n = new TextView(c);
++        n.setText(name);
++        n.setTextColor(LayoutManager.TEXT);
++        n.setTypeface(Typeface.DEFAULT_BOLD);
++        n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
++        n.setGravity(Gravity.CENTER);
++        n.setPadding(0, dp(4), 0, 0);
++        t.addView(n);
++        t.setClickable(true);
++        t.setOnClickListener(l);
++        return t;
++    }
++
++    private void grid(Ano a) {
++        String[] names = {"Imagem", "Tempo", "Som", "Movimento", "Efeitos", "Copiar"};
++        int[] kinds = {IconView.IMAGE, IconView.CLOCK, IconView.SOUND, IconView.MOVE, IconView.FX, IconView.COPY};
++        int[] cols = {C_SPRITE, C_GREEN, C_RED, C_GREEN, C_GRAY, C_BLUE};
++        final int[] pages = {S_IMG, S_TEMPO, S_SOM, S_MOVER, S_ESTILO, S_ALL};
++        for (int r = 0; r < 2; r++) {
++            LinearLayout row = line();
++            for (int k = 0; k < 3; k++) {
++                final int pg = pages[r * 3 + k];
++                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(84), 1f);
++                lp.setMargins(dp(3), dp(3), dp(3), dp(3));
++                row.addView(tile(names[r * 3 + k], kinds[r * 3 + k], cols[r * 3 + k], new View.OnClickListener() {
++                    public void onClick(View v) { openPage(pg); }
++                }), lp);
++            }
++        }
++        note("Frame " + (idx + 1) + " de " + a.mpts.length + ". Toque numa opção para editar.");
++    }
++
++    private void openPage(int pg) {
++        section = pg;
++        type = pg == S_MOVER ? TimelineView.T_MOVE : pg == S_ESTILO ? TimelineView.T_STYLE : pg == S_SOM ? TimelineView.T_SOUND : TimelineView.T_SPRITE;
++        tl.select(type, idx, -1, -1);
++        show(type, idx, -1, -1);
++    }
++
++    private void backToGrid() {
++        section = G_GRID;
++        type = TimelineView.T_SPRITE;
++        tl.select(type, idx, -1, -1);
++        show(type, idx, -1, -1);
++    }
++
++    private void pageHead(String name, int color) {
++        LinearLayout h = line();
++        h.addView(btn("◀", false, new View.OnClickListener() { public void onClick(View v) { backToGrid(); } }));
++        TextView t = new TextView(c);
++        t.setText(name);
++        t.setTextColor(color);
++        t.setTypeface(Typeface.DEFAULT_BOLD);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
++        t.setPadding(dp(8), 0, 0, 0);
++        h.addView(t);
++    }
++
++    private TextView lab(String s) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setTextColor(LayoutManager.DIM);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
++        t.setPadding(dp(6), dp(8), dp(6), 0);
++        body.addView(t);
++        return t;
++    }
++
++    private void put(Stepper st) {
++        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++        lp.setMargins(dp(4), dp(2), dp(4), dp(2));
++        body.addView(st.view(), lp);
++    }
++
++    private android.widget.CheckBox check(String text, boolean on, android.widget.CompoundButton.OnCheckedChangeListener l) {
++        android.widget.CheckBox cb = new android.widget.CheckBox(c);
++        cb.setText(text);
++        cb.setTextColor(LayoutManager.TEXT);
++        cb.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++        cb.setChecked(on);
++        cb.setOnCheckedChangeListener(l);
++        body.addView(cb);
++        return cb;
++    }
++
++    private TextView wide(String s, int color, View.OnClickListener l) {
++        TextView t = btn(s, false, l);
++        t.setTextColor(color);
++        t.setPadding(dp(8), dp(11), dp(8), dp(11));
++        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++        lp.setMargins(dp(4), dp(10), dp(4), dp(2));
++        t.setLayoutParams(lp);
++        body.addView(t);
++        return t;
++    }
++
++    private void editMid(final Mut mu) {
++        edit(new Mut() { public void apply(Ano.Mpt n) {
++            if ((n.flags & 1) == 0) { n.flags |= 1; n.midX = 0; n.midY = 0; }
++            mu.apply(n);
++        } });
++    }
++
++    private void editRaz(final Mut mu) {
++        edit(new Mut() { public void apply(Ano.Mpt n) {
++            if ((n.flags & 0x80) == 0) { n.flags |= 0x80; n.rot = 0; n.alphaRaw = 0; n.xZoom = 100; n.yZoom = 100; }
++            mu.apply(n);
++        } });
++    }
++
++    // ---- Imagem ----
++
++    private static boolean unirZoom = true, moveLinks = false;
++
++    private void pgImagem(final Ano a) {
++        pageHead("Imagem", C_SPRITE);
++        Ano.Mpt m = sprite();
++        AttackData ad = view.attackData();
++        final SpriteCache sc = ad == null ? null : ad.attacker.sprites;
++        int maxImg = ad != null && ad.attacker.cnv != null ? Math.max(0, ad.attacker.cnv.size() - 1) : 9999;
++        final ThumbView thumb = new ThumbView(c);
++        thumb.set(sc, m.image);
++        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, dp(120));
++        tp.setMargins(dp(4), dp(6), dp(4), dp(4));
++        body.addView(thumb, tp);
++        put(new Stepper(c).range(-1, maxImg).step(1).tap(new Runnable() { public void run() { chooseImage(); } })
++                .onChange(new Stepper.OnValue() { public void on(final double v) {
++                    edit(new Mut() { public void apply(Ano.Mpt n) { n.image = (int) v; } });
++                    thumb.set(sc, (int) v);
++                    refreshTitle();
++                } }).value(m.image));
++        note("Segure − ou + para percorrer as sprites; toque no número para escolher na grade de sprites.");
++
++        lab("POSIÇÃO");
++        LinearLayout pos = line();
++        pos.addView(axisLabel("x"));
++        stepIn(pos, new Stepper(c).range(-9999, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            final int old = sprite().midX;
++            editMid(new Mut() { public void apply(Ano.Mpt n) { n.midX = (int) v; } });
++            if (moveLinks) shiftLinkBases((int) v - old, 0);
++        } }).value(m.midX));
++        pos.addView(axisLabel("y"));
++        stepIn(pos, new Stepper(c).range(-9999, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            final int old = sprite().midY;
++            editMid(new Mut() { public void apply(Ano.Mpt n) { n.midY = (int) v; } });
++            if (moveLinks) shiftLinkBases(0, (int) v - old);
++        } }).value(m.midY));
++        if (a.links.length > 0) {
++            check("mover links junto", moveLinks, new android.widget.CompoundButton.OnCheckedChangeListener() {
++                public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { moveLinks = on; }
++            });
++            note("Ao mudar a posição, soma o mesmo deslocamento no bx/by de todos os links desta ANO (vale para todos os frames dela).");
++            wide("EDITAR POSIÇÃO DO LINK", C_BLUE, new View.OnClickListener() { public void onClick(View v) { openLinkEditor(); } });
++        }
++
++        lab("ZOOM");
++        check("unir zoom X e Y", unirZoom, new android.widget.CompoundButton.OnCheckedChangeListener() {
++            public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { unirZoom = on; show(type, idx, flag, occ); }
++        });
++        if (unirZoom) {
++            put(new Stepper(c).range(0, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++                editRaz(new Mut() { public void apply(Ano.Mpt n) { n.xZoom = (int) v; n.yZoom = (int) v; } });
++            } }).value(m.xZoom));
++        } else {
++            LinearLayout z = line();
++            z.addView(axisLabel("x"));
++            stepIn(z, new Stepper(c).range(0, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++                editRaz(new Mut() { public void apply(Ano.Mpt n) { n.xZoom = (int) v; } });
++            } }).value(m.xZoom));
++            z.addView(axisLabel("y"));
++            stepIn(z, new Stepper(c).range(0, 9999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++                editRaz(new Mut() { public void apply(Ano.Mpt n) { n.yZoom = (int) v; } });
++            } }).value(m.yZoom));
++        }
++        note("100 = tamanho normal.");
++
++        lab("ROTAÇÃO (graus)");
++        put(new Stepper(c).range(-3600, 3600).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            editRaz(new Mut() { public void apply(Ano.Mpt n) { n.rot = (int) v; } });
++        } }).value(m.rot));
++        lab("ALPHA");
++        put(new Stepper(c).range(-32768, 32767).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            editRaz(new Mut() { public void apply(Ano.Mpt n) { n.alphaRaw = (int) v; } });
++        } }).value(m.alphaRaw));
++        note("0 = opaco; 256 = aditivo; 512 = outro modo; +n = n/255 mais transparente.");
++
++        wide("REMOVER IMAGEM", C_RED, new View.OnClickListener() { public void onClick(View v) {
++            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { n.image = -1; } });
++            refreshTitle();
++        } });
++    }
++
++    private TextView axisLabel(String s) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setTextColor(LayoutManager.DIM);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++        t.setPadding(dp(6), 0, dp(2), 0);
++        return t;
++    }
++
++    /** Stepper dentro de uma linha dividida (metade da largura). */
++    private void stepIn(LinearLayout row, Stepper st) {
++        row.addView(st.view(), new LinearLayout.LayoutParams(0, -2, 1f));
++    }
++
++    /** Soma (dx, dy) no bx/by de todos os links da ANO atual. */
++    private void shiftLinkBases(int dx, int dy) {
++        Ano a = cur();
++        if (a == null || a.links.length == 0 || (dx == 0 && dy == 0)) return;
++        Ano.Link[] n = new Ano.Link[a.links.length];
++        for (int i = 0; i < n.length; i++) n[i] = new Ano.Link(a.links[i].baseX + dx, a.links[i].baseY + dy, a.links[i].flags);
++        view.replaceAno(new Ano(a.index, true, a.flags, a.priority, n, a.mpts));
++        onChanged.run();
++    }
++
++    private void openLinkEditor() {
++        Ano a = cur();
++        if (a == null || a.links.length == 0 || !(c instanceof android.app.Activity)) return;
++        LinkPosDialog.show((android.app.Activity) c, view, a.index, Math.max(0, idx), new Runnable() { public void run() { onChanged.run(); show(type, idx, flag, occ); } });
++    }
++
++    // ---- Tempo ----
++
++    private void pgTempo(final Ano a) {
++        pageHead("Tempo", C_GREEN);
++        Ano.Mpt m = sprite();
++        lab("ticks do frame (60 ticks = 1 segundo)");
++        final TextView warn = new TextView(c);
++        warn.setTextColor(C_AMBER);
++        warn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++        warn.setPadding(dp(8), dp(4), dp(8), dp(4));
++        final TextView dur = new TextView(c);
++        dur.setTextColor(LayoutManager.TEXT);
++        dur.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
++        dur.setTypeface(Typeface.DEFAULT_BOLD);
++        dur.setPadding(dp(8), dp(4), dp(8), dp(4));
++        final Runnable upd = new Runnable() { public void run() {
++            Ano.Mpt now = sprite();
++            if (now == null) return;
++            int t = FrameTools.ticks(now);
++            if (t == 0) {
++                warn.setText("Tempo 0! O frame fica travado: não avança sozinho (na estrutura do frame é o mesmo que desativar o TIME). A timeline o mostra com 3 ticks.");
++                warn.setVisibility(View.VISIBLE);
++                dur.setText("Duração: travado");
++            } else {
++                warn.setVisibility(View.GONE);
++                dur.setText("Duração: " + FrameTools.seconds(t) + "  (" + t + " ticks)");
++            }
++        } };
++        put(new Stepper(c).range(0, 255).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++            final Ano.Mpt t = FrameTools.setTime(sprite(), (int) v);
++            edit(new Mut() { public void apply(Ano.Mpt n) { n.flags = t.flags; n.time = t.time; } });
++            refreshTitle();
++            upd.run();
++        } }).value(FrameTools.ticks(m)));
++        body.addView(warn);
++        body.addView(dur);
++        upd.run();
++        wide("REMOVER FRAME", C_RED, new View.OnClickListener() { public void onClick(View v) {
++            if (a.mpts.length <= 1) { android.widget.Toast.makeText(c, "A ANO precisa de ao menos um frame", android.widget.Toast.LENGTH_SHORT).show(); return; }
++            remove(a);
++        } });
++    }
++
++    // ---- Som ----
++
++    private void pgSom(final Ano a) {
++        pageHead("Som", C_RED);
++        final AttackData ad = view.attackData();
++        if (ad == null || !(c instanceof android.app.Activity)) { note("Nada carregado."); return; }
++        final Ano.Mpt m = sprite();
++        final int cur = (m.flags & 8) != 0 ? m.se : -1;
++        SoundPlayer sp = view.soundPlayer();
++        int seMax = 0;
++        if (sp != null) for (java.io.File f : sp.commonFiles()) seMax = Math.max(seMax, SoundPlayer.commonNumber(f) + 1);
++        final int sm = seMax, wc = CharSounds.list(ad.attacker.dir).length;
++        stopSoundCard();
++        soundCard = SoundDialog.embed((android.app.Activity) c, view, ad.attacker.dir, cur, new Runnable() { public void run() {
++            onChanged.run();
++            show(type, idx, flag, occ);
++        } });
++        LinearLayout row = line();
++        TextView minus = Stepper.sideButton(c, "−"), plus = Stepper.sideButton(c, "+");
++        minus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { setSound(FrameTools.stepSound(cur, -1, sm, wc)); } });
++        plus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { setSound(FrameTools.stepSound(cur, 1, sm, wc)); } });
++        row.addView(minus, new LinearLayout.LayoutParams(dp(48), dp(52)));
++        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
++        cp.setMargins(dp(6), 0, dp(6), 0);
++        row.addView(soundCard.cardView(), cp);
++        row.addView(plus, new LinearLayout.LayoutParams(dp(48), dp(52)));
++        note("− e + passam só pelos sons que existem: 0 → sons comuns (1 a " + sm + ") → 80 → sons do personagem (80 a " + (80 + Math.max(0, wc - 1)) + ").");
++        wide("ESCOLHER", C_BLUE, new View.OnClickListener() { public void onClick(View v) { pickSound(cur); } });
++        wide("REMOVER ÁUDIO", C_RED, new View.OnClickListener() { public void onClick(View v) {
++            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, false); n.se = -1; } });
++        } });
++        note("O som toca uma vez, quando o frame começa.");
++    }
++
++    private void setSound(final int id) {
++        editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, true); n.se = Math.max(-128, Math.min(127, id)); } });
++        view.previewSe(id);
++    }
++
++    // ---- Movimento ----
++
++    private TextView recvLine;
++
++    private void pgMover(final Ano a) {
++        pageHead("Movimento", C_GREEN);
++        final int f = idx;
++        final Ano.Mpt[] mp = a.mpts;
++        final Ano.Mpt m = mp[f];
++        final boolean keeps = FrameTools.keeps(mp, f);
++        final double[] rec = FrameTools.received(mp, f);
++        final boolean accelBefore = FrameTools.showAccel(m);
++        String[] ax = {"x", "y"};
++        for (int k = 0; k < 2; k++) {
++            final int axis = k;
++            boolean own = (m.flags & 4) != 0 && (m.moveMask & (1 << k)) != 0;
++            double ownV = own ? (k == 0 ? m.speedX : m.speedY) / FrameTools.ONE : 0;
++            double shown = keeps ? (own ? ownV - rec[k] : 0) : ownV;
++            lab("velocidade " + ax[k] + (keeps ? " (soma à recebida)" : "  (px por tick)"));
++            put(new Stepper(c).range(-999, 999).step(1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++                final double abs = keeps ? rec[axis] + v : v;
++                final Ano.Mpt r = FrameTools.setSpeed(sprite(), axis, abs, v != 0);
++                edit(new Mut() { public void apply(Ano.Mpt n) { copyMove(r, n); } });
++                if (FrameTools.showAccel(sprite()) != accelBefore) show(type, idx, flag, occ); else refreshMoveTotal(a);
++            } }).value(shown));
++        }
++        if (keeps) {
++            LinearLayout rl = line();
++            TextView t = new TextView(c);
++            t.setText(FrameTools.px(rec[0]) + " / " + FrameTools.px(rec[1]) + " speed x/y mantidos do frame anterior");
++            t.setTextColor(C_RECV);
++            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++            rl.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
++            rl.addView(btn("Remover", false, new View.OnClickListener() { public void onClick(View v) {
++                Ano.Mpt[] out = FrameTools.removeReceived(cur().mpts, f);
++                if (out != null) replaceMpts(out, f);
+             } }));
++            double[] st = FrameTools.startSpeed(mp, f);
++            TextView t2 = note("x: " + FrameTools.px(rec[0]) + " recebido do frame anterior, total: " + FrameTools.px(st[0])
++                    + "   ·   y: " + FrameTools.px(rec[1]) + " recebido, total: " + FrameTools.px(st[1]));
++            t2.setTextColor(C_RECV);
++        }
++        if (FrameTools.showAccel(m)) {
++            lab("aceleração x  (px por tick²)");
++            put(new Stepper(c).range(-99, 99).step(0.1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++                final Ano.Mpt r = FrameTools.setAccel(sprite(), 0, v);
++                edit(new Mut() { public void apply(Ano.Mpt n) { copyMove(r, n); } });
++                refreshMoveTotal(a);
++            } }).value(m.accelX / FrameTools.ONE));
++            lab("aceleração y");
++            put(new Stepper(c).range(-99, 99).step(0.1).keyboard(new Stepper.OnValue() { public void on(final double v) {
++                final Ano.Mpt r = FrameTools.setAccel(sprite(), 1, v);
++                edit(new Mut() { public void apply(Ano.Mpt n) { copyMove(r, n); } });
++                refreshMoveTotal(a);
++            } }).value(m.accelY / FrameTools.ONE));
++            note("A aceleração soma na velocidade atual a cada tick, apenas neste frame: o frame seguinte recebe a velocidade já somada, mas não a aceleração.");
++        }
++
++        int head = FrameOps.moveHeadOf(mp, f);
++        if (head >= 0) {
++            final int h = head;
++            final int last = FrameOps.moveRunEnd(mp, h);
++            final int maxLen = FrameOps.nextMoveHead(mp, h) - h;
++            lab("duração do movimento — frame inicial");
++            put(new Stepper(c).range(1, mp.length).step(1).keyboard(new Stepper.OnValue() { public void on(double v) {
++                Ano.Mpt[] out = FrameTools.moveRunTo(cur().mpts, h, (int) v - 1);
++                if (out == null) { android.widget.Toast.makeText(c, "Não cabe: bate em outra velocidade ou passa do último frame", android.widget.Toast.LENGTH_SHORT).show(); show(type, idx, flag, occ); return; }
++                replaceMpts(out, (int) v - 1);
++            } }).value(h + 1));
++            lab("duração (frames)");
++            put(new Stepper(c).range(1, Math.max(1, maxLen)).step(1).keyboard(new Stepper.OnValue() { public void on(double v) {
++                view.replaceMpts(FrameOps.setMoveRun(cur().mpts, h, h + (int) v - 1));
++                refresh();
++            } }).value(last - h + 1));
+         }
+-        hs.addView(tabs);
+-        body.addView(hs);
+-        switch (section) {
+-            case S_IMG: secImagem(a); break;
+-            case S_TEMPO: secTempo(a); break;
+-            case S_MOVER: secMover(); break;
+-            case S_ESTILO: secEstilo(); break;
+-            case S_SOM: secSom(); break;
+-            case S_RAZ: secRaz(); break;
+-            case S_ALL: secAll(a); break;
+-            default: secImagem(a); break;
++        check("manter velocidade", FrameTools.keepsNext(mp, f), new android.widget.CompoundButton.OnCheckedChangeListener() {
++            public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
++                if (on == FrameTools.keepsNext(cur().mpts, f)) return;
++                Ano.Mpt[] out = FrameTools.setKeepNext(cur().mpts, f, on);
++                if (out == null) {
++                    android.widget.Toast.makeText(c, on ? "Não há frame seguinte" : "Nada para desligar", android.widget.Toast.LENGTH_SHORT).show();
++                    show(type, idx, flag, occ);
++                    return;
++                }
++                replaceMpts(out, f);
++            }
++        });
++        note("Mantém a velocidade do frame atual no próximo frame (o jogo só zera a velocidade num frame sem o bit 64).");
++        recvLine = note("");
++        refreshMoveTotal(a);
++        if ((m.flags & 4) != 0) {
++            wide("REMOVER SPEED", C_RED, new View.OnClickListener() { public void onClick(View v) {
++                Ano.Mpt[] o = cur().mpts.clone();
++                Ano.Mpt cm = o[f].copy();
++                FrameOps.clear(FrameOps.MOV, cm);
++                o[f] = cm;
++                if (FrameTools.keeps(o, f + 1)) o = FrameTools.removeReceived(o, f + 1);
++                replaceMpts(o, f);
++            } });
+         }
+     }
+ 
++    private void refreshMoveTotal(Ano a0) {
++        Ano a = cur();
++        if (a == null || recvLine == null || idx < 0 || idx >= a.mpts.length) return;
++        int head = FrameOps.moveHeadOf(a.mpts, idx);
++        int from = head >= 0 ? head : idx, to = head >= 0 ? FrameOps.moveRunEnd(a.mpts, head) : idx;
++        double[] t = FrameTools.totalPixels(a.mpts, from, to);
++        recvLine.setText("Total: x " + FrameTools.px(t[0]) + " px, y " + FrameTools.px(t[1]) + " px em " + (int) t[2] + " ticks"
++                + (to > from ? " (frames " + (from + 1) + " a " + (to + 1) + ")" : ""));
++    }
++
++    /** Copia os campos de movimento de {@code from} para {@code to}. */
++    private static void copyMove(Ano.Mpt from, Ano.Mpt to) {
++        to.flags = (to.flags & ~4) | (from.flags & 4);
++        to.moveMask = from.moveMask;
++        to.speedX = from.speedX; to.speedY = from.speedY; to.accelX = from.accelX; to.accelY = from.accelY;
++    }
++
++    // ---- Efeitos ----
++
++    private void pgEfeitos(final Ano a) {
++        pageHead("Efeitos", C_GRAY);
++        Ano.Mpt m = sprite();
++        final Ano sa = cur();
++        if (FrameOps.styleSig(m) != 0) {
++            final int first = FrameOps.styleRunStart(sa.mpts, idx);
++            int last = FrameOps.styleRunEnd(sa.mpts, idx);
++            lab("duração do efeito (frames)");
++            put(new Stepper(c).range(1, Math.max(1, sa.mpts.length - first)).step(1).keyboard(new Stepper.OnValue() { public void on(double v) {
++                view.replaceMpts(FrameOps.setStyleRun(cur().mpts, first, first + (int) v - 1));
++                refresh();
++            } }).value(last - first + 1));
++        }
++        LinearLayout l = line();
++        l.addView(styleChip("↔ Flip X", ObjModel.FLIP_H, m));
++        l.addView(styleChip("↕ Flip Y", ObjModel.FLIP_V, m));
++        note("Flip vale em relação à direção do personagem.");
++        boolean interp = ObjModel.optField(m, 2) != 0;
++        line().addView(btn(interp ? "● Interpolação" : "○ Interpolação", interp, new View.OnClickListener() { public void onClick(View v) {
++            setOpt(2, ObjModel.optField(sprite(), 2) != 0 ? 0 : 1);
++            show(type, idx, flag, occ);
++        } }));
++        note("Interpolação: o frame atual suaviza (posição do centro, rotação, alpha e zoom) até chegar no próximo frame.");
++    }
++
+     /** Abre a lista de sprites do personagem do atacante para trocar a imagem do frame (com "+ ADICIONAR" na propria lista). */
+     private void chooseImage() {
+         AttackData ad = view.attackData();
+@@ -589,137 +1048,14 @@
+         } });
+     }
+ 
+-    private void secImagem(final Ano a) {
+-        Ano.Mpt m = sprite();
+-        LinearLayout imgRow = line();
+-        num(imgRow, "imagem", m.image, 1, new Setter() { public void set(final double v) {
+-            edit(new Mut() { public void apply(Ano.Mpt n) { n.image = (int) v; } });
+-            refreshTitle();
+-        } });
+-        imgRow.addView(btn("ESCOLHER", false, new View.OnClickListener() { public void onClick(View v) { chooseImage(); } }));
+-        boolean mid = (m.flags & 1) != 0;
+-        LinearLayout l = line();
+-        l.addView(btn(mid ? "● centro proprio" : "○ centro proprio", mid, new View.OnClickListener() { public void onClick(View v) {
+-            final boolean now = (sprite().flags & 1) != 0;
+-            if (now) shiftLinks(-sprite().midX, -sprite().midY);      // desligar o centro volta a sprite ao zero
+-            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 1, !now); if (!now) { n.midX = 0; n.midY = 0; } } });
+-        } }));
+-        if (mid) {
+-            num(line(), "centro x", m.midX, 1, new Setter() { public void set(final double v) {
+-                final int old = sprite().midX;
+-                edit(new Mut() { public void apply(Ano.Mpt n) { n.midX = (int) v; } });
+-                shiftLinks((int) v - old, 0); } });
+-            num(line(), "centro y", m.midY, 1, new Setter() { public void set(final double v) {
+-                final int old = sprite().midY;
+-                edit(new Mut() { public void apply(Ano.Mpt n) { n.midY = (int) v; } });
+-                shiftLinks(0, (int) v - old); } });
+-        }
+-        if (a.links.length > 0) linkMoveBlock(a);
+-        LinearLayout b = line();
+-        b.addView(btn("◀ mover", false, new View.OnClickListener() { public void onClick(View v) { swap(a, -1); } }));
+-        b.addView(btn("mover ▶", false, new View.OnClickListener() { public void onClick(View v) { swap(a, 1); } }));
+-        b.addView(btn("duplicar", false, new View.OnClickListener() { public void onClick(View v) { duplicate(a); } }));
+-        b.addView(btn("remover", false, new View.OnClickListener() { public void onClick(View v) { remove(a); } }));
+-    }
+ 
+     // ---- mover sprite + animacoes ligadas (links) ----
+     /** 0 = nao sincroniza, 1 = so o frame atual, 2 = todos os frames da ANO filha. */
+-    private static int linkSync = 1;
+ 
+-    /**
+-     * Ao deslocar o centro de um frame da ANO pai, aplica o mesmo deslocamento ao centro dos frames das ANOs filhas:
+-     * modo 1 = o frame correspondente (o mesmo indice quando o filho sincroniza sprites; senao o primeiro);
+-     * modo 2 = todos os frames do filho.
+-     */
+-    private void shiftLinks(int dx, int dy) {
+-        Ano a = cur();
+-        if (linkSync == 0 || a == null || a.links.length == 0 || (dx == 0 && dy == 0)) return;
+-        java.util.HashSet<Integer> done = new java.util.HashSet<Integer>();
+-        for (int i = 0; i < a.links.length; i++) {
+-            Ano.Link l = a.links[i];
+-            if (l.getAno() == a.index || !done.add(l.getAno())) continue;
+-            Ano ch = view.anoAt(l.getAno());
+-            if (ch == null || !ch.present || ch.mpts.length == 0) continue;
+-            Ano.Mpt[] mp = new Ano.Mpt[ch.mpts.length];
+-            for (int k = 0; k < mp.length; k++) mp[k] = ch.mpts[k].copy();
+-            int only = l.syncMpt() ? Math.min(idx, mp.length - 1) : 0;
+-            for (int k = 0; k < mp.length; k++) {
+-                if (linkSync == 1 && k != only) continue;
+-                Ano.Mpt m = mp[k];
+-                if ((m.flags & 1) == 0) { m.flags |= 1; m.midX = 0; m.midY = 0; }
+-                m.midX += dx;
+-                m.midY += dy;
+-                m.normalize();
+-            }
+-            view.replaceAnoAt(new Ano(ch.index, true, ch.flags, ch.priority, ch.links, mp));
+-        }
+-        onChanged.run();
+-    }
+ 
+-    private void linkMoveBlock(final Ano a) {
+-        LinearLayout l = line();
+-        note("Ao mover o centro da sprite, desloca tambem o centro da ANO filha:");
+-        l.addView(btn(linkSync == 1 ? "● sincronizar frame atual" : "○ sincronizar frame atual", linkSync == 1, new View.OnClickListener() { public void onClick(View v) {
+-            linkSync = linkSync == 1 ? 0 : 1;
+-            show(type, idx, flag, occ);
+-        } }));
+-        l.addView(btn(linkSync == 2 ? "● sincronizar todos os frames" : "○ sincronizar todos os frames", linkSync == 2, new View.OnClickListener() { public void onClick(View v) {
+-            linkSync = linkSync == 2 ? 0 : 2;
+-            show(type, idx, flag, occ);
+-        } }));
+-        LinearLayout b = line();
+-        b.addView(btn("mover LINK (bx/by)", false, new View.OnClickListener() { public void onClick(View v) {
+-            pickLink("Mover qual link?", new TimelineOps.Pick() { public void on(int li) { moveLinkDialog(li); } });
+-        } }));
+-        b.addView(btn("editar LINK", false, new View.OnClickListener() { public void onClick(View v) {
+-            pickLink("Editar qual link?", new TimelineOps.Pick() { public void on(int li) {
+-                Ano cu = cur();
+-                if (nav != null && cu != null && li < cu.links.length) nav.openAno(cu.links[li].getAno(), false);
+-            } });
+-        } }));
+-        note("Frame atual: o frame do filho de mesmo indice (se sincroniza sprites) ou o primeiro. Todos: todos os frames do filho.");
+-    }
+ 
+-    private void pickLink(String title, final TimelineOps.Pick pick) {
+-        Ano a = cur();
+-        if (a == null || a.links.length == 0) return;
+-        if (a.links.length == 1) { pick.on(0); return; }
+-        String[] items = new String[a.links.length];
+-        for (int i = 0; i < items.length; i++) items[i] = "Link " + (i + 1) + "  ->  ANO " + a.links[i].getAno();
+-        new android.app.AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle(title)
+-                .setItems(items, new android.content.DialogInterface.OnClickListener() {
+-                    @Override public void onClick(android.content.DialogInterface d, int which) { pick.on(which); }
+-                }).show();
+-    }
+ 
+-    private void moveLinkDialog(final int li) {
+-        Ano a = cur();
+-        if (a == null || li >= a.links.length) return;
+-        LinearLayout box = new LinearLayout(c);
+-        box.setOrientation(LinearLayout.VERTICAL);
+-        box.setPadding(dp(14), dp(8), dp(14), dp(8));
+-        Ano.Link l0 = a.links[li];
+-        LinearLayout r1 = new LinearLayout(c);
+-        r1.setGravity(Gravity.CENTER_VERTICAL);
+-        LinearLayout r2 = new LinearLayout(c);
+-        r2.setGravity(Gravity.CENTER_VERTICAL);
+-        num(r1, "base x", l0.baseX, 1, new Setter() { public void set(double v) { setLinkBase(li, (int) v, null); } });
+-        num(r2, "base y", l0.baseY, 1, new Setter() { public void set(double v) { setLinkBase(li, null, (int) v); } });
+-        box.addView(r1);
+-        box.addView(r2);
+-        new android.app.AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+-                .setTitle("Link " + (li + 1) + "  ->  ANO " + l0.getAno()).setView(box).setPositiveButton("OK", null).show();
+-    }
+ 
+-    private void setLinkBase(int li, Integer x, Integer y) {
+-        Ano a = cur();
+-        if (a == null || li >= a.links.length) return;
+-        Ano.Link[] n = a.links.clone();
+-        Ano.Link o = n[li];
+-        n[li] = new Ano.Link(x != null ? x : o.baseX, y != null ? y : o.baseY, o.flags);
+-        view.replaceAno(new Ano(a.index, true, a.flags, a.priority, n, a.mpts));
+-        onChanged.run();
+-    }
+ 
+     private void refreshTitle() {
+         Ano a = cur();
+@@ -727,25 +1063,6 @@
+         title.setText("SPRITE " + (idx + 1) + "/" + a.mpts.length + "  ·  " + ObjModel.seconds(FrameOps.span(a.mpts[idx])));
+     }
+ 
+-    private void secTempo(Ano a) {
+-        Ano.Mpt m = sprite();
+-        boolean t = (m.flags & 0x20) != 0;
+-        LinearLayout l = line();
+-        l.addView(btn(t ? "● tem duracao" : "○ tem duracao", t, new View.OnClickListener() { public void onClick(View v) {
+-            final boolean now = (sprite().flags & 0x20) != 0;
+-            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 0x20, !now); if (!now) n.time = 4; } });
+-            refreshTitle();
+-        } }));
+-        if (t) {
+-            num(line(), "ticks", m.time, 1, new Setter() { public void set(final double v) {
+-                edit(new Mut() { public void apply(Ano.Mpt n) { n.time = Math.max(1, Math.min(255, (int) v)); } });
+-                refreshTitle();
+-            } });
+-            note("= " + TimelineView.timeText(m.time) + "  (60 ticks = 1 segundo). Dica: arraste a borda esquerda ou direita do clipe amarelo para cortar.");
+-        } else {
+-            note("Sem duracao: o sprite nao avanca sozinho (a timeline mostra 3 ticks).");
+-        }
+-    }
+ 
+     private interface DurSet { void apply(int frames); }
+ 
+@@ -762,126 +1079,8 @@
+                 + ". O tempo de cada frame se muda na sprite.");
+     }
+ 
+-    private void secMover() {
+-        Ano.Mpt m = sprite();
+-        boolean on = (m.flags & 4) != 0;
+-        if (!on) {
+-            note("Este sprite nao altera a velocidade.");
+-            line().addView(btn("+ ADICIONAR VELOCIDADE", true, new View.OnClickListener() { public void onClick(View v) {
+-                editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 4, true); n.moveMask = 1; n.speedX = 0; } });
+-            } }));
+-            return;
+-        }
+-        final Ano ma = cur();
+-        if (FrameOps.isMoveHead(ma.mpts[idx])) {
+-            final int head = idx;
+-            int last = FrameOps.moveRunEnd(ma.mpts, head);
+-            durationField(ma, head, last - head + 1, FrameOps.nextMoveHead(ma.mpts, head) - head, new DurSet() { public void apply(int n) {
+-                view.replaceMpts(FrameOps.setMoveRun(cur().mpts, head, head + n - 1));
+-                refresh();
+-            } });
+-        }
+-        String[] nm = {"veloc. x", "veloc. y", "acel. x", "acel. y"};
+-        for (int k = 0; k < 4; k++) {
+-            final int bitK = 1 << k;
+-            final int kk = k;
+-            boolean has = (m.moveMask & bitK) != 0;
+-            LinearLayout l = line();
+-            l.addView(btn(has ? "●" : "○", has, new View.OnClickListener() { public void onClick(View v) {
+-                editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { n.moveMask ^= bitK; } }); } }));
+-            if (has) {
+-                int raw = k == 0 ? m.speedX : k == 1 ? m.speedY : k == 2 ? m.accelX : m.accelY;
+-                num(l, nm[k], raw / 65536.0, k < 2 ? 1 : 0.1, new Setter() { public void set(final double v) {
+-                    edit(new Mut() { public void apply(Ano.Mpt n) {
+-                        int r = (int) (v * 65536.0);
+-                        if (kk == 0) n.speedX = r; else if (kk == 1) n.speedY = r; else if (kk == 2) n.accelX = r; else n.accelY = r; } });
+-                } });
+-            } else {
+-                TextView t = new TextView(c);
+-                t.setText(nm[k] + " (desligado)");
+-                t.setTextColor(LayoutManager.DIM);
+-                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+-                l.addView(t);
+-            }
+-        }
+-        note("pixels por tick (aceleracao: px/tick²). Para manter a velocidade do sprite anterior, ligue \"manter velocidade\" em ESTILO.");
+-        line().addView(btn("✕ remover velocidade", false, new View.OnClickListener() { public void onClick(View v) {
+-            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 4, false); n.moveMask = 0; } }); } }));
+-    }
+-
+-    private void secEstilo() {
+-        Ano.Mpt m = sprite();
+-        final Ano sa = cur();
+-        if (FrameOps.styleSig(m) != 0) {
+-            final int first = FrameOps.styleRunStart(sa.mpts, idx);
+-            int last = FrameOps.styleRunEnd(sa.mpts, idx);
+-            durationField(sa, first, last - first + 1, sa.mpts.length - first, new DurSet() { public void apply(int n) {
+-                view.replaceMpts(FrameOps.setStyleRun(cur().mpts, first, first + n - 1));
+-                refresh();
+-            } });
+-        }
+-        LinearLayout l = line();
+-        l.addView(styleChip("↔ espelhar H", ObjModel.FLIP_H, m));
+-        l.addView(styleChip("↕ espelhar V", ObjModel.FLIP_V, m));
+-        l.addView(styleChip("⏩ manter velocidade", ObjModel.KEEP_SPEED, m));
+-        boolean interp = ObjModel.optField(m, 2) != 0;
+-        line().addView(btn(interp ? "● suavizar movimento entre sprites" : "○ suavizar movimento entre sprites", interp, new View.OnClickListener() { public void onClick(View v) {
+-            setOpt(2, ObjModel.optField(sprite(), 2) != 0 ? 0 : 1);
+-            show(type, idx, flag, occ);
+-        } }));
+-        note("Espelhar vale em relacao a direcao do personagem. Manter velocidade conserva a velocidade do sprite anterior. O dano e a reacao ficam na hitbox.");
+-        note("Rotacao, transparencia e zoom ficam na aba RAZ.");
+-    }
+ 
+-    private static boolean unirZoom = false;
+ 
+-    private void secRaz() {
+-        Ano.Mpt m = sprite();
+-        boolean raz = (m.flags & 0x80) != 0;
+-        LinearLayout r = line();
+-        r.addView(btn(raz ? "● transformacao ativa" : "○ transformacao ativa", raz, new View.OnClickListener() { public void onClick(View v) {
+-            final boolean now = (sprite().flags & 0x80) != 0;
+-            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) {
+-                bit(n, 0x80, !now);
+-                if (!now) { n.rot = 0; n.alphaRaw = 0; n.xZoom = 100; n.yZoom = 100; }
+-            } });
+-        } }));
+-        if (!raz) { note("Ligue a transformacao para usar rotacao, alpha e zoom neste frame."); return; }
+-        head("ZOOM");
+-        LinearLayout u = line();
+-        u.addView(btn(unirZoom ? "☑ unir zoom" : "☐ unir zoom", unirZoom, new View.OnClickListener() { public void onClick(View v) {
+-            unirZoom = !unirZoom;
+-            show(type, idx, flag, occ);
+-        } }));
+-        u.addView(btn("zoom 100%", false, new View.OnClickListener() { public void onClick(View v) {
+-            edit(new Mut() { public void apply(Ano.Mpt n) { n.xZoom = 100; n.yZoom = 100; } });
+-            show(type, idx, flag, occ);
+-        } }));
+-        num(line(), "zoom x", m.xZoom, 1, new Setter() { public void set(final double v) {
+-            final int ox = sprite().xZoom, oy = sprite().yZoom;
+-            edit(new Mut() { public void apply(Ano.Mpt n) {
+-                n.xZoom = (int) v;
+-                if (unirZoom && ox != 0) n.yZoom = (int) Math.round(oy * v / ox);
+-            } });
+-            if (unirZoom) show(type, idx, flag, occ);
+-        } });
+-        num(line(), "zoom y", m.yZoom, 1, new Setter() { public void set(final double v) {
+-            final int ox = sprite().xZoom, oy = sprite().yZoom;
+-            edit(new Mut() { public void apply(Ano.Mpt n) {
+-                n.yZoom = (int) v;
+-                if (unirZoom && oy != 0) n.xZoom = (int) Math.round(ox * v / oy);
+-            } });
+-            if (unirZoom) show(type, idx, flag, occ);
+-        } });
+-        note("Unir zoom: mudar um eixo muda o outro na mesma proporcao (a sprite cresce sem deformar). 100 = tamanho normal.");
+-        head("ALPHA");
+-        num(line(), "alpha", m.alphaRaw, 1, new Setter() { public void set(final double v) {
+-            edit(new Mut() { public void apply(Ano.Mpt n) { n.alphaRaw = (int) v; } }); } });
+-        note("0 = opaco; 256 = aditivo; 512 = outro modo; +n = n/255 mais transparente");
+-        head("ROTACAO");
+-        num(line(), "graus", m.rot, 1, new Setter() { public void set(final double v) {
+-            edit(new Mut() { public void apply(Ano.Mpt n) { n.rot = (int) v; } }); } });
+-    }
+ 
+     private TextView styleChip(String label, final int bitMask, Ano.Mpt m) {
+         final boolean on = ObjModel.spriteBit(m, bitMask);
+@@ -903,30 +1102,6 @@
+         } });
+     }
+ 
+-    private void secSom() {
+-        Ano.Mpt m = sprite();
+-        boolean on = (m.flags & 8) != 0;
+-        if (!on) {
+-            note("Este sprite nao toca som.");
+-            line().addView(btn("ESCOLHER SOM", true, new View.OnClickListener() { public void onClick(View v) { pickSound(-1); } }));
+-            final int[] id = {1};
+-            num(line(), "som", 1, 1, new Setter() { public void set(double v) { id[0] = (int) v; } });
+-            line().addView(btn("+ ADICIONAR SOM", false, new View.OnClickListener() { public void onClick(View v) {
+-                editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, true); n.se = Math.max(-128, Math.min(127, id[0])); } });
+-            } }));
+-            return;
+-        }
+-        line().addView(btn("ESCOLHER SOM", true, new View.OnClickListener() { public void onClick(View v) { pickSound(sprite().se); } }));
+-        num(line(), "som", m.se, 1, new Setter() { public void set(final double v) {
+-            edit(new Mut() { public void apply(Ano.Mpt n) { n.se = Math.max(-128, Math.min(127, (int) v)); } });
+-            view.previewSe(sprite().se);
+-        } });
+-        LinearLayout l = line();
+-        l.addView(btn("▶ ouvir", false, new View.OnClickListener() { public void onClick(View v) { view.previewSe(sprite().se); } }));
+-        l.addView(btn("✕ remover som", false, new View.OnClickListener() { public void onClick(View v) {
+-            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, false); n.se = -1; } }); } }));
+-        note("O som toca uma vez, quando o sprite comeca. De 1 a 79 sao sons comuns do jogo; de 80 em diante, os do personagem.");
+-    }
+ 
+ 
+     private void setOpt(int field, int value) {
+@@ -1144,8 +1319,8 @@
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
          TextView info = new TextView(c);
@@ -3345,7 +5130,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setTextColor(LayoutManager.DIM);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
          col.addView(info);
-@@ -1483,7 +1483,7 @@
+@@ -1483,7 +1658,7 @@
      private void projSeqBlock(final CharData.Move mv) {
          head("Sequência do projétil (SEQ_PROJETIL)");
          note("SEQ_PROJETIL: " + anoText(mv.animAoAcertar));
@@ -3354,7 +5139,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          LinearLayout r = line();
          final boolean any = mv.animAoAcertar != 0;
          r.addView(btn(any ? "✎ Editar SEQ_PROJETIL" : "+ SEQ_PROJETIL", true, new View.OnClickListener() { public void onClick(View v) { projSeqDialog(mv); } }));
-@@ -1497,7 +1497,7 @@
+@@ -1497,7 +1672,7 @@
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
          TextView info = new TextView(c);
@@ -3363,7 +5148,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setTextColor(LayoutManager.DIM);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
          col.addView(info);
-@@ -1716,20 +1716,20 @@
+@@ -1716,20 +1891,20 @@
      private String describe(int f) {
          switch (f) {
              case 3: case 4: case 5: return "Faz o fundo tremer enquanto o objeto existe. Escolha a intensidade.";
@@ -3388,7 +5173,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              case ObjModel.VF_WALL: return "Impacto na parede: toca o som 6, zera o cancelamento do oponente e cria a poeira de impacto na borda da tela. Precisa ter um ataque que jogue o oponente na parede (o jogo ignora o frame se o personagem nao estiver batendo na parede). Disponivel so nas ANOs de reacao do gamedata com velocidade/aceleracao X.";
              default:
                  if (ObjModel.isDust(f)) return "Poeira / fumaca: cria um efeito de fumaca na posicao do personagem (vira para o lado em que ele olha). Escolha o tipo abaixo (1 a 15). Tipos 1-5: pacote bobj ANOs 10-14; 6-7: effect ANOs 78-79; 8-15: effect ANOs 70-77. Cada frame com a flag cria um novo efeito.";
-@@ -1780,6 +1780,8 @@
+@@ -1780,6 +1955,8 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -3397,7 +5182,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
-@@ -1848,10 +1850,10 @@
+@@ -1848,10 +2025,10 @@
          title.setTextColor(TimelineView.markColor(m));
          title.setText(m.title() + "  ·  frame " + (m.pat + 1) + (kind == SeqMark.LAND || kind == SeqMark.FALL ? "" : (m.air ? "  ·  no ar" : "  ·  no chao")) + (m.projectile ? "  ·  projetil" : ""));
          switch (kind) {
@@ -3412,7 +5197,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +1920,7 @@
+@@ -1918,7 +2095,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -4119,6 +5904,118 @@ diff -ruN a/test/FidelityTest.java b/test/FidelityTest.java
 +        }
 +
 +        System.out.println("FidelityTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/FrameToolsTest.java b/test/FrameToolsTest.java
+--- a/test/FrameToolsTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/FrameToolsTest.java	2026-10-22 09:51:33.449229071 +0000
+@@ -0,0 +1,108 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** FrameTools: velocidade recebida/total, tempo 0, manter velocidade, mover trecho, ids de som. */
++public class FrameToolsTest {
++    static final int P = 65536;
++
++    static Ano.Mpt f(int time) {
++        Ano.Mpt m = new Ano.Mpt();
++        m.image = 1;
++        if (time > 0) { m.flags |= 0x20; m.time = time; }
++        m.normalize();
++        return m;
++    }
++
++    static Ano.Mpt speed(Ano.Mpt m, double sx, double sy, double ax, double ay) {
++        Ano.Mpt c = m.copy();
++        if (sx != 0) c = FrameTools.setSpeed(c, 0, sx, true);
++        if (sy != 0) c = FrameTools.setSpeed(c, 1, sy, true);
++        if (ax != 0) c = FrameTools.setAccel(c, 0, ax);
++        if (ay != 0) c = FrameTools.setAccel(c, 1, ay);
++        return c;
++    }
++
++    static Ano.Mpt keep(Ano.Mpt m) {
++        Ano.Mpt c = m.copy();
++        c.flags |= 2;
++        c.wActFlag |= 64;
++        c.normalize();
++        return c;
++    }
++
++    static String s(double[] v) { return FrameTools.px(v[0]) + "/" + FrameTools.px(v[1]); }
++
++    public static void main(String[] args) throws Exception {
++        // frame 0: speed x=10, accel x=-1 por 4 ticks; frame 1 mantem; frame 2 mantem com speed proprio (substitui); frame 3 mantem sem nada
++        Ano.Mpt[] m = {speed(f(4), 10, 0, -1, 0), keep(f(3)), keep(speed(f(2), 7, 0, 0, 0)), keep(f(5)), f(5)};
++        check("inicio do frame 0", s(FrameTools.startSpeed(m, 0)), "10/0");
++        check("fim do frame 0 = speed + accel*ticks (conta como SPEED)", s(FrameTools.endSpeed(m, 0)), "6/0");
++        check("frame 1 recebe 6 (accel nao e herdada)", s(FrameTools.received(m, 1)) + ":" + FrameTools.keeps(m, 1), "6/0:true");
++        check("frame 1 sem accel proprio: fim = 6", s(FrameTools.endSpeed(m, 1)), "6/0");
++        check("frame 2 com speed proprio substitui a recebida", s(FrameTools.startSpeed(m, 2)) + " recebida " + s(FrameTools.received(m, 2)), "7/0 recebida 6/0");
++        check("frame 3 recebe 7", s(FrameTools.received(m, 3)), "7/0");
++        check("frame 4 sem 64 nao recebe", s(FrameTools.received(m, 4)) + ":" + FrameTools.keeps(m, 4), "0/0:false");
++        // total: f0: 10+9+8+7=34, f1: 6*3=18, f2: 7*2=14, f3: 7*5=35
++        double[] tot = FrameTools.totalPixels(m, 0, 3);
++        check("total de pixels e ticks", FrameTools.px(tot[0]) + ":" + (int) tot[2], "101:14");
++        check("total de um frame so", FrameTools.px(FrameTools.totalPixels(m, 0, 0)[0]), "34");
++        check("frame sem tempo nao anda", FrameTools.px(FrameTools.totalPixels(new Ano.Mpt[]{speed(f(0), 5, 0, 0, 0)}, 0, 0)[0]), "0");
++
++        // aceleracao so aparece com speed normal (ou accel existente)
++        check("accel oculta sem speed", FrameTools.showAccel(f(3)) + ":" + FrameTools.showAccel(keep(f(3))), "false:false");
++        check("accel aparece com speed proprio", FrameTools.showAccel(speed(f(3), 2, 0, 0, 0)), true);
++        check("accel aparece se ja existe", FrameTools.showAccel(speed(f(3), 0, 0, 0.5, 0)), true);
++        check("speed 0 explicito nao conta", FrameTools.showAccel(FrameTools.setSpeed(f(3), 0, 0, true)), false);
++
++        // setSpeed / apagar
++        Ano.Mpt a = FrameTools.setSpeed(f(3), 1, -2.5, true);
++        check("setSpeed y", a.speedY + ":" + a.moveMask + ":" + ((a.flags & 4) != 0), (int) (-2.5 * P) + ":2:true");
++        Ano.Mpt b = FrameTools.setSpeed(a, 1, 0, false);
++        check("apagar o unico campo desliga o MOVE", ((b.flags & 4) != 0) + ":" + b.moveMask, "false:0");
++
++        // tempo 0 = sem TIME
++        Ano.Mpt t0 = FrameTools.setTime(f(7), 0);
++        check("tempo 0 apaga o TIME", ((t0.flags & 0x20) != 0) + ":" + t0.hasTime + ":" + t0.time, "false:false:0");
++        Ano.Mpt t1 = FrameTools.setTime(t0, 300);
++        check("tempo liga e limita a 255", ((t1.flags & 0x20) != 0) + ":" + t1.time, "true:255");
++        check("segundos", FrameTools.seconds(18) + FrameTools.seconds(0), "0.3s0.0s");
++
++        // manter velocidade no proximo frame
++        Ano.Mpt[] k = {speed(f(4), 3, 0, 0, 0), f(4), f(4)};
++        Ano.Mpt[] k2 = FrameTools.setKeepNext(k, 0, true);
++        check("ligar mantem no frame 1", FrameTools.keeps(k2, 1) + ":" + FrameTools.keeps(k2, 2) + ":" + FrameTools.keepsNext(k2, 0), "true:false:true");
++        Ano.Mpt[] k3 = FrameTools.setKeepNext(k2, 1, true);
++        check("estender o trecho ate o frame 2", FrameTools.keeps(k3, 2), true);
++        Ano.Mpt[] k4 = FrameTools.setKeepNext(k3, 0, false);
++        check("desligar corta o trecho (frames 1 e 2 perdem o 64)", FrameTools.keeps(k4, 1) + ":" + FrameTools.keeps(k4, 2), "false:false");
++        check("ultimo frame nao tem seguinte", FrameTools.setKeepNext(k, 2, true), null);
++        Ano.Mpt[] rm = FrameTools.removeReceived(k3, 1);
++        check("Remover recebida: frame 1 e 2 sem 64", FrameTools.keeps(rm, 1) + ":" + FrameTools.keeps(rm, 2) + ":" + FrameTools.keeps(rm, 0), "false:false:false");
++        check("remover onde nao recebe", FrameTools.removeReceived(k, 1), null);
++
++        // acrescimo sobre a recebida: grava absoluto
++        Ano.Mpt[] r = FrameTools.setKeepNext(new Ano.Mpt[]{speed(f(4), 3, 0, 0, 0), f(4)}, 0, true);
++        double rec = FrameTools.received(r, 1)[0];
++        r[1] = FrameTools.setSpeed(r[1], 0, rec + 2, true);
++        check("acrescimo +2 sobre 3 = 5 no frame 1", s(FrameTools.startSpeed(r, 1)) + ":" + (FrameTools.moveRunHeadOk(r, 1)), "5/0:true");
++
++        // mover o inicio do trecho
++        Ano.Mpt[] mv = {speed(f(4), 3, 0, 0, 0), keep(f(4)), f(4), f(4), f(4)};
++        Ano.Mpt[] mo = FrameTools.moveRunTo(mv, 0, 2);
++        check("trecho vai do frame 0 para o 2 (2 frames)", FrameTools.ownSpeed(mo[0]) + ":" + FrameTools.keeps(mo, 1) + ":" + FrameTools.ownSpeed(mo[2]) + ":" + FrameTools.keeps(mo, 3), "false:false:true:true");
++        check("nao cabe: devolve null so quando bate em outra velocidade", FrameTools.moveRunTo(new Ano.Mpt[]{speed(f(4), 3, 0, 0, 0), keep(f(4)), f(4), speed(f(4), 1, 0, 0, 0)}, 0, 2), null);
++
++        // ids de som: 0 -> se_max -> 80 -> 80 + wav - 1
++        check("0 sobe para 1", FrameTools.stepSound(0, 1, 30, 5), 1);
++        check("se_max pula para 80", FrameTools.stepSound(30, 1, 30, 5), 80);
++        check("80 desce para se_max", FrameTools.stepSound(80, -1, 30, 5), 30);
++        check("ultimo wav fica", FrameTools.stepSound(84, 1, 30, 5), 84);
++        check("0 fica no 0 descendo", FrameTools.stepSound(0, -1, 30, 5), 0);
++        check("id invalido (50) sobe para 80 e desce para 30", FrameTools.stepSound(50, 1, 30, 5) + ":" + FrameTools.stepSound(50, -1, 30, 5), "80:30");
++        check("sem wavs: para no se_max", FrameTools.stepSound(30, 1, 30, 0), 30);
++        check("quantidade de ids", FrameTools.soundIds(30, 5).size(), 36);
++
++        System.out.println("FrameToolsTest fails=" + BattleTest.fails);
 +    }
 +}
 diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
