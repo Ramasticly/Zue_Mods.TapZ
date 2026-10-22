@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 595 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 613 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -70,6 +70,17 @@ Quando um hit de projétil (flag 0) existe mas **nada nasce**, uma faixa âmbar 
 ### 3.1c Projétil que nunca saiu: agora o aviso explica
 Quando o hit de projétil está num ANO de SEQ/END/AO_ACERTAR/pouso e a execução não chegou lá, o aviso diz o motivo: golpe errou (botão POS), TRANSIÇÃO TRAVADA, ou oponente derrotado (flags 39/40 encerram o ANO, como no jogo, jogo:976-990).
 
+### 3.1d Hierarquia de links e animações de flag (conferida contra o `TCBManajer` novo)
+- Jogo: `_SetAct` (arquivo novo, linhas 32053-32208) cria os links **só da raiz** e pula a tabela de links do próprio link, então **link de link nunca nasce**; `_ActReq` (31486) avança a raiz e os links dela. Hitboxes, flags de hit, OPT (poeira, 2048...) e SE por flag de um link não valem (o jogo só lê a raiz). Toda animação disparada por flag (efeito de hit, poeira, projétil, aura, cutscene, agarrão, sombra) é uma raiz criada com `_SetAct` + `_ActReq`: **mostra os próprios links (1 nível)**.
+- App: já era igual (`AttackSim.reset` só cria `ra.links`; `BattleSim.collect` desenha raiz + links de todos os tipos; flags 0/20/39/40 só lidas da raiz). Travado por `LinkHierarchyTest` (link de link não nasce; flag 0 e 39 dentro de link não valem; projétil e efeito de hit mostram o link e não o link do link).
+- **Avisos:** o aviso de tela "é link e tem links/caixas" saiu; agora a **lista de avisos** traz uma linha: "Os ANOs N, N e N têm links que têm outros links ou animações/efeitos; esses não aparecem (o jogo só lê a raiz): o link mostra apenas as sprites do link." (conta links do link, flags que criam animação — projétil, tremor, poeira, cutscene, zoom, teleporte, charf/auras — e poeira do OPT).
+- **LINKS:** abrindo com a prévia num ANO que tem links, a lista rola sozinha para o primeiro link (card destacado) e a seta **▶ PRÓXIMO LINK (n/N)** passa para os seguintes.
+- Limitação: o `TCBManajer` novo é uma versão modificada (`ExtrasReader`, OPT 225 = vídeos/texturas animadas); essa classe não veio, então o app não simula nem confere esse recurso.
+
+### 3.1e Barra de título e avisos completos
+- Nova barra no topo: "Attack Editor by **Zue Mods**" (Zue Mods em azul; toque abre `https://www.youtube.com/@zuemods/videos` no app do YouTube, ou no navegador se não houver) e o botão **AJUDA** à direita. A AJUDA saiu do menu movível (ordens salvas com ela são ignoradas).
+- Avisos expandidos mostram **todos** os itens, um por linha, em vez de "+N": o aviso sobre a prévia (`QuickNotice.full`) e a linha de aviso acima da prévia (agora recebe a lista inteira; antes só o primeiro). Recolhidos continuam com o resumo "(+N)".
+
 ### 3.2 Menu superior reordenável
 - **Segure** um botão do menu superior e **arraste** para frente ou para trás; a barra rola sozinha perto das bordas e o botão de origem fica translúcido durante o arraste. Soltar em cima de outro botão põe o arrastado naquela posição; soltar nas frestas/depois do último vai para o botão mais próximo.
 - O **primeiro botão** fica fixo fora da rolagem (por padrão, SALVAR). **Soltar qualquer botão no slot fixo troca o botão fixo.**
@@ -77,7 +88,7 @@ Quando o hit de projétil está num ANO de SEQ/END/AO_ACERTAR/pouso e a execuç�
 - Código: `ToolbarOrder` (Java puro, testado), `ReorderBar` (Android, arrastar/soltar), `LayoutManager` (monta os botões).
 
 ### 3.3 Menu AJUDA
-Novo botão **AJUDA** (fim do menu, movível): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada).
+Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada).
 
 ### 3.4 Textos corrigidos
 
@@ -109,9 +120,10 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | GroupsTest | 4 |
 | **CutsceneTest (novo)** | 65 |
 | **FidelityTest (novo)** | 26 |
-| **GameRulesTest (novo)** | 20 |
+| **GameRulesTest (novo)** | 31 |
 | **SpawnDiagTest (novo)** | 50 |
-| **ToolbarTest (novo)** | 55 |
+| **LinkHierarchyTest (novo)** | 8 |
+| **ToolbarTest (novo)** | 54 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
@@ -131,4 +143,4 @@ Parser do DAC, `_ActReqMain`/`_Hokan` (exceto o quirk acima), desenho (flip/zoom
 ## 8. Arquivos
 
 Alterados: `Ano`, `AttackData`, `AttackRenderer`, `AttackSim`, `AttackView`, `BattleSim`, `CharData`, `LayoutManager`, `LinkScreen`, `MainActivity`, `ObjModel`, `Saver`, `TimelineTools`, `test/BattleTest`.
-Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`.
+Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `test/LinkHierarchyTest`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`.

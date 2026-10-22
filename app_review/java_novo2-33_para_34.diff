@@ -176,7 +176,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-22 07:55:53.652162568 +0000
++++ b/AttackView.java	2026-10-22 08:41:02.295703542 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -205,7 +205,7 @@ diff -ruN a/AttackView.java b/AttackView.java
                          anoEnd = fend;
                          loops = sim.loops();
                          stopSounds();
-@@ -304,6 +308,27 @@
+@@ -304,6 +308,31 @@
  
      private boolean noticeVisible() { return notice != null && SystemClock.uptimeMillis() < noticeUntil; }
  
@@ -224,7 +224,11 @@ diff -ruN a/AttackView.java b/AttackView.java
 +        boolean showSpawn = !fatal && spawn.length() > 0;
 +        final String msg = showSpawn ? spawn : GameRules.summary(iss);
 +        if (msg.isEmpty() || msg.equals(rulesDismissed)) return;
-+        QuickNotice n = new QuickNotice(msg).duration(showSpawn ? 9000 : 7000).left("OCULTAR", new Runnable() { public void run() { rulesDismissed = msg; } });
++        StringBuilder all = new StringBuilder();
++        if (spawn.length() > 0) all.append(spawn);
++        String det = GameRules.details(iss);
++        if (det.length() > 0) all.append(all.length() > 0 ? "\n" : "").append(det);
++        QuickNotice n = new QuickNotice(msg).full(all.toString()).duration(showSpawn ? 9000 : 7000).left("OCULTAR", new Runnable() { public void run() { rulesDismissed = msg; } });
 +        if (showSpawn && sim.spawnProblemByHeight()) n.right("POS", new Runnable() { public void run() { if (posRequest != null) posRequest.run(); } });
 +        if (!fatal) n.colors(QuickNotice.AMBER, QuickNotice.AMBER_BTN);
 +        showNotice(n);
@@ -233,7 +237,39 @@ diff -ruN a/AttackView.java b/AttackView.java
      // aviso de pouso
  
      private static final String LAND_MSG = "Animação/golpe acabou antes por causa do pouso. Experimente mudar a posição do personagem para ver o movimento completo.";
-@@ -1127,7 +1152,7 @@
+@@ -352,18 +381,21 @@
+         warnText.setTextAlign(Paint.Align.LEFT);
+         float maxW = (noticeExpanded ? w - 2 * margin : w * 0.8f) - 2 * pad - xs;
+         java.util.ArrayList<String> lines = new java.util.ArrayList<String>();
+-        String rest = n.text;
+         float widest = 0;
+-        while (rest.length() > 0) {
+-            int k = warnText.breakText(rest, true, maxW, null);
+-            if (k < rest.length()) {
+-                int sp = rest.lastIndexOf(' ', k);
+-                if (sp > 0) k = sp;
++        for (String para : n.shown(noticeExpanded).split("\n")) {
++            String rest = para.trim();
++            if (rest.isEmpty()) continue;
++            while (rest.length() > 0) {
++                int k = warnText.breakText(rest, true, maxW, null);
++                if (k < rest.length()) {
++                    int sp = rest.lastIndexOf(' ', k);
++                    if (sp > 0) k = sp;
++                }
++                String ln = rest.substring(0, k).trim();
++                lines.add(ln);
++                widest = Math.max(widest, warnText.measureText(ln));
++                rest = rest.substring(k).trim();
+             }
+-            String ln = rest.substring(0, k).trim();
+-            lines.add(ln);
+-            widest = Math.max(widest, warnText.measureText(ln));
+-            rest = rest.substring(k).trim();
+         }
+         float lh = warnText.getFontSpacing();
+         float btnH = lh + pad, gap = 6f * density;
+@@ -1127,7 +1159,7 @@
  
      public interface MoveEdit { void apply(CharData.Move m); }
  
@@ -242,7 +278,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void editMove(MoveEdit e) {
          if (data == null || data.move == null) return;
          final CharData.Move mv = data.move;
-@@ -1349,6 +1374,7 @@
+@@ -1349,6 +1381,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -2117,8 +2153,8 @@ diff -ruN a/DacText.java b/DacText.java
  }
 diff -ruN a/GameRules.java b/GameRules.java
 --- a/GameRules.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/GameRules.java	2026-10-21 21:59:21.531108998 +0000
-@@ -0,0 +1,101 @@
++++ b/GameRules.java	2026-10-22 08:40:32.981997767 +0000
+@@ -0,0 +1,149 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2178,9 +2214,6 @@ diff -ruN a/GameRules.java b/GameRules.java
 +            out.add(new Issue(ix, -1, true, a.mpts.length + " frames: o DAC guarda a quantidade em 1 byte (maximo " + MAX_MPTS + ")"));
 +        if (a.links.length > MAX_LINKS)
 +            out.add(new Issue(ix, -1, true, a.links.length + " links: o jogo so tem " + MAX_LINKS + " (lnk[13]) e fecha ao criar o excedente"));
-+        if (isLink[ix] && a.links.length > 0)
-+            out.add(new Issue(ix, -1, false, "e link de outra ANO e tem links proprios: o jogo so tem 1 nivel de links (os links desta ANO nao nascem)"));
-+        boolean linkHits = false;
 +        for (int p = 0; p < a.mpts.length; p++) {
 +            Ano.Mpt m = a.mpts[p];
 +            if (m.hits.length > MAX_HITS)
@@ -2191,7 +2224,6 @@ diff -ruN a/GameRules.java b/GameRules.java
 +                out.add(new Issue(ix, p, false, "imagem " + m.image + " nao existe no CNV (" + cnvEntries + " entradas): o frame fica sem desenho"));
 +            if (m.hasOpt && m.optData[1] > MAX_OPT1 && hasHitbox(m))
 +                out.add(new Issue(ix, p, true, "OPT 1 = " + m.optData[1] + " com hitbox: o grupo " + (m.optData[1] / 50) + " nao existe (maximo " + MAX_OPT1 + ")"));
-+            if (m.hits.length > 0) linkHits |= isLink[ix];
 +            if (m.hasOpt && m.optData[2] != 0 && m.time > 0) {
 +                // _Hokan: o "proximo" do ultimo frame e o frame 0. So le lixo quando o frame seguinte tem caixas E rotacao/alfa/zoom (campo 128),
 +                // porque o laco que pula as caixas usa o iHitNum do frame ATUAL; o OPT (64) so avanca o ponteiro, sem ler nada.
@@ -2201,13 +2233,65 @@ diff -ruN a/GameRules.java b/GameRules.java
 +                            + "; a rotacao/alfa/zoom do alvo saem errados"));
 +            }
 +        }
-+        if (linkHits)
-+            out.add(new Issue(ix, -1, false, "e link de outra ANO e tem caixas (hit/hurt/flags): so as da ANO raiz valem, as do link sao ignoradas"));
++    }
++
++    /** Flag de hitbox que cria animacao/efeito: projetil (0), tremor (3-5), poeira (10-17), cutscene (20), zoom (30/31), teleporte (39/40), charf/auras (41-125). */
++    private static boolean spawnsAnimation(int f) {
++        return f == 0 || (f >= 3 && f <= 5) || (f >= 10 && f <= 17) || f == 20 || f == 30 || f == 31 || f == 39 || f == 40 || (f >= 41 && f <= 125);
++    }
++
++    /** O ANO, usado como link, tem links proprios ou algo que cria animacao/efeito (hit flags, poeira do OPT)? O jogo so le isso na raiz. */
++    private static boolean hasIgnoredExtras(Ano c) {
++        if (c.links.length > 0) return true;
++        for (int p = 0; p < c.mpts.length; p++) {
++            Ano.Mpt m = c.mpts[p];
++            if (m.hasOpt && (m.optFlag & 0xF000) != 0) return true;
++            for (int h = 0; h < m.hits.length; h++) if (spawnsAnimation(m.hits[h].flag)) return true;
++        }
++        return false;
++    }
++
++    /** ANOs (de {@code anos}; null = todos) que tem algum link com links proprios ou animacoes/efeitos: no jogo esses nao aparecem. */
++    static List<Integer> nestedLinkParents(Dac dac, java.util.Collection<Integer> anos) {
++        List<Integer> out = new ArrayList<Integer>();
++        if (dac == null) return out;
++        java.util.TreeSet<Integer> ids = new java.util.TreeSet<Integer>();
++        if (anos == null) for (int i = 0; i < dac.size(); i++) ids.add(Integer.valueOf(i)); else ids.addAll(anos);
++        for (Integer id : ids) {
++            Ano a = id.intValue() >= 0 && id.intValue() < dac.size() ? dac.getAno(id.intValue()) : null;
++            if (a == null || !a.present) continue;
++            for (int k = 0; k < a.links.length; k++) {
++                Ano c = dac.getAno(a.links[k].getAno());
++                if (c != null && c.present && c != a && hasIgnoredExtras(c)) { out.add(id); break; }
++            }
++        }
++        return out;
++    }
++
++    /** Linha para a lista de avisos; "" se nao ha o que avisar. */
++    static String nestedLinksNote(Dac dac, java.util.Collection<Integer> anos) {
++        List<Integer> p = nestedLinkParents(dac, anos);
++        if (p.isEmpty()) return "";
++        StringBuilder b = new StringBuilder(p.size() == 1 ? "O ANO " : "Os ANOs ");
++        for (int i = 0; i < p.size(); i++) {
++            if (i > 0) b.append(i == p.size() - 1 ? " e " : ", ");
++            b.append(p.get(i));
++        }
++        return b.append(p.size() == 1 ? " tem" : " t\u00eam").append(" links que t\u00eam outros links ou anima\u00e7\u00f5es/efeitos; esses n\u00e3o aparecem (o jogo s\u00f3 l\u00ea a raiz): o link mostra apenas as sprites do link.").toString();
 +    }
 +
 +    private static boolean hasHitbox(Ano.Mpt m) {
 +        for (int i = 0; i < m.hits.length; i++) if (m.hits[i].flag == 2) return true;
 +        return false;
++    }
++
++    /** Todas as linhas (fatais primeiro), uma por problema: o aviso expandido mostra isto em vez do "+N" do resumo. */
++    static String details(List<Issue> issues) {
++        if (issues == null || issues.isEmpty()) return "";
++        StringBuilder b = new StringBuilder();
++        for (int pass = 0; pass < 2; pass++)
++            for (Issue i : issues) if (i.fatal == (pass == 0)) b.append(b.length() > 0 ? "\n" : "").append(i.fatal ? "O JOGO FECHA/ERRA: " : "Aviso do jogo: ").append(i);
++        return b.toString();
 +    }
 +
 +    /** Uma linha para a barra de avisos; "" se tudo certo. */
@@ -2324,8 +2408,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-21 22:30:46.827112994 +0000
-@@ -0,0 +1,129 @@
++++ b/HelpText.java	2026-10-22 08:42:37.599733351 +0000
+@@ -0,0 +1,130 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2374,7 +2458,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "Serve para adicionar, substituir e remover sprites, mudar o recorte e o índice, e para escolher qual sprite entra num frame do golpe."));
 +        s.add(new Section(ToolbarOrder.LINKS, "LINKS",
 +                "Mostra e edita os links do ANO atual: objetos filhos (efeitos, partes do corpo, auras) que o jogo cria junto com a animação e que seguem o pai. "
-+                + "O jogo aceita no máximo 13 por ANO e só 1 nível (link de link não nasce). Use para montar efeitos que acompanham o golpe."));
++                + "O jogo aceita no máximo 13 por ANO e só 1 nível: link de link não nasce, e hitboxes/flags/animações dentro de um link não valem (o link mostra só as sprites dele). Animações disparadas por flag (efeito de hit, projétil, aura, cutscene) são raízes e mostram os próprios links. Ao abrir com a prévia num ANO que tem links, a lista rola para o primeiro e a seta ▶ vai para o próximo."));
 +        s.add(new Section(ToolbarOrder.MOVE, "GOLPE SET",
 +                "Opções do golpe (ATK_FLAGS do HDAT 4): agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, "
 +                + "lançar 3 projéteis (usa ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente e atravessar o oponente. "
@@ -2407,14 +2491,15 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        s.add(new Section(ToolbarOrder.SCREEN, "TELA",
 +                "Opções do que aparece na preview: grade, sons, cenas (cutscenes da flag 20), travar (modo cinemático do jogo), box amarela de todos os sprites e FR-PREVIEW SET. "
 +                + "Desligar cenas ou sons ajuda a editar sem distração; o jogo sempre os executa."));
-+        s.add(new Section(ToolbarOrder.HELP, "AJUDA",
-+                "Abre este menu de ajuda: descreve cada botão do menu superior e do resto da tela e tem o botão RESTAURAR ORDEM, que devolve os botões do menu à ordem padrão."));
 +        return s;
 +    }
 +
 +    /** Resto da tela (nao e botao do menu superior). */
 +    static List<Section> screen() {
 +        List<Section> s = new ArrayList<Section>();
++        s.add(new Section(null, "Barra de título",
++                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube) e o botão AJUDA, à direita, que abre este texto e tem o botão RESTAURAR ORDEM "
++                + "para devolver os botões do menu superior à ordem padrão."));
 +        s.add(new Section(null, "MODO: GOLPES / ANO",
 +                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, "
 +                + "sem o golpe em volta. Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO."));
@@ -2457,12 +2542,47 @@ diff -ruN a/HelpText.java b/HelpText.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-21 22:30:12.610404879 +0000
-@@ -295,24 +295,39 @@
-         final TextView bSave = button(a, "SALVAR", false);
++++ b/LayoutManager.java	2026-10-22 08:41:21.680302434 +0000
+@@ -3,6 +3,8 @@
+ import android.app.Activity;
+ import java.io.File;
+ import android.content.Context;
++import android.content.Intent;
++import android.net.Uri;
+ import android.graphics.Color;
+ import android.graphics.Typeface;
+ import android.graphics.drawable.GradientDrawable;
+@@ -262,6 +264,27 @@
+         r.setPadding(pad, pad, pad, pad);
+         applyInsets(r, pad);
+ 
++        // ---- barra de titulo: nome do app (Zue Mods abre o canal) e AJUDA a direita
++        LinearLayout titleBar = row(a);
++        TextView tName = text(a, "Attack Editor by ", 14, TEXT);
++        tName.setTypeface(Typeface.DEFAULT_BOLD);
++        TextView tZue = text(a, "Zue Mods", 14, 0xFF4C8DFF);
++        tZue.setTypeface(Typeface.DEFAULT_BOLD);
++        tZue.setPadding(0, dp(8), dp(8), dp(8));
++        tZue.setClickable(true);
++        tZue.setOnClickListener(new View.OnClickListener() {
++            @Override public void onClick(View v) { openLink(a, "https://www.youtube.com/@zuemods/videos"); }
++        });
++        titleBar.addView(tName);
++        titleBar.addView(tZue);
++        View titleGap = new View(a);
++        titleBar.addView(titleGap, new LinearLayout.LayoutParams(0, 1, 1f));
++        final TextView bHelp = button(a, "AJUDA", false);
++        bHelp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++        bHelp.setPadding(dp(14), dp(7), dp(14), dp(7));
++        titleBar.addView(bHelp, lp(-2, -2, 0, 0, 0, 0));
++        r.addView(titleBar, lp(-1, -2, 0, 0, 0, 4));
++
+         // ---- topo: estado, titulo do golpe, aviso e espaco reservado para opcoes futuras
+         backBar = button(a, "", true);
+         backBar.setVisibility(View.GONE);
+@@ -296,23 +319,36 @@
          final TextView bSpr = button(a, "SPRITES", false);
          final TextView bLinks = button(a, "LINKS", false);
-+        final TextView bHelp = button(a, "AJUDA", false);
          lockBtnRef = bLock;
 -        TextView[] tbBtns = {bChar, bSpr, bLinks, bOpt, bHit, bTime, bCtr, bLand, bLock, bFlip, bHide, bGhost, bScr};
 +        // ordem editavel: segurar e arrastar. O 1o botao fica no slot fixo (fora da rolagem); soltar qualquer botao nele troca o fixo.
@@ -2481,7 +2601,6 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +        tbMap.put(ToolbarOrder.HIDE, bHide);
 +        tbMap.put(ToolbarOrder.GHOST, bGhost);
 +        tbMap.put(ToolbarOrder.SCREEN, bScr);
-+        tbMap.put(ToolbarOrder.HELP, bHelp);
          android.widget.HorizontalScrollView tbs = new android.widget.HorizontalScrollView(a);
          tbs.setHorizontalScrollBarEnabled(false);
          LinearLayout trow = row(a);
@@ -2508,7 +2627,16 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          LinearLayout mrow = row(a);
          final TextView modeBtn = button(a, "MODO: GOLPES", false);
          modeBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-@@ -596,6 +611,8 @@
+@@ -338,7 +374,7 @@
+         wr.setClickable(true);
+         wr.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
+             warnExpanded = !warnExpanded;
+-            setWarning(warnMsg);
++            showWarning();
+         } });
+         r.addView(wr, lp(-1, -2, 0, 0, 0, 4));
+ 
+@@ -596,6 +632,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -2517,12 +2645,30 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -884,6 +901,38 @@
+@@ -884,6 +922,56 @@
      }
  
      /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
 +    /** Linha do menu superior com a ordem editavel (ReorderBar). */
 +    private ReorderBar toolbar;
++
++    /** Abre o link no app do YouTube; sem ele, no navegador. */
++    private static void openLink(Activity a, String url) {
++        try {
++            Intent i = new Intent(Intent.ACTION_VIEW);
++            i.setPackage("com.google.android.youtube");
++            i.setData(Uri.parse(url));
++            a.startActivity(i);
++        } catch (Exception e) {
++            try {
++                Intent i2 = new Intent(Intent.ACTION_VIEW);
++                i2.setData(Uri.parse(url));
++                a.startActivity(i2);
++            } catch (Exception e2) {
++                android.widget.Toast.makeText(a, "Nao foi possivel abrir o link", android.widget.Toast.LENGTH_SHORT).show();
++            }
++        }
++    }
 +
 +    /** AJUDA: o que cada botao do menu e da tela faz. */
 +    private void showHelp(final Activity a) {
@@ -2556,7 +2702,67 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -1235,7 +1284,7 @@
+@@ -1045,22 +1133,49 @@
+     private String warnMsg = "";
+     private boolean warnExpanded;
+ 
++    private java.util.List<String> warnList = new java.util.ArrayList<String>();
++
+     /** Aviso de uma linha; toque (seta) abre todas as linhas. */
+     public void setWarning(String msg) {
+-        if (msg == null || msg.length() == 0) {
+-            warnMsg = "";
+-            warnExpanded = false;
++        setWarnings(msg == null || msg.length() == 0 ? null : java.util.Collections.singletonList(msg));
++    }
++
++    /** Lista de avisos: recolhido mostra o primeiro e "(+N)"; ao tocar, mostra todos, um por linha. */
++    public void setWarnings(java.util.List<String> msgs) {
++        java.util.ArrayList<String> l = new java.util.ArrayList<String>();
++        if (msgs != null) for (String m : msgs) if (m != null && m.trim().length() > 0) l.add(m.trim());
++        String key = joinWarn(l);
++        if (l.isEmpty()) warnExpanded = false;
++        else if (!key.equals(warnMsg)) warnExpanded = false;
++        warnList = l;
++        warnMsg = key;
++        showWarning();
++    }
++
++    private static String joinWarn(java.util.List<String> l) {
++        StringBuilder b = new StringBuilder();
++        for (String s : l) b.append(b.length() > 0 ? "\n" : "").append(s);
++        return b.toString();
++    }
++
++    private void showWarning() {
++        if (warnList.isEmpty()) {
+             warning.setText("");
+             warning.setVisibility(View.GONE);
++            return;
++        }
++        String arrow = warnExpanded ? "  \u25B4" : "  \u25BE";
++        if (warnExpanded) {
++            warning.setText(warnMsg + arrow);
++            warning.setSingleLine(false);
++            warning.setMaxLines(Integer.MAX_VALUE);
++            warning.setEllipsize(null);
+         } else {
+-            if (!msg.equals(warnMsg)) warnExpanded = false;
+-            warnMsg = msg;
+-            warning.setText(msg + (warnExpanded ? "  \u25B4" : "  \u25BE"));
+-            warning.setSingleLine(!warnExpanded);
+-            if (warnExpanded) { warning.setMaxLines(Integer.MAX_VALUE); warning.setEllipsize(null); }
+-            else warning.setEllipsize(android.text.TextUtils.TruncateAt.END);
+-            warning.setVisibility(View.VISIBLE);
++            warning.setText(warnList.get(0) + (warnList.size() > 1 ? "  (+" + (warnList.size() - 1) + ")" : "") + arrow);
++            warning.setSingleLine(true);
++            warning.setEllipsize(android.text.TextUtils.TruncateAt.END);
+         }
++        warning.setVisibility(View.VISIBLE);
+     }
+ 
+     public void setError(String msg) {
+@@ -1235,7 +1350,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -2567,8 +2773,103 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
 diff -ruN a/LinkScreen.java b/LinkScreen.java
 --- a/LinkScreen.java	2026-10-20 10:46:55.000000000 +0000
-+++ b/LinkScreen.java	2026-10-21 20:36:29.750728311 +0000
-@@ -138,7 +138,7 @@
++++ b/LinkScreen.java	2026-10-22 08:41:57.777185925 +0000
+@@ -32,6 +32,12 @@
+     private Dialog main;
+     private LinearLayout lastRoot;
+     private LinearLayout box;
++    private ScrollView listScroll;
++    /** ANO que estava na previa ao abrir (se tem links): a lista rola para o 1o link e a seta vai passando pelos proximos. */
++    private int focusAno = -1, focusK;
++    private final List<LinearLayout> focusCards = new ArrayList<LinearLayout>();
++    private final List<View> focusRows = new ArrayList<View>();
++    private TextView nextBtn;
+ 
+     private LinkScreen(Activity a, AttackView view, Runnable changed) {
+         this.a = a; this.view = view; this.changed = changed;
+@@ -40,7 +46,10 @@
+ 
+     static void show(Activity a, AttackView view, Runnable changed) {
+         if (view.packDac(2) == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
+-        new LinkScreen(a, view, changed).open();
++        LinkScreen s = new LinkScreen(a, view, changed);
++        Ano cur = view.currentAno();
++        if (cur != null && cur.present && cur.links.length > 0) s.focusAno = cur.index;
++        s.open();
+     }
+ 
+     private int dp(int v) { return Math.round(v * d); }
+@@ -93,21 +102,34 @@
+         main = fullscreen("Links do personagem", null);
+         LinearLayout root = lastRoot;
+         TextView hint = tv("Cada ANO que cria links aparece com seus links (Link n → ANO). Toque num link para ver a prévia, mudar sincronização e posição, "
+-                + "excluir ou ver quem usa.", 11, DIM, false);
++                + "excluir ou ver quem usa. Se a prévia está num ANO com links, a lista já rola para o primeiro e a seta ▶ passa para o próximo. "
++                + "No jogo o link mostra só as sprites dele: links do link e animações/efeitos de flags dentro do link não aparecem.", 11, DIM, false);
+         hint.setPadding(dp(2), dp(2), dp(2), dp(8));
+         root.addView(hint);
+         ScrollView sv = new ScrollView(a);
+         box = new LinearLayout(a);
+         box.setOrientation(LinearLayout.VERTICAL);
+         sv.addView(box, new ScrollView.LayoutParams(-1, -2));
++        listScroll = sv;
+         root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+-        root.addView(button("VOLTAR", DIM, new View.OnClickListener() { public void onClick(View v) { main.dismiss(); } }));
++        LinearLayout bar = new LinearLayout(a);
++        bar.setOrientation(LinearLayout.HORIZONTAL);
++        nextBtn = button("\u25B6", ACCENT, new View.OnClickListener() { public void onClick(View v) { focusLink(focusK + 1); } });
++        nextBtn.setVisibility(View.GONE);
++        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(0, -2, 1f);
++        nlp.setMargins(0, 0, dp(6), 0);
++        bar.addView(nextBtn, nlp);
++        bar.addView(button("VOLTAR", DIM, new View.OnClickListener() { public void onClick(View v) { main.dismiss(); } }), new LinearLayout.LayoutParams(0, -2, 1f));
++        root.addView(bar);
+         main.show();
+         render();
++        if (focusAno >= 0) focusLink(0);
+     }
+ 
+     private void render() {
+         box.removeAllViews();
++        focusCards.clear();
++        focusRows.clear();
+         Dac dac = dac();
+         int total = 0;
+         for (int i = 0; i < dac.size(); i++) {
+@@ -124,11 +146,31 @@
+                     row.setOrientation(LinearLayout.HORIZONTAL);
+                     box.addView(row, new LinearLayout.LayoutParams(-1, -2));
+                 }
+-                row.addView(card(i, k), cardLp());
++                LinearLayout cd = card(i, k);
++                row.addView(cd, cardLp());
++                if (i == focusAno) { focusCards.add(cd); focusRows.add(row); }
+             }
+             if (an.links.length % 2 == 1) row.addView(new View(a), cardLp());
+         }
+         if (total == 0) box.addView(tv("Este personagem não tem ANOs com links.", 13, DIM, false));
++        if (focusAno >= 0 && nextBtn != null) focusLink(focusK);
++    }
++
++    /** Rola para o link {@code k} do ANO em foco (volta ao primeiro depois do ultimo), destaca o card e atualiza a seta. */
++    private void focusLink(int k) {
++        if (focusCards.isEmpty()) { if (nextBtn != null) nextBtn.setVisibility(View.GONE); return; }
++        focusK = ((k % focusCards.size()) + focusCards.size()) % focusCards.size();
++        for (int i = 0; i < focusCards.size(); i++) {
++            GradientDrawable g = new GradientDrawable();
++            g.setColor(PANEL);
++            g.setCornerRadius(dp(10));
++            if (i == focusK) g.setStroke(dp(2), ACCENT);
++            focusCards.get(i).setBackground(g);
++        }
++        nextBtn.setText("\u25B6  PR\u00d3XIMO LINK  (" + (focusK + 1) + "/" + focusCards.size() + " \u00b7 ANO " + focusAno + ")");
++        nextBtn.setVisibility(View.VISIBLE);
++        final View row = focusRows.get(focusK);
++        listScroll.post(new Runnable() { public void run() { listScroll.smoothScrollTo(0, Math.max(0, row.getTop() - dp(40))); } });
+     }
+ 
+     private LinearLayout.LayoutParams cardLp() {
+@@ -138,7 +180,7 @@
      }
  
      private static String flagsText(Ano.Link l) {
@@ -2577,7 +2878,7 @@ diff -ruN a/LinkScreen.java b/LinkScreen.java
          return s.trim().isEmpty() ? "sem sincronização" : s.trim();
      }
  
-@@ -253,7 +253,7 @@
+@@ -253,7 +295,7 @@
          tg.addView(toggle("XY", l.syncXY(), 0x4000, anoIdx, k, dlg), new LinearLayout.LayoutParams(0, -2, 1f));
          tg.addView(toggle("MPT", l.syncMpt(), 0x8000, anoIdx, k, dlg), new LinearLayout.LayoutParams(0, -2, 1f));
          col.addView(tg);
@@ -2588,7 +2889,7 @@ diff -ruN a/LinkScreen.java b/LinkScreen.java
          ph.setPadding(0, dp(14), 0, dp(4));
 diff -ruN a/MainActivity.java b/MainActivity.java
 --- a/MainActivity.java	2026-10-20 11:18:53.000000000 +0000
-+++ b/MainActivity.java	2026-10-21 20:45:22.765644820 +0000
++++ b/MainActivity.java	2026-10-22 08:41:26.060310974 +0000
 @@ -32,6 +32,8 @@
      private CharAssets opponent;
      private CharAssets effects;
@@ -2638,18 +2939,39 @@ diff -ruN a/MainActivity.java b/MainActivity.java
      /** charfNN com o mesmo numero do charNN do atacante (hitbox flags 41-70). */
      private void loadCharf(CharAssets a) {
          if (charf != null) { charf.release(); charf = null; }
-@@ -371,8 +393,11 @@
+@@ -267,7 +289,7 @@
+             String warn = a.dac.getWarnings().isEmpty() ? "" : "  |  avisos DAC: " + a.dac.getWarnings().size();
+             ui.status.setText(a.dir.getName() + "  |  ANO=" + a.dac.size() + "  CNV=" + a.cnv.size()
+                     + "  golpes=" + mv.length + "  wav=" + a.wavCount + warn);
+-            ui.setWarning(a.dac.getWarnings().isEmpty() ? "" : a.dac.getWarnings().get(0));
++            ui.setWarnings(a.dac.getWarnings());
+ 
+             if (listSize() > 0) loadAttack(0);
+             else ui.attackView.setData(null);
+@@ -371,8 +393,14 @@
              if (anoMode && attacker.data.ownerOf(i) == null && attacker.anoKinds()[i] == CharAssets.KIND_PROJECTILE)
                  warns.add("flag 0 sem projetil: nenhum golpe do HDAT 4 usa o ANO " + i);
              if (effects == null) warns.add("sem effect: golpes nao mostram efeito de hit");
-+            String rules = GameRules.summary(GameRules.check(attacker.dac, Saver.anosOfMove(attacker.dac, m, attacker.data), attacker.cnv == null ? 0 : attacker.cnv.size()));
-+            if (!rules.isEmpty()) warns.add(0, rules);
++            java.util.TreeSet<Integer> moveAnos = Saver.anosOfMove(attacker.dac, m, attacker.data);
++            String rules = GameRules.details(GameRules.check(attacker.dac, moveAnos, attacker.cnv == null ? 0 : attacker.cnv.size()));
++            if (!rules.isEmpty()) warns.addAll(0, java.util.Arrays.asList(rules.split("\n")));
++            String nested = GameRules.nestedLinksNote(attacker.dac, moveAnos);
++            if (!nested.isEmpty()) warns.add(nested);
              AttackData data = new AttackData(attacker, opponent, effects, gameData, i, m);
              data.charf = charf;
 +            data.bobj = bobj;
              if (charf == null) warns.add("sem " + charfNote + " (hitbox flags 41-70 sem animacao)");
              loadedAttack = i;
              ui.attackView.setData(data);
+@@ -381,7 +409,7 @@
+                     anoMode ? "ANO " + i : String.format(Locale.US, "GOLPE_%02d", i), m.animInicial, ano.mpts.length, ano.links.length, m.projNormal, m.projAbaixo, m.projAcima));
+             if (placeholder != null && attacker.dac.getAno(placeholderIdx) == placeholder)
+                 warns.add(0, "ANO " + placeholderIdx + " vazia: frame provisório sem imagem. Se sair sem editar, ela volta a ficar vazia");
+-            if (!warns.isEmpty()) ui.setWarning(warns.get(0));
++            ui.setWarnings(warns);
+         } catch (Exception e) {
+             ui.setError("Erro no golpe: " + e.getMessage());
+         }
 diff -ruN a/ObjModel.java b/ObjModel.java
 --- a/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
 +++ b/ObjModel.java	2026-10-21 20:43:39.056623058 +0000
@@ -2662,6 +2984,24 @@ diff -ruN a/ObjModel.java b/ObjModel.java
              case 34: return "Curar vida";
              case 37: return "Sem contagem de combo";
              case 38: return "Bloquear sequencia";
+diff -ruN a/QuickNotice.java b/QuickNotice.java
+--- a/QuickNotice.java	2026-10-17 11:37:07.000000000 +0000
++++ b/QuickNotice.java	2026-10-22 08:41:02.294141240 +0000
+@@ -29,6 +29,14 @@
+ 
+     QuickNotice(String text) { this.text = text; }
+ 
++    /** Texto completo (varias linhas) mostrado quando o aviso e expandido; sem ele, expandir so aumenta o texto curto. */
++    String full;
++
++    QuickNotice full(String t) { full = (t == null || t.length() == 0) ? null : t; return this; }
++
++    /** O que o aviso mostra: o texto curto ou, expandido, o completo. */
++    String shown(boolean expanded) { return expanded && full != null ? full : text; }
++
+     QuickNotice colors(int bg, int btn) { color = bg; buttonColor = btn; return this; }
+     QuickNotice duration(long ms) { durationMs = ms; return this; }
+     QuickNotice left(String label, Runnable run) { left.add(new Action(label, true, run)); return this; }
 diff -ruN a/ReactionEditor.java b/ReactionEditor.java
 --- a/ReactionEditor.java	2026-10-12 23:53:53.000000000 +0000
 +++ b/ReactionEditor.java	2026-10-22 07:58:27.951695679 +0000
@@ -3083,7 +3423,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      }
 diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 --- a/ToolbarOrder.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/ToolbarOrder.java	2026-10-21 22:27:41.743562155 +0000
++++ b/ToolbarOrder.java	2026-10-22 08:39:21.838316409 +0000
 @@ -0,0 +1,57 @@
 +package com.zue.attackeditor;
 +
@@ -3099,11 +3439,11 @@ diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 +    private ToolbarOrder() { }
 +
 +    static final String SAVE = "save", CHAR = "char", SPRITES = "spr", LINKS = "links", MOVE = "opt", HITBOX = "hit", TIME = "time",
-+            CENTER = "ctr", LAND = "land", LOCK = "lock", FLIP = "flip", HIDE = "hide", GHOST = "ghost", SCREEN = "scr", HELP = "help";
++            CENTER = "ctr", LAND = "land", LOCK = "lock", FLIP = "flip", HIDE = "hide", GHOST = "ghost", SCREEN = "scr";
 +
-+    /** Ordem de fabrica: SALVAR fixo no inicio, AJUDA no fim da rolagem. */
++    /** Ordem de fabrica: SALVAR fixo no inicio. O AJUDA fica na barra de titulo (fora deste menu). */
 +    static List<String> defaults() {
-+        return new ArrayList<String>(Arrays.asList(SAVE, CHAR, SPRITES, LINKS, MOVE, HITBOX, TIME, CENTER, LAND, LOCK, FLIP, HIDE, GHOST, SCREEN, HELP));
++        return new ArrayList<String>(Arrays.asList(SAVE, CHAR, SPRITES, LINKS, MOVE, HITBOX, TIME, CENTER, LAND, LOCK, FLIP, HIDE, GHOST, SCREEN));
 +    }
 +
 +    /**
@@ -3783,8 +4123,8 @@ diff -ruN a/test/FidelityTest.java b/test/FidelityTest.java
 +}
 diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 --- a/test/GameRulesTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/GameRulesTest.java	2026-10-21 21:59:45.487250083 +0000
-@@ -0,0 +1,127 @@
++++ b/test/GameRulesTest.java	2026-10-22 08:42:37.599007746 +0000
+@@ -0,0 +1,157 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -3877,7 +4217,37 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +        d.setAno(10, new Ano(10, true, 2, 0, new Ano.Link[]{new Ano.Link(0, 0, 11)}, new Ano.Mpt[]{mpt(1, 2)}));
 +        d.setAno(11, new Ano(11, true, 0, 0, null, new Ano.Mpt[]{mpt(0, 1)}));
 +        List<GameRules.Issue> lk = GameRules.check(d, null, 0);
-+        check("link de link e caixa em link sao avisos", count(lk, false) + ":" + count(lk, true), "2:0");
++        check("link de link nao e mais aviso de tela (vai para a lista de avisos)", lk.size(), 0);
++        check("ANO com link que tem link: so o ANO 9", GameRules.nestedLinkParents(d, null).toString(), "[9]");
++        check("texto da lista (1 ANO)", GameRules.nestedLinksNote(d, null).startsWith("O ANO 9 tem links que t\u00eam outros links"), true);
++        // link com efeito: flag de aura/poeira/cutscene e poeira do OPT no link tambem nao aparecem
++        d.setAno(12, new Ano(12, true, 2, 0, new Ano.Link[]{new Ano.Link(0, 0, 13), new Ano.Link(0, 0, 14)}, new Ano.Mpt[]{mpt(0, 1)}));
++        d.setAno(13, new Ano(13, true, 0, 0, null, new Ano.Mpt[]{mpt(1, 90)}));
++        Ano.Mpt dust = mpt(0, 1);
++        dust.hasOpt = true;
++        dust.optFlag = 4096;
++        d.setAno(14, new Ano(14, true, 0, 0, null, new Ano.Mpt[]{dust}));
++        d.setAno(15, new Ano(15, true, 2, 0, new Ano.Link[]{new Ano.Link(0, 0, 16)}, new Ano.Mpt[]{mpt(0, 1)}));
++        d.setAno(16, new Ano(16, true, 0, 0, null, new Ano.Mpt[]{mpt(2, 27)}));
++        check("pais: 9 (link de link), 12 (aura/poeira no link); 15 nao (flag 27 e so estado)", GameRules.nestedLinkParents(d, null).toString(), "[9, 12]");
++        check("texto com varios", GameRules.nestedLinksNote(d, null).startsWith("Os ANOs 9 e 12 t\u00eam links"), true);
++        check("filtro por ANOs", GameRules.nestedLinkParents(d, java.util.Arrays.asList(Integer.valueOf(12), Integer.valueOf(15))).toString(), "[12]");
++        check("nada a avisar", GameRules.nestedLinksNote(base(20), null), "");
++        // details: todas as linhas, fatais primeiro
++        d = base(20);
++        d.setAno(3, new Ano(3, true, 0, 0, null, new Ano.Mpt[]{mpt(2, 1), mpt(11, 1)}));
++        d.setAno(4, new Ano(4, true, 0, 0, null, new Ano.Mpt[]{mpt(1, 1)}));
++        Ano.Mpt tm = mpt(1, 1);
++        tm.image = 500;
++        d.setAno(5, new Ano(5, true, 0, 0, null, new Ano.Mpt[]{tm}));
++        List<GameRules.Issue> iss = GameRules.check(d, null, 100);
++        String det = GameRules.details(iss);
++        check("details: uma linha por problema", det.split("\n").length, iss.size());
++        check("details: fatal primeiro", det.startsWith("O JOGO FECHA/ERRA"), true);
++        check("details nao tem +N", det.contains("(+"), false);
++        QuickNotice qn = new QuickNotice(GameRules.summary(iss)).full(det);
++        check("aviso: recolhido = resumo (+N), expandido = tudo", qn.shown(false).contains("(+") + ":" + qn.shown(true).equals(det), "true:true");
++        check("aviso sem full: expandir mantem o texto", new QuickNotice("x").shown(true), "x");
 +
 +        // quirk do _Hokan: o laco que pula as caixas do frame SEGUINTE usa o iHitNum do frame ATUAL; so le lixo se o seguinte tem caixas e rotacao/alfa/zoom
 +        d = base(20);
@@ -3910,6 +4280,122 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +        check("resumo do fatal", GameRules.summary(GameRules.check(d, null, 0)).startsWith("O JOGO FECHA/ERRA: ANO 3 MPT 0"), true);
 +
 +        System.out.println("GameRulesTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
+--- a/test/LinkHierarchyTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/LinkHierarchyTest.java	2026-10-22 08:42:23.738914806 +0000
+@@ -0,0 +1,112 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.HashSet;
++import java.util.Set;
++
++/**
++ * Hierarquia de links do jogo (_SetAct / _ActReq): so a RAIZ cria links; o link nao cria os dele (a tabela de links do link e pulada);
++ * hits/OPT de um link nao valem. Animacoes disparadas por flag (efeito de hit, projetil...) sao raizes: mostram os proprios links.
++ */
++public class LinkHierarchyTest {
++    static A[] anos(int n) {
++        A[] a = new A[n];
++        for (int i = 0; i < n; i++) a[i] = new A().mpt(new M().time(5).img(1));
++        return a;
++    }
++
++    /** Poe links no ANO {@code idx} do DAC (os frames ficam como estao). */
++    static void link(Dac d, int idx, int... targets) {
++        Ano old = d.getAno(idx);
++        Ano.Link[] ls = new Ano.Link[targets.length];
++        for (int i = 0; i < targets.length; i++) ls[i] = new Ano.Link(0, 0, 0x4000 | targets[i]);
++        d.setAno(idx, new Ano(idx, true, old.flags | 2, old.priority, ls, old.mpts));
++    }
++
++    static Set<Integer> shown(BattleSim s, int owner) {
++        Set<Integer> out = new HashSet<Integer>();
++        for (BattleSim.Layer l : s.layers()) if (l.owner == owner && l.only != null) out.add(Integer.valueOf(l.only.ano.index));
++        return out;
++    }
++
++    static BattleSim battle(Dac atk, CharData ch, Dac fx, int dist) throws Exception {
++        A[] def = new A[25];
++        for (int i = 0; i < 25; i++) def[i] = new A().mpt(new M().time(5).hit(1, -10, -60, 20, 60));
++        GameData g = gd(new byte[][] { null, null, null, react(new int[]{4, 4, 20, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}) });
++        BattleSim s = new BattleSim(atk, ch, ch.moves[0], false, dac(def), fx, g, dist, 0, 0);
++        s.reset();
++        return s;
++    }
++
++    public static void main(String[] args) throws Exception {
++        // ---- link de link nunca nasce
++        Dac d = dac(anos(20));
++        link(d, 10, 11);
++        link(d, 11, 12);
++        AttackSim sim = new AttackSim(d, 10, false);
++        boolean c12 = false;
++        for (AttackSim.Obj o : sim.children()) if (o != null && o.ano.index == 12) c12 = true;
++        check("ANO 10: so o link 11 nasce", sim.children().length + ":" + sim.children()[0].ano.index + ":" + c12, "1:11:false");
++        AttackSim asLink = new AttackSim(d, 11, false);
++        check("o mesmo ANO 11 como raiz mostra o proprio link 12", asLink.children().length + ":" + asLink.children()[0].ano.index, "1:12");
++        link(d, 10, 11, 11, 11);
++        check("varios links do mesmo ANO nascem (1 nivel)", new AttackSim(d, 10, false).children().length, 3);
++
++        // ---- hit flag 0 / 39 dentro de um link nao vale; na raiz vale
++        A[] a = anos(60);
++        a[40] = new A().mpt(new M().time(30));
++        a[31] = new A().mpt(new M().time(30).hit(0, 10, -30, 4, 4));
++        a[30] = new A().mpt(new M().time(60).speedX(2 << 16));
++        CharData ch = chr(move(new int[]{2, 40}, new int[]{4, 30}), new byte[][] {});
++        Dac dl = dac(a);
++        link(dl, 40, 31);
++        BattleSim bl = battle(dl, ch, dac(anos(2)), 120);
++        int most = 0;
++        for (int i = 0; i < 20; i++) { bl.step(); most = Math.max(most, bl.projectileCount()); }
++        check("flag 0 num link nao cria projetil", most, 0);
++        a[40] = new A().mpt(new M().time(30).hit(0, 10, -30, 4, 4));
++        BattleSim br = battle(dac(a), ch, dac(anos(2)), 120);
++        most = 0;
++        for (int i = 0; i < 20; i++) { br.step(); most = Math.max(most, br.projectileCount()); }
++        check("flag 0 na raiz cria projetil (controle)", most >= 1, true);
++
++        A[] t = anos(60);
++        t[40] = new A().mpt(new M().time(30));
++        t[31] = new A().mpt(new M().time(30).hit(39, 0, 0, 16, 16));
++        Dac dt = dac(t);
++        link(dt, 40, 31);
++        BattleSim tl = battle(dt, ch, dac(anos(2)), 120);
++        for (int i = 0; i < 12; i++) tl.step();
++        int xLink = (int) tl.attackerX();
++        t[40] = new A().mpt(new M().time(30).hit(39, 0, 0, 16, 16));
++        BattleSim tr = battle(dac(t), ch, dac(anos(2)), 120);
++        for (int i = 0; i < 12; i++) tr.step();
++        check("flag 39 num link nao teleporta; na raiz teleporta", xLink + ":" + ((int) tr.attackerX() != 0), "0:true");
++
++        // ---- projetil e efeito de hit sao raizes: mostram os proprios links, e so 1 nivel
++        A[] p = anos(60);
++        p[40] = new A().mpt(new M().time(40).hit(0, 10, -30, 4, 4));
++        p[30] = new A().mpt(new M().time(60).speedX(1 << 16));
++        Dac dp = dac(p);
++        link(dp, 30, 32);
++        link(dp, 32, 33);
++        BattleSim bp = battle(dp, ch, dac(anos(2)), 400);
++        for (int i = 0; i < 6; i++) bp.step();
++        Set<Integer> ps = shown(bp, BattleSim.OWNER_PROJECTILE);
++        check("projetil mostra o link 32 e nao o link do link (33)", ps.contains(Integer.valueOf(30)) + ":" + ps.contains(Integer.valueOf(32)) + ":" + ps.contains(Integer.valueOf(33)), "true:true:false");
++
++        A[] h = anos(60);
++        h[40] = new A().mpt(new M().time(3).hit(2, 20, -40, 40, 20).opt1(3)).mpt(new M().time(30));
++        CharData hc = chr(move(new int[]{2, 40}), new byte[][] {});
++        Dac fx = dac(anos(5));
++        link(fx, 0, 1);
++        link(fx, 1, 2);
++        BattleSim bh = battle(dac(h), hc, fx, 30);
++        Set<Integer> fs = new HashSet<Integer>();
++        for (int i = 0; i < 12; i++) { bh.step(); fs.addAll(shown(bh, BattleSim.OWNER_EFFECT)); }
++        check("efeito de hit mostra o link 1 e nao o link do link (2)", fs.contains(Integer.valueOf(0)) + ":" + fs.contains(Integer.valueOf(1)) + ":" + fs.contains(Integer.valueOf(2)), "true:true:false");
++
++        System.out.println("LinkHierarchyTest fails=" + BattleTest.fails);
 +    }
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
@@ -4124,8 +4610,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 --- a/test/ToolbarTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ToolbarTest.java	2026-10-21 22:30:35.435558182 +0000
-@@ -0,0 +1,64 @@
++++ b/test/ToolbarTest.java	2026-10-22 08:40:47.149509474 +0000
+@@ -0,0 +1,65 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -4142,8 +4628,8 @@ diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 +    public static void main(String[] args) throws Exception {
 +        List<String> def = ToolbarOrder.defaults();
 +        check("padrao: SALVAR fixo no inicio", def.get(0), ToolbarOrder.SAVE);
-+        check("padrao: AJUDA no fim", def.get(def.size() - 1), ToolbarOrder.HELP);
-+        check("padrao: 15 botoes sem repeticao", def.size() + ":" + new HashSet<String>(def).size(), "15:15");
++        check("padrao: SCREEN (TELA) no fim; AJUDA fica na barra de titulo", def.get(def.size() - 1) + ":" + def.contains("help"), "scr:false");
++        check("padrao: 15 botoes sem repeticao", def.size() + ":" + new HashSet<String>(def).size(), "14:14");
 +
 +        // restaurar
 +        check("sem nada salvo: padrao", s(ToolbarOrder.restore(null, def)), s(def));
@@ -4151,11 +4637,12 @@ diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 +        check("ordem salva volta igual", s(ToolbarOrder.restore(s(ToolbarOrder.move(def, 0, 3)), def)), s(ToolbarOrder.move(def, 0, 3)));
 +        List<String> junk = ToolbarOrder.restore("hide,xyz,hide, char ,save", def);
 +        check("lixo: desconhecido e repetido saem, o resto vem na ordem de fabrica", s(junk),
-+                "hide,char,save,spr,links,opt,hit,time,ctr,land,lock,flip,ghost,scr,help");
-+        check("lixo: mantem 15 ids", junk.size(), 15);
++                "hide,char,save,spr,links,opt,hit,time,ctr,land,lock,flip,ghost,scr");
++        check("lixo: mantem 14 ids", junk.size(), 14);
 +        List<String> older = Arrays.asList(ToolbarOrder.SAVE, ToolbarOrder.CHAR);
-+        check("botao novo (nao salvo) entra no fim", s(ToolbarOrder.restore("char,save", ToolbarOrder.defaults())).endsWith(",help"), true);
-+        check("botao ausente da build nao entra", s(ToolbarOrder.restore("char,save,help", older)), "char,save");
++        check("botao novo (nao salvo) entra no fim", s(ToolbarOrder.restore("char,save", ToolbarOrder.defaults())).endsWith(",scr"), true);
++        check("ordem salva de versao anterior com help: descartado", s(ToolbarOrder.restore("help,char,save", ToolbarOrder.defaults())).contains("help"), false);
++        check("botao ausente da build nao entra", s(ToolbarOrder.restore("char,save,scr", older)), "char,save");
 +
 +        // mover
 +        check("mover para tras fica antes do alvo", s(ToolbarOrder.move(Arrays.asList("a", "b", "c", "d"), 3, 1)), "a,d,b,c");
@@ -4180,7 +4667,7 @@ diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 +            check("ajuda " + sec.title + ": tem texto", sec.body.length() > 40 && sec.title.length() > 0, true);
 +            ids.add(sec.button);
 +        }
-+        check("ajuda: um item para cada botao do menu, na ordem de fabrica", HelpText.toolbar().size() + ":" + ids.containsAll(def), "15:true");
++        check("ajuda: um item para cada botao do menu, na ordem de fabrica", HelpText.toolbar().size() + ":" + ids.containsAll(def), "14:true");
 +        for (String id : def) check("ajuda do botao " + id, HelpText.forButton(id) != null, true);
 +        check("ajuda de id desconhecido", HelpText.forButton("nao-existe"), null);
 +        check("ajuda da tela nao tem botao do menu", HelpText.screen().get(0).button, null);
