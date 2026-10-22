@@ -2632,8 +2632,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-22 10:44:40.432114143 +0000
-@@ -0,0 +1,140 @@
++++ b/HelpText.java	2026-10-22 11:03:32.980747560 +0000
+@@ -0,0 +1,141 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2739,7 +2739,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "A timeline mostra, por frame, os sprites, hitboxes, hurtboxes, projéteis, efeitos, sons e velocidades do ANO. Toque num item para editar nas ferramentas abaixo. "
 +                + "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial "
 +                + "(tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). "
-+                + "O # escolhe o que a timeline mostra."));
++                + "O # escolhe o que a timeline mostra. Só aparecem faixas com uso (sem som, velocidade ou estilo no ANO, a faixa some). "
++                + "Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes."));
 +        s.add(new Section(null, "Menu da sprite (gaveta)",
 +                "Tocar numa sprite da timeline abre uma grade de botões: Imagem, Tempo, Som, Movimento, Efeitos e Copiar. Cada um abre uma página dentro da gaveta (a prévia continua visível; ◀ volta à grade). "
 +                + "IMAGEM: thumb, − N + (segure; tocar no número abre a grade de sprites), posição, zoom (unir X e Y), rotação, alpha, \"mover links junto\", \"Editar posição do Link\" e Remover imagem. "
@@ -5517,8 +5518,65 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      }
 diff -ruN a/TimelineView.java b/TimelineView.java
 --- a/TimelineView.java	2026-10-20 01:14:59.000000000 +0000
-+++ b/TimelineView.java	2026-10-22 10:37:43.725678730 +0000
-@@ -107,9 +107,30 @@
++++ b/TimelineView.java	2026-10-22 11:03:17.106053570 +0000
+@@ -46,7 +46,7 @@
+     }
+ 
+     private static final class Row {
+-        int type, kind, link;
++        int type, kind, link, lane;
+         float h;
+         String label;
+         int color;
+@@ -84,17 +84,41 @@
+         switch (m.kind) { case SeqMark.SEQ: return C_SEQ; case SeqMark.END: return C_END; case SeqMark.HIT: return C_HIT; case SeqMark.LAND: return C_LAND; default: return C_FALL; }
+     }
+ 
+-    /** Retangulo do marcador i; marcadores no mesmo frame dividem a largura dele (minimo 30dp cada, a partir do frame). */
++    /** Retangulo do marcador i: a largura inteira do frame dele (marcas simultaneas ficam em faixas diferentes). */
+     private void markRect(int i, float top, float bottom, RectF out) {
+         SeqMark m = seqMarks.get(i);
+-        int n = 0, k = 0;
+-        for (int j = 0; j < seqMarks.size(); j++) if (seqMarks.get(j).pat == m.pat) { if (j == i) k = n; n++; }
+         float l = xOf(start[m.pat]) + 1, rr = Math.max(xOf(start[m.pat]) + 14 * d, xOf(start[m.pat] + span(m.pat)) - 1);
+-        float w = Math.max((rr - l) / n, Math.min(30 * d, rr - l));
+-        out.set(l + k * w, top, l + k * w + (n > 1 ? w - 1 : rr - l), bottom);
++        out.set(l, top, rr, bottom);
+     }
+     private List<SeqMark> seqMarks = new ArrayList<SeqMark>();
+-    public void setSeqMarks(List<SeqMark> m) { seqMarks = m == null ? new ArrayList<SeqMark>() : m; }
++    private int[] seqLane = new int[0];
++    private int seqLaneCount;
++    public void setSeqMarks(List<SeqMark> m) {
++        seqMarks = m == null ? new ArrayList<SeqMark>() : m;
++        int before = seqLaneCount;
++        seqLane = seqLanes(seqMarks);
++        seqLaneCount = laneCount(seqLane);
++        if (ano != null && before != seqLaneCount) { buildRows(); invalidate(); }
++    }
++
++    /** Faixa de cada marca: marcas do mesmo frame (pat) vao para faixas diferentes, na ordem; frames diferentes reusam a faixa 0. */
++    static int[] seqLanes(List<SeqMark> marks) {
++        int[] lane = new int[marks.size()];
++        java.util.Map<Integer, Integer> perPat = new java.util.HashMap<Integer, Integer>();
++        for (int i = 0; i < lane.length; i++) {
++            Integer n = perPat.get(Integer.valueOf(marks.get(i).pat));
++            lane[i] = n == null ? 0 : n.intValue();
++            perPat.put(Integer.valueOf(marks.get(i).pat), Integer.valueOf(lane[i] + 1));
++        }
++        return lane;
++    }
++
++    /** Quantas faixas as marcas pedem (0 se nao ha marcas). */
++    static int laneCount(int[] lane) {
++        int n = 0;
++        for (int l : lane) n = Math.max(n, l + 1);
++        return n;
++    }
+ 
+     /** Altura maxima permitida pela area visivel da pagina (0 = sem limite): evita linhas escondidas fora da tela. */
+     private int maxHeightPx;
+@@ -107,9 +131,30 @@
      private float cap() {
          float c = VIEW_DP * d;
          if (maxHeightPx > 0) c = Math.min(c, Math.max(maxHeightPx, 96f * d));
@@ -5549,6 +5607,64 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      public boolean isShown(int cat) { return show[cat]; }
      public void setShown(int cat, boolean on) {
          if (show[cat] == on) return;
+@@ -242,8 +287,14 @@
+         rows.clear();
+         if (ano == null) return;
+         row(R_SPRITE, show[0] ? SPRITE_DP : 0, "SPRITES", C_SPRITE);
+-        boolean anySound = false, anyMove = false;
+-        for (Ano.Mpt m : ano.mpts) { if ((m.flags & 8) != 0) anySound = true; if ((m.flags & 4) != 0) anyMove = true; }
++        boolean anySound = false, anyMove = false, anyStyle = false;
++        for (Ano.Mpt m : ano.mpts) {
++            if ((m.flags & 8) != 0) anySound = true;
++            if ((m.flags & 4) != 0) anyMove = true;
++            if (FrameOps.styleSig(m) != 0) anyStyle = true;
++        }
++        seqLane = seqLanes(seqMarks);
++        seqLaneCount = laneCount(seqLane);
+         sawSound = anySound;
+         if (!expanded) {
+             for (int k = 0; k < 5; k++) {
+@@ -256,9 +307,10 @@
+             if (ano.links.length > 0 && show[9]) { Row r = row(R_SUMMARY, SUM_DP, "Links", C_LINK); r.kind = 7; }
+             if (!seqMarks.isEmpty() && show[10]) { Row r = row(R_SUMMARY, SUM_DP, "Transicoes", C_SEQ); r.kind = 8; }
+         } else {
+-            if (show[6]) row(R_AUDIO, ROW_DP, "Audio", C_AUDIO);
+-            if (show[7]) row(R_MOVE, ROW_DP, "Velocidade", C_MOVE);
+-            if (show[8]) row(R_STYLE, ROW_DP, "Estilo", C_STYLE);
++            // so faixas com uso; sons, velocidades e estilos nao coexistem no mesmo frame, entao uma faixa de cada basta
++            if (anySound && show[6]) row(R_AUDIO, ROW_DP, "Audio", C_AUDIO);
++            if (anyMove && show[7]) row(R_MOVE, ROW_DP, "Velocidade", C_MOVE);
++            if (anyStyle && show[8]) row(R_STYLE, ROW_DP, "Estilo", C_STYLE);
+             java.util.Map<Integer, Row> objRows = new java.util.HashMap<Integer, Row>();
+             for (ObjModel.Obj o : objs) {
+                 if (!show[o.kind + 1]) continue;
+@@ -270,7 +322,7 @@
+                 }
+                 r.group.add(o);    // objetos separados (valores diferentes) da mesma flag dividem a linha
+             }
+-            if (!seqMarks.isEmpty() && show[10]) row(R_SEQ, ROW_DP, "Transicoes", C_SEQ);
++            for (int k = 0; show[10] && k < seqLaneCount; k++) row(R_SEQ, ROW_DP, k == 0 ? "Transicoes" : "Transicoes " + (k + 1), C_SEQ).lane = k;
+             for (int i = 0; show[9] && i < ano.links.length; i++) {
+                 Row r = row(R_LINK, ROW_DP, "Link " + (i + 1), C_LINK);
+                 r.link = i;
+@@ -742,7 +794,7 @@
+         stripe(c, r);
+         for (int i = 0; i < seqMarks.size(); i++) {
+             SeqMark m = seqMarks.get(i);
+-            if (m.pat < 0 || m.pat >= start.length) continue;
++            if (m.pat < 0 || m.pat >= start.length || i >= seqLane.length || seqLane[i] != r.lane) continue;
+             boolean sel = selType == T_SEQ && selIdx == i;
+             p.setColor(m.blocked ? 0xFF5E6676 : markColor(m));
+             p.setAlpha(sel ? 255 : 210);
+@@ -1030,7 +1082,7 @@
+                 RectF mr = new RectF();
+                 int first = -1;
+                 for (int i = 0; i < seqMarks.size(); i++) {
+-                    if (seqMarks.get(i).pat != f) continue;
++                    if (seqMarks.get(i).pat != f || i >= seqLane.length || seqLane[i] != r.lane) continue;
+                     if (first < 0) first = i;
+                     markRect(i, -1e6f, 1e6f, mr);
+                     if (x >= mr.left && x <= mr.right) { send(T_SEQ, i, -1, -1); return; }
 diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 --- a/ToolbarOrder.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ToolbarOrder.java	2026-10-22 08:39:21.838316409 +0000
@@ -6850,8 +6966,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 --- a/test/ToolbarTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ToolbarTest.java	2026-10-22 10:38:11.351647901 +0000
-@@ -0,0 +1,74 @@
++++ b/test/ToolbarTest.java	2026-10-22 11:03:32.981974597 +0000
+@@ -0,0 +1,86 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -6922,6 +7038,18 @@ diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 +        int prev = 99; boolean mono = true, inRange = true;
 +        for (int i = 0; i <= 100; i++) { int n = TimelineView.lanesFor(i / 100f); mono &= n <= prev; prev = n; inRange &= n >= 2 && n <= 6; }
 +        check("faixas: nunca aumenta ao subir e fica em 2..6", mono && inRange, true);
++
++        // faixas de transicao: marcas do mesmo frame em faixas diferentes, frames diferentes reusam a faixa 0
++        java.util.List<SeqMark> mk = new java.util.ArrayList<SeqMark>();
++        check("transicoes: sem marcas = 0 faixas", TimelineView.laneCount(TimelineView.seqLanes(mk)), 0);
++        int[] pats = {0, 2, 5, 2, 2, 0};
++        for (int pt : pats) { SeqMark m = new SeqMark(); m.pat = pt; mk.add(m); }
++        int[] ln = TimelineView.seqLanes(mk);
++        check("transicoes: lane por ordem dentro do frame", java.util.Arrays.toString(ln), "[0, 0, 0, 1, 2, 1]");
++        check("transicoes: faixas = maximo simultaneo", TimelineView.laneCount(ln), 3);
++        mk.clear();
++        for (int pt = 0; pt < 4; pt++) { SeqMark m = new SeqMark(); m.pat = pt; mk.add(m); }
++        check("transicoes: frames distintos = 1 faixa", TimelineView.laneCount(TimelineView.seqLanes(mk)), 1);
 +
 +        System.out.println("ToolbarTest fails=" + BattleTest.fails);
 +    }

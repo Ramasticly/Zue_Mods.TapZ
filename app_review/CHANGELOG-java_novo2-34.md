@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 654 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 658 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -108,6 +108,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Código: `LayoutManager` (modo, reparentamento, `placeSheet`) e `TimelineTools` (`Geo`, `setGeometry`, `setTOn`, `refit`, botões Y/T). Texto novo no AJUDA ("Altura da gaveta: Y e T").
 - **Não executado num aparelho** (só compilado contra o `android-all` 13 e revisado): o reparentamento ao alternar o modo e a medida da prévia no modo T precisam de um teste manual.
 
+### 3.1h Timeline: só faixas com uso
+- Na timeline aberta, **Audio, Velocidade e Estilo** só aparecem se algum frame do ANO usa (antes apareciam sempre). Criar um som/velocidade/estilo continua pelo ＋ e pelo menu da sprite (Som / Movimento / Efeitos); o toque numa célula vazia dessas faixas só existe enquanto a faixa existir.
+- **Regra de faixas:** itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame vão para faixas diferentes. Objetos (hitbox, hurtbox, projétil, efeito, ação) já seguiam isso por `(flag, ocorrência no frame)`. **Transições** agora também: marcas no mesmo frame deixam de dividir a largura dele e ganham uma faixa cada ("Transicoes", "Transicoes 2"...); em frames diferentes ficam na mesma faixa. Lógica em `TimelineView.seqLanes/laneCount` (testada).
+- Desenho e toque da timeline só compilados e revisados (não rodados num aparelho).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada).
 
@@ -145,7 +150,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpawnDiagTest (novo)** | 50 |
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 36 |
-| **ToolbarTest (novo)** | 59 |
+| **ToolbarTest (novo)** | 63 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
