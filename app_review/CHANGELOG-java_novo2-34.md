@@ -89,6 +89,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Movimento:** velocidade x/y; frame com `64` (recebe do anterior) tem campos zerados que **somam** à recebida, com a linha amarela "N speed x/y mantidos do frame anterior" + Remover e "N recebido do frame anterior, total: N"; aceleração só aparece com speed; frame inicial e duração do trecho; Manter velocidade; total em px; Remover speed.
 - **Efeitos:** Flip X/Y e Interpolação (+ explicação). **Copiar:** igual ao antigo ALL.
 - **Velocidade recebida (análise do jogo):** ao carregar o frame, sem o bit 64 `speed = 0`; `accel = 0` sempre; cada campo do MOVE **atribui**. Então a recebida conta como **speed** (`v + accel × ticks` do frame anterior), mudar o speed **substitui**, e a accel **não** é herdada. O picker zerado grava `recebida + acréscimo` (valor absoluto, que é o que o jogo entende); se o frame anterior mudar depois, o valor gravado não acompanha.
+- Ajustes de layout: os `− n +` são compactos (do tamanho dos campos de antes, não ocupam a largura toda); a informação de cada campo fica logo abaixo do picker dele; o ✕ da gaveta primeiro fecha a página aberta (volta à grade) e só depois fecha o menu de edição.
 - Código: `FrameTools` (regras puras, testadas), `Stepper`, `IconView`, `ThumbView`, `LinkPosDialog`, `SoundDialog.embed`. Fora desta rodada (próximas): menus de boxes e efeitos de hit; mover/duplicar frame ficam para a barra sob a prévia.
 
 ### 3.2 Menu superior reordenável
