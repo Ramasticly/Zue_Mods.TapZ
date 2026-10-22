@@ -98,6 +98,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - A ordem fica salva no aparelho (`SharedPreferences` "toolbar"); ids desconhecidos ou repetidos são descartados e botões novos entram no fim. Uma dica aparece uma única vez. `RESTAURAR ORDEM` (na ajuda) volta ao padrão.
 - Código: `ToolbarOrder` (Java puro, testado), `ReorderBar` (Android, arrastar/soltar), `LayoutManager` (monta os botões).
 
+### 3.1g Altura da gaveta (Y / T)
+- **Altura padrão**: a gaveta de edição agora é flutuante e abre por cima de tudo, ancorada acima da barra de controle, subindo até a **base da prévia** (antes subia só até a altura dos botões dividir/duplicar/excluir). Abrir sempre usa a altura padrão.
+- **Arrastar a borda** sobe ou desce a gaveta livremente por toda a tela (até por cima da prévia); vale só para aquela abertura. Toque curto na borda alterna mínimo → padrão → máximo; arrastar rápido para baixo fecha (como antes).
+- **Y** (botãozinho na borda, à direita): grava a altura atual como a nova altura padrão (uma por modo, `SharedPreferences "sheet"`).
+- **T** (ao lado do Y): põe a **timeline acima do menu**. A gaveta entra no fluxo da tela (sobe no máximo metade dela), a prévia (quadrada) diminui proporcionalmente, a área de rolagem e o menu superior (botões, status, info) somem para liberar espaço; a barra de título e a de controle ficam. T de novo volta ao modo normal. O modo fica salvo no aparelho.
+- Código: `LayoutManager` (modo, reparentamento, `placeSheet`) e `TimelineTools` (`Geo`, `setGeometry`, `setTOn`, `refit`, botões Y/T). Texto novo no AJUDA ("Altura da gaveta: Y e T").
+- **Não executado num aparelho** (só compilado contra o `android-all` 13 e revisado): o reparentamento ao alternar o modo e a medida da prévia no modo T precisam de um teste manual.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada).
 
