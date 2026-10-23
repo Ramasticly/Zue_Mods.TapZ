@@ -2632,8 +2632,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-22 11:03:32.980747560 +0000
-@@ -0,0 +1,141 @@
++++ b/HelpText.java	2026-10-23 11:03:57.389484881 +0000
+@@ -0,0 +1,147 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2749,6 +2749,12 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "MOVIMENTO: velocidade x/y; num frame que recebe a velocidade do anterior os campos ficam zerados e somam à recebida (aparece em amarelo, com Remover); aceleração só aparece com speed; frame inicial e duração do trecho, Manter velocidade (passa a velocidade deste frame ao próximo), total de pixels e Remover speed. "
 +                + "EFEITOS: Flip X/Y e Interpolação. COPIAR: aplica as coisas do frame em outros frames. "
 +                + "Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele. Os itens de caixas (hitbox/hurtbox), efeitos de hit e links da timeline continuam com as ferramentas de antes."));
++        s.add(new Section(null, "Speed x Accel (velocidade e aceleração)",
++                "SPEED é uma velocidade constante: o objeto anda essa quantidade de pixels a cada tick, sempre igual. Ex.: speed 50 por 5 ticks = 250 px. "
++                + "ACCEL é uma velocidade de aceleração: a cada tick ela soma o valor dela na velocidade atual (o objeto anda com a velocidade que tem e só depois soma). "
++                + "Ex.: accel 50 por 5 ticks, partindo do repouso, anda 0, 50, 100, 150 e 200 = 500 px e termina com velocidade 250. "
++                + "A accel só vale no frame em que está escrita; a velocidade que ela acumulou só passa para o frame seguinte se ele tiver Manter velocidade, senão volta a 0. "
++                + "Para continuar acelerando (ou frear) no frame seguinte, escreva a accel de novo nele. Accel sozinha, sem speed e sem velocidade recebida, é uma aceleração a partir do repouso (queda, arrancada) e não equivale a uma speed."));
 +        s.add(new Section(null, "Altura da gaveta: Y e T",
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; "
 +                + "isso vale só para aquela abertura. Y (na borda, à direita) grava a altura atual como a nova altura padrão. "
@@ -6966,8 +6972,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 --- a/test/ToolbarTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ToolbarTest.java	2026-10-22 11:03:32.981974597 +0000
-@@ -0,0 +1,86 @@
++++ b/test/ToolbarTest.java	2026-10-23 11:03:57.390502225 +0000
+@@ -0,0 +1,91 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -7050,6 +7056,11 @@ diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 +        mk.clear();
 +        for (int pt = 0; pt < 4; pt++) { SeqMark m = new SeqMark(); m.pat = pt; mk.add(m); }
 +        check("transicoes: frames distintos = 1 faixa", TimelineView.laneCount(TimelineView.seqLanes(mk)), 1);
++
++        HelpText.Section sa = null;
++        for (HelpText.Section sec : HelpText.screen()) if (sec.title.startsWith("Speed x Accel")) sa = sec;
++        check("ajuda: secao Speed x Accel existe", sa != null, true);
++        check("ajuda: Speed x Accel explica constante, soma a cada tick e exemplo", sa != null && sa.body.contains("constante") && sa.body.contains("a cada tick") && sa.body.contains("500 px") && sa.body.contains("250 px"), true);
 +
 +        System.out.println("ToolbarTest fails=" + BattleTest.fails);
 +    }
