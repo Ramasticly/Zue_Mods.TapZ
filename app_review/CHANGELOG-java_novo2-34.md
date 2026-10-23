@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 689 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 700 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -116,7 +116,9 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 ### 3.1i Menu superior, cores das faixas e menu de Hitbox/Hurtbox
 - **Menu superior volta ao fechar a gaveta (bug do modo T):** ao sair do T, `status/info/aviso` ficavam escondidos para sempre (a visibilidade "atual" já era GONE). Agora `topRow`, `mrow`, `status`, `info` e `aviso` ficam num `topGroup` e só a visibilidade do grupo muda. O layout T vale **só com T ligado e a gaveta aberta**: com a gaveta fechada tudo volta ao lugar (menu superior, rolagem, timeline); o T continua "armado" (nunca é salvo) e reaplica ao reabrir.
 - **Cores das faixas da timeline:** Hitbox **vermelho** (era azul), Som/Audio **azul** (era vermelho); o menu ＋ acompanha. O ícone "Som" da grade da sprite continua vermelho, como pedido antes.
-- **Menu de Hitbox / Hurtbox** (de cima para baixo): interruptor Hurtbox | Hitbox; **Frame de início** (move a box inteira, mantém a duração; colisão **não recusa**: a movida vira a ocorrência seguinte, outra faixa) e **Duração**; **prévia** do sprite com as boxes (`AnimPreview` parada no frame); **x, y, largura, altura** (− N +); remover. Só hitbox: **Dano** e **reação** (prévia, ◀ ▶, escolher, passos — como antes), e **Transição**: transição atual, **mudar ANO destino** e **bloquear sequência** (só se o golpe tem SEQ). Dano e reação são do sprite sob o ponteiro (OPT do frame) e **acompanham a hitbox** ao mudar o frame de início: cada frame leva o par dele e o frame antigo é limpo (o bloco OPT some se ficou vazio); se o frame antigo ainda tem outra hitbox o valor fica, e se o destino já tem hitbox própria (colisão) ele mantém o dano e a reação dele. `optFlag` e os dados 2-3 nunca são mexidos; hurtbox não mexe no OPT.
+- **Menu de Hitbox / Hurtbox** (de cima para baixo): interruptor Hurtbox | Hitbox; **Frame de início** (move a box inteira, mantém a duração; colisão **não recusa**: a movida vira a ocorrência seguinte, outra faixa) e **Duração**; **prévia** do sprite com as boxes (`AnimPreview` parada no frame); **x, y, largura, altura** (− N +); remover. Só hitbox: **Dano** e **reação** (prévia, ◀ ▶, escolher, passos — como antes), e **Transição**: transição atual, **mudar ANO destino** e **bloquear sequência** (só se o golpe tem SEQ). Dano e reação são do sprite sob o ponteiro (OPT do frame) e **acompanham a hitbox** ao mudar o frame de início: cada frame leva o par dele e o frame antigo é limpo (o bloco OPT some se ficou vazio); se o frame antigo ainda tem outra hitbox o valor fica, e se o destino já tem hitbox própria (colisão) ele mantém o dano e a reação dele. `optFlag` e os dados 2-3 nunca são mexidos; hurtbox não mexe no OPT. Mudar a **duração** (Stepper ou arrastar a borda na timeline, `ObjModel.trim`) segue a mesma regra: os frames novos copiam o dano e a reação do frame da borda (se o destino não tem outra hitbox) e os frames que saem são zerados (se ficaram sem hitbox).
+- **Prévia da box** parada no frame atual (sem reprodução: `AnimPreview.setStaticFrame` avança a simulação até o frame de uma vez, `advanceToPat`) e **só a box editada** (`setOnlyHit` → `AttackRenderer.Options.onlyHitFlag/Occ`): no modo hurtbox a hitbox não aparece e vice-versa; as demais boxes do frame também não.
+- **Ao mover o ponteiro** o menu da box só muda se o novo frame tem a box (mesma flag/ocorrência); se não tem, ele e a prévia ficam como estão (antes ele grudava na box mais próxima, mostrando a próxima hitbox). As ações (duração, início, coordenadas) agem na box mostrada.
 - `ObjModel.move/locate` (puro, testado em `ObjMoveTest`).
 - Não executado num aparelho (só compilado e revisado): layout do T/topGroup, prévia e steppers.
 
@@ -158,7 +160,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 36 |
 | **ToolbarTest (novo)** | 65 |
-| **ObjMoveTest (novo)** | 29 |
+| **ObjMoveTest (novo)** | 40 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
