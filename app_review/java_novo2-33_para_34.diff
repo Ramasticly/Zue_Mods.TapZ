@@ -2632,7 +2632,7 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-23 15:45:57.138690467 +0000
++++ b/HelpText.java	2026-10-23 16:15:25.378848387 +0000
 @@ -0,0 +1,152 @@
 +package com.zue.attackeditor;
 +
@@ -2751,7 +2751,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele. Os itens de caixas (hitbox/hurtbox), efeitos de hit e links da timeline continuam com as ferramentas de antes."));
 +        s.add(new Section(null, "Menu de Hitbox / Hurtbox",
 +                "Tocar numa box da timeline abre, de cima para baixo: o interruptor Hurtbox | Hitbox; FRAME DE INÍCIO (move a box inteira mantendo a duração; se cair em cima de outra box igual ela ganha uma faixa própria) e DURAÇÃO; "
-+                + "a prévia do sprite com as boxes; x, y, largura e altura; remover a box. Só para hitbox: DANO e REAÇÃO (com prévia e botões para trocar; dano e reação são do sprite sob o ponteiro, não andam com a box) "
++                + "a prévia do sprite com as boxes; x, y, largura e altura; remover a box. Só para hitbox: DANO e REAÇÃO (com prévia e botões para trocar; são do sprite sob o ponteiro e acompanham a hitbox quando você muda o frame de início) "
 +                + "e TRANSIÇÃO: a transição atual (SEQ/END), mudar o ANO destino e, se o golpe tem SEQ, bloquear a sequência neste hit. "
 +                + "Na timeline, a faixa da hitbox é vermelha e a de som é azul."));
 +        s.add(new Section(null, "Speed x Accel (velocidade e aceleração)",
@@ -3748,7 +3748,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          }
 diff -ruN a/ObjModel.java b/ObjModel.java
 --- a/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
-+++ b/ObjModel.java	2026-10-23 15:43:42.007141666 +0000
++++ b/ObjModel.java	2026-10-23 16:15:25.365959642 +0000
 @@ -18,7 +18,7 @@
  
      static final int HITBOX = 0, HURTBOX = 1, PROJ = 2, EFFECT = 3, ACTION = 4;
@@ -3767,27 +3767,56 @@ diff -ruN a/ObjModel.java b/ObjModel.java
              case 34: return "Curar vida";
              case 37: return "Sem contagem de combo";
              case 38: return "Bloquear sequencia";
-@@ -419,6 +419,32 @@
+@@ -419,6 +419,61 @@
          return out;
      }
  
 +    /**
 +     * Move o objeto inteiro para comecar em {@code nf0}, mantendo a duracao e os valores de cada frame (limitado ao fim da ANO).
++     * Hitbox: o dano e a reacao (OPT, campos 0 e 1) de cada frame acompanham a box.
 +     * Nao recusa colisao: se ja ha uma caixa com a mesma flag nos frames de destino, a movida vira a ocorrencia seguinte (outra faixa).
 +     */
 +    static Ano.Mpt[] move(Ano.Mpt[] m, Obj o, int nf0) {
 +        int n = o.f1 - o.f0 + 1;
 +        nf0 = Math.max(0, Math.min(m.length - n, nf0));
 +        if (nf0 == o.f0) return m;
++        boolean hitbox = o.kind == HITBOX;
 +        Ano.Hit[] hits = new Ano.Hit[n];
++        int[] dmg = new int[n], rea = new int[n];
 +        for (int k = 0; k < n; k++) {
 +            Ano.Hit h = find(m[o.f0 + k], o.flag, o.occ);
 +            hits[k] = h == null ? defaultHit(o.flag) : copyHit(h);
++            dmg[k] = optField(m[o.f0 + k], 0);
++            rea[k] = optField(m[o.f0 + k], 1);
 +        }
 +        Ano.Mpt[] out = m.clone();
-+        for (int f = o.f0; f <= o.f1; f++) out[f] = removeHit(out[f], o.flag, o.occ);
-+        for (int k = 0; k < n; k++) out[nf0 + k] = addHit(out[nf0 + k], hits[k]);
++        for (int f = o.f0; f <= o.f1; f++) {
++            out[f] = removeHit(out[f], o.flag, o.occ);
++            if (hitbox && !hasHitbox(out[f])) out[f] = clearDamage(out[f]);       // dano e reacao saem junto com a hitbox
++        }
++        for (int k = 0; k < n; k++) {
++            int f = nf0 + k;
++            boolean free = hitbox && !hasHitbox(out[f]);       // destino sem outra hitbox: recebe o dano/reacao; com colisao mantem o dele
++            out[f] = addHit(out[f], hits[k]);
++            if (free) out[f] = setOptField(setOptField(out[f], 0, dmg[k]), 1, rea[k]);
++        }
 +        return out;
++    }
++
++    private static boolean hasHitbox(Ano.Mpt m) {
++        for (Ano.Hit h : allHits(m)) if (kindOf(h.flag) == HITBOX) return true;
++        return false;
++    }
++
++    /** Zera dano e reacao do frame; se o OPT fica vazio (sem flags nem dados), tira o bloco. */
++    private static Ano.Mpt clearDamage(Ano.Mpt m) {
++        if ((m.flags & 0x40) == 0) return m;
++        Ano.Mpt c = m.copy();
++        c.optData[0] = 0;
++        c.optData[1] = 0;
++        if (c.optFlag == 0 && c.optData[2] == 0 && c.optData[3] == 0) c.flags &= ~0x40;
++        c.normalize();
++        return c;
 +    }
 +
 +    /** Depois de {@link #move}: a ocorrencia mais alta da flag que comeca em {@code f0} (a movida, ate numa colisao); null se nao ha. */
@@ -4477,7 +4506,7 @@ diff -ruN a/ThumbView.java b/ThumbView.java
 +}
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-23 15:44:50.263790209 +0000
++++ b/TimelineTools.java	2026-10-23 16:15:25.376693329 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -5638,7 +5667,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 +        int ticks = 0;
 +        for (int f = o.f0; f <= o.f1; f++) ticks += FrameOps.span(a.mpts[f]);
 +        note("Frames " + (o.f0 + 1) + " a " + (o.f1 + 1) + " = " + ObjModel.timeText(ticks)
-+                + ". Mover o início leva a box inteira (a duração fica); se cair em cima de outra box igual, ela ganha uma faixa própria. O tempo de cada frame se muda na sprite.");
++                + ". Mover o início leva a box inteira (a duração fica; na hitbox, o dano e a reação vão junto); se cair em cima de outra box igual, ela ganha uma faixa própria. O tempo de cada frame se muda na sprite.");
 +        if (n > 1) note("Frames conectados: mudar x, y, largura ou altura muda em todos. Para editar um frame separado, use DIVIDIR na divisa de frames mais próxima.");
 +        // 3. previa do sprite com as boxes
 +        final AnimPreview pv = new AnimPreview(c);
@@ -5673,7 +5702,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 +            lab("DANO");
 +            put(new Stepper(c).range(-32768, 32767).step(1).keyboard(new Stepper.OnValue() { public void on(double v) { optSetter(p2, 0).set(v); } })
 +                    .value(ObjModel.optField(m, 0)));
-+            note("Dano e reação pertencem ao sprite (frame) sob o ponteiro, não à box: mover a box não leva os dois junto.");
++            note("Dano e reação são do sprite (frame) sob o ponteiro e acompanham a hitbox ao mudar o frame de início (cada frame leva os seus).");
              reactionBlock(p2);
              transitionBlock(a, o);
              if (focusOn) scrollBodyToEnd();
@@ -7025,8 +7054,8 @@ diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
 +}
 diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
 --- a/test/ObjMoveTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ObjMoveTest.java	2026-10-23 15:45:35.802258102 +0000
-@@ -0,0 +1,108 @@
++++ b/test/ObjMoveTest.java	2026-10-23 16:15:41.714269809 +0000
+@@ -0,0 +1,162 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -7120,13 +7149,67 @@ diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
 +        for (ObjModel.Obj k : ObjModel.objects(cm)) if (k.flag == 2) lanes = Math.max(lanes, k.occ + 1);
 +        check("colisao: a timeline passa a ter 2 faixas dessa flag", lanes, 2);
 +
-+        // OPT (dano/reacao) fica no frame de origem
-+        Ano.Mpt[] d = frames(4);
++        // dano e reacao (OPT 0 e 1) acompanham a hitbox, cada frame leva o seu
++        Ano.Mpt[] d = frames(6);
 +        put(d, 1, hit(2, 10));
-+        d[1] = ObjModel.setOptField(d[1], 0, 77);
++        put(d, 2, hit(2, 10));
++        d[1] = ObjModel.setOptField(ObjModel.setOptField(d[1], 0, 77), 1, 105);
++        d[2] = ObjModel.setOptField(ObjModel.setOptField(d[2], 0, 66), 1, 72);
 +        ObjModel.Obj od = find(d, 2, 0);
-+        Ano.Mpt[] dm = ObjModel.move(d, od, 2);
-+        check("dano (OPT) nao anda junto da box", ObjModel.optField(dm[1], 0) == 77 && ObjModel.optField(dm[2], 0) == 0, true);
++        check("dano: objeto de 2 frames", od != null && od.f0 == 1 && od.f1 == 2, true);
++        Ano.Mpt[] dm = ObjModel.move(d, od, 3);
++        check("dano e reacao andam junto, cada frame com o seu",
++                ObjModel.optField(dm[3], 0) == 77 && ObjModel.optField(dm[3], 1) == 105 && ObjModel.optField(dm[4], 0) == 66 && ObjModel.optField(dm[4], 1) == 72, true);
++        check("dano e reacao somem do frame antigo e o bloco OPT vazio sai", ObjModel.optField(dm[1], 0) == 0 && ObjModel.optField(dm[1], 1) == 0 && (dm[1].flags & 0x40) == 0 && (dm[2].flags & 0x40) == 0, true);
++        check("mover nao altera os frames originais", ObjModel.optField(d[1], 0) == 77, true);
++
++        // outros campos do OPT (optFlag e dados 2-3) ficam; so dano/reacao saem
++        Ano.Mpt[] f = frames(5);
++        put(f, 1, hit(2, 10));
++        f[1] = ObjModel.setOptField(ObjModel.setOptField(f[1], 0, 9), 1, 33);
++        f[1].optData[2] = 4;
++        f[1] = ObjModel.setOptFlagBit(f[1], 512, true);
++        Ano.Mpt[] fm = ObjModel.move(f, find(f, 2, 0), 3);
++        check("OPT: flags e dados 2-3 ficam no frame antigo", (fm[1].flags & 0x40) != 0 && fm[1].optData[2] == 4 && ObjModel.optFlagBit(fm[1], 512)
++                && ObjModel.optField(fm[1], 0) == 0 && ObjModel.optField(fm[1], 1) == 0, true);
++        check("OPT: destino recebe so dano e reacao", ObjModel.optField(fm[3], 0) == 9 && ObjModel.optField(fm[3], 1) == 33 && fm[3].optData[2] == 0 && !ObjModel.optFlagBit(fm[3], 512), true);
++
++        // frame antigo com 2a hitbox: o valor fica (vale para ela tambem)
++        Ano.Mpt[] g = frames(5);
++        put(g, 1, hit(2, 10), hit(2, 50));
++        g[1] = ObjModel.setOptField(ObjModel.setOptField(g[1], 0, 20), 1, 40);
++        ObjModel.Obj g0 = null;
++        for (ObjModel.Obj k : ObjModel.objects(g)) if (k.flag == 2 && k.occ == 0) g0 = k;
++        Ano.Mpt[] gm = ObjModel.move(g, g0, 3);
++        check("2a hitbox no frame antigo: dano e reacao ficam la e tambem vao", ObjModel.optField(gm[1], 0) == 20 && ObjModel.optField(gm[3], 0) == 20 && ObjModel.optField(gm[3], 1) == 40, true);
++
++        // colisao: o destino ja tem hitbox com dano proprio, que e mantido
++        Ano.Mpt[] h2 = frames(5);
++        put(h2, 1, hit(2, 10));
++        put(h2, 3, hit(2, 99));
++        h2[1] = ObjModel.setOptField(ObjModel.setOptField(h2[1], 0, 11), 1, 22);
++        h2[3] = ObjModel.setOptField(ObjModel.setOptField(h2[3], 0, 88), 1, 77);
++        ObjModel.Obj h0 = null;
++        for (ObjModel.Obj k : ObjModel.objects(h2)) if (k.flag == 2 && k.f0 == 1) h0 = k;
++        Ano.Mpt[] hm = ObjModel.move(h2, h0, 3);
++        check("colisao: o destino mantem o dano e a reacao dele; o antigo e limpo",
++                ObjModel.optField(hm[3], 0) == 88 && ObjModel.optField(hm[3], 1) == 77 && ObjModel.optField(hm[1], 0) == 0 && ObjModel.count(hm[3], 2) == 2, true);
++
++        // hurtbox nao mexe no OPT
++        Ano.Mpt[] u = frames(5);
++        put(u, 1, hit(1, 10));
++        u[1] = ObjModel.setOptField(u[1], 0, 5);
++        Ano.Mpt[] um = ObjModel.move(u, find(u, 1, 0), 3);
++        check("hurtbox: o OPT nao anda", ObjModel.optField(um[1], 0) == 5 && ObjModel.optField(um[3], 0) == 0, true);
++
++        // mover dentro do proprio trecho (1-2 -> 2-3): dano de cada frame segue a box
++        Ano.Mpt[] w = frames(6);
++        put(w, 1, hit(2, 10));
++        put(w, 2, hit(2, 10));
++        w[1] = ObjModel.setOptField(w[1], 0, 31);
++        w[2] = ObjModel.setOptField(w[2], 0, 32);
++        Ano.Mpt[] wm = ObjModel.move(w, find(w, 2, 0), 2);
++        check("mover sobrepondo o proprio trecho: dano segue frame a frame", ObjModel.optField(wm[2], 0) == 31 && ObjModel.optField(wm[3], 0) == 32 && ObjModel.optField(wm[1], 0) == 0, true);
 +
 +        // cores das faixas: hitbox vermelha, audio azul (ver TimelineView.C_AUDIO)
 +        check("cor da faixa Hitbox = vermelho", ObjModel.KIND_COLORS[ObjModel.HITBOX], 0xFFE5484D);
