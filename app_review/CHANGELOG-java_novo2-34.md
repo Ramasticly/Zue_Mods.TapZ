@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 660 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 680 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -113,6 +113,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Regra de faixas:** itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame vão para faixas diferentes. Objetos (hitbox, hurtbox, projétil, efeito, ação) já seguiam isso por `(flag, ocorrência no frame)`. **Transições** agora também: marcas no mesmo frame deixam de dividir a largura dele e ganham uma faixa cada ("Transicoes", "Transicoes 2"...); em frames diferentes ficam na mesma faixa. Lógica em `TimelineView.seqLanes/laneCount` (testada).
 - Desenho e toque da timeline só compilados e revisados (não rodados num aparelho).
 
+### 3.1i Menu superior, cores das faixas e menu de Hitbox/Hurtbox
+- **Menu superior volta ao fechar a gaveta (bug do modo T):** ao sair do T, `status/info/aviso` ficavam escondidos para sempre (a visibilidade "atual" já era GONE). Agora `topRow`, `mrow`, `status`, `info` e `aviso` ficam num `topGroup` e só a visibilidade do grupo muda. O layout T vale **só com T ligado e a gaveta aberta**: com a gaveta fechada tudo volta ao lugar (menu superior, rolagem, timeline); o T continua "armado" (nunca é salvo) e reaplica ao reabrir.
+- **Cores das faixas da timeline:** Hitbox **vermelho** (era azul), Som/Audio **azul** (era vermelho); o menu ＋ acompanha. O ícone "Som" da grade da sprite continua vermelho, como pedido antes.
+- **Menu de Hitbox / Hurtbox** (de cima para baixo): interruptor Hurtbox | Hitbox; **Frame de início** (move a box inteira, mantém a duração; colisão **não recusa**: a movida vira a ocorrência seguinte, outra faixa) e **Duração**; **prévia** do sprite com as boxes (`AnimPreview` parada no frame); **x, y, largura, altura** (− N +); remover. Só hitbox: **Dano** e **reação** (prévia, ◀ ▶, escolher, passos — como antes), e **Transição**: transição atual, **mudar ANO destino** e **bloquear sequência** (só se o golpe tem SEQ). Dano/reação são do sprite sob o ponteiro (OPT do frame): mover a box não os leva.
+- `ObjModel.move/locate` (puro, testado em `ObjMoveTest`).
+- Não executado num aparelho (só compilado e revisado): layout do T/topGroup, prévia e steppers.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -151,6 +158,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 36 |
 | **ToolbarTest (novo)** | 65 |
+| **ObjMoveTest (novo)** | 20 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
@@ -170,4 +178,4 @@ Parser do DAC, `_ActReqMain`/`_Hokan` (exceto o quirk acima), desenho (flip/zoom
 ## 8. Arquivos
 
 Alterados: `Ano`, `AttackData`, `AttackRenderer`, `AttackSim`, `AttackView`, `BattleSim`, `CharData`, `LayoutManager`, `LinkScreen`, `MainActivity`, `ObjModel`, `Saver`, `TimelineTools`, `test/BattleTest`.
-Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `FrameTools`, `Stepper`, `IconView`, `ThumbView`, `LinkPosDialog`, `LayoutManagerFmt`, `test/LinkHierarchyTest`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`.
+Novos: `CutsceneInfo`, `GameRules`, `GameTables`, `ToolbarOrder`, `ReorderBar`, `HelpText`, `FrameTools`, `Stepper`, `IconView`, `ThumbView`, `LinkPosDialog`, `LayoutManagerFmt`, `test/LinkHierarchyTest`, `test/CutsceneTest`, `test/FidelityTest`, `test/GameRulesTest`, `test/SpawnDiagTest`, `test/ToolbarTest`, `test/ObjMoveTest`.

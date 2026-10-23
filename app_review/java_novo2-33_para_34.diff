@@ -2632,8 +2632,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-23 11:03:57.389484881 +0000
-@@ -0,0 +1,147 @@
++++ b/HelpText.java	2026-10-23 15:45:57.138690467 +0000
+@@ -0,0 +1,152 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2749,6 +2749,11 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "MOVIMENTO: velocidade x/y; num frame que recebe a velocidade do anterior os campos ficam zerados e somam à recebida (aparece em amarelo, com Remover); aceleração só aparece com speed; frame inicial e duração do trecho, Manter velocidade (passa a velocidade deste frame ao próximo), total de pixels e Remover speed. "
 +                + "EFEITOS: Flip X/Y e Interpolação. COPIAR: aplica as coisas do frame em outros frames. "
 +                + "Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele. Os itens de caixas (hitbox/hurtbox), efeitos de hit e links da timeline continuam com as ferramentas de antes."));
++        s.add(new Section(null, "Menu de Hitbox / Hurtbox",
++                "Tocar numa box da timeline abre, de cima para baixo: o interruptor Hurtbox | Hitbox; FRAME DE INÍCIO (move a box inteira mantendo a duração; se cair em cima de outra box igual ela ganha uma faixa própria) e DURAÇÃO; "
++                + "a prévia do sprite com as boxes; x, y, largura e altura; remover a box. Só para hitbox: DANO e REAÇÃO (com prévia e botões para trocar; dano e reação são do sprite sob o ponteiro, não andam com a box) "
++                + "e TRANSIÇÃO: a transição atual (SEQ/END), mudar o ANO destino e, se o golpe tem SEQ, bloquear a sequência neste hit. "
++                + "Na timeline, a faixa da hitbox é vermelha e a de som é azul."));
 +        s.add(new Section(null, "Speed x Accel (velocidade e aceleração)",
 +                "SPEED é uma velocidade constante: o objeto anda essa quantidade de pixels a cada tick, sempre igual. Ex.: speed 50 por 5 ticks = 250 px. "
 +                + "ACCEL é uma velocidade de aceleração: a cada tick ela soma o valor dela na velocidade atual (o objeto anda com a velocidade que tem e só depois soma). "
@@ -2758,7 +2763,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        s.add(new Section(null, "Altura da gaveta: Y e T",
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; "
 +                + "isso vale só para aquela abertura. Y (na borda, à direita) grava a altura atual como a nova altura padrão. "
-+                + "T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela e o menu superior some para liberar espaço; tocar em T de novo volta ao modo normal. "
++                + "T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela e o menu superior some para liberar espaço; tocar em T de novo volta ao modo normal. O modo T só vale com a gaveta aberta: ao fechar a gaveta o menu superior, a rolagem e a timeline voltam ao lugar. "
 +                + "Cada modo guarda a própria altura padrão (o Y salva só a altura); o modo T nunca fica salvo: o app sempre abre com ele desligado."));
 +        s.add(new Section(null, "DADOS / EDITAR",
 +                "Painel recolhido com os dados do DAC em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. "
@@ -2887,7 +2892,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-22 10:44:40.430797887 +0000
++++ b/LayoutManager.java	2026-10-23 15:43:08.835287053 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -2946,6 +2951,15 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          }
      }
  
+@@ -122,7 +139,7 @@
+ 
+     private static final String[] ADD_BASIC = {"Sprite", "Hitbox (ataque)", "Hurtbox (corpo)", "Projetil", "Efeito / animacao", "Som", "Velocidade", "Animacao ligada"};
+     private static final int[] ADD_BASIC_CODE = {0, 1, 2, 3, 4, 6, 7, 8};
+-    private static final int[] ADD_BASIC_COLOR = {0xFFE5C100, 0xFF3D8BFF, 0xFF3DDC84, 0xFFFF9A3C, 0xFFB07CFF, 0xFFE5484D, 0xFF3DDC84, 0xFF2EC4C4};
++    private static final int[] ADD_BASIC_COLOR = {0xFFE5C100, 0xFFE5484D, 0xFF3DDC84, 0xFFFF9A3C, 0xFFB07CFF, 0xFF3D8BFF, 0xFF3DDC84, 0xFF2EC4C4};
+ 
+     /** Popup flutuante com tudo que a timeline sabe criar; cria no ponteiro. */
+     private void showAddPopup(Activity a, View anchor, final TimelineOps ops) {
 @@ -262,6 +279,27 @@
          r.setPadding(pad, pad, pad, pad);
          applyInsets(r, pad);
@@ -2974,7 +2988,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          // ---- topo: estado, titulo do golpe, aviso e espaco reservado para opcoes futuras
          backBar = button(a, "", true);
          backBar.setVisibility(View.GONE);
-@@ -296,23 +334,36 @@
+@@ -296,41 +334,57 @@
          final TextView bSpr = button(a, "SPRITES", false);
          final TextView bLinks = button(a, "LINKS", false);
          lockBtnRef = bLock;
@@ -3012,25 +3026,54 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +            tb.setPadding(dp(14), dp(9), dp(14), dp(9));
 +        }
 +        LinearLayout pinned = row(a);
++        // menu superior inteiro num grupo: o modo T so mexe na visibilidade do grupo (nada de estado por view)
++        final LinearLayout topGroup = new LinearLayout(a);
++        topGroup.setOrientation(LinearLayout.VERTICAL);
          LinearLayout topRow = row(a);
 -        topRow.addView(bSave, lp(-2, -2, 0, 0, 5, 0));
 +        topRow.addView(pinned, lp(-2, -2, 0, 0, 5, 0));
          topRow.addView(tbs, new LinearLayout.LayoutParams(0, -2, 1f));
-         r.addView(topRow, lp(-1, -2, 0, 0, 0, 5));
+-        r.addView(topRow, lp(-1, -2, 0, 0, 0, 5));
++        topGroup.addView(topRow, lp(-1, -2, 0, 0, 0, 5));
 +        toolbar = new ReorderBar(a, pinned, tbs, trow, tbMap);
          LinearLayout mrow = row(a);
          final TextView modeBtn = button(a, "MODO: GOLPES", false);
          modeBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-@@ -338,7 +389,7 @@
+         modeBtn.setPadding(dp(12), dp(9), dp(12), dp(9));
+         mrow.addView(modeBtn, lp(-2, -2, 0, 0, 6, 0));
+         mrow.addView(as, new LinearLayout.LayoutParams(0, dp(42), 1f));
+-        r.addView(mrow, lp(-1, -2, 0, 0, 0, 4));
++        topGroup.addView(mrow, lp(-1, -2, 0, 0, 0, 4));
+         TextView st = text(a, "", 12, DIM);
+         st.setSingleLine(true);
+         st.setEllipsize(android.text.TextUtils.TruncateAt.END);
+         st.setVisibility(View.GONE);
+-        r.addView(st, lp(-1, -2, 0, 0, 0, 2));
++        topGroup.addView(st, lp(-1, -2, 0, 0, 0, 2));
+         TextView in = mono(a, "", 12, 0xFF6AA1FF);
+         in.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+         in.setSingleLine(true);
+         in.setEllipsize(android.text.TextUtils.TruncateAt.END);
+         in.setVisibility(View.GONE);
+-        r.addView(in, lp(-1, -2, 0, 0, 0, 2));
++        topGroup.addView(in, lp(-1, -2, 0, 0, 0, 2));
+         TextView wr = text(a, "", 12, WARN);
+         wr.setSingleLine(true);
+         wr.setEllipsize(android.text.TextUtils.TruncateAt.END);
+@@ -338,9 +392,10 @@
          wr.setClickable(true);
          wr.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              warnExpanded = !warnExpanded;
 -            setWarning(warnMsg);
 +            showWarning();
          } });
-         r.addView(wr, lp(-1, -2, 0, 0, 0, 4));
+-        r.addView(wr, lp(-1, -2, 0, 0, 0, 4));
++        topGroup.addView(wr, lp(-1, -2, 0, 0, 0, 4));
++        r.addView(topGroup, new LinearLayout.LayoutParams(-1, -2));
  
-@@ -506,7 +557,80 @@
+ 
+         // ---- preview no centro
+@@ -506,7 +561,86 @@
          toolsRef[0] = tools;
          hsRef[0] = hs;
          // gaveta entre a area que rola e a barra de controle (que continua na base)
@@ -3039,7 +3082,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +        final android.widget.FrameLayout frame = new android.widget.FrameLayout(a);
 +        final android.content.SharedPreferences sheetPrefs = a.getSharedPreferences("sheet", Context.MODE_PRIVATE);
 +        final boolean[] tMode = {false};
-+        final View[] topStuff = {topRow, mrow, st, in, wr};
++        final boolean[] tActive = {false};      // layout T aplicado agora (T ligado E gaveta aberta)
 +        final LinearLayout tlFixed = new LinearLayout(a);
 +        tlFixed.setOrientation(LinearLayout.VERTICAL);
 +        final View[] tlStack = {timeline, bar, tlBox};
@@ -3056,11 +3099,10 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +        });
 +        // modo T: quanto mais o menu sobe, menos faixas da timeline ficam visiveis (6 -> 2); fora dele, sem limite
 +        final Runnable lanes = new Runnable() { public void run() {
-+            tl.setLaneLimit(tMode[0] ? TimelineView.lanesFor(tools.sheetFraction()) : 0);
++            tl.setLaneLimit(tActive[0] ? TimelineView.lanesFor(tools.sheetFraction()) : 0);
 +        } };
-+        tools.setOnSheetResize(lanes);
 +        final Runnable applyMode = new Runnable() { public void run() {
-+            boolean t = tMode[0];
++            boolean t = tActive[0];
 +            ViewGroup oldParent = (ViewGroup) tools.root.getParent();
 +            if (oldParent != null) oldParent.removeView(tools.root);
 +            for (View v : tlStack) { ViewGroup pv = (ViewGroup) v.getParent(); if (pv != null) pv.removeView(v); }
@@ -3083,11 +3125,18 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                scroll.setVisibility(View.VISIBLE);
 +            }
 +            holder.setLayoutParams(hp);
-+            for (View v : topStuff) v.setVisibility(t ? View.GONE : (v == st || v == in || v == wr ? v.getVisibility() : View.VISIBLE));
-+            tools.setTOn(t);
++            topGroup.setVisibility(t ? View.GONE : View.VISIBLE);
 +            lanes.run();
 +            frame.post(new Runnable() { public void run() { placeSheet.run(); tools.refit(); } });
 +        } };
++        // o layout T so vale com T ligado e a gaveta aberta; fechada, tudo (menu superior, rolagem, timeline) volta ao normal
++        final Runnable syncMode = new Runnable() { public void run() {
++            boolean want = tMode[0] && tools.sheetOpen();
++            tools.setTOn(tMode[0]);
++            if (want != tActive[0]) { tActive[0] = want; applyMode.run(); }
++            else lanes.run();
++        } };
++        tools.setOnSheetResize(syncMode);
 +        tools.setGeometry(new TimelineTools.Geo() {
 +            @Override public int maxH() {
 +                if (tMode[0]) return Math.max(dp(160), frame.getHeight() / 2);
@@ -3106,13 +3155,13 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                sheetPrefs.edit().putInt(tMode[0] ? "tH" : "yH", h).apply();
 +                android.widget.Toast.makeText(a, "Altura padrão do menu salva", android.widget.Toast.LENGTH_SHORT).show();
 +            }
-+        } }, new Runnable() { public void run() { tMode[0] = !tMode[0]; applyMode.run(); } });
++        } }, new Runnable() { public void run() { tMode[0] = !tMode[0]; syncMode.run(); } });
 +        // o modo T nunca e salvo: o app sempre abre com ele desligado (nao afeta o menu superior)
 +        frame.post(new Runnable() { public void run() { placeSheet.run(); } });
          tools.setSheetHost(scroll, new Runnable() {
              @Override public void run() {
                  tl.clearSelection();
-@@ -523,6 +647,7 @@
+@@ -523,6 +657,7 @@
          final TimelineOps ops = new TimelineOps(view, tl, new TimelineOps.Host() {
              @Override public void show(int type, int index, int flag, int occ) {
                  tl.select(type, index, flag, occ);
@@ -3120,7 +3169,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -596,6 +721,8 @@
+@@ -596,6 +731,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -3129,7 +3178,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -856,7 +983,9 @@
+@@ -856,7 +993,9 @@
              }
          });
  
@@ -3140,7 +3189,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -884,6 +1013,56 @@
+@@ -884,6 +1023,56 @@
      }
  
      /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
@@ -3197,7 +3246,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -1045,22 +1224,49 @@
+@@ -1045,22 +1234,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3257,7 +3306,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1441,7 @@
+@@ -1235,7 +1451,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -3699,7 +3748,16 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          }
 diff -ruN a/ObjModel.java b/ObjModel.java
 --- a/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
-+++ b/ObjModel.java	2026-10-21 20:43:39.056623058 +0000
++++ b/ObjModel.java	2026-10-23 15:43:42.007141666 +0000
+@@ -18,7 +18,7 @@
+ 
+     static final int HITBOX = 0, HURTBOX = 1, PROJ = 2, EFFECT = 3, ACTION = 4;
+     static final String[] KIND_NAMES = {"Hitbox", "Hurtbox", "Projetil", "Efeito", "Acao especial"};
+-    static final int[] KIND_COLORS = {0xFF3D8BFF, 0xFF3DDC84, 0xFFFF9A3C, 0xFFB07CFF, 0xFFB8C0CC};
++    static final int[] KIND_COLORS = {0xFFE5484D, 0xFF3DDC84, 0xFFFF9A3C, 0xFFB07CFF, 0xFFB8C0CC};
+ 
+     static int kindOf(int flag) {
+         if (flag == 2) return HITBOX;
 @@ -41,7 +41,7 @@
              case 30: return "Zoom de camera";
              case 31: return "Zoom de camera";
@@ -3709,6 +3767,39 @@ diff -ruN a/ObjModel.java b/ObjModel.java
              case 34: return "Curar vida";
              case 37: return "Sem contagem de combo";
              case 38: return "Bloquear sequencia";
+@@ -419,6 +419,32 @@
+         return out;
+     }
+ 
++    /**
++     * Move o objeto inteiro para comecar em {@code nf0}, mantendo a duracao e os valores de cada frame (limitado ao fim da ANO).
++     * Nao recusa colisao: se ja ha uma caixa com a mesma flag nos frames de destino, a movida vira a ocorrencia seguinte (outra faixa).
++     */
++    static Ano.Mpt[] move(Ano.Mpt[] m, Obj o, int nf0) {
++        int n = o.f1 - o.f0 + 1;
++        nf0 = Math.max(0, Math.min(m.length - n, nf0));
++        if (nf0 == o.f0) return m;
++        Ano.Hit[] hits = new Ano.Hit[n];
++        for (int k = 0; k < n; k++) {
++            Ano.Hit h = find(m[o.f0 + k], o.flag, o.occ);
++            hits[k] = h == null ? defaultHit(o.flag) : copyHit(h);
++        }
++        Ano.Mpt[] out = m.clone();
++        for (int f = o.f0; f <= o.f1; f++) out[f] = removeHit(out[f], o.flag, o.occ);
++        for (int k = 0; k < n; k++) out[nf0 + k] = addHit(out[nf0 + k], hits[k]);
++        return out;
++    }
++
++    /** Depois de {@link #move}: a ocorrencia mais alta da flag que comeca em {@code f0} (a movida, ate numa colisao); null se nao ha. */
++    static Obj locate(Ano.Mpt[] m, int flag, int f0) {
++        Obj best = null;
++        for (Obj o : objects(m)) if (o.flag == flag && o.f0 == f0 && (best == null || o.occ > best.occ)) best = o;
++        return best;
++    }
++
+     /** Liga/desliga a flag (hit sem coordenadas, ex.: 38) em todos os frames [f0, f1]. */
+     static Ano.Mpt[] setFlagRange(Ano.Mpt[] m, int f0, int f1, int flag, boolean on) {
+         Ano.Mpt[] out = m.clone();
 diff -ruN a/QuickNotice.java b/QuickNotice.java
 --- a/QuickNotice.java	2026-10-17 11:37:07.000000000 +0000
 +++ b/QuickNotice.java	2026-10-22 08:41:02.294141240 +0000
@@ -4386,7 +4477,7 @@ diff -ruN a/ThumbView.java b/ThumbView.java
 +}
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-22 10:37:59.589676083 +0000
++++ b/TimelineTools.java	2026-10-23 15:44:50.263790209 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -4505,15 +4596,15 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          ViewGroup.LayoutParams p = root.getLayoutParams();
          if (p != null && p.height != h) { p.height = h; root.setLayoutParams(p); }
 +        if (onResize != null) onResize.run();
-     }
- 
++    }
++
 +    /** Fracao 0..1 de quanto a gaveta subiu entre o minimo e o maximo (0 se fechada). */
 +    float sheetFraction() {
 +        if (root.getVisibility() != View.VISIBLE) return 0f;
 +        int lo = peekH(), hi = maxH();
 +        return hi <= lo ? 0f : Math.max(0f, Math.min(1f, (sheetH - lo) / (float) (hi - lo)));
-+    }
-+
+     }
+ 
 +    private Runnable onResize;
 +    void setOnSheetResize(Runnable r) { onResize = r; }
 +
@@ -5435,7 +5526,66 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
  
  
      private void setOpt(int field, int value) {
-@@ -1144,8 +1400,8 @@
+@@ -983,13 +1239,15 @@
+         String nm = o.kind == ObjModel.EFFECT ? "EFEITO" : o.kind == ObjModel.ACTION ? ObjModel.actionName(o.flag).toUpperCase(java.util.Locale.US) : ObjModel.KIND_NAMES[o.kind].toUpperCase(java.util.Locale.US);
+         int t0 = FrameOps.starts(a.mpts)[o.f0], t1 = FrameOps.starts(a.mpts)[o.f1] + FrameOps.span(a.mpts[o.f1]);
+         title.setText(nm + "  ·  " + ObjModel.seconds(t0).replace("s", "") + "–" + ObjModel.seconds(t1));
+-        durationField(a, o.f0, o.f1 - o.f0 + 1, a.mpts.length - o.f0, new DurSet() { public void apply(int n) {
+-            ObjModel.Obj oo = curObj();
+-            if (oo == null) return;
+-            view.replaceMpts(ObjModel.trim(cur().mpts, oo, oo.f0, oo.f0 + n - 1));
+-            refresh();
+-        } });
+-        if (o.f1 > o.f0) note("Frames conectados (" + (o.f0 + 1) + "–" + (o.f1 + 1) + "): mudar aqui muda em todos. Para editar um frame separado, selecione o objeto e use DIVIDIR na divisa de frames mais proxima.");
++        if (o.kind != ObjModel.HITBOX && o.kind != ObjModel.HURTBOX) {
++            durationField(a, o.f0, o.f1 - o.f0 + 1, a.mpts.length - o.f0, new DurSet() { public void apply(int n) {
++                ObjModel.Obj oo = curObj();
++                if (oo == null) return;
++                view.replaceMpts(ObjModel.trim(cur().mpts, oo, oo.f0, oo.f0 + n - 1));
++                refresh();
++            } });
++            if (o.f1 > o.f0) note("Frames conectados (" + (o.f0 + 1) + "–" + (o.f1 + 1) + "): mudar aqui muda em todos. Para editar um frame separado, selecione o objeto e use DIVIDIR na divisa de frames mais proxima.");
++        }
+         switch (o.kind) {
+             case ObjModel.HITBOX: case ObjModel.HURTBOX: box(a, o, pat); break;
+             case ObjModel.PROJ: projectile(a, o, pat); break;
+@@ -1078,7 +1336,7 @@
+      */
+     private void transitionBlock(Ano a, final ObjModel.Obj hitObj) {
+         AttackData ad = view.attackData();
+-        head("Transição (sequência)");
++        head("Transição");
+         if (ad == null || ad.move == null || ad.move.generic) { note("Este ataque não tem dados de golpe (HDAT 4): sem transição."); return; }
+         final CharData.Move mv = ad.move;
+         final int cur = a.index;
+@@ -1097,18 +1355,23 @@
+         String nm = kind == SeqMark.SEQ ? "Seq" : "End";
+         int vg = kind == SeqMark.SEQ ? mv.animSeqChao : mv.animEndChao, va = kind == SeqMark.SEQ ? mv.animSeqAr : mv.animEndAr;
+         String st = "";
++        final boolean any0 = (wantGround && vg != 0) || (wantAir && va != 0);
+         if (wantGround) st += nm + " chão: " + anoText(vg);
+         if (wantAir) st += (st.isEmpty() ? "" : "   ·   ") + nm + " ar: " + anoText(va);
+-        note(st);
++        TextView cur0 = note("Transição atual: " + (any0 ? st : "nenhuma"));
++        cur0.setTextColor(any0 ? LayoutManager.TEXT : LayoutManager.DIM);
++        cur0.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+         if (kind == SeqMark.END) note("Esta ANO é o destino da SEQ: a END dispara num novo hit enquanto o atacante está aqui.");
+         else note("A SEQ dispara quando um hit conecta nesta ANO. Chão e ar são definidos separadamente (o jogo escolhe pela posição do atacante).");
+         boolean any = (wantGround && vg != 0) || (wantAir && va != 0);
+         final boolean fg = wantGround, fa = wantAir;
+         LinearLayout r = line();
+-        r.addView(btn((any ? "✎ Editar Transição" : "+ Transição") + (kind == SeqMark.END ? " END" : ""), true, new View.OnClickListener() {
++        r.addView(btn((any ? "✎ Mudar ANO destino" : "+ Transição") + (kind == SeqMark.END ? " END" : ""), true, new View.OnClickListener() {
+             public void onClick(View v) { transitionDialog(kind, cur, fg, fa); }
+         }));
+-        if (hitObj != null && kind == SeqMark.SEQ) {
++        final Ano ca0 = cur();
++        final boolean blk0 = hitObj != null && ca0 != null && ObjModel.hasFlagRange(ca0.mpts, hitObj.f0, hitObj.f1, 38);
++        if (hitObj != null && kind == SeqMark.SEQ && (any || blk0)) {       // so oferece bloquear se o golpe tem SEQ (ou se ja esta bloqueado)
+             final Ano ca = cur();
+             final boolean blk = ca != null && ObjModel.hasFlagRange(ca.mpts, hitObj.f0, hitObj.f1, 38);
+             note("Bloquear sequência (flag 38) impede a SEQ de disparar quando este hit conecta.");
+@@ -1144,8 +1407,8 @@
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
          TextView info = new TextView(c);
@@ -5446,7 +5596,111 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setTextColor(LayoutManager.DIM);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
          col.addView(info);
-@@ -1483,7 +1739,7 @@
+@@ -1224,27 +1487,95 @@
+         onChanged.run();
+     }
+ 
+-    private void box(Ano a, ObjModel.Obj o, int pat) {
++    /** Stepper de uma coordenada da box (conectado: edita todos os frames dela); {@code upd} redesenha a previa. */
++    private Stepper coordStep(final ObjModel.Obj o, final int pat, final int field, int value, final Runnable upd) {
++        return new Stepper(c).range(-32768, 32767).step(1).keyboard(new Stepper.OnValue() { public void on(double v) {
++            editCoords(o, pat, field, (int) v);
++            upd.run();
++        } }).value(value);
++    }
++
++    /** Menu de Hitbox / Hurtbox: troca de tipo, inicio e duracao, previa, coordenadas, remover e (hitbox) dano, reacao e transicao. */
++    private void box(final Ano a, final ObjModel.Obj o, final int pat) {
+         Ano.Hit h = ObjModel.find(a.mpts[pat], o.flag, o.occ);
++        // 1. Hitbox | Hurtbox
+         LinearLayout t = line();
+-        t.addView(btn("Hitbox (ataque)", o.kind == ObjModel.HITBOX, convert(o, 2)));
+         t.addView(btn("Hurtbox (corpo)", o.kind == ObjModel.HURTBOX, convert(o, 1)));
+-        num(line(), "x", h.x, 1, coord(o, pat, 0));
+-        num(line(), "y", h.y, 1, coord(o, pat, 1));
+-        num(line(), "largura", h.width, 1, coord(o, pat, 2));
+-        num(line(), "altura", h.height, 1, coord(o, pat, 3));
+-        keyInfo(a, o, pat);     // remover fica junto da hitbox, antes de reacao/sequencia
++        t.addView(btn("Hitbox (ataque)", o.kind == ObjModel.HITBOX, convert(o, 2)));
++        // 2. frame de inicio e duracao (frames completos)
++        final int n = o.f1 - o.f0 + 1;
++        lab("FRAME DE INÍCIO");
++        put(new Stepper(c).range(1, Math.max(1, a.mpts.length - n + 1)).step(1).keyboard(new Stepper.OnValue() { public void on(double v) {
++            moveBox(o, (int) v - 1);
++        } }).value(o.f0 + 1));
++        lab("DURAÇÃO (frames)");
++        put(new Stepper(c).range(1, Math.max(1, a.mpts.length - o.f0)).step(1).keyboard(new Stepper.OnValue() { public void on(double v) {
++            ObjModel.Obj oo = curObj();
++            if (oo == null) return;
++            view.replaceMpts(ObjModel.trim(cur().mpts, oo, oo.f0, oo.f0 + (int) v - 1));
++            refresh();
++        } }).value(n));
++        int ticks = 0;
++        for (int f = o.f0; f <= o.f1; f++) ticks += FrameOps.span(a.mpts[f]);
++        note("Frames " + (o.f0 + 1) + " a " + (o.f1 + 1) + " = " + ObjModel.timeText(ticks)
++                + ". Mover o início leva a box inteira (a duração fica); se cair em cima de outra box igual, ela ganha uma faixa própria. O tempo de cada frame se muda na sprite.");
++        if (n > 1) note("Frames conectados: mudar x, y, largura ou altura muda em todos. Para editar um frame separado, use DIVIDIR na divisa de frames mais próxima.");
++        // 3. previa do sprite com as boxes
++        final AnimPreview pv = new AnimPreview(c);
++        pv.setShowHits(true);
++        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, dp(170));
++        pl.setMargins(dp(4), dp(8), dp(4), dp(4));
++        body.addView(pv, pl);
++        final Runnable upd = new Runnable() { public void run() {
++            Ano cu = cur();
++            if (cu == null) return;
++            pv.set(view.packDac(2), view.packSprites(2), cu.index, false);
++            pv.setPlayUntil(pat);
++        } };
++        upd.run();
++        // 4. x, y, largura, altura
++        LinearLayout r1 = line();
++        r1.addView(axisLabel("x"));
++        stepIn(r1, coordStep(o, pat, 0, h.x, upd));
++        r1.addView(axisLabel("y"));
++        stepIn(r1, coordStep(o, pat, 1, h.y, upd));
++        LinearLayout r2 = line();
++        r2.addView(axisLabel("larg."));
++        stepIn(r2, coordStep(o, pat, 2, h.width, upd));
++        r2.addView(axisLabel("alt."));
++        stepIn(r2, coordStep(o, pat, 3, h.height, upd));
++        keyInfo(a, o, pat);     // remover fica junto da box, antes de dano/reacao/transicao
+         if (o.kind == ObjModel.HITBOX) {
+             head("Dano e reacao (deste sprite)");
+             Ano.Mpt m = a.mpts[pat];
+             final int p2 = pat;
+-            num(line(), "dano", ObjModel.optField(m, 0), 1, optSetter(p2, 0));
++            lab("DANO");
++            put(new Stepper(c).range(-32768, 32767).step(1).keyboard(new Stepper.OnValue() { public void on(double v) { optSetter(p2, 0).set(v); } })
++                    .value(ObjModel.optField(m, 0)));
++            note("Dano e reação pertencem ao sprite (frame) sob o ponteiro, não à box: mover a box não leva os dois junto.");
+             reactionBlock(p2);
+             transitionBlock(a, o);
+             if (focusOn) scrollBodyToEnd();
+         }
+     }
+ 
++    /** Muda o frame de inicio da box (leva a box inteira); nao recusa colisao. */
++    private void moveBox(ObjModel.Obj o, int nf0) {
++        Ano a = cur();
++        if (a == null || nf0 == o.f0) return;
++        Ano.Mpt[] mv = ObjModel.move(a.mpts, o, nf0);
++        if (mv == a.mpts) return;
++        view.replaceMpts(mv);
++        ObjModel.Obj now = ObjModel.locate(cur().mpts, o.flag, Math.max(0, Math.min(nf0, cur().mpts.length - 1)));
++        if (now != null) {
++            flag = now.flag;
++            occ = now.occ;
++            tl.select(TimelineView.T_OBJ, -1, flag, occ);
++            view.seekToPat(now.f0);
++        }
++        refresh();
++    }
++
+     private static final String[] GROUPS = {"normal (efeito 0, som 3, empurra)", "som alternativo (efeito 0, som 4, empurra)",
+             "forte (efeito 1, som 6, empurra)", "leve (meio hitstop, sem empurrar)", "sem efeito, som nem hitstop"};
+ 
+@@ -1483,7 +1814,7 @@
      private void projSeqBlock(final CharData.Move mv) {
          head("Sequência do projétil (SEQ_PROJETIL)");
          note("SEQ_PROJETIL: " + anoText(mv.animAoAcertar));
@@ -5455,7 +5709,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          LinearLayout r = line();
          final boolean any = mv.animAoAcertar != 0;
          r.addView(btn(any ? "✎ Editar SEQ_PROJETIL" : "+ SEQ_PROJETIL", true, new View.OnClickListener() { public void onClick(View v) { projSeqDialog(mv); } }));
-@@ -1497,7 +1753,7 @@
+@@ -1497,7 +1828,7 @@
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
          TextView info = new TextView(c);
@@ -5464,7 +5718,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setTextColor(LayoutManager.DIM);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
          col.addView(info);
-@@ -1716,20 +1972,20 @@
+@@ -1716,20 +2047,20 @@
      private String describe(int f) {
          switch (f) {
              case 3: case 4: case 5: return "Faz o fundo tremer enquanto o objeto existe. Escolha a intensidade.";
@@ -5489,7 +5743,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              case ObjModel.VF_WALL: return "Impacto na parede: toca o som 6, zera o cancelamento do oponente e cria a poeira de impacto na borda da tela. Precisa ter um ataque que jogue o oponente na parede (o jogo ignora o frame se o personagem nao estiver batendo na parede). Disponivel so nas ANOs de reacao do gamedata com velocidade/aceleracao X.";
              default:
                  if (ObjModel.isDust(f)) return "Poeira / fumaca: cria um efeito de fumaca na posicao do personagem (vira para o lado em que ele olha). Escolha o tipo abaixo (1 a 15). Tipos 1-5: pacote bobj ANOs 10-14; 6-7: effect ANOs 78-79; 8-15: effect ANOs 70-77. Cada frame com a flag cria um novo efeito.";
-@@ -1780,6 +2036,8 @@
+@@ -1780,6 +2111,8 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -5498,7 +5752,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
-@@ -1848,10 +2106,10 @@
+@@ -1848,10 +2181,10 @@
          title.setTextColor(TimelineView.markColor(m));
          title.setText(m.title() + "  ·  frame " + (m.pat + 1) + (kind == SeqMark.LAND || kind == SeqMark.FALL ? "" : (m.air ? "  ·  no ar" : "  ·  no chao")) + (m.projectile ? "  ·  projetil" : ""));
          switch (kind) {
@@ -5513,7 +5767,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +2176,7 @@
+@@ -1918,7 +2251,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -5524,7 +5778,16 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      }
 diff -ruN a/TimelineView.java b/TimelineView.java
 --- a/TimelineView.java	2026-10-20 01:14:59.000000000 +0000
-+++ b/TimelineView.java	2026-10-22 11:03:17.106053570 +0000
++++ b/TimelineView.java	2026-10-23 15:43:08.833926594 +0000
+@@ -25,7 +25,7 @@
+     public static final int T_NONE = -1, T_SPRITE = 0, T_OBJ = 1, T_SOUND = 2, T_MOVE = 3, T_STYLE = 4, T_LINK = 5, T_SEQ = 6;
+ 
+     private static final int R_SPRITE = 0, R_SUMMARY = 1, R_AUDIO = 2, R_MOVE = 3, R_STYLE = 4, R_OBJ = 5, R_LINK = 6, R_SEQ = 7;
+-    private static final int C_SPRITE = 0xFFE5C100, C_AUDIO = 0xFFE5484D, C_MOVE = 0xFF3DDC84, C_STYLE = 0xFFFF9A3C, C_LINK = 0xFF2EC4C4;
++    private static final int C_SPRITE = 0xFFE5C100, C_AUDIO = 0xFF3D8BFF, C_MOVE = 0xFF3DDC84, C_STYLE = 0xFFFF9A3C, C_LINK = 0xFF2EC4C4;
+     private static final float VIEW_DP = 188, RULER_DP = 14, SPRITE_DP = 40, ROW_DP = 22, SUM_DP = 10;
+ 
+     public interface Listener {
 @@ -46,7 +46,7 @@
      }
  
@@ -6758,6 +7021,118 @@ diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
 +        check("efeito de hit mostra o link 1 e nao o link do link (2)", fs.contains(Integer.valueOf(0)) + ":" + fs.contains(Integer.valueOf(1)) + ":" + fs.contains(Integer.valueOf(2)), "true:true:false");
 +
 +        System.out.println("LinkHierarchyTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
+--- a/test/ObjMoveTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ObjMoveTest.java	2026-10-23 15:45:35.802258102 +0000
+@@ -0,0 +1,108 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.List;
++
++/** ObjModel.move / locate: "Frame de inicio" do menu de Hitbox/Hurtbox (move a box inteira; colisao vira outra faixa) e as cores das faixas. */
++public class ObjMoveTest {
++    static Ano.Mpt mpt(int image) {
++        Ano.Mpt m = new Ano.Mpt();
++        m.image = image; m.flags |= 0x20; m.time = 4; m.normalize();
++        return m;
++    }
++
++    static Ano.Hit hit(int flag, int x) {
++        Ano.Hit h = new Ano.Hit(); h.flag = flag; h.x = x; h.y = 1; h.width = 10; h.height = 11; return h;
++    }
++
++    static Ano.Mpt[] frames(int n) {
++        Ano.Mpt[] m = new Ano.Mpt[n];
++        for (int i = 0; i < n; i++) m[i] = mpt(i);
++        return m;
++    }
++
++    static void put(Ano.Mpt[] m, int f, Ano.Hit... h) {
++        Ano.Hit[] old = (m[f].flags & 0x10) != 0 ? m[f].hits : new Ano.Hit[0];
++        Ano.Hit[] n = new Ano.Hit[old.length + h.length];
++        System.arraycopy(old, 0, n, 0, old.length);
++        System.arraycopy(h, 0, n, old.length, h.length);
++        m[f].hits = n;
++        m[f].flags |= 0x10;
++        m[f].normalize();
++    }
++
++    static ObjModel.Obj find(Ano.Mpt[] m, int flag, int occ) {
++        for (ObjModel.Obj o : ObjModel.objects(m)) if (o.flag == flag && o.occ == occ) return o;
++        return null;
++    }
++
++    public static void main(String[] args) {
++        // hitbox (flag 2) nos frames 1-2 (valores diferentes em cada), hurtbox (flag 1) no frame 0
++        Ano.Mpt[] m = frames(6);
++        put(m, 0, hit(1, 50));
++        put(m, 1, hit(2, 10));
++        put(m, 2, hit(2, 20));
++        ObjModel.Obj o = find(m, 2, 0);
++        check("objeto inicial: 2 frames com valores diferentes sao 2 objetos", o != null && o.f0 == 1 && o.f1 == 1, true);
++        // junta: mesmo valor nos dois frames
++        m[2].hits[0].x = 10;
++        o = find(m, 2, 0);
++        check("objeto de 2 frames", o != null && o.f0 == 1 && o.f1 == 2, true);
++
++        Ano.Mpt[] mv = ObjModel.move(m, o, 3);
++        ObjModel.Obj n = ObjModel.locate(mv, 2, 3);
++        check("mover: comeca no frame novo e mantem a duracao", n != null && n.f0 == 3 && n.f1 == 4, true);
++        check("mover: some dos frames antigos", ObjModel.find(mv[1], 2, 0) == null && ObjModel.find(mv[2], 2, 0) == null, true);
++        check("mover: mantem os valores do hit", ObjModel.find(mv[3], 2, 0).x == 10 && ObjModel.find(mv[4], 2, 0).width == 10, true);
++        check("mover: hurtbox e outros frames intactos", ObjModel.find(mv[0], 1, 0).x == 50 && mv[5] == m[5], true);
++        check("mover: nao altera a lista original", ObjModel.find(m[1], 2, 0) != null && ObjModel.find(m[3], 2, 0) == null, true);
++
++        // limite do fim: 2 frames numa ANO de 6 => inicio maximo 4
++        Ano.Mpt[] end = ObjModel.move(m, o, 99);
++        ObjModel.Obj e = ObjModel.locate(end, 2, 4);
++        check("mover: prende no fim da ANO", e != null && e.f0 == 4 && e.f1 == 5, true);
++        Ano.Mpt[] start = ObjModel.move(m, o, -5);
++        check("mover: prende no inicio", ObjModel.locate(start, 2, 0) != null && ObjModel.locate(start, 2, 0).f1 == 1, true);
++        check("mover para o mesmo inicio nao muda", ObjModel.move(m, o, o.f0) == m, true);
++
++        // mover para sobrepor o proprio trecho (1-2 -> 2-3): sem colisao consigo mesmo
++        Ano.Mpt[] ov = ObjModel.move(m, o, 2);
++        ObjModel.Obj on = ObjModel.locate(ov, 2, 2);
++        check("mover sobrepondo o proprio trecho: 1 so objeto de 2 frames", on != null && on.f0 == 2 && on.f1 == 3 && on.occ == 0 && ObjModel.find(ov[1], 2, 0) == null, true);
++
++        // colisao: outra hitbox igual (flag 2) nos frames 3-4; mover a primeira para la nao recusa e cria a segunda faixa
++        Ano.Mpt[] c = frames(6);
++        put(c, 1, hit(2, 10));
++        put(c, 2, hit(2, 10));
++        put(c, 3, hit(2, 99));
++        put(c, 4, hit(2, 99));
++        ObjModel.Obj first = find(c, 2, 0);
++        ObjModel.Obj a0 = null;
++        for (ObjModel.Obj k : ObjModel.objects(c)) if (k.flag == 2 && k.f0 == 1) a0 = k;
++        check("colisao: objeto de origem achado", a0 != null && a0.f1 == 2, true);
++        Ano.Mpt[] cm = ObjModel.move(c, a0, 3);
++        check("colisao: nao recusa (devolve outro array)", cm != c, true);
++        check("colisao: frame de destino tem 2 hitboxes (outra faixa)", ObjModel.count(cm[3], 2) == 2 && ObjModel.count(cm[4], 2) == 2, true);
++        ObjModel.Obj moved = ObjModel.locate(cm, 2, 3);
++        check("colisao: locate acha a movida na faixa seguinte (occ 1) com os valores dela", moved != null && moved.occ == 1 && ObjModel.find(cm[3], 2, 1).x == 10, true);
++        check("colisao: a original continua na faixa 0", ObjModel.find(cm[3], 2, 0).x == 99, true);
++        int lanes = 0;
++        for (ObjModel.Obj k : ObjModel.objects(cm)) if (k.flag == 2) lanes = Math.max(lanes, k.occ + 1);
++        check("colisao: a timeline passa a ter 2 faixas dessa flag", lanes, 2);
++
++        // OPT (dano/reacao) fica no frame de origem
++        Ano.Mpt[] d = frames(4);
++        put(d, 1, hit(2, 10));
++        d[1] = ObjModel.setOptField(d[1], 0, 77);
++        ObjModel.Obj od = find(d, 2, 0);
++        Ano.Mpt[] dm = ObjModel.move(d, od, 2);
++        check("dano (OPT) nao anda junto da box", ObjModel.optField(dm[1], 0) == 77 && ObjModel.optField(dm[2], 0) == 0, true);
++
++        // cores das faixas: hitbox vermelha, audio azul (ver TimelineView.C_AUDIO)
++        check("cor da faixa Hitbox = vermelho", ObjModel.KIND_COLORS[ObjModel.HITBOX], 0xFFE5484D);
++        check("cor da faixa Hurtbox continua verde", ObjModel.KIND_COLORS[ObjModel.HURTBOX], 0xFF3DDC84);
++
++        System.out.println("ObjMoveTest fails=" + BattleTest.fails);
 +    }
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
