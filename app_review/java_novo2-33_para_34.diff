@@ -422,7 +422,7 @@ diff -ruN a/AttackView.java b/AttackView.java
  
 diff -ruN a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-10-24 00:00:42.025724953 +0000
++++ b/BattleSim.java	2026-10-24 11:03:43.517166146 +0000
 @@ -25,6 +25,8 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -989,20 +989,17 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-+            }
+             }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-             }
-         }
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++            }
++        }
++    }
++
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -1027,14 +1024,17 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-+        }
+         }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
 +        if (setX) pendAX = x;
 +        if (setY) pendAY = y;
-+    }
-+
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    /** _SetXY do PlayerTail (inicio do tick, depois do hit-detect do tick anterior): o atacante vai para a posicao logica. */
 +    private void applyPendingMoves() {
 +        if (!pendA) return;
@@ -1338,12 +1338,12 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            noteSpawn("O hit de projétil (flag 0) não gerou nada: este ANO não pertence a nenhum golpe com projétil (os três PROJETIL_ANIM estão vazios). "
 +                    + "Abra o golpe dono para ver o projétil nascer.", false);
 +            return;
-+        }
+         }
 +        boolean normal = bulletField.equals("PROJETIL_ANIM_NORMAL");
 +        if (normal) {
 +            noteSpawn("O hit de projétil (flag 0) não gerou nada: PROJETIL_ANIM_NORMAL está vazio (0). Preencha o campo em DADOS / EDITAR > GOLPE.", false);
 +            return;
-         }
++        }
 +        int d = bulletRelPx;
 +        noteSpawn("O hit de projétil (flag 0) não gerou nada: com o atacante " + Math.abs(d) + " px " + (d > 0 ? "abaixo" : "acima")
 +                + " do oponente o jogo usa " + bulletField + ", que está vazio (0)"
@@ -2111,6 +2111,38 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
+@@ -2040,6 +2528,31 @@
+     public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
+ 
+     public boolean defenderInDamage() { return inDamage; }
++
++    /** Foto do estado de reacao do defensor (para o editor de reacoes desenhar o que o jogo faz tick a tick). Posicao em px. */
++    public static final class DamageTick {
++        public boolean active, charSrc, hitstop, flip;
++        /** tabela (0..29 jogo ou 0..19 personagem), linha (passo), tick dentro do passo. */
++        public int type, row, time;
++        /** velocidade e aceleracao atuais (unidades da tabela: 1 = 0,1 px por tick, ja convertidas por *128/10). */
++        public int xs, ys, xa, ya;
++        public int x, y;
++    }
++
++    public DamageTick damageTick() {
++        DamageTick t = new DamageTick();
++        t.active = inDamage;
++        t.charSrc = dCharSrc;
++        t.hitstop = hsDef > 0;
++        t.flip = oppFlip;
++        t.type = dType;
++        t.row = dIdx;
++        t.time = dTime;
++        t.xs = dXs; t.ys = dYs; t.xa = dXa; t.ya = dYa;
++        t.x = oppX >> 16;
++        t.y = oppY >> 16;
++        return t;
++    }
+     public int hitstopAttacker() { return hsAtk; }
+     public int hitstopDefender() { return hsDef; }
+     public int projectileCount() { return projs.size(); }
 diff -ruN a/CharAssets.java b/CharAssets.java
 --- a/CharAssets.java	2026-10-20 14:58:43.000000000 +0000
 +++ b/CharAssets.java	2026-10-24 00:05:26.068971137 +0000
@@ -4646,7 +4678,7 @@ diff -ruN a/ReactionSlots.java b/ReactionSlots.java
 +}
 diff -ruN a/ReactionTable.java b/ReactionTable.java
 --- a/ReactionTable.java	2026-10-12 21:08:20.000000000 +0000
-+++ b/ReactionTable.java	2026-10-24 10:59:33.250338319 +0000
++++ b/ReactionTable.java	2026-10-24 11:03:43.517819418 +0000
 @@ -39,6 +39,13 @@
          return t;
      }
@@ -4661,6 +4693,127 @@ diff -ruN a/ReactionTable.java b/ReactionTable.java
      public void restoreFrom(ReactionTable o) {
          d = o.d.clone();
          rows = o.rows;
+@@ -63,6 +70,30 @@
+         rows++;
+     }
+ 
++    /** Copia a linha {@code row} para logo depois dela. */
++    public void duplicateRow(int row) {
++        if (row < 0 || row >= rows) return;
++        insertRow(row);
++    }
++
++    /** Move a linha {@code from} para a posicao {@code to} (indice final); fora do intervalo prende nas pontas. */
++    public void moveRow(int from, int to) {
++        if (from < 0 || from >= rows) return;
++        to = Math.max(0, Math.min(rows - 1, to));
++        if (to == from) return;
++        byte[] line = java.util.Arrays.copyOfRange(d, from * STRIDE, from * STRIDE + STRIDE);
++        byte[] n = new byte[rows * STRIDE];
++        int k = 0;
++        for (int r = 0; r < rows; r++) {
++            if (r == from) continue;
++            if (k == to) k++;
++            System.arraycopy(d, r * STRIDE, n, k * STRIDE, STRIDE);
++            k++;
++        }
++        System.arraycopy(line, 0, n, to * STRIDE, STRIDE);
++        d = n;
++    }
++
+     public void removeRow(int row) {
+         if (rows <= 1 || row < 0 || row >= rows) return;
+         byte[] n = new byte[(rows - 1) * STRIDE];
+diff -ruN a/ReactionTrace.java b/ReactionTrace.java
+--- a/ReactionTrace.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReactionTrace.java	2026-10-24 11:04:31.459366771 +0000
+@@ -0,0 +1,86 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * O que o jogo faz com uma reacao, tick a tick: roda a simulacao real (BattleSim) forcando o OPT 1 no defensor e guarda uma foto por tick.
++ * A timeline do editor de reacoes desenha daqui (passos, velocidade, posicao), entao nunca diverge da previa.
++ */
++final class ReactionTrace {
++    /** Um trecho continuo na mesma linha da mesma tabela. */
++    static final class Seg {
++        boolean charSrc, flip;
++        int type, row;
++        /** ticks [start, end): indices em {@link #ticks}, onde 0 = primeiro tick depois do golpe. */
++        int start, end;
++        int length() { return end - start; }
++    }
++
++    final List<BattleSim.DamageTick> ticks = new ArrayList<BattleSim.DamageTick>();
++    final List<Seg> segments = new ArrayList<Seg>();
++    /** Posicao do defensor antes do 1o tick (px). */
++    int startX, startY;
++    /** Terminou por falta de reacao (true) ou por bater no limite de ticks (false). */
++    boolean ended;
++
++    /** Roda a reacao {@code optValue} (0..29 jogo, 30..49 personagem) num sim novo ate acabar (ou {@code maxTicks}). */
++    static ReactionTrace record(BattleSim sim, int optValue, int maxTicks) {
++        ReactionTrace tr = new ReactionTrace();
++        if (sim == null) return tr;
++        sim.forceHit(optValue);
++        BattleSim.DamageTick s0 = sim.damageTick();
++        tr.startX = s0.x;
++        tr.startY = s0.y;
++        for (int i = 0; i < maxTicks; i++) {
++            BattleSim.DamageTick pre = sim.damageTick();
++            if (!pre.active) { tr.ended = true; break; }
++            sim.step();
++            BattleSim.DamageTick t = sim.damageTick();
++            // passo/tabela/tempo sao os que ESTE tick processou (o estado depois do tick ja pode ter avancado para a proxima linha); posicao e velocidade, as de depois
++            t.active = true;
++            t.charSrc = pre.charSrc;
++            t.type = pre.type;
++            t.row = pre.row;
++            t.time = pre.time;
++            t.flip = pre.flip;
++            tr.ticks.add(t);
++        }
++        tr.buildSegments();
++        return tr;
++    }
++
++    private void buildSegments() {
++        segments.clear();
++        Seg cur = null;
++        for (int i = 0; i < ticks.size(); i++) {
++            BattleSim.DamageTick t = ticks.get(i);
++            // time == 0 e o 1o tick de uma linha (tambem quando a mesma linha recomeca em sequencia)
++            boolean newSeg = cur == null || cur.charSrc != t.charSrc || cur.type != t.type || cur.row != t.row || t.time == 0;
++            if (newSeg) {
++                cur = new Seg();
++                cur.charSrc = t.charSrc;
++                cur.type = t.type;
++                cur.row = t.row;
++                cur.flip = t.flip;
++                cur.start = i;
++                segments.add(cur);
++            }
++            cur.end = i + 1;
++        }
++    }
++
++    /** Trechos da tabela {@code (charSrc, type)}. */
++    List<Seg> of(boolean charSrc, int type) {
++        List<Seg> out = new ArrayList<Seg>();
++        for (Seg s : segments) if (s.charSrc == charSrc && s.type == type) out.add(s);
++        return out;
++    }
++
++    /** Deslocamento (px) do defensor entre o inicio da reacao e o fim do tick {@code endTick} (exclusivo); {dx, dy}. */
++    int[] displacement(int endTick) {
++        if (ticks.isEmpty()) return new int[]{0, 0};
++        BattleSim.DamageTick last = ticks.get(Math.max(0, Math.min(ticks.size(), endTick) - 1));
++        return new int[]{last.x - startX, last.y - startY};
++    }
++}
 diff -ruN a/ReorderBar.java b/ReorderBar.java
 --- a/ReorderBar.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ReorderBar.java	2026-10-21 22:28:37.440162865 +0000
@@ -8929,6 +9082,83 @@ diff -ruN a/test/ReactionSlotsTest.java b/test/ReactionSlotsTest.java
 +        del(tmp);
 +
 +        System.out.println("ReactionSlotsTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/ReactionTraceTest.java b/test/ReactionTraceTest.java
+--- a/test/ReactionTraceTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ReactionTraceTest.java	2026-10-24 11:05:35.775296922 +0000
+@@ -0,0 +1,73 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** ReactionTrace: o que a simulacao real faz com uma reacao (passos, duracoes de chao/ar, velocidade, deslocamento) + operacoes de passo da tabela. */
++public class ReactionTraceTest {
++    static BattleSim sim(byte[][] charReactions, int oppHeight) throws Exception {
++        A[] atk = new A[10];
++        for (int i = 0; i < 10; i++) atk[i] = new A().mpt(new M().time(5));
++        A[] def = new A[30];
++        for (int i = 0; i < 30; i++) def[i] = new A().mpt(new M().time(3)).mpt(new M().time(3));
++        CharData ch = chr(move(new int[]{0, 4}, new int[]{2, 3}), charReactions);
++        GameData g = gd(new byte[][] { null, null, null, react(new int[]{4, 4, 20, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}) });
++        int old = BattleSim.oppHeightPx;
++        BattleSim.oppHeightPx = oppHeight;
++        try {
++            BattleSim s = new BattleSim(dac(atk), ch, ch.moves[0], false, dac(def), dac(new A().mpt(new M().time(4)), new A().mpt(new M().time(4))), g, 200, 0, 0);
++            s.reset();
++            return s;
++        } finally { BattleSim.oppHeightPx = old; }
++    }
++
++    public static void main(String[] args) throws Exception {
++        byte[][] rs = new byte[3][];
++        // 0: passo 0 = 4 ticks no chao / 9 no ar (ANO 3, vx = 10 -> 1 px/tick), passo 1 = 3 / 5 (ANO 4, velocidade mantem)
++        rs[0] = react(new int[]{4, 9, 3, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}, new int[]{3, 5, 4, -1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0});
++        // 1: um passo "ate pousar" (255) com vy = 40 (4 px/tick para baixo no ar)
++        rs[1] = react(new int[]{255, 255, 5, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0});
++
++        // ---- chao: cada passo dura DUR_C ticks e a velocidade anda 1 px/tick desde o primeiro tick
++        ReactionTrace g = ReactionTrace.record(sim(rs, 0), 30, 300);
++        check("chao: 2 passos da tabela 0 do personagem", g.segments.size() + ":" + g.of(true, 0).size(), "2:2");
++        check("chao: duracoes = DUR_C (4 e 3)", g.segments.get(0).length() + ":" + g.segments.get(1).length(), "4:3");
++        check("chao: passos em sequencia, sem buraco", g.segments.get(0).start + ":" + g.segments.get(0).end + ":" + g.segments.get(1).start, "0:4:4");
++        check("chao: a reacao acaba sozinha", g.ended && g.ticks.size() == 7, true);
++        boolean keeps = true;
++        for (BattleSim.DamageTick t : g.ticks) keeps &= t.xs == 128;
++        check("velocidade -1 (mantem) segue com a do passo anterior (10 -> 128 unidades)", keeps, true);
++        check("deslocamento total = 1 px/tick x 7 ticks (o defensor esta virado: anda para tras)", Math.abs(g.displacement(g.ticks.size())[0]) + ":" + g.displacement(g.ticks.size())[1], "7:0");
++        check("deslocamento parcial (ate o fim do passo 0) = 4 px", Math.abs(g.displacement(g.segments.get(0).end)[0]), 4);
++        check("o passo mostra o estado que o tick processou (1o tick: tempo 0, passo 0)", g.ticks.get(0).row + ":" + g.ticks.get(0).time + ":" + g.segments.get(1).flip, "0:0:true");
++
++        // ---- no ar (oponente 60 px acima): vale DUR_A (9 e 5)
++        ReactionTrace a = ReactionTrace.record(sim(rs, 60), 30, 300);
++        check("ar: duracoes = DUR_A (9 e 5)", a.segments.get(0).length() + ":" + a.segments.get(1).length(), "9:5");
++        check("ar: parte de y = -60 e fica no ar (sem velocidade vertical)", a.startY + ":" + a.ticks.get(a.ticks.size() - 1).y, "-60:-60");
++
++        // ---- 255 ate pousar: cai 4 px/tick e a linha continua
++        ReactionTrace f = ReactionTrace.record(sim(rs, 60), 31, 300);
++        check("255: a linha 0 dura ate o limite de 255 ticks", f.segments.get(0).type + ":" + f.segments.get(0).row + ":" + f.segments.get(0).length(), "1:0:255");
++        boolean landed = false;
++        for (BattleSim.DamageTick t : f.ticks) if (t.y == 0) landed = true;
++        check("255: o defensor pousa (y chega a 0) a 4 px/tick", landed && f.ticks.get(0).y == -56 && f.ticks.get(13).y == -4 && f.ticks.get(14).y == 0, true);
++        check("limite de ticks: para onde mandar", ReactionTrace.record(sim(rs, 60), 31, 20).ticks.size() + ":" + ReactionTrace.record(sim(rs, 60), 31, 20).ended, "20:false");
++
++        // ---- operacoes de passo da tabela
++        ReactionTable t = new ReactionTable(react(new int[]{1, 1, 1}, new int[]{2, 2, 2}, new int[]{3, 3, 3}), 0);
++        t.duplicateRow(1);
++        check("duplicar o passo 1", t.rows + ":" + t.u8(0, 2) + t.u8(1, 2) + t.u8(2, 2) + t.u8(3, 2), "4:1223");
++        t.moveRow(3, 0);
++        check("mover o passo 3 para o inicio", "" + t.u8(0, 2) + t.u8(1, 2) + t.u8(2, 2) + t.u8(3, 2), "3122");
++        t.moveRow(0, 99);
++        check("mover para alem do fim prende no ultimo", "" + t.u8(0, 2) + t.u8(1, 2) + t.u8(2, 2) + t.u8(3, 2), "1223");
++        t.moveRow(1, 1);
++        t.moveRow(9, 0);
++        t.duplicateRow(9);
++        check("mover para o mesmo lugar ou de linha inexistente nao muda", t.rows + ":" + t.u8(1, 2), "4:2");
++        t.removeRow(0);
++        check("remover o passo 0", t.rows + ":" + t.u8(0, 2) + t.u8(1, 2) + t.u8(2, 2), "3:223");
++
++        System.out.println("ReactionTraceTest fails=" + BattleTest.fails);
 +    }
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
