@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 896 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 919 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -206,6 +206,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes: `ReactionEditTest` (+20: corridas, estender/encurtar, limites, chão x ar, remover/criar, dividir) e `ReactionTraceTest` (+1: dividir mantém posição ±1 px e velocidade ±8/128 tick a tick). AJUDA: capítulo Reações com a barra de ferramentas e tags.
 - Só compilado e revisado: desenho dos blocos, alça de arrastar, toque, gaveta e barra não rodam sem aparelho.
 
+### 3.1x Editor de reações com o layout da tela principal
+- **Causa do “travado/estranho”**: a tela empilhava cabeçalho + prévia + timeline de 194 dp fixos + abas numa coluna só; em tela baixa as faixas de baixo (SPEED/VOZ/EFEITOS/SEQ) ficavam fora da área tocável. Agora a arquitetura é a da principal.
+- **Layout** (`ReactionScreen`): cabeçalho (título · CHÃO|AR · FECHAR) → prévia **quadrada de largura cheia** (`LayoutManager.SquareHolder`) → **área que rola** com a barra de tempo + rótulo, os 4 botões **DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER** (mesmo estilo, 10,5 sp, pesos iguais) e a timeline com as abas **＋** e **#** coladas à direita → **transporte fixo** (INICIO · −1 · TOCAR · +1 · velocidade 1x/0.5x/0.25x/2x, com `ReactionPreview.setSpeed`) → **gaveta flutuante** (`ReactionSheet`: alça arrastável, Y grava a altura padrão em `ryH`, ↶ ✕ APLICAR, altura padrão até a base da prévia).
+- **Timeline** (`ReactionTimelineView` reescrita, medidas de `ReactionLayout`, puro e testado): régua 14 dp, clipes 40 dp (um por passo, amarelos, com miniatura), resumo 10 dp, faixas de 22 dp, teto 188 dp, coluna de nomes de 58 dp, rolagem vertical, ponteiro no centro, pinça. **Fechada** mostra linhas de resumo; **aberta** (padrão) mostra SPEED (blocos arrastáveis), VOZ, EFEITOS, SEQ e CURVA (x/y em px/tick). Tocar em PASSOS ou no cabeçalho abre/fecha; o filtro **#** liga/desliga faixas. Desenho e toque usam as **mesmas linhas** (`ReactionLayout.laneAt`).
+- **Gaveta = grade + páginas** como a da sprite: tocar num passo abre a grade (ANIMAÇÃO · TEMPO · SPEED · VOZ · EFEITOS · SEQ · TOTAL); tocar num item de faixa abre a página dele direto; ◀/✕ voltam; o botão voltar do aparelho fecha uma camada por vez. Os atualizadores (edição no lugar) continuam.
+- **＋** (menu): passo novo, speed, voz, parede, SEQ, mover ◀ ▶ e Σ total.
+- Testes: `ReactionLayoutTest` (23: alturas, teto, resumo x aberta, filtro, rolagem, hit-test). Desenho, gestos, gaveta e botões só compilados e revisados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -251,6 +259,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SaverCopyTest (novo)** | 17 |
 | **ReactionEditTest (novo)** | 35 |
 | **HelpSearchTest (novo)** | 47 |
+| **ReactionLayoutTest (novo)** | 23 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
