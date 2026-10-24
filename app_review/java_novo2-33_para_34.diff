@@ -2817,7 +2817,7 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 00:07:33.192951037 +0000
++++ b/HelpText.java	2026-10-24 10:15:45.434302054 +0000
 @@ -0,0 +1,160 @@
 +package com.zue.attackeditor;
 +
@@ -2855,8 +2855,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        List<Section> s = new ArrayList<Section>();
 +        s.add(new Section(ToolbarOrder.SAVE, "SALVAR",
 +                "Grava as edições em .txt: o golpe atual (HDAT 4 + os ANOs dele), só o ANO atual, todos os golpes, todos os ANOs ou tudo. "
-+                + "Dá para salvar numa pasta separada (não mexe no original) ou sobrescrever os .txt do Runtime. "
-+                + "Em \"Salvar golpe atual\" há ainda \"Salvar este golpe em outro personagem\": escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele, com cópia dos .txt dele em salvos/transplante_…: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot livre. Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. "
++                + "Dá para salvar numa pasta separada (Tap Battle/TBRE/Chars/charNN/, não mexe no original) ou sobrescrever os .txt do Runtime (Tap Battle/assets/charNN/). "
++                + "Em \"Salvar golpe atual\" há ainda \"Salvar em outro personagem (Runtime)\": escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele, com cópia dos .txt dele em Tap Battle/TBRE/Backups/: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot livre. Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. "
 +                + "Ao salvar, o app confere os limites do jogo (hitboxes por frame, links, tempo...) e avisa o que faria o jogo fechar."));
 +        s.add(new Section(ToolbarOrder.CHAR, "CHAR",
 +                "Escolhe o ATACANTE e o OPONENTE (cada um com os próprios dados e sprites). POS ajusta a distância entre eles e a altura de cada um "
@@ -3085,7 +3085,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 00:07:33.192092127 +0000
++++ b/LayoutManager.java	2026-10-24 10:15:45.432084385 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3446,11 +3446,11 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 -        String[] items = {"Salvar em pasta separada\n" + new File(dir, Saver.DIR).getPath() + "/",
 -                "Salvar no Runtime (sobrescreve os .txt)\n" + dir.getPath() + "/"};
 +        String[] items = which == 0
-+                ? new String[]{"Salvar em pasta separada\n" + new File(dir, Saver.DIR).getPath() + "/",
-+                        "Salvar no Runtime (sobrescreve os .txt)\n" + dir.getPath() + "/",
-+                        "Salvar este golpe em outro personagem\n(grava direto no Runtime do personagem escolhido)"}
-+                : new String[]{"Salvar em pasta separada\n" + new File(dir, Saver.DIR).getPath() + "/",
-+                        "Salvar no Runtime (sobrescreve os .txt)\n" + dir.getPath() + "/"};
++                ? new String[]{"Salvar em pasta separada\n(Tap Battle/" + Saver.TBRE + "/Chars/" + dir.getName() + "/)",
++                        "Salvar no Runtime\n(Tap Battle/assets/" + dir.getName() + "/)",
++                        "Salvar em outro personagem (Runtime)"}
++                : new String[]{"Salvar em pasta separada\n(Tap Battle/" + Saver.TBRE + "/Chars/" + dir.getName() + "/)",
++                        "Salvar no Runtime\n(Tap Battle/assets/" + dir.getName() + "/)"};
          new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Salvar onde?")
                  .setItems(items, new android.content.DialogInterface.OnClickListener() {
 -                    @Override public void onClick(android.content.DialogInterface dlg, int where) { doSave(a, view, d, which, where == 1); }
@@ -3460,6 +3460,15 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }).setNegativeButton("VOLTAR", null).show();
      }
  
+@@ -943,7 +1138,7 @@
+             else {
+                 StringBuilder sb = new StringBuilder();
+                 for (File f : Saver.saveAll(dir, dac, cd)) sb.append(f.getName()).append("  ");
+-                msg = new File(dir, Saver.DIR).getPath() + "/  (" + sb.toString().trim() + ")";
++                msg = Saver.dirOf(dir).getPath() + "/  (" + sb.toString().trim() + ")";
+             }
+             android.widget.Toast.makeText(a, "Salvo: " + msg, android.widget.Toast.LENGTH_LONG).show();
+         } catch (Exception e) {
 @@ -951,6 +1146,148 @@
          }
      }
@@ -3543,7 +3552,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                + "• As sprites usadas entram no fim do CNV do destino (e nas folhas dele).\n"
 +                + "• As reações do personagem que o golpe usa vão para um slot livre do destino.\n"
 +                + "• Sons do personagem (id 80 ou mais) e hitbox flags 20 e 41-125 NÃO vão junto.\n\n"
-+                + "Uma cópia dos .txt do destino fica em " + tgt.dir.getName() + "/" + Saver.DIR + "/transplante_.... O que está aqui na memória (mesmo sem salvar) é o que vai.";
++                + "Uma cópia dos .txt do destino fica em Tap Battle/" + Saver.TBRE + "/Backups/. O que está aqui na memória (mesmo sem salvar) é o que vai.";
 +        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Salvar em outro personagem").setMessage(msg)
 +                .setPositiveButton("SALVAR", new android.content.DialogInterface.OnClickListener() {
 +                    @Override public void onClick(android.content.DialogInterface dlg, int w) { runTransplant(a, d, move, srcIdx, tgt, dstIdx); }
@@ -3590,7 +3599,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                sb.append("\nRecarregue o personagem ").append(tgt.dir.getName()).append(" (troque de personagem e volte) para ver o golpe novo na tela.");
 +                out = sb.toString();
 +            } catch (Exception e) {
-+                out = "Erro ao salvar em " + tgt.dir.getName() + ": " + e.getMessage() + "\n\nOs .txt do destino só são gravados no final; se o erro veio depois do backup, a cópia dos .txt anteriores está em " + tgt.dir.getName() + "/" + Saver.DIR + "/transplante_....";
++                out = "Erro ao salvar em " + tgt.dir.getName() + ": " + e.getMessage() + "\n\nOs .txt do destino só são gravados no final; se o erro veio depois do backup, a cópia dos .txt anteriores está em Tap Battle/" + Saver.TBRE + "/Backups/.";
 +            } finally {
 +                tgt.release();
 +            }
@@ -4111,7 +4120,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          }
 diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 --- a/MoveTransplant.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/MoveTransplant.java	2026-10-24 00:05:26.067767623 +0000
++++ b/MoveTransplant.java	2026-10-24 10:15:45.426869388 +0000
 @@ -0,0 +1,253 @@
 +package com.zue.attackeditor;
 +
@@ -4343,7 +4352,7 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +
 +    /**
 +     * Grava no Runtime do destino (000.dac.txt e 000.bin.txt; o CNV e as folhas sao gravados pelo {@code commit}, entre o backup e os .txt). Faz cópia dos dois .txt em
-+     * salvos/transplante_AAAAMMDD_HHMMSS/ antes de mexer. Devolve a pasta do backup.
++     * Tap Battle/TBRE/Backups/AAAAMMDD_HHMMSS_charNN_transplante/ antes de mexer. Devolve a pasta do backup.
 +     */
 +    interface Commit { void run() throws IOException; }
 +
@@ -4354,7 +4363,7 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +        if (!fb.isFile()) throw new IOException("000.bin.txt não encontrado em " + dir.getPath());
 +        String dt = appendAnos(Saver.readText(fd), p.anos);
 +        String bt = patchBin(Saver.readText(fb), p, dstMove, warnings);
-+        File bk = new File(Saver.dirOf(dir), "transplante_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date()));
++        File bk = new File(Saver.backupsDir(dir), new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date()) + "_" + dir.getName() + "_transplante");
 +        bk.mkdirs();
 +        Saver.write(new File(bk, fd.getName()), Saver.readText(fd));
 +        Saver.write(new File(bk, fb.getName()), Saver.readText(fb));
@@ -4765,8 +4774,28 @@ diff -ruN a/ReorderBar.java b/ReorderBar.java
 +}
 diff -ruN a/Saver.java b/Saver.java
 --- a/Saver.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/Saver.java	2026-10-24 00:05:07.746404997 +0000
-@@ -23,12 +23,15 @@
++++ b/Saver.java	2026-10-24 10:15:45.425906795 +0000
+@@ -13,22 +13,33 @@
+ 
+ /**
+  * Salva o que esta em memoria nos arquivos legiveis (.txt, formato DAC_ACT_ / $GOLPE_n). Os binarios originais
+- * (000.dac / 000.bin / 000.cnv) nunca sao tocados: tudo vai para a subpasta {@code salvos/} do personagem.
++ * (000.dac / 000.bin / 000.cnv) nunca sao tocados: "pasta separada" = {@code Tap Battle/TBRE/Chars/charNN/}; backups = {@code Tap Battle/TBRE/Backups/}.
+  */
+ final class Saver {
+     private Saver() { }
+ 
+-    static final String DIR = "salvos";
++    /** Pasta do app ao lado de assets (Tap Battle/TBRE): Chars/ (salvar em pasta separada) e Backups/ (copias de seguranca). */
++    static final String TBRE = "TBRE";
++
++    /** {@code Tap Battle/TBRE} para um personagem em {@code Tap Battle/assets/charNN}. */
++    static File tbreRoot(File charDir) {
++        File p = charDir.getAbsoluteFile().getParentFile();
++        File gp = p == null ? null : p.getParentFile();
++        return new File(gp != null ? gp : (p != null ? p : charDir), TBRE);
++    }
+ 
      // ---- quais ANOs um golpe usa ----
  
      /** ANOs do DAC do atacante que o golpe alcanca: campos do HDAT 4, links e hitboxes de animacao do personagem (71-125). */
@@ -4784,7 +4813,7 @@ diff -ruN a/Saver.java b/Saver.java
          for (int r : refs) if (r > 0) todo.add(Integer.valueOf(r));
          if ((m.flags & 4) != 0 && m.projNormal > 0) { todo.add(Integer.valueOf(m.projNormal + 1)); todo.add(Integer.valueOf(m.projNormal + 2)); }
          if ((m.flags & (8 | 128)) != 0 && m.animInicial > 0) todo.add(Integer.valueOf(m.animInicial + 1));
-@@ -44,6 +47,10 @@
+@@ -44,6 +55,10 @@
                  for (int h = 0; h < hs.length; h++) {
                      int f = hs[h].flag;
                      if (f >= 71 && f <= 125) todo.add(Integer.valueOf(201 + f - 71));
@@ -4795,7 +4824,7 @@ diff -ruN a/Saver.java b/Saver.java
                  }
              }
          }
-@@ -62,7 +69,7 @@
+@@ -62,7 +77,7 @@
          return sb.append("}\n").toString();
      }
  
@@ -4804,7 +4833,7 @@ diff -ruN a/Saver.java b/Saver.java
          StringBuilder sb = new StringBuilder();
          String[] ls = s.split("\n", -1);
          for (int i = 0; i < ls.length; i++) { sb.append("   ").append(ls[i]); if (i < ls.length - 1) sb.append('\n'); }
-@@ -222,7 +229,7 @@
+@@ -222,7 +237,7 @@
          java.util.TreeSet<Integer> rs = new java.util.TreeSet<Integer>();
          if (moves != null) for (Integer mi : moves) {
              CharData.Move mv = data.moves[mi.intValue()];
@@ -4813,7 +4842,7 @@ diff -ruN a/Saver.java b/Saver.java
              if (anos != null) as.addAll(anos);
              anos = as;
              rs.addAll(reactionsUsed(dac, as));
-@@ -264,14 +271,18 @@
+@@ -264,14 +279,18 @@
                  if (!t1.equals(t0)) write(fb2, t1);
              }
          }
@@ -4834,6 +4863,33 @@ diff -ruN a/Saver.java b/Saver.java
          sb.append(DacText.move(m, idx)).append("\n\n");
          TreeSet<Integer> rs = reactionsUsed(dac, anos);
          if (!rs.isEmpty()) {
+@@ -288,8 +307,16 @@
+ 
+     // ---- gravacao ----
+ 
++    /** Pasta separada do personagem: Tap Battle/TBRE/Chars/charNN/ (criada se preciso). */
+     static File dirOf(File charDir) {
+-        File d = new File(charDir, DIR);
++        File d = new File(new File(tbreRoot(charDir), "Chars"), charDir.getName());
++        d.mkdirs();
++        return d;
++    }
++
++    /** Copias de seguranca: Tap Battle/TBRE/Backups/ (criada se preciso). */
++    static File backupsDir(File charDir) {
++        File d = new File(tbreRoot(charDir), "Backups");
+         d.mkdirs();
+         return d;
+     }
+@@ -321,7 +348,7 @@
+         return f;
+     }
+ 
+-    /** Todos os ANOs no mesmo formato do 000.dac.txt (arquivo novo em salvos/, o original nao muda). */
++    /** Todos os ANOs no mesmo formato do 000.dac.txt (arquivo novo na pasta separada, o original nao muda). */
+     static File saveAllAnos(File charDir, Dac dac) throws IOException {
+         File f = new File(dirOf(charDir), "000.dac.txt");
+         write(f, dacText(dac, null));
 diff -ruN a/SoundDialog.java b/SoundDialog.java
 --- a/SoundDialog.java	2026-10-18 13:50:55.000000000 +0000
 +++ b/SoundDialog.java	2026-10-22 09:53:44.216470108 +0000
@@ -6937,7 +6993,7 @@ diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 +}
 diff -ruN a/test/BattleTest.java b/test/BattleTest.java
 --- a/test/BattleTest.java	2026-10-20 14:59:24.000000000 +0000
-+++ b/test/BattleTest.java	2026-10-22 07:58:27.949392323 +0000
++++ b/test/BattleTest.java	2026-10-24 10:15:45.435626360 +0000
 @@ -408,9 +408,12 @@
          BattleSim g1 = new BattleSim(dac(gq), chG, chG.moves[0], false, defDac, fxDac, g, 30, 0, 0);
          for (int i = 0; i < 6; i++) g1.step();
@@ -6976,7 +7032,27 @@ diff -ruN a/test/BattleTest.java b/test/BattleTest.java
              CharData.Move mh = ch.moves[0].copy();
              mh.animSeqChao = 0; mh.animEndChao = 0; mh.animSeqAr = 0; mh.animEndAr = 0; mh.animAoAcertar = 41;
              BattleSim bsh = new BattleSim(dac(aq), ch, mh, false, defDac, fxDac, g, 30, 0, 0);
-@@ -1107,7 +1113,7 @@
+@@ -863,13 +869,17 @@
+             check("salvar golpe: ANO inicial 40", mt.contains("$ANO_40: {"), true);
+             check("salvar golpe: ANO do projetil 30", mt.contains("$ANO_30: {"), true);
+             check("salvar golpe: ANO de impacto 31", mt.contains("$ANO_31: {"), true);
+-            java.io.File td = new java.io.File(System.getProperty("java.io.tmpdir"), "salvar_test_char");
++            // estrutura do app: Tap Battle/assets/charNN (pasta separada = Tap Battle/TBRE/Chars/charNN)
++            java.io.File tb = new java.io.File(System.getProperty("java.io.tmpdir"), "salvar_test_tapbattle");
++            java.io.File td = new java.io.File(tb, "assets/char00");
+             td.mkdirs();
+             java.io.File f1 = Saver.saveAno(td, sd, 40);
+             String back = new String(java.nio.file.Files.readAllBytes(f1.toPath()), "UTF-8");
+             check("salvar ano: arquivo no formato DAC_ACT_", back.startsWith("DAC_ACT_ {") && back.contains("$ANO_40: {"), true);
+             Saver.saveAllAnos(td, sd);
+-            check("salvar todos os anos: 000.dac.txt em salvos/", new java.io.File(td, "salvos/000.dac.txt").isFile(), true);
++            check("salvar todos os anos: 000.dac.txt em Tap Battle/TBRE/Chars/char00/", new java.io.File(tb, "TBRE/Chars/char00/000.dac.txt").isFile(), true);
++            check("pasta separada e backups ficam em TBRE, ao lado de assets", Saver.dirOf(td).getPath().endsWith("salvar_test_tapbattle/TBRE/Chars/char00") && Saver.backupsDir(td).getPath().endsWith("salvar_test_tapbattle/TBRE/Backups"), true);
++            check("salvar nao escreve dentro de assets/char00", new java.io.File(td, "salvos").exists(), false);
+             check("salvar nao cria binarios", new java.io.File(td, "000.dac").exists(), false);
+         }
+ 
+@@ -1107,7 +1117,7 @@
              }
              if (mode == 0) { check("agarrao 8 com frame 512 puxa logo", pulledAt > 0 && pulledAt <= 2, true);
                  int ox = 0; try { java.lang.reflect.Field fo = BattleSim.class.getDeclaredField("oppX"); fo.setAccessible(true); ox = fo.getInt(gs); } catch (Exception ex) { }
@@ -7965,8 +8041,8 @@ diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
 +}
 diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 --- a/test/MoveTransplantTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/MoveTransplantTest.java	2026-10-24 00:06:29.916920593 +0000
-@@ -0,0 +1,144 @@
++++ b/test/MoveTransplantTest.java	2026-10-24 10:16:12.429258820 +0000
+@@ -0,0 +1,171 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -8071,6 +8147,27 @@ diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 +        try { MoveTransplant.patchBin(bin.toString(), p, 9, warns); } catch (java.io.IOException e) { threw = true; }
 +        check("golpe sem bloco no .bin.txt do destino: erro", threw, true);
 +
++        // ---- gravacao: .txt trocados e backup em Tap Battle/TBRE/Backups/
++        java.io.File tb = new java.io.File(System.getProperty("java.io.tmpdir"), "transplante_test_tapbattle");
++        deleteAll(tb);
++        java.io.File cdir = new java.io.File(tb, "assets/char01");
++        cdir.mkdirs();
++        String dac0 = Saver.dacText(dd, null), bin0 = bin.toString();
++        Saver.write(new java.io.File(cdir, "000.dac.txt"), dac0);
++        Saver.write(new java.io.File(cdir, "000.bin.txt"), bin0);
++        Saver.write(new java.io.File(cdir, "000.cnv.txt"), "CNV_TXT_ {\n}\n");
++        final boolean[] committed = new boolean[1];
++        java.io.File bk = MoveTransplant.write(cdir, p, 0, new ArrayList<String>(), new MoveTransplant.Commit() {
++            public void run() { committed[0] = true; }
++        });
++        check("gravacao: commit das sprites roda", committed[0], true);
++        check("backup em Tap Battle/TBRE/Backups/", bk.getParentFile().getPath().endsWith("transplante_test_tapbattle/TBRE/Backups") && bk.getName().endsWith("_char01_transplante"), true);
++        check("backup tem os 3 .txt originais", Saver.readText(new java.io.File(bk, "000.dac.txt")).equals(dac0) && Saver.readText(new java.io.File(bk, "000.bin.txt")).equals(bin0) && new java.io.File(bk, "000.cnv.txt").isFile(), true);
++        check("nada de salvos/ dentro do personagem", new java.io.File(cdir, "salvos").exists(), false);
++        check("000.dac.txt do destino com os ANOs novos", Saver.findBlock(Saver.readText(new java.io.File(cdir, "000.dac.txt")), "ANO_8") != null, true);
++        check("000.bin.txt do destino com o golpe novo", Saver.readText(new java.io.File(cdir, "000.bin.txt")).replaceAll("\\s", "").contains("$ANIM_INICIAL:8,"), true);
++        deleteAll(tb);
++
 +        // ---- reacoes sem slot livre: sobrescreve o mesmo numero com aviso
 +        byte[][] full = new byte[20][];
 +        for (int i = 0; i < 20; i++) full[i] = react(new int[]{i + 1, 0, 0});
@@ -8099,6 +8196,12 @@ diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 +        check("Dac.growTo", g.size() + ":" + g.getAno(5).present + ":" + g.getAno(2).present, "6:false:true");
 +
 +        System.out.println("MoveTransplantTest fails=" + BattleTest.fails);
++    }
++
++    static void deleteAll(java.io.File f) {
++        java.io.File[] k = f.listFiles();
++        if (k != null) for (java.io.File c : k) deleteAll(c);
++        f.delete();
 +    }
 +
 +    /** Dac com {@code n} ANOs (so para o teste do limite). */

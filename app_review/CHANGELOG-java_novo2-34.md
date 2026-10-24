@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 730 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 738 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -128,13 +128,17 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Modo ANO**: a mesma tela abre no modo ANO, editando o golpe real do HDAT 4 que é "dono" do ANO (`AttackView.moveOwner/editMoveOf`; a cópia genérica da tela acompanha e o desfazer volta os dois). Sem dono, avisa.
 
 ### 3.1k Salvar este golpe em outro personagem
-- **SALVAR › Salvar golpe atual (HDAT 4 + ANOs)** ganhou a 3ª opção, junto de "pasta separada" e "Runtime": **Salvar este golpe em outro personagem** (grava direto no Runtime do destino). Fluxo: escolher o personagem (pastas `charNN` de `Tap Battle/assets/`, menos o atual) → escolher o golpe a substituir → confirmar.
+- **SALVAR › Salvar golpe atual (HDAT 4 + ANOs)** ganhou a 3ª opção, junto de "pasta separada" e "Runtime": **Salvar em outro personagem (Runtime)** (grava direto no Runtime do destino). Fluxo: escolher o personagem (pastas `charNN` de `Tap Battle/assets/`, menos o atual) → escolher o golpe a substituir → confirmar.
 - **Regra dos slots** (`MoveTransplant.canReplace`): os golpes 0, 3 e 6 só substituem o 0, 3 e 6 respectivamente; os demais substituem qualquer golpe exceto 0, 3 e 6.
 - **O que vai:** o `$GOLPE_n` do HDAT 4 do destino é trocado (todos os campos de ANO renumerados); os ANOs que o golpe alcança (campos do HDAT 4, ANO+1/+2 do tiro triplo e do agarrão, links e links de links) entram **no fim do DAC do destino**, renumerados e com os links ajustados; as **imagens** usadas viram sprites novas no fim do CNV e das folhas do destino (`SpriteLib.add/commit`, sem repetir a mesma imagem); as **reações do personagem** (OPT 1, 30-49) usadas vão para um slot do destino: igual > livre (nenhum ANO do destino usa) > sobrescreve o mesmo número com aviso, e o OPT 1 dos frames é ajustado.
 - **Não vai (avisa):** sons do personagem (id ≥ 80) e hitbox flags 20 (cutscene) e 41-125 (charf/auras: apontam para os dados do destino).
-- **Segurança:** os `.txt` do destino são copiados para `salvos/transplante_AAAAMMDD_HHMMSS/` antes; folhas/CNV são gravados antes dos `.txt` (o DAC nunca aponta para sprite que não existe); usa o que está na memória (inclusive o não salvo). Limite: 4096 ANOs (link guarda 12 bits).
+- **Segurança:** os `.txt` do destino são copiados para `Tap Battle/TBRE/Backups/AAAAMMDD_HHMMSS_charNN_transplante/` antes; folhas/CNV são gravados antes dos `.txt` (o DAC nunca aponta para sprite que não existe); usa o que está na memória (inclusive o não salvo). Limite: 4096 ANOs (link guarda 12 bits).
 - **Carregamento:** `000.dac.txt` com ANOs além do binário agora é lido (`Dac.growTo` + `CharAssets.applyDacTxt`), para o app enxergar os ANOs novos ao reabrir o personagem destino.
 - Lógica pura em `MoveTransplant` (testada em `MoveTransplantTest`); as telas (lista de personagens, golpes, confirmação, resultado) só compiladas e revisadas, **não executadas num aparelho**.
+
+### 3.1l Menu de salvamento: caminhos e backups
+- "Onde salvar?" agora mostra: **Salvar em pasta separada** (`Tap Battle/TBRE/Chars/charNN/`), **Salvar no Runtime** (`Tap Battle/assets/charNN/`) e, só em "Salvar golpe atual", **Salvar em outro personagem (Runtime)**.
+- A pasta separada saiu de `assets/charNN/salvos/` e foi para **`Tap Battle/TBRE/Chars/charNN/`** (uma subpasta por personagem, para `golpe_00.txt`, `000.dac.txt` etc. de personagens diferentes não se misturarem). Os backups/cópias de segurança (hoje, o do "salvar em outro personagem") ficam em **`Tap Battle/TBRE/Backups/`**. A raiz `Tap Battle/TBRE` é achada a partir da pasta do personagem (`Saver.tbreRoot`). Arquivos já gravados em `salvos/` continuam onde estão.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -175,7 +179,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **FrameToolsTest (novo)** | 36 |
 | **ToolbarTest (novo)** | 65 |
 | **ObjMoveTest (novo)** | 40 |
-| **MoveTransplantTest (novo)** | 30 |
+| **MoveTransplantTest (novo)** | 36 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
