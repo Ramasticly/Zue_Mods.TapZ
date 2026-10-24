@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 738 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 740 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -140,6 +140,10 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - "Onde salvar?" agora mostra: **Salvar em pasta separada** (`Tap Battle/TBRE/Chars/charNN/`), **Salvar no Runtime** (`Tap Battle/assets/charNN/`) e, só em "Salvar golpe atual", **Salvar em outro personagem (Runtime)**.
 - A pasta separada saiu de `assets/charNN/salvos/` e foi para **`Tap Battle/TBRE/Chars/charNN/`** (uma subpasta por personagem, para `golpe_00.txt`, `000.dac.txt` etc. de personagens diferentes não se misturarem). Os backups/cópias de segurança (hoje, o do "salvar em outro personagem") ficam em **`Tap Battle/TBRE/Backups/`**. A raiz `Tap Battle/TBRE` é achada a partir da pasta do personagem (`Saver.tbreRoot`). Arquivos já gravados em `salvos/` continuam onde estão.
 
+### 3.1m Ajustes: tela do projétil e GOLPE SET
+- **Tela do projétil:** saiu o seletor de duração do topo (o genérico de `object()`); ficou só o "Início e duração" da própria tela.
+- **GOLPE SET:** o título agora é só "Opções do golpe" (sem "ATK_FLAGS = N"). Em "Hitbox destrói as hitboxes do oponente" o "(HDAT 3, byte 13)" virou a reação real que esse byte guarda: "do jogo N" (0 a 29) ou "do personagem N" (30 ou mais, N − 30), como o jogo escolhe a reação (md 876/877). `CharData.clashReaction/reactionName`.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -178,7 +182,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 36 |
 | **ToolbarTest (novo)** | 65 |
-| **ObjMoveTest (novo)** | 40 |
+| **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 36 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

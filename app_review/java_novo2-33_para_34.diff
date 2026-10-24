@@ -2143,7 +2143,7 @@ diff -ruN a/CharAssets.java b/CharAssets.java
      private static final String[] FR_KEYS = {"DUR_C", "DUR_A", "ANO", "XSPEED", "YSPEED", "XACCEL", "YACCEL", "XSPEED_A", "YSPEED_A", "XACCEL_A", "YACCEL_A", "COMP", "WALL", "VOZ"};
 diff -ruN a/CharData.java b/CharData.java
 --- a/CharData.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/CharData.java	2026-10-22 07:55:53.651685766 +0000
++++ b/CharData.java	2026-10-24 10:29:34.759471674 +0000
 @@ -49,8 +49,11 @@
              unk44 = o.unk44; unk46 = o.unk46;
          }
@@ -2170,7 +2170,20 @@ diff -ruN a/CharData.java b/CharData.java
      private int h7Stride = 0;
  
      private static int u(byte[] b, int i) { return i >= 0 && i < b.length ? (b[i] & 255) : 0; }
-@@ -167,17 +171,26 @@
+@@ -147,6 +151,12 @@
+     /** GetHP: HDAT 3 byte 11 + soma da coluna 0 do HDAT 7 (linhas 0..nivel, maximo 98). Sem HDAT 3 assume 100. */
+     /** Corpo do jogador (HDAT 3): largura total = byte 3 (a meia largura das paredes e metade disso), altura = byte 4, em px. */
+     public int bodyWidth() { return u(h3, 3); }
++
++    /** HDAT 3, byte 13: reacao em que o oponente entra quando a hitbox do golpe destroi a dele (ATK_FLAGS 2); 30 ou mais = tabela do personagem. */
++    public int clashReaction() { return u(h3, 13); }
++
++    /** "do jogo N" (0 a 29) ou "do personagem N" (30 ou mais vira N - 30), como o jogo escolhe a reacao (md 876 / 877). */
++    public static String reactionName(int raw) { return raw >= 30 ? "do personagem " + (raw - 30) : "do jogo " + raw; }
+     public int bodyHeight() { return u(h3, 4); }
+ 
+     /** Muda largura/altura do corpo direto no HDAT 3 (largura sempre par: o .txt guarda a metade). */
+@@ -167,17 +177,26 @@
      /** GetDeffence: HDAT 3 byte 14 + coluna 3 do HDAT 7. */
      public int defenceMul(int level) { return h3.length > 14 ? u(h3, 14) + levelSum(3, level) : 0; }
  
@@ -2203,7 +2216,7 @@ diff -ruN a/CharData.java b/CharData.java
          if (t.size() > 7 && t.rows(7) > 0) { h7 = t.bytes(7); h7Stride = h7.length / t.rows(7); }
          for (int i = 0; i < REACTION_COUNT; i++) {
              int h = FIRST_REACTION_HDAT + i;
-@@ -219,7 +232,7 @@
+@@ -219,7 +238,7 @@
              if (p + 48 <= b.length) { m.unk44 = s16(b, p + 44); m.unk46 = s16(b, p + 46); }
              moves[i] = m;
          }
@@ -3085,7 +3098,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 10:15:45.432084385 +0000
++++ b/LayoutManager.java	2026-10-24 10:29:34.762444188 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3687,6 +3700,23 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String note = "Arraste o atacante (azul) e o oponente (vermelho). As linhas sao as posicoes do jogo e o personagem gruda nelas."
                  + (PosPresets.fromGame(gd) ? " LONGE = medio + (medio - perto): o jogo so guarda perto e medio."
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
+@@ -1294,14 +1658,14 @@
+         if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
+                 "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
+         addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
+-                "Quando uma hitbox (flag 2) sua encosta numa hitbox (flag 2) do oponente, a dele é destruída: o golpe dele não registra e o oponente entra em reação (HDAT 3, byte 13), com efeito e som de choque, mas sem dano. O seu golpe conta como acerto. Só vale no choque de hitbox: hits na sua hurtbox ainda te acertam, e projéteis seguem a regra comum a todos os golpes. No código, o golpe com esta flag também não registra o acerto comum de corpo (hitbox x hurtbox); teste em jogo.", 0);
++                "Quando uma hitbox (flag 2) sua encosta numa hitbox (flag 2) do oponente, a dele é destruída: o golpe dele não registra e o oponente entra na reação " + CharData.reactionName(d.attacker.data.clashReaction()) + ", com efeito e som de choque, mas sem dano. O seu golpe conta como acerto. Só vale no choque de hitbox: hits na sua hurtbox ainda te acertam, e projéteis seguem a regra comum a todos os golpes. No código, o golpe com esta flag também não registra o acerto comum de corpo (hitbox x hurtbox); teste em jogo.", 0);
+         addFlagBox(a, box, view, mv, busy, syncs, MF_GHOST, "Personagens se atravessam",
+                 "Enquanto o golpe está ativo, o jogo não separa os dois corpos quando estão perto do chão, então eles se atravessam. As hitboxes continuam normais.", 0);
+         for (int i = 0; i < syncs.size(); i++) syncs.get(i).run();
+         android.widget.ScrollView sv = new android.widget.ScrollView(a);
+         sv.addView(box);
+         new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+-                .setTitle("Opções do golpe (ATK_FLAGS = " + mv.flags + ")").setView(sv).setPositiveButton("OK", null).show();
++                .setTitle("Opções do golpe").setView(sv).setPositiveButton("OK", null).show();
+     }
+ 
+     /** Checkbox de um bit do ATK_FLAGS; {@code excl} = bit que esta opcao desliga (0 = nenhum). Devolve o TextView da explicacao. */
 diff -ruN a/LayoutManagerFmt.java b/LayoutManagerFmt.java
 --- a/LayoutManagerFmt.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/LayoutManagerFmt.java	2026-10-22 09:53:19.674130398 +0000
@@ -5220,7 +5250,7 @@ diff -ruN a/ThumbView.java b/ThumbView.java
 +}
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-24 00:01:53.397177929 +0000
++++ b/TimelineTools.java	2026-10-24 10:29:34.753336346 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -6323,7 +6353,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 -            refresh();
 -        } });
 -        if (o.f1 > o.f0) note("Frames conectados (" + (o.f0 + 1) + "–" + (o.f1 + 1) + "): mudar aqui muda em todos. Para editar um frame separado, selecione o objeto e use DIVIDIR na divisa de frames mais proxima.");
-+        if (o.kind != ObjModel.HITBOX && o.kind != ObjModel.HURTBOX) {
++        if (o.kind != ObjModel.HITBOX && o.kind != ObjModel.HURTBOX && o.kind != ObjModel.PROJ) {       // box e projetil tem o proprio "inicio e duracao"
 +            durationField(a, o.f0, o.f1 - o.f0 + 1, a.mpts.length - o.f0, new DurSet() { public void apply(int n) {
 +                ObjModel.Obj oo = curObj();
 +                if (oo == null) return;
@@ -8216,8 +8246,8 @@ diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 +}
 diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
 --- a/test/ObjMoveTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ObjMoveTest.java	2026-10-23 16:37:47.833245606 +0000
-@@ -0,0 +1,208 @@
++++ b/test/ObjMoveTest.java	2026-10-24 10:29:34.763861395 +0000
+@@ -0,0 +1,212 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -8422,6 +8452,10 @@ diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
 +        // cores das faixas: hitbox vermelha, audio azul (ver TimelineView.C_AUDIO)
 +        check("cor da faixa Hitbox = vermelho", ObjModel.KIND_COLORS[ObjModel.HITBOX], 0xFFE5484D);
 +        check("cor da faixa Hurtbox continua verde", ObjModel.KIND_COLORS[ObjModel.HURTBOX], 0xFF3DDC84);
++
++        // GOLPE SET: a reacao do choque de hitbox (HDAT 3, byte 13) aparece como numero real
++        check("reacao do choque: < 30 e do jogo", CharData.reactionName(5), "do jogo 5");
++        check("reacao do choque: 30 ou mais e do personagem (N - 30)", CharData.reactionName(32) + "|" + CharData.reactionName(30) + "|" + CharData.reactionName(0), "do personagem 2|do personagem 0|do jogo 0");
 +
 +        System.out.println("ObjMoveTest fails=" + BattleTest.fails);
 +    }
