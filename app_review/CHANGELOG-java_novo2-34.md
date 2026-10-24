@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 821 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 865 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -178,6 +178,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - `HelpText.chapters()/search()` (puro, testado em `ToolbarTest`); `toolbar()`, `screen()`, `all()` e `forButton()` continuam, derivados dos capítulos.
 - Correção de texto: o limite de caixas por frame é **10** (o jogo guarda 50 números, 5 por caixa), e não 50 caixas.
 
+### 3.1t Busca da AJUDA: aproximação, correlação e abas primeiro
+- **Aproximação**: a busca tolera erros de digitação (distância de Damerau‑Levenshtein: até 3 letras só exata; 4 a 6 letras, 1 erro; 7 ou mais, 2) e aceita prefixo/trecho. `sped`, `spped`, `spedd`, `speeed` acham `speed`; `hitbx`, `sequnecia` (troca de letras) e `reaçao` também.
+- **Correlação**: grupos de sinônimos (speed/velocidade/dash/mover/pixels…, accel/aceleração/gravidade…, hitbox/dano/alcance…, reação/knockback/empurrão…, sequência/combo/transição/cancel…, projétil/tiro/ramificação…, som/áudio/voz…, salvar/backup/pasta…) expandem a consulta (peso 70%).
+- **Abas com tags**: toda aba/menu (14 botões do menu superior, páginas Imagem/Tempo/Som/Movimento/Efeitos/Copiar, menus da hitbox, tela do projétil, Editor de reações, etc.) tem `tags` em `HelpText.Section`; a ordem das tags pesa (a primeira vale mais). Ex.: **Movimento** = speed, velocidade, dash, accel, aceleração, mover, pixels, pulo, gravidade…
+- **Resultado em duas faixas**: **ABAS E MENUS** primeiro (a melhor com contorno e “MELHOR RESULTADO”), depois **TEXTOS** dentro dos capítulos, cada um com o trecho que bateu (tocar abre o capítulo). Todas as palavras da consulta precisam bater (AND).
+- Testes: `HelpSearchTest` (44).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -201,7 +208,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 
 | Teste | OK |
 |---|---|
-| BattleTest | 238 |
+| BattleTest | 240 |
 | FrameOpsTest | 56 |
 | SpriteMassTest | 23 |
 | AudioTest | 20 |
@@ -222,6 +229,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionTraceTest (novo)** | 18 |
 | **SaverCopyTest (novo)** | 17 |
 | **ReactionEditTest (novo)** | 15 |
+| **HelpSearchTest (novo)** | 44 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 

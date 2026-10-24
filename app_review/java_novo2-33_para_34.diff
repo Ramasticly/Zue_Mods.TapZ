@@ -2862,8 +2862,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpScreen.java b/HelpScreen.java
 --- a/HelpScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpScreen.java	2026-10-24 17:25:30.814413096 +0000
-@@ -0,0 +1,188 @@
++++ b/HelpScreen.java	2026-10-24 18:28:25.101231715 +0000
+@@ -0,0 +1,216 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Dialog;
@@ -2994,31 +2994,59 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +                android.widget.Toast.makeText(c, "Ordem padrao restaurada", android.widget.Toast.LENGTH_SHORT).show();
 +            } }));
 +        }
-+        for (HelpText.Section s : ch.sections) section(s, null);
++        for (HelpText.Section s : ch.sections) section(s, null, false, "");
 +    }
 +
 +    private void renderSearch(String q) {
 +        titleView.setText("Busca");
 +        backBtn.setVisibility(View.VISIBLE);
 +        java.util.List<HelpText.Hit> hits = HelpText.search(q);
-+        TextView n = text(hits.isEmpty() ? "Nada encontrado para \"" + q.trim() + "\"." : hits.size() + (hits.size() == 1 ? " resultado" : " resultados"), LayoutManager.DIM, 12, false);
++        TextView n = text(hits.isEmpty() ? "Nada encontrado para \"" + q.trim() + "\"." : hits.size() + (hits.size() == 1 ? " resultado" : " resultados") + " (aceita erros de digitação e palavras parecidas)", LayoutManager.DIM, 12, false);
 +        n.setPadding(dp(4), dp(6), dp(4), dp(6));
 +        body.addView(n);
-+        for (HelpText.Hit h : hits) section(h.section, h.chapter.title);
++        boolean tabsHeader = false, textsHeader = false;
++        for (HelpText.Hit h : hits) {
++            if (h.tab && !tabsHeader) { tabsHeader = true; body.addView(band("ABAS E MENUS")); }
++            if (!h.tab && !textsHeader) { textsHeader = true; body.addView(band("TEXTOS")); }
++            LinearLayout card = section(h.section, h.chapter.title, h.tab && h == hits.get(0), h.snippet);
++            if (!h.tab && h.snippet.length() > 0) {
++                final HelpText.Chapter ch = h.chapter;
++                card.setClickable(true);
++                card.addView(text("Toque para abrir o capítulo", LayoutManager.DIM, 10, false));
++                card.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { search.setText(""); open = ch; render(); } });
++            }
++        }
 +    }
 +
-+    private void section(HelpText.Section s, String chapterTitle) {
++    private TextView band(String s) {
++        TextView t = text(s, LayoutManager.ACCENT, 11, true);
++        t.setPadding(dp(4), dp(10), dp(4), dp(2));
++        return t;
++    }
++
++    private LinearLayout section(HelpText.Section s, String chapterTitle, boolean best, String snippet) {
 +        LinearLayout box = new LinearLayout(c);
 +        box.setOrientation(LinearLayout.VERTICAL);
 +        box.setPadding(dp(8), dp(8), dp(8), dp(8));
++        if (best) {
++            GradientDrawable g = new GradientDrawable();
++            g.setColor(LayoutManager.PANEL);
++            g.setCornerRadius(dp(10));
++            g.setStroke(dp(2), LayoutManager.ACCENT);
++            box.setBackground(g);
++            box.addView(text("MELHOR RESULTADO", LayoutManager.ACCENT, 10, true));
++        }
 +        if (chapterTitle != null) box.addView(text(chapterTitle, LayoutManager.ACCENT, 11, true));
 +        box.addView(text(s.title, LayoutManager.TEXT, 15, true));
-+        TextView b = text(s.body, 0xFFC4C9D4, 13, false);
++        // na busca, os textos mostram so o trecho que bateu; as abas e a leitura do capitulo mostram tudo
++        boolean excerpt = chapterTitle != null && !s.tab && snippet != null && snippet.length() > 0;
++        TextView b = text(excerpt ? snippet : s.body, 0xFFC4C9D4, 13, false);
 +        b.setLineSpacing(0f, 1.15f);
 +        box.addView(b);
 +        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
 +        lp.setMargins(0, dp(4), 0, dp(2));
 +        body.addView(box, lp);
++        return box;
 +    }
 +
 +    private TextView text(String s, int color, int sp, boolean bold) {
@@ -3054,8 +3082,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 17:25:30.810483924 +0000
-@@ -0,0 +1,368 @@
++++ b/HelpText.java	2026-10-24 18:28:09.925781141 +0000
+@@ -0,0 +1,586 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -3072,11 +3100,64 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        /** id de {@link ToolbarOrder} se a secao descreve um botao do menu superior; null nas demais. */
 +        final String button;
 +        final String title, body;
++        /** Aba / menu / tela de edicao (botao do menu superior, pagina da sprite, menu da hitbox...): vai antes dos textos na busca. */
++        final boolean tab;
++        /** Palavras relacionadas (sinonimos), as mais importantes primeiro. Vazio nas secoes que nao sao abas. */
++        final String tags;
++        String[] tokTitle, tokTags, tokBody;
 +
 +        Section(String button, String title, String body) {
 +            this.button = button;
 +            this.title = title;
 +            this.body = body;
++            String t = Tags.BY_TITLE.get(title);
++            this.tags = t == null ? "" : t;
++            this.tab = t != null;
++        }
++    }
++
++    /** Tags das abas, por titulo da secao. A ordem importa: a primeira palavra pesa mais na busca. */
++    private static final class Tags {
++        static final java.util.Map<String, String> BY_TITLE = new java.util.HashMap<String, String>();
++        private static void t(String title, String tags) { BY_TITLE.put(title, tags); }
++        static {
++            t("SALVAR", "salvar gravar save backup pasta runtime exportar copia transplante outro personagem txt");
++            t("CHAR", "personagem char lutador atacante oponente pos distancia altura fly voar corpo hdat 3 ancora");
++            t("SPRITES", "sprites sprite imagem recorte cnv png folha adicionar substituir remover");
++            t("LINKS", "links link filho aura efeito sincronia animacao ligada pai");
++            t("GOLPE SET", "golpe set atk_flags agarrao agarrar projetil 3 tiro triplo atravessar flags opcoes");
++            t("HITBOX", "hitbox hurtbox caixa caixas ataque dano alcance vermelha azul amarela desenho");
++            t("TEMPO", "tempo normal estendido ataque reproducao simulacao");
++            t("CENTRO", "centro camera zoom enquadrar tela char");
++            t("POUSO", "pouso chao queda cair aterrissar gravidade seq end");
++            t("TRANSIÇÃO", "transicao trava travada travar sequencia seq fluxo trocar ano");
++            t("VIRAR", "virar flip espelhar lado inverter espelhamento");
++            t("HIDE-EFF", "hide esconder efeitos aura cena projeteis bobj");
++            t("FR-PREVIEW", "frame preview ghost transparencia anterior proximo prev next alinhar");
++            t("TELA", "tela grade sons cenas cutscene travar box amarela fr-preview opcoes");
++            t("Menu da sprite (gaveta)", "sprite menu gaveta imagem tempo som movimento efeitos copiar grade");
++            t("Imagem", "imagem sprite posicao zoom rotacao alpha thumb link x y");
++            t("Tempo", "tempo duracao ticks segundos time frame remover frame");
++            t("Som", "som audio sfx wav efeito sonoro id tocar");
++            t("Movimento", "speed velocidade dash accel aceleracao mover andar correr deslocar deslocamento pixels recuo pulo salto queda gravidade manter bit 64 px");
++            t("Efeitos", "efeitos flip espelhar interpolacao suavizar rotacao alpha zoom");
++            t("Copiar", "copiar colar aplicar frames todos proximos duplicar");
++            t("Hitbox / Hurtbox", "hitbox hurtbox caixa caixas ataque dano alcance inicio duracao coordenadas largura altura");
++            t("Dano e reação", "dano reacao hit acertar knockback empurrao opt 1 hitstun grupo");
++            t("Transição no menu da hitbox", "transicao seq end sequencia destino bloquear flag 38 ano destino");
++            t("GOLPE SET (ATK_FLAGS)", "golpe set atk_flags agarrao projetil 3 tiro triplo atravessar destruir hitbox oponente flags opcoes");
++            t("DADOS / EDITAR", "dados editar texto hdat 4 ano frame links lapis painel");
++            t("Tela do projétil", "projetil tiro bala fireball ano inicio duracao posicao velocidade perseguicao sequencia");
++            t("Ramificação do projétil", "ramificacao projetil arvore ramo sub-projetil reacao caminho");
++            t("TRANSIÇÃO travada e VER FLUXO", "transicao travada fluxo sequencia seq ver fluxo");
++            t("Escolher reação e slots vazios", "reacao slot vazio slots escolher importar copiar personagem game data 14 33");
++            t("Editor de reações", "reacao reacoes editor timeline passo passos speed velocidade voz efeitos parede seq dividir knockback empurrao hitstun duracao ano oponente");
++            t("Faixas da timeline", "timeline faixas faixa sprite hitbox speed som estilo");
++            t("＋ e #", "adicionar mais novo criar numero");
++            t("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER", "dividir duplicar excluir apagar remover desfazer undo cortar");
++            t("Altura da gaveta: Y e T", "altura gaveta alca y t timeline tamanho");
++            t("Onde salvar", "salvar pasta separada runtime backup caminho tap battle tbre chars");
++            t("Salvar em outro personagem", "transplante transplantar outro personagem salvar golpe substituir hdat 4");
 +        }
 +    }
 +
@@ -3394,34 +3475,199 @@ diff -ruN a/HelpText.java b/HelpText.java
 +    static final class Hit {
 +        final Chapter chapter;
 +        final Section section;
++        /** true = aba / menu (faixa "ABAS E MENUS"); false = texto dentro de um capitulo. */
++        final boolean tab;
++        final int score;
++        /** Trecho do texto onde a busca bateu (so nos textos); vazio nas abas. */
++        final String snippet;
 +
-+        Hit(Chapter chapter, Section section) {
++        Hit(Chapter chapter, Section section, boolean tab, int score, String snippet) {
 +            this.chapter = chapter;
 +            this.section = section;
++            this.tab = tab;
++            this.score = score;
++            this.snippet = snippet;
 +        }
 +    }
 +
-+    /** Minusculas e sem acentos, para a busca. */
++    /** Minusculas e sem acentos, caractere por caractere (o tamanho nao muda, para os trechos do texto original baterem). */
 +    static String norm(String s) {
-+        String n = java.text.Normalizer.normalize(s == null ? "" : s, java.text.Normalizer.Form.NFD);
-+        return n.replaceAll("\\p{InCombiningDiacriticalMarks}+", "").toLowerCase(java.util.Locale.ROOT);
++        if (s == null) return "";
++        StringBuilder b = new StringBuilder(s.length());
++        for (int i = 0; i < s.length(); i++) {
++            char ch = s.charAt(i);
++            if (ch < 128) { b.append(Character.toLowerCase(ch)); continue; }
++            String n = java.text.Normalizer.normalize(String.valueOf(ch), java.text.Normalizer.Form.NFD);
++            char base = n.isEmpty() ? ch : n.charAt(0);
++            b.append(Character.toLowerCase(base));
++        }
++        return b.toString();
 +    }
 +
-+    /** Secoes cujo titulo ou texto tem todas as palavras de {@code query} (sem diferenca de acento ou caixa), na ordem dos capitulos. Busca vazia = nada. */
-+    static List<Hit> search(String query) {
-+        List<Hit> out = new ArrayList<Hit>();
-+        String q = norm(query).trim();
-+        if (q.isEmpty()) return out;
-+        String[] words = q.split("\\s+");
-+        for (Chapter ch : chapters()) {
-+            for (Section sec : ch.sections) {
-+                String text = norm(ch.title + " " + sec.title + " " + sec.body);
-+                boolean all = true;
-+                for (String w : words) if (!text.contains(w)) { all = false; break; }
-+                if (all) out.add(new Hit(ch, sec));
++    private static final java.util.regex.Pattern WORD = java.util.regex.Pattern.compile("[a-z0-9_]+");
++
++    private static String[] tokens(String normText) {
++        List<String> l = new ArrayList<String>();
++        java.util.regex.Matcher m = WORD.matcher(normText);
++        while (m.find()) l.add(m.group());
++        return l.toArray(new String[0]);
++    }
++
++    /** Grupos de palavras relacionadas: quem busca uma acha as outras (com peso menor). Tudo normalizado. */
++    private static final String[][] SYNONYMS = {
++        {"speed", "velocidade", "dash", "mover", "movimento", "andar", "correr", "deslocar", "deslocamento", "pixels", "px", "avanco", "recuo", "impulso", "pulo", "salto"},
++        {"accel", "aceleracao", "acelerar", "gravidade", "queda", "freio", "frear", "desacelerar"},
++        {"hitbox", "hurtbox", "caixa", "caixas", "ataque", "dano", "alcance", "colisao", "box"},
++        {"reacao", "reacoes", "knockback", "empurrao", "empurrar", "hitstun", "stun", "atordoamento", "lancamento"},
++        {"sequencia", "seq", "combo", "transicao", "cancel", "cancelar", "encadear", "encadeamento", "fluxo"},
++        {"projetil", "projeteis", "tiro", "bala", "fireball", "bullet", "ramificacao", "ramo", "arvore", "perseguicao"},
++        {"som", "audio", "sfx", "wav", "voz", "musica", "sons"},
++        {"salvar", "save", "gravar", "backup", "copia", "exportar", "runtime", "pasta"},
++        {"imagem", "sprite", "sprites", "recorte", "cnv", "png", "folha", "thumb"},
++        {"tempo", "duracao", "ticks", "tick", "frames", "frame", "time"},
++        {"camera", "zoom", "tela", "tremor", "shake", "cutscene", "cena", "cenas"},
++        {"link", "links", "filho", "aura", "sincronia"},
++        {"limite", "limites", "maximo", "aviso", "avisos", "erro", "crash", "alerta"},
++        {"pouso", "chao", "aterrissar", "cair"},
++        {"flip", "virar", "espelhar", "espelhado", "inverter", "rotacao"},
++    };
++
++    /** Tolerancia de erro por tamanho da palavra buscada: ate 3 letras so exata, 4 a 6 uma troca, 7 ou mais duas. */
++    private static int maxDist(int len) { return len <= 3 ? 0 : len <= 6 ? 1 : 2; }
++
++    /** Distancia de edicao com transposicao (Damerau-Levenshtein "optimal string alignment"). */
++    static int distance(String a, String b) {
++        int n = a.length(), m = b.length();
++        int[][] d = new int[n + 1][m + 1];
++        for (int i = 0; i <= n; i++) d[i][0] = i;
++        for (int j = 0; j <= m; j++) d[0][j] = j;
++        for (int i = 1; i <= n; i++) {
++            for (int j = 1; j <= m; j++) {
++                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
++                int v = Math.min(Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + cost);
++                if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2) && a.charAt(i - 2) == b.charAt(j - 1)) v = Math.min(v, d[i - 2][j - 2] + 1);
++                d[i][j] = v;
 +            }
 +        }
++        return d[n][m];
++    }
++
++    /** Quanto a palavra buscada {@code w} bate com o termo {@code t} (0 = nao bate; 100 = igual). */
++    static int match(String w, String t) {
++        if (w.equals(t)) return 100;
++        int lw = w.length(), lt = t.length();
++        if (lw >= 3 && t.startsWith(w)) return 85;
++        if (lw == 2 && t.startsWith(w) && lt <= 4) return 60;
++        if (lw >= 4 && t.contains(w)) return 55;
++        int md = maxDist(lw);
++        if (md > 0 && Math.abs(lw - lt) <= md) {
++            int dd = distance(w, t);
++            if (dd <= md) return 75 - 5 * dd;
++        }
++        if (lw >= 5 && lt > lw && distance(w, t.substring(0, lw)) <= 1) return 60;
++        return 0;
++    }
++
++    /** Palavras da consulta com as relacionadas: [palavra, peso%]. A propria palavra pesa 100; as parentes, 70. */
++    private static List<Object[]> expand(String w) {
++        List<Object[]> out = new ArrayList<Object[]>();
++        out.add(new Object[] { w, 100 });
++        for (String[] g : SYNONYMS) {
++            boolean in = false;
++            for (String m : g) if (match(w, m) >= 75 || w.equals(m)) { in = true; break; }
++            if (!in) continue;
++            for (String m : g) if (!m.equals(w)) out.add(new Object[] { m, 70 });
++        }
 +        return out;
++    }
++
++    private static void prepare(Section s) {
++        if (s.tokBody != null) return;
++        s.tokTitle = tokens(norm(s.title));
++        s.tokTags = tokens(norm(s.tags));
++        s.tokBody = tokens(norm(s.body));
++    }
++
++    /** Melhor nota da palavra (com parentes) nos termos; {@code posWeight}: a primeira posicao pesa mais (tags). */
++    private static int best(List<Object[]> variants, String[] terms, boolean posWeight) {
++        int best = 0;
++        for (Object[] v : variants) {
++            String w = (String) v[0];
++            int pct = (Integer) v[1];
++            for (int i = 0; i < terms.length; i++) {
++                int m = match(w, terms[i]);
++                if (m == 0) continue;
++                int sc = m * pct / 100 - (posWeight ? Math.min(i, 20) : 0);
++                if (sc > best) best = sc;
++            }
++        }
++        return best;
++    }
++
++    /** Pesquisa: tolera erros de digitacao e acha palavras relacionadas; todas as palavras da consulta precisam bater. Abas e menus vem antes dos textos; cada faixa fica da melhor para a pior. */
++    static List<Hit> search(String query) {
++        List<Hit> tabs = new ArrayList<Hit>(), texts = new ArrayList<Hit>();
++        String q = norm(query).trim();
++        if (q.isEmpty()) return tabs;
++        String[] words = tokens(q);
++        if (words.length == 0) return tabs;
++        List<List<Object[]>> vars = new ArrayList<List<Object[]>>();
++        for (String w : words) vars.add(expand(w));
++        for (Chapter ch : chapters()) {
++            String[] chTitle = tokens(norm(ch.title));
++            for (Section sec : ch.sections) {
++                prepare(sec);
++                boolean allHead = true, allAny = true;
++                int sHead = 0, sAny = 0;
++                for (List<Object[]> v : vars) {
++                    int title = best(v, sec.tokTitle, false);
++                    int tag = sec.tab ? best(v, sec.tokTags, true) : 0;
++                    int head = Math.max(title + (sec.tab ? 25 : 10), tag + 15);
++                    if (title == 0 && tag == 0) head = 0;
++                    int chap = best(v, chTitle, false) / 2;
++                    int body = best(v, sec.tokBody, false) * 4 / 10;
++                    int inHead = Math.max(head, chap);
++                    if (inHead == 0) allHead = false;
++                    int any = Math.max(inHead, body);
++                    if (any == 0) { allAny = false; break; }
++                    sHead += inHead;
++                    sAny += any;
++                }
++                if (!allAny) continue;
++                if (sec.tab && allHead) tabs.add(new Hit(ch, sec, true, sHead, ""));
++                else texts.add(new Hit(ch, sec, false, sAny, snippet(sec, vars)));
++            }
++        }
++        sortHits(tabs);
++        sortHits(texts);
++        List<Hit> out = new ArrayList<Hit>(tabs);
++        out.addAll(texts);
++        return out;
++    }
++
++    private static void sortHits(List<Hit> l) {
++        // estavel: empates ficam na ordem dos capitulos
++        java.util.Collections.sort(l, new java.util.Comparator<Hit>() {
++            @Override public int compare(Hit a, Hit b) { return b.score - a.score; }
++        });
++    }
++
++    /** Trecho do texto em volta da melhor palavra que bateu; vazio se o titulo ja basta. */
++    private static String snippet(Section sec, List<List<Object[]>> vars) {
++        String nb = norm(sec.body);
++        java.util.regex.Matcher m = WORD.matcher(nb);
++        int bestPos = -1, bestSc = 0;
++        while (m.find()) {
++            for (List<Object[]> v : vars) for (Object[] x : v) {
++                int sc = match((String) x[0], m.group()) * (Integer) x[1] / 100;
++                if (sc > bestSc) { bestSc = sc; bestPos = m.start(); }
++            }
++        }
++        if (bestPos < 0) return "";
++        int a = Math.max(0, bestPos - 50), z = Math.min(sec.body.length(), bestPos + 110);
++        while (a > 0 && a < bestPos && sec.body.charAt(a - 1) != ' ') a++;
++        while (z < sec.body.length() && z > bestPos && sec.body.charAt(z) != ' ') z--;
++        return (a > 0 ? "… " : "") + sec.body.substring(a, z).trim() + (z < sec.body.length() ? " …" : "");
 +    }
 +}
 diff -ruN a/IconView.java b/IconView.java
@@ -10380,6 +10626,96 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +        check("resumo do fatal", GameRules.summary(GameRules.check(d, null, 0)).startsWith("O JOGO FECHA/ERRA: ANO 3 MPT 0"), true);
 +
 +        System.out.println("GameRulesTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
+--- a/test/HelpSearchTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/HelpSearchTest.java	2026-10-24 18:28:48.491411067 +0000
+@@ -0,0 +1,86 @@
++package com.zue.attackeditor;
++
++import java.util.List;
++
++/** Busca da AJUDA: aproximacao (erros de digitacao), correlacao (sinonimos/tags) e abas antes de textos. Java puro. */
++public class HelpSearchTest {
++    static int fails = 0, oks = 0;
++
++    static void check(String name, Object got, Object want) {
++        boolean ok = got == null ? want == null : got.equals(want);
++        if (ok) { oks++; System.out.println("OK   " + name); }
++        else { fails++; System.out.println("FAIL " + name + " got=" + got + " want=" + want); }
++    }
++
++    static String first(String q) {
++        List<HelpText.Hit> h = HelpText.search(q);
++        return h.isEmpty() ? "-" : h.get(0).section.title + (h.get(0).tab ? "[aba]" : "[txt]");
++    }
++
++    static boolean tabsBeforeTexts(String q) {
++        boolean seenText = false;
++        for (HelpText.Hit h : HelpText.search(q)) {
++            if (!h.tab) seenText = true;
++            else if (seenText) return false;
++        }
++        return true;
++    }
++
++    public static void main(String[] a) {
++        check("distancia: insercao", HelpText.distance("sped", "speed"), 1);
++        check("distancia: troca", HelpText.distance("spped", "speed"), 1);
++        check("distancia: duplicada", HelpText.distance("spedd", "speed"), 1);
++        check("distancia: transposicao conta 1", HelpText.distance("sequnecia", "sequencia"), 1);
++        check("match: palavra curta so exata", HelpText.match("seg", "seq"), 0);
++        check("match: prefixo", HelpText.match("veloc", "velocidade") > 60, true);
++
++        for (String q : new String[] { "speed", "sped", "spped", "spedd", "speeed", "SPEED", "dash", "velocidade", "velocidde", "aceleracao" }) {
++            String f = first(q);
++            check("'" + q + "' poe a aba Movimento em primeiro", f, "Movimento[aba]");
++        }
++        check("correlacao: pixels", first("pixels"), "Movimento[aba]");
++        check("correlacao: gravidade", first("gravidade").endsWith("[aba]"), true);
++
++        check("erro: hitbx acha a aba HITBOX ou Hitbox/Hurtbox", first("hitbx").endsWith("[aba]") && HelpText.search("hitbx").get(0).section.title.toLowerCase().contains("hit"), true);
++        check("erro: reaçao (sem til)", HelpText.search("reaçao").size() > 3, true);
++        check("erro: sequnecia", HelpText.search("sequnecia").size() > 2, true);
++        check("sequnecia: aba de transicao/sequencia vem primeiro", first("sequnecia").endsWith("[aba]"), true);
++        check("combo leva as sequencias", HelpText.search("combo").size() > 0, true);
++        check("editor de reacoes aparece para 'knockback'", first("knockback").endsWith("[aba]"), true);
++
++        for (String q : new String[] { "speed", "reacao", "salvar", "sequencia", "hitbox", "som", "projetil", "tempo" })
++            check("abas sempre antes dos textos: " + q, tabsBeforeTexts(q), true);
++        boolean anyTab = false, anyText = false;
++        for (HelpText.Hit h : HelpText.search("speed")) { anyTab |= h.tab; anyText |= !h.tab; }
++        check("speed tem as duas faixas", anyTab && anyText, true);
++
++        boolean sn = true, any = false;
++        for (HelpText.Hit h : HelpText.search("limite")) if (!h.tab) { any = true; sn &= h.snippet.length() > 0 && h.snippet.length() < 220; }
++        check("textos trazem trecho curto", any && sn, true);
++        boolean tabNoSnippet = true;
++        for (HelpText.Hit h : HelpText.search("speed")) if (h.tab) tabNoSnippet &= h.snippet.isEmpty();
++        check("abas nao trazem trecho", tabNoSnippet, true);
++
++        check("lixo nao acha nada", HelpText.search("xqzwkjv").size(), 0);
++        check("palavra extra inexistente zera", HelpText.search("speed palavraqueNaoExiste").size(), 0);
++        check("busca vazia", HelpText.search("   ").size(), 0);
++        check("varias palavras exigem todas (speed accel)", HelpText.search("speed accel").size() > 0, true);
++        check("bit 64 acha o capitulo speed", first("bit 64").length() > 1 && !first("bit 64").equals("-"), true);
++        boolean inSpeed = false;
++        for (HelpText.Hit h : HelpText.search("bit 64")) inSpeed |= h.chapter.id.equals("speed");
++        check("bit 64 inclui o capitulo speed", inSpeed, true);
++        check("palavra com underscore: SEQ_PROJETIL", HelpText.search("SEQ_PROJETIL").size() > 0, true);
++
++        int tabs = 0;
++        for (List<HelpText.Chapter> l = java.util.Collections.singletonList(null); l != null; l = null) {
++            for (HelpText.Chapter ch : HelpText.chapters()) for (HelpText.Section s : ch.sections) if (s.tab) tabs++;
++        }
++        check("ha abas marcadas (menu superior 14 + paginas)", tabs >= 30, true);
++        boolean toolbarTabs = true;
++        for (HelpText.Section s : HelpText.toolbar()) toolbarTabs &= s.tab && s.tags.length() > 5;
++        check("todo botao do menu superior e aba com tags", toolbarTabs, true);
++
++        System.out.println("HelpSearchTest ok=" + oks + " fails=" + fails);
++        if (fails > 0) System.exit(1);
 +    }
 +}
 diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
