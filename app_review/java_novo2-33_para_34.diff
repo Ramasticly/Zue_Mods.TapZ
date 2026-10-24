@@ -1,3 +1,695 @@
+diff -ruN a/AiHelp.java b/AiHelp.java
+--- a/AiHelp.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AiHelp.java	2026-10-24 20:41:25.276468750 +0000
+@@ -0,0 +1,172 @@
++package com.zue.attackeditor;
++
++import java.util.List;
++import java.util.Locale;
++
++/**
++ * Monta o TBRHelp.md ("Ajuda de IA"): um Markdown em ingles, escrito para uma IA, que o usuario envia a ela para depois perguntar como criar ou
++ * editar ataques. O texto fixo esta em {@link AiHelpDoc}; aqui entram os trechos gerados pelo proprio app (exemplos de DAC / HDAT / reacao / CNV
++ * lidos e escritos pelos mesmos conversores, tabela do HDAT 4, grupos de reacao, limites do jogo) e o anexo com a ajuda do app (HelpText).
++ * Java puro, determinístico.
++ */
++final class AiHelp {
++    private AiHelp() { }
++
++    /** Nome do arquivo gravado em Download/. */
++    static final String FILE_NAME = "TBRHelp.md";
++
++    // ---- exemplos (entrada -> leitor -> escritor do app) ----
++
++    private static final String SAMPLE_ANO =
++            "$ANO_5: {\n   $PRIO: 3,\n   $LNKS:{\n      $LINK_0: {$BX: 0, $BY: -20, $SYNC{SPAWN_POS: YES, XY: YES, MPT: NOT}, $ANO: 230},\n   },\n   $MPTS:{\n"
++            + "      $MPT_0:{ $TIME: 4, $IMG: 12, $MID:[8, 40],\n         $HITS:{ $HT_0:{$FLAG: 1, $COORDS: [-10,-60,20,60]}, },\n      },\n"
++            + "      $MPT_1:{ $TIME: 6, $IMG: 13, $WACTFLAG: 64, $SE: 81,\n         $MOVE:{$XSPEED: 2.5, $XACCEL: 0.25, },\n"
++            + "         $HITS:{ $HT_0:{$FLAG: 1, $COORDS: [-10,-60,20,60]}, $HT_1:{$FLAG: 2, $COORDS: [10,-50,40,20]}, $HT_2:{$FLAG: 0, $COORDS: [30,-40,0,0]}, },\n"
++            + "         $OPT:{$FLAG: 0, $DATA: B[12,52,0,0]},\n      },\n"
++            + "      $MPT_2:{ $TIME: 5, $IMG: 14,\n         $RAZ:{$ROT: 15, $ALPHA: 0, $XZOOM: 100, $YZOOM: 100},\n      },\n   },\n},";
++
++    private static final String SAMPLE_CNV = "$SPR_0:{$src:0, $x:0, $y:0, $w:128, $h:192}, $SPR_1:{$src:0, $x:128, $y:0, $w:96, $h:160},";
++
++    /** Texto do ANO de exemplo ja relido e reescrito pelo conversor do app (cai no texto cru se algo falhar). */
++    static String sampleAno() {
++        String body;
++        try { body = DacText.ano(DacText.parseAno(SAMPLE_ANO, 5, null), -1); } catch (Exception e) { body = SAMPLE_ANO; }
++        return "DAC_ACT_ {\n" + Saver.indent(body) + "\n   // ... the other ANOs ...\n}";
++    }
++
++    static String sampleGolpe() {
++        CharData.Move m = new CharData.Move();
++        m.animInicial = 5;
++        m.projNormal = 21;
++        m.animSeqChao = 6;
++        m.animEndChao = 7;
++        m.animSeqAr = 8;
++        m.animEndAr = 7;
++        return DacText.move(m, 2);
++    }
++
++    static String sampleReaction() {
++        byte[] rows = new byte[2 * ReactionTable.STRIDE];
++        int[][] r = {{6, 9, 3, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}, {4, 5, 4, -1, 0, 2, 0, -1, 0, 2, 0, 0, 0, 9}};
++        for (int i = 0; i < r.length; i++) for (int c = 0; c < ReactionTable.STRIDE; c++) rows[i * ReactionTable.STRIDE + c] = (byte) r[i][c];
++        return "// slot 3 of the character = HDAT 17\n" + Saver.reactionText(new ReactionTable(rows, 0), 3).replaceAll("\\s+$", "");
++    }
++
++    static String sampleCnv() {
++        try {
++            Cnv c = Cnv.fromTxt(SAMPLE_CNV, true);
++            if (c != null) return c.toTxt().replaceAll("\\s+$", "");
++        } catch (Exception e) { /* texto cru abaixo */ }
++        return "CNV_TXT_ {\n   " + SAMPLE_CNV + "\n}";
++    }
++
++    // ---- tabelas geradas ----
++
++    /** Descricao de cada campo do HDAT 4, na ordem de {@link DacText#MOVE_KEYS}. */
++    static final String[] MOVE_DOC = {
++        "Option bits (table below). Sum the bits you want.",
++        "The ANO that starts the move.",
++        "Projectile ANO when the opponent is at about the same height as the attacker (0 = none). With TRIPLE (4) the ANOs +1 and +2 are thrown too.",
++        "Projectile ANO when the opponent is far below the attacker.",
++        "Projectile ANO when the opponent is far above the attacker.",
++        "Projectile \"global hit\" ANO (projectile-related animation played on a hit; exact trigger not verified — copy from an existing move).",
++        "Projectile ANO played after the projectile hits (its hit/explosion animation).",
++        "Projectile ANO played when the projectile touches the floor.",
++        "Projectile chases the opponent (0 = off).",
++        "Turn speed of the chase.",
++        "Projectile repeat count (> 0 repeats; uses the frame window 512, so the move cannot also grab).",
++        "Sub-projectile ANO (spawned by a flag-0 hit inside a projectile ANO).",
++        "Sub-projectile ANO after it hits.",
++        "Sub-projectile ANO when it touches the floor.",
++        "SEQ_PROJETIL: ANO the attacker switches to when the first hit of a projectile connects (applies to the whole move).",
++        "SEQ on the ground: ANO to go to when a hit connects while the attacker is on the ground.",
++        "END on the ground: ANO to go to on a new hit while in the SEQ ANO (the END ANO has no further transition).",
++        "SEQ in the air: like SEQ on the ground but while airborne.",
++        "END in the air.",
++        "Landing after a MISSED aerial move: ANO to switch to when touching the floor.",
++        "Landing after a CONNECTED aerial move.",
++        "Defender's ANO while being grabbed (grab moves).",
++        "Unknown (offset 44): keep the value of an existing move.",
++        "Unknown (offset 46): keep the value of an existing move.",
++    };
++
++    static String hdat4Table() {
++        StringBuilder sb = new StringBuilder("| # | `$KEY` | Meaning |\n|---|---|---|\n");
++        for (int i = 0; i < DacText.MOVE_KEYS.length; i++)
++            sb.append("| ").append(i).append(" | `").append(DacText.MOVE_KEYS[i]).append("` | ").append(i < MOVE_DOC.length ? MOVE_DOC[i] : "").append(" |\n");
++        sb.append("\nAll values are 16-bit integers (0..32767). A value of 0 means \"none\" for ANO fields.");
++        return sb.toString();
++    }
++
++    private static final String[] GROUP_NAMES = {"normal", "alternate sound", "strong", "light", "no effect"};
++
++    static String opt1Groups() {
++        StringBuilder sb = new StringBuilder("| Group | Name | `OPT1` range | Hit effect (effect-pack ANO) | Hit sound | Pushes the defender | Hitstop |\n|---|---|---|---|---|---|---|\n");
++        for (int g = 0; g < GROUP_NAMES.length; g++) {
++            Opt1 o = new Opt1(g * 50);
++            sb.append("| ").append(g).append(" | ").append(GROUP_NAMES[g]).append(" | ").append(g * 50).append("–").append(g * 50 + 49).append(" | ")
++              .append(o.effectAno < 0 ? "none" : String.valueOf(o.effectAno)).append(" | ")
++              .append(o.sound < 0 ? "none" : "se_" + (o.sound < 10 ? "0" : "") + o.sound).append(" | ")
++              .append(o.pushes ? "yes" : "no").append(" | ")
++              .append(o.hitstopMode == 2 ? "none" : o.hitstopMode == 1 ? "half (melee)" : "normal").append(" |\n");
++        }
++        return sb.toString().replaceAll("\\s+$", "");
++    }
++
++    static String limits() {
++        return "| Limit | Value | If exceeded |\n|---|---|---|\n"
++                + "| Boxes (`$HITS`) per frame | " + GameRules.MAX_HITS + " | **fatal** — the game array `hit[50]` (5 numbers per box) overflows and the game closes |\n"
++                + "| Links per ANO | " + GameRules.MAX_LINKS + " | **fatal** — `lnk[13]`; one level only, a link's own links/boxes are ignored |\n"
++                + "| Frames (`$MPT`) per ANO | " + GameRules.MAX_MPTS + " | **fatal** — the DAC stores the count in 1 byte |\n"
++                + "| `$TIME` per frame | " + GameRules.MAX_TIME + " | **fatal** — 1-byte field |\n"
++                + "| `OPT1` (reaction code) with a hitbox | " + GameRules.MAX_OPT1 + " (group 0–4) | **fatal** — the group does not exist |\n"
++                + "| Live projectiles | 8 | the 9th is silently not created |\n"
++                + "| Interpolation (`$OPT` d2) with a next frame that has other box counts | — | **fatal/garbage** — wrong rotation/alpha/zoom or reads garbage |\n"
++                + "| Image index not in the CNV | — | the frame has no drawing (warning) |";
++    }
++
++    // ---- montagem ----
++
++    /** Anexo: o texto da ajuda do app (portugues), fiel, capitulo a capitulo. */
++    static String appendix() {
++        StringBuilder sb = new StringBuilder("## Appendix A — The app's own in-app help (verbatim, Portuguese)\n\n"
++                + "Source text of the AJUDA screen; the UI labels you will see on the user's phone are exactly these. Use it to confirm button names and behaviours.\n\n");
++        for (HelpText.Chapter ch : HelpText.chapters()) {
++            sb.append("### ").append(ch.title).append("\n\n_").append(ch.summary).append("_\n\n");
++            for (HelpText.Section s : ch.sections) sb.append("#### ").append(s.title).append("\n\n").append(s.body).append("\n\n");
++        }
++        return sb.toString();
++    }
++
++    private static String toc(String doc) {
++        StringBuilder sb = new StringBuilder();
++        for (String line : doc.split("\n")) if (line.startsWith("## ")) sb.append("- ").append(line.substring(3)).append('\n');
++        return sb.toString().replaceAll("\\s+$", "");
++    }
++
++    /** O documento completo. {@code buildLabel}: versao do app (so informativo). */
++    static String build(String buildLabel) {
++        StringBuilder sb = new StringBuilder();
++        for (String p : AiHelpDoc.PARTS) sb.append(p);
++        String doc = sb.toString();
++        doc = doc.replace("{{BUILD}}", buildLabel == null ? "unknown" : buildLabel)
++                .replace("{{SAMPLE_ANO}}", sampleAno())
++                .replace("{{SAMPLE_GOLPE}}", sampleGolpe())
++                .replace("{{SAMPLE_REACTION}}", sampleReaction())
++                .replace("{{SAMPLE_CNV}}", sampleCnv())
++                .replace("{{OPT1_GROUPS}}", opt1Groups())
++                .replace("{{HDAT4_TABLE}}", hdat4Table())
++                .replace("{{LIMITS}}", limits());
++        doc = doc.replace("{{TOC}}", toc(doc + "## Appendix A — The app's own in-app help (verbatim, Portuguese)\n"));
++        return doc.replaceAll("\\s+$", "") + "\n\n" + appendix().replaceAll("\\s+$", "") + "\n";
++    }
++
++    /** Linhas do documento que começam com "## " (secoes), para conferir. */
++    static List<String> sectionTitles(String doc) {
++        List<String> out = new java.util.ArrayList<String>();
++        for (String line : doc.split("\n")) if (line.startsWith("## ")) out.add(line.substring(3).trim());
++        return out;
++    }
++
++    static String sizeLabel(String doc) { return String.format(Locale.US, "%.1f KB", doc.getBytes(java.nio.charset.Charset.forName("UTF-8")).length / 1024.0); }
++}
+diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
+--- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AiHelpDoc.java	2026-10-24 20:40:19.965920436 +0000
+@@ -0,0 +1,428 @@
++package com.zue.attackeditor;
++
++/** Texto fixo do TBRHelp.md (gerado a partir de aihelp_src/*.md); os {{MARCADORES}} sao preenchidos por {@link AiHelp}. Nao editar a mao. */
++final class AiHelpDoc {
++    private AiHelpDoc() { }
++
++    static final String[] PARTS = {
++        "# TBR Attack Editor — Reference file for AI assistants (TBRHelp.md)\n" +
++        "\n" +
++        "> Generated by the app itself (\"Ajuda de IA\" button, menu AJUDA). App build: {{BUILD}}.\n" +
++        "\n" +
++        "**Contents**\n" +
++        "\n" +
++        "{{TOC}}\n" +
++        "\n" +
++        "## 0. READ THIS FIRST (instructions addressed to the AI)\n" +
++        "\n" +
++        "**Language.** This file is written in English only because that is convenient for you. It is **not necessarily the user's language**. Detect the language of the user's messages and **always answer in the user's language**. Keep file names, `$KEYS`, flag numbers and code blocks exactly as written here (never translate them).\n" +
++        "\n" +
++        "**Who the user is.** Someone who edits fighting-game characters (moves, animations, projectiles, hit reactions) with the Android app *Attack Editor* (package `com.zue.attackeditor`, \"TBRE\"). The game being edited is the Android fighting game *Tap Battle* (its engine class is `TCBManajer`). The user may be a beginner or may have difficulty with technical language. The user will upload this file once and then ask questions. Typical questions:\n" +
++        "\n" +
++        "- \"How do I make a new attack / combo / projectile / special move?\"\n" +
++        "- \"Where do I save? Why did my change not appear in the game?\"\n" +
++        "- \"How do I test it? What does this warning mean?\"\n" +
++        "- \"What does button X do? What are the limits? Which file do I send you?\"\n" +
++        "\n" +
++        "**How to behave.**\n" +
++        "\n" +
++        "1. Be concrete. Give numbered, short, tap-by-tap steps that use the **exact button names of the app** (they are in capitals in this file, e.g. `SALVAR`, `DIVIDIR`). Say what the user should see after each step.\n" +
++        "2. **Never invent** fields, flags, files or buttons. If something is not in this file, say you are not sure and ask the user to send the relevant text (see section 4) or a screenshot. The sections marked *(unknown)* are known gaps: copy values from an existing, working frame/move instead of guessing.\n" +
++        "3. If the request needs data you do not have (the character's files), **ask for them first** (section 4). Do not produce a whole move blind.\n" +
++        "4. When you produce data for the app, follow the **output contract** (section 12) exactly: complete blocks, in fenced code blocks, each preceded by a one-line instruction saying where to paste it and how to test it.\n" +
++        "5. Before you answer with data, run the **validation checklist** (section 9). Stay inside the limits; the game **crashes** (closes) when some limits are exceeded.\n" +
++        "6. Prefer the smallest change that achieves the goal. Prefer copying an existing similar move/ANO/frame and editing numbers over creating from zero.\n" +
++        "7. Remind the user to **keep a backup**: the app makes backups in `Tap Battle/TBRE/Backups/` when it transplants a move, and the recommended save mode (separate folder) never touches the original character folder.\n" +
++        "8. You cannot create or edit **images (PNG) or sounds (WAV)** for the user. You can tell them which ones are needed and how to import them with the app (section 11).\n" +
++        "9. The app is tested only by running it; you cannot run it. Tell the user honestly what they must check in the preview.\n" +
++        "\n" +
++        "**Vocabulary (the app uses Portuguese names).** ANO = an animation (a list of frames). MPT / frame / sprite = one frame of an ANO. DAC = the animation file. BIN = the data file (moves, reactions…). CNV = the sprite-cut table. GOLPE = a move (one row of HDAT 4). SEQ = sequence (go to another ANO when a hit connects). END = ANO to go to after a sequence. Reação = hit reaction (what the defender does when hit). Hurtbox = body area; hitbox = attack area. Tick = 1/60 s. \"Runtime\" = the character folder the game reads.\n" +
++        "\n" +
++        "## 1. What the app is and how the user works\n" +
++        "\n" +
++        "*Attack Editor* loads a character's files from the phone, **simulates a whole fight in a preview** (attacker, opponent, projectiles, effects, camera, cutscenes) the same way the game does, and lets the user edit animations, moves, projectiles and hit reactions with a **timeline** (like a video editor) and edit menus. The user then saves, and the game reads the saved text files.\n" +
++        "\n" +
++        "Screen (portrait), top to bottom: title bar (`Attack Editor by Zue Mods`, button `AJUDA`); the **top menu** (14 buttons, section 11); `MODO: GOLPES | ANO` and the move/animation selector; a status/warning line; the **preview** (square); the **timeline** with its tool row (`DIVIDIR`, `DUPLICAR`, `EXCLUIR`, `DESFAZER`, tabs `＋` and `#`); a collapsed `▲ DADOS / EDITAR` panel; and the fixed transport bar (`INICIO`, `-1`, play/pause, `+1`, speed). Tapping an item on the timeline opens an **edit drawer** (bottom sheet) over the screen; drag its handle to resize, `Y` saves the height as default, `T` puts the timeline above the menu.\n" +
++        "\n" +
++        "Two modes: **GOLPES** (moves: a move is one row of HDAT 4 with its ANOs, projectiles, sequence and reactions) and **ANO** (play/edit one single animation, ignoring the move around it).\n" +
++        "\n" +
++        "## 2. Files and folders (Android, \"all files access\")\n" +
++        "\n" +
++        "```\n" +
++        "/storage/emulated/0/Tap Battle/\n" +
++        "  assets/\n" +
++        "    charNN/            one folder per character (NN = 2 digits). The game reads this (\"Runtime\").\n" +
++        "      000.dac          binary animations      (never rewritten by the app)\n" +
++        "      000.bin          binary data/HDATs       (never rewritten by the app)\n" +
++        "      000.cnv          binary sprite-cut table (never rewritten by the app)\n" +
++        "      000.dac.txt      readable animations     -> the app WRITES here\n" +
++        "      000.bin.txt      readable data (moves, reactions) -> the app WRITES here\n" +
++        "      000.cnv.txt      readable sprite cuts    -> the app WRITES here\n" +
++        "      NNN.png          sprite sheets (000.png, 001.png, ...) — read-only for the app (kept intact)\n" +
++        "      *.wav            character sounds (ids 80, 81, ... in file-name order)\n" +
++        "    effect/            shared effects pack (dac + cnv + sheets)\n" +
++        "    charfNN/           auxiliary pack (CHARF auras/bubbles)\n" +
++        "    bobjNN/            scenery objects used by cutscenes\n" +
++        "  TBRE/\n" +
++        "    Chars/charNN/      \"separate folder\" saves: a COMPLETE copy of the character with the changes applied, ready to use\n" +
++        "    Backups/           safety copies (e.g. before transplanting a move into another character)\n" +
++        "```\n" +
++        "\n" +
++        "**The `.txt` files win over the binaries.** When loading, the app (and the game build) takes `$ANO_n` blocks from `000.dac.txt`, moves (`$GOLPE_n`) and reactions (`$REACAO_DANO_n`) from `000.bin.txt`, and sprite cuts from `000.cnv.txt` when they exist. ANOs that exist only in the `.txt` (beyond the binary's last ANO) are appended to the animation table. So **a change is delivered as text** and the binaries need not be touched.\n" +
++        "\n" +
++        "To make the app re-read the disk after files were changed outside the app: pick the character again in `CHAR` (or restart the app).\n" +
++        "\n" +
++        "## 3. Text formats (exact grammar; the samples below are generated by the app's own writer and re-read by its own parser)\n" +
++        "\n" +
++        "General syntax of all `.txt` data: `$KEY: value` pairs; blocks are `$KEY: { ... }`; separators are commas or line breaks (trailing commas are fine); `//` starts a comment until end of line; numbers are decimal, `&1F` is hexadecimal (parsed only where a number is read); arrays are `[a, b]` or `B[a, b, c, d]` (bytes). Key names are case-insensitive when read, but write them **in capitals exactly as shown**. Unknown keys inside an ANO/frame are a **parse error** (the app refuses the paste and shows the error with the line).\n" +
++        "\n" +
++        "### 3.1 `000.dac.txt` — animations\n" +
++        "\n" +
++        "The file is `DAC_ACT_ { $ANO_0: {...}, $ANO_1: {...}, ... }`. One block per animation (ANO). An empty/absent ANO is `$ANO_n: { },`.\n" +
++        "\n" +
++        "```\n" +
++        "{{SAMPLE_ANO}}\n" +
++        "```\n" +
++        "\n" +
++        "- `$ANO_n` — `n` is the ANO number (0-based). `$PRIO` (optional) is the draw priority of this ANO. `$LNKS` (optional) = linked animations that spawn together with this one. `$MPTS` = the frames, in order, numbered `$MPT_0`, `$MPT_1`, … consecutively with no gaps.\n" +
++        "- **Frame (`$MPT_i`)** fields (only write the ones you need; `$IMG` is **required**):\n" +
++        "  - `$TIME: t` — duration in ticks (1..255). **Without `$TIME` the frame never advances** (it freezes; the ANO never finishes). Don't omit it unless a frozen frame is intended.\n" +
++        "  - `$IMG: n` — sprite index = entry `$SPR_n` of `000.cnv.txt`. `-1` = no image.\n" +
++        "  - `$MID: [x, y]` — sprite anchor offset in pixels.\n" +
++        "  - `$WACTFLAG: n` — 16-bit state/behaviour flags of the frame. Known bits: **64 = keep the speed of the previous frame (instead of resetting to 0)**; 0x2000 (8192) and 0x8000 (32768) = frame/position synchronised with the parent (for linked animations). Other bits *(unknown)*: copy from existing frames.\n" +
++        "  - `$SE: n` — sound id played at the start of the frame (see 5.6).\n" +
++        "  - `$MOVE: { $XSPEED: v, $YSPEED: v, $XACCEL: v, $YACCEL: v }` — movement in **pixels per tick** (decimals allowed, e.g. `2.5`); any subset of the four. Positive X = forward (facing direction), positive Y = down. See 6.2.\n" +
++        "  - `$HITS: { $HT_0: {$FLAG: f, $COORDS: [x, y, w, h]}, ... }` — \"boxes\"/actions of the frame (hitbox, hurtbox, spawn points, effects…); `x,y` relative to the character (x mirrored with facing); `w,h` size. See 5.2. **At most 10 per frame.**\n" +
++        "  - `$OPT: { $FLAG: n, $DATA: B[d0, d1, d2, d3] }` — extra data, see 5.3 (damage, reaction code, interpolation).\n" +
++        "  - `$RAZ: { $ROT: deg, $ALPHA: a, $XZOOM: pct, $YZOOM: pct }` — rotation (degrees), alpha (0 = opaque/255), zoom in percent (100 = normal).\n" +
++        "- **Link (`$LINK_i`)**: `{$BX: x, $BY: y, $SYNC{SPAWN_POS: YES|NOT, XY: YES|NOT, MPT: YES|NOT}, $ANO: n}` — another ANO that spawns with this one at offset (BX, BY), following its parent. **Max 13 links per ANO; only one level** (a link's own links/hits/flags are ignored).\n" +
++        "\n" +
++        "### 3.2 `000.bin.txt` — data blocks\n" +
++        "\n" +
++        "`000.bin.txt` contains many `$HDAT_n:{ ... }` tables. The app reads and writes only these parts:\n" +
++        "\n" +
++        "**Moves (HDAT 4).** One `$GOLPE_i:{...}` per move `i` (all values are plain integers, 16-bit):\n" +
++        "\n" +
++        "```\n" +
++        "{{SAMPLE_GOLPE}}\n" +
++        "```\n" +
++        "\n" +
++        "(Field meanings: table in 5.5.)\n" +
++        "\n" +
++        "**Hit reactions (HDAT 14..33 = character reaction slots 0..19).** Each slot is a `$HDAT_(14+t)` block with an `$info` header and `$REACAO_DANO_t` rows `$FR_n`:\n" +
++        "\n" +
++        "```\n" +
++        "{{SAMPLE_REACTION}}\n" +
++        "```\n" +
++        "\n" +
++        "`$COL` = bytes per row (always 14), `$ROW` = number of rows, `$SZ` = `&` + 8 hex digits of `ROW*14`. If you change the number of rows you must update `$ROW` and `$SZ` (the app does this itself when it saves; if you hand-edit the file, do it too). Columns: see 5.4.\n" +
++        "\n" +
++        "Everything else in `000.bin.txt` (other HDATs) must be **left exactly as it is**.\n" +
++        "\n" +
++        "### 3.3 `000.cnv.txt` — sprite cuts\n" +
++        "\n" +
++        "One line per sprite: the sprite sheet number `$src` (file `NNN.png`), the cut rectangle (x, y, w, h) **in physical pixels** (characters are stored at 2x; the game halves them when compiling):\n" +
++        "\n" +
++        "```\n" +
++        "{{SAMPLE_CNV}}\n" +
++        "```\n" +
++        "\n" +
++        "`$SPR_n` order = the image index `$IMG: n` used by frames. Appending a new `$SPR_n` at the end never shifts existing images. The rectangle must stay inside the PNG (the app warns \"recorte fora\").\n" +
++        "\n" +
++        "## 4. What to ask the user for (and how they get it)\n" +
++        "\n" +
++        "Ask only for what you need, one step at a time, in the user's language.\n" +
++        "\n" +
++        "| You need | Ask the user to send | How the user gets it |\n" +
++        "|---|---|---|\n" +
++        "| Understand/edit an existing move or animation | The **text of that ANO / move / frame** | In the editor open `▲ DADOS / EDITAR`, choose the tab (`GOLPE`, `ANO`, `FRAME`, in ANO mode also `LINKS`), tap the pencil `✎` (it opens the text editor with the current text), select all and copy. |\n" +
++        "| Create a move or many ANOs consistent with the character | `000.dac.txt`, `000.bin.txt`, `000.cnv.txt` of the character | Use `SALVAR` → save **all** to the **separate folder**; then open `Tap Battle/TBRE/Chars/charNN/` with any file manager and share the three `.txt` files. (They also exist in `Tap Battle/assets/charNN/`.) The `.dac.txt` can be large; ask for the specific ANOs if the chat limit is a problem. |\n" +
++        "| Know which sprites exist / their cuts | `000.cnv.txt` and the `NNN.png` sheets (or a screenshot of the `SPRITES` list) | Same folder. |\n" +
++        "| Know the exact problem | The **warning text** shown over the preview (tap it to expand) and a description of what the preview shows | The warning line under the menu; tap to expand all of them. |\n" +
++        "| Know which character/move | Character number (`charNN`), move index (0, 1, 2…), ANO numbers | Shown in the move/animation selector and in the `DADOS` panel header. |\n" +
++        "\n" +
++        "Always also ask: *what should the attack look like and do* (damage, range, speed, air/ground, projectile?, combo into another animation?, which reaction should the defender have?).\n" +
++        "\n" +
++        "## 5. Data dictionary\n" +
++        "\n" +
++        "### 5.1 Frame flags in the binary (informational)\n" +
++        "The app stores which fields a frame has in a flag byte; in text this is implicit by which `$KEYS` you write: `0x01 $MID`, `0x02 $WACTFLAG`, `0x04 $MOVE`, `0x08 $SE`, `0x10 $HITS`, `0x20 $TIME`, `0x40 $OPT`, `0x80 $RAZ`.\n" +
++        "\n" +
++        "### 5.2 `$HITS` flags (`$FLAG`)\n" +
++        "\n" +
++        "| Flag | Meaning |\n" +
++        "|---|---|\n" +
++        "| 0 | **Projectile spawn point** at (x, y) — creates the move's projectile ANO (HDAT 4 `PROJETIL_ANIM_*`). Inside a projectile ANO it spawns a **sub-projectile**. Max 8 projectiles alive in the game. |\n" +
++        "| 1 | **Hurtbox** (body, where the character takes damage), `[x,y,w,h]`. |\n" +
++        "| 2 | **Hitbox** (attack area), `[x,y,w,h]`. Uses the frame's `$OPT` (damage, reaction). |\n" +
++        "| 3 / 4 / 5 | Screen shake light / medium / strong. |\n" +
++        "| 10–17 | Dust/smoke effect from the shared `effect` pack (effect ANO = 50 + flag − 10) at offset (x, y). |\n" +
++        "| 20 | **Cutscene** trigger (x, y); the event is selected by data in the character's HDAT 13. Complex — copy from an existing character; the app shows a panel explaining the event. |\n" +
++        "| 26 | Opponent cannot defend. |\n" +
++        "| 27 | Prevent cancelling. |\n" +
++        "| 28 | Damage ignores attack/defense stats. |\n" +
++        "| 30 / 31 | Camera zoom. |\n" +
++        "| 32 | Damage to self (amount = `$OPT` d0). |\n" +
++        "| 34 | Heal. |\n" +
++        "| 37 | Hit does not count for combo. |\n" +
++        "| 38 | **Block the sequence** (the move's SEQ does not trigger when this hit connects). |\n" +
++        "| 39 | Teleport to the opponent. |\n" +
++        "| 40 | Pull the opponent. |\n" +
++        "| 41–70 | Aura/bubble from the `charf` pack (ANO = flag − 41 + 3). |\n" +
++        "| 71–125 | **Character's own effect/aura ANOs**: flag f spawns ANO `201 + (f − 71)` of the character's own DAC (so ANOs 201…255 are effect/aura ANOs). They follow the character while the flag is present. |\n" +
++        "\n" +
++        "Other numbers *(unknown / unused)*. Boxes with the same flag in consecutive frames are shown as one object by the timeline.\n" +
++        "\n" +
++        "### 5.3 `$OPT` (extra frame data)\n" +
++        "`$OPT: { $FLAG: F, $DATA: B[d0, d1, d2, d3] }`\n" +
++        "- `d0` = **damage** of the hitbox in this frame (also the amount for flag 32).\n" +
++        "- `d1` = **reaction code** `OPT1 = group*50 + index` (see 5.4). Maximum 249. **Only meaningful on frames with a hitbox (flag 2).**\n" +
++        "- `d2` ≠ 0 = **interpolate** rotation/alpha/zoom toward the next frame (needs `$RAZ` in the next frame; mismatching box counts between the frames gives wrong values).\n" +
++        "- `d3` *(unknown)* — keep the value of an existing similar frame.\n" +
++        "- `F` (16-bit) = \"window\" bits of the frame: 512 = **window for \"try grab\" / repeat projectile** (same bit, so a move cannot use both), 1024 = hide the scenery, 2048 = wall impact effect, bits 12–15 (value `4096*t`, t = 1..15) = dust/smoke type. Other bits *(unknown)*: copy from an existing frame.\n" +
++        "\n" +
++        "### 5.4 Hit reactions\n" +
++        "`OPT1 = group*50 + index`.\n" +
++        "\n" +
++        "- `index` 0..29 = a **game-wide** reaction (read-only, in the game data). `index` 30..49 = **this character's own** reaction slot `index − 30` (0..19), stored in HDAT 14..33 of `000.bin.txt` (editable; may be empty).\n" +
++        "- `group` 0..4 chooses effect/sound/knockback:\n" +
++        "\n" +
++        "{{OPT1_GROUPS}}\n" +
++        "\n" +
++        "A **reaction table** is a list of **steps** (rows of 14 bytes). The defender plays them in order; ground values are used while the defender is on the ground and air values while in the air (air columns are used when the defender's height is above the floor):\n" +
++        "\n" +
++        "| Col | Key | Meaning |\n" +
++        "|---|---|---|\n" +
++        "| 0 | `DUR_C` | ticks of this step on the ground (0..255) |\n" +
++        "| 1 | `DUR_A` | ticks of this step in the air; **255 = until landing** |\n" +
++        "| 2 | `ANO` | the **defender's** animation (signed: negative = mirrored) |\n" +
++        "| 3,4 | `XSPEED, YSPEED` | ground speed. Unit **1 = 0.1 px per tick**. **−1 = keep the previous step's value, −2 = half** |\n" +
++        "| 5,6 | `XACCEL, YACCEL` | ground acceleration (same units); when acceleration makes the speed cross zero the speed stops (friction) |\n" +
++        "| 7..10 | `XSPEED_A…YACCEL_A` | the same four for the air |\n" +
++        "| 11 | `COMP` | next reaction code after this step (0 = none; 1..29 game reaction; 30..49 character slot) — \"SEQ\" lane |\n" +
++        "| 12 | `WALL` | wall behaviour: with 2 or 3, if the defender touches the wall during the step, the reaction restarts at `COMP`; 0 = nothing |\n" +
++        "| 13 | `VOZ` | voice sound id (1..127; 0 = none) played at the start of the step |\n" +
++        "\n" +
++        "Each step **restarts the defender's animation** (ANO). The empty slots of the character (no rows) can be filled with the app (copy from the game data, copy from another slot, import from another character, or blank).\n" +
++        "\n" +
++        "### 5.5 HDAT 4 — fields of a move (`$GOLPE_i`)\n" +
++        "\n" +
++        "{{HDAT4_TABLE}}\n" +
++        "\n" +
++        "**`ATK_FLAGS` bits** (sum the values you want):\n" +
++        "\n" +
++        "| Bit | Name | Effect |\n" +
++        "|---|---|---|\n" +
++        "| 1 | GROUND_ONLY | the projectile explodes only on the floor (does not explode on the enemy) |\n" +
++        "| 2 | NO_TRADE | the move's hitbox destroys the opponent's hitboxes (the opponent enters the reaction stored in the character's HDAT 3 byte 13) |\n" +
++        "| 4 | TRIPLE | throws 3 projectiles (ANO, ANO+1, ANO+2) |\n" +
++        "| 8 | GRAB | grab at the end of `ANIM_INICIAL` or during a frame with the window bit 512; continues to `ANIM_INICIAL + 1`; works even if it did not hit |\n" +
++        "| 16 | GHOST | characters pass through each other |\n" +
++        "| 32 | PROJ_OPP | the projectile spawns at the opponent (turns off 64) |\n" +
++        "| 64 | PROJ_FLOOR | the projectile spawns under the opponent, stuck to the floor (turns off 32) |\n" +
++        "| 128 | GRAB_HIT | grab only while the opponent is in this move's hurt reaction (moves 0..12 only; if the move has a sequence the sequence takes over and the grab does not happen) |\n" +
++        "\n" +
++        "Move indexes: moves **0, 3 and 6** are special slots; when transplanting a move to another character, 0/3/6 can only replace 0/3/6 and the others only the non-special ones. Grabs only work in moves 0..12. Move text fields are 16-bit: **ANO numbers above 255 are normal** (up to 32767).\n" +
++        "\n" +
++        "",
++        "### 5.6 Sounds\n" +
++        "Sound id `SE`: 0..79 = common game sounds (the app's sound list plays them); **80, 81, … = the character's own `*.wav` files in sorted file-name order** (first wav = 80). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.\n" +
++        "\n" +
++        "### 5.7 Sprites and the CNV\n" +
++        "Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.\n" +
++        "\n" +
++        "### 5.8 Linked animations (links) and effects\n" +
++        "A link spawns another ANO together with its parent (effects, body parts, auras) and follows it. Only 1 level, max 13 per ANO. Effects can also be triggered by hit flags 10–17 / 41–125 (see 5.2).\n" +
++        "\n" +
++        "## 6. How a move works in the game (what you need to design one)\n" +
++        "\n" +
++        "### 6.1 Time\n" +
++        "60 ticks per second. A frame lasts `$TIME` ticks; an ANO ends after its last frame (unless the last frames are looped/redirected by a sequence). A frame **without `$TIME` freezes forever** and also does not add acceleration.\n" +
++        "\n" +
++        "### 6.2 Movement (speed and acceleration)\n" +
++        "- `SPEED` = constant pixels per tick while the frame lasts (`speed 50` for 5 ticks = 250 px; in text, decimals like `2.5` are px/tick).\n" +
++        "- `ACCEL` adds its value to the speed **every tick after the object moved**: accel 50 for 5 ticks from rest moves 0, 50, 100, 150, 200 = 500 px and ends at speed 250.\n" +
++        "- On loading each frame the game **zeroes speed and accel**, unless the frame has `$WACTFLAG` bit **64** (\"keep speed\"): then the frame starts with the speed the previous frame ended with (its speed + accumulated acceleration). A received speed counts as speed (a frame's own `$XSPEED` replaces it); accel is never inherited, so write it again in every frame that needs it.\n" +
++        "- A jump is written as several frames: first frame with a negative `$YSPEED` (up) and a positive `$YACCEL` (gravity), the following frames with `$WACTFLAG: 64` so the speed carries over.\n" +
++        "- Linked animations and frames synchronised with the parent (0x2000/0x8000) do not move by themselves.\n" +
++        "- The editor's `Movimento` page and the `Σ` total show the pixels travelled.\n" +
++        "\n" +
++        "### 6.3 Hits, damage and reactions\n" +
++        "A **hitbox** (flag 2) in a frame whose `$OPT` has `d0` = damage and `d1` = reaction code (`group*50+index`) hits when it overlaps the opponent's **hurtbox** (flag 1); the same hit does not re-hit within the same frame. The hit applies the damage, plays hit effect/sound/hitstop by the reaction **group** (5.4) and puts the opponent in the **reaction** (a list of steps with the opponent's own ANOs and velocities). A hit also triggers the move's **sequence** if defined.\n" +
++        "\n" +
++        "### 6.4 Sequences (combos inside a move)\n" +
++        "HDAT 4 fields: `ANIM_SEQ_CHAO` / `ANIM_SEQ_AR` = ANO to go to when a hit connects while the attacker is on the ground / in the air; `ANIM_END_CHAO` / `ANIM_END_AR` = ANO to go to when a **new** hit connects while in the SEQ ANO (the END ANO itself has no further transition); `ANIM_AO_ACERTAR` (SEQ_PROJETIL) = ANO the attacker goes to when a **projectile's first hit** connects. A hit with flag 38 prevents the SEQ from firing. A SEQ may not point to its own ANO. If you define only ground or only air the app asks whether to use the same ANO for the other.\n" +
++        "\n" +
++        "### 6.5 Landing\n" +
++        "`POUSO_AO_ERRAR` / `POUSO_AO_ACERTAR` = ANO the attacker switches to when it touches the floor after a missed / connected aerial move. The `POUSO` button of the app toggles this in the preview.\n" +
++        "\n" +
++        "### 6.6 Projectiles\n" +
++        "A frame with flag 0 spawns the projectile ANO chosen from the HDAT 4 by the height difference between attacker and opponent: `PROJETIL_ANIM_NORMAL` (near the same height), `..._ABAIXO` (opponent far below), `..._ACIMA` (far above). `PROJETIL_ANIM_AO_ACERTAR` = the projectile's hit-reaction ANO, `PROJETIL_COLISAO_CHAO` = floor-collision ANO, `PROJETIL_ANIM_ACERTAR_GLOBAL` = global-hit ANO. A projectile ANO may itself contain flag 0 frames that spawn **sub-projectiles** (`SUBPROJETIL_*`). The main projectile spawns at attacker x + hit x (if it would land behind the attacker the game throws it 480 px ahead, so the minimum x is 0). `HOMING` + `HOMING_VELOCIDADE` make it chase the opponent; `MAX_REPETICOES` > 0 repeats the projectile (uses the 512 window, so a repeating move cannot also use \"try grab\"). **Max 8 live projectiles**; spawning with 8 alive creates nothing silently.\n" +
++        "\n" +
++        "### 6.7 Effects and auras\n" +
++        "Hit flags 10–17, 41–70 and 71–125 spawn effects/auras while the flag is present in the frame (5.2). For your own effect: make an ANO numbered `201 + (flag − 71)` in the character and put a hit with that flag (offset x,y) in the frames where it should be visible.\n" +
++        "\n" +
++        "### 6.8 Interpolation and transforms\n" +
++        "`$RAZ` (rotation, alpha, zoom) can be interpolated toward the next frame by `$OPT` d2 ≠ 0. The next frame should have the same number of boxes.\n" +
++        "\n" +
++        "### 6.9 Camera, shake, cutscenes\n" +
++        "Flags 3–5 (shake), 30/31 (zoom) and 20 (cutscene) act on the camera. Cutscenes are driven by data tables of the character (HDAT 13) — don't invent them; reuse an existing event.\n" +
++        "\n" +
++        "## 7. Limits (computed from the app's own validator; **the game crashes/closes when a \"fatal\" one is exceeded**)\n" +
++        "\n" +
++        "{{LIMITS}}\n" +
++        "\n" +
++        "Other facts: ANOs referenced by links are 12-bit (max 4095); HDAT 4 values are 16-bit (max 32767); reaction table columns are 1 byte (ANO −128..127, voice 1..127 effective, durations 0..255, speeds −128..127); sprite index must exist in the CNV or the frame draws nothing; reaction slots of a character: 20 (HDAT 14..33), and the `$HDAT_14+n` block must already exist in `000.bin.txt` to be written by the app (it creates the missing `$REACAO_DANO_n` inside it).\n" +
++        "\n" +
++        "## 8. Recipes (what to tell the user, step by step)\n" +
++        "\n" +
++        "**A. Change speed/range/timing of an existing attack**\n" +
++        "1. User selects the character (`CHAR`) and the move in the selector (`MODO: GOLPES`).\n" +
++        "2. User taps the sprite on the timeline whose frame to edit → drawer grid → `Tempo` (ticks) or `Movimento` (speed/accel; `MANTER VELOCIDADE` = WACTFLAG 64).\n" +
++        "3. Or: you give the new `$MPT_i` text; user pastes it into `▲ DADOS / EDITAR` → tab `FRAME` (the frame under the timeline pointer) → pencil `✎` → paste → apply.\n" +
++        "4. Test (section 10), then `SALVAR`.\n" +
++        "\n" +
++        "**B. New attack by copying a similar one (recommended)**\n" +
++        "1. Ask for the text of the base move (`GOLPE` tab) and of all its ANOs (`ANO` tab, one per ANO; or the `.dac.txt`).\n" +
++        "2. Decide new ANO numbers: first free numbers after the highest existing ANO (ask the user for the highest, or the `.dac.txt`); remember effect/aura ANOs 201–255 are reserved by flags 71–125.\n" +
++        "3. Write the new `$ANO_n` blocks (complete, with all frames) and the edited `$GOLPE_i` (point `ANIM_INICIAL`, projectile fields, SEQ/END, landing to the new ANOs).\n" +
++        "4. Deliver per section 12. User pastes the `$GOLPE_i` into the `GOLPE` tab of the move and each ANO into the `ANO` tab (for existing ANOs), or places new `$ANO_n` blocks inside `DAC_ACT_ { }` of `000.dac.txt` and the `$GOLPE_i` block in `000.bin.txt` (ask the user to make a copy of the file first), then re-selects the character in `CHAR`.\n" +
++        "5. Test; fix warnings; `SALVAR`.\n" +
++        "\n" +
++        "**C. Add a projectile**\n" +
++        "1. Make a projectile ANO (frames with the projectile sprites, a hurtbox/hitbox flag 2 with `$OPT` damage+reaction, `$MOVE: {$XSPEED: n}` speed, `$TIME`). Often copy an existing projectile ANO.\n" +
++        "2. In the attack's frame add a hit `{$FLAG: 0, $COORDS: [x,y,0,0]}` at the spawn point.\n" +
++        "3. In `$GOLPE_i` set `PROJETIL_ANIM_NORMAL` (and `_ABAIXO`/`_ACIMA` if the opponent can be at other heights) to the projectile ANO. Optional: `PROJETIL_ANIM_AO_ACERTAR`, `PROJETIL_COLISAO_CHAO`, `ATK_FLAGS` 4 (triple), 32/64 (spawn at opponent), 1 (explode only on floor), `HOMING`.\n" +
++        "4. In the app the \"projectile screen\" (tap the flag-0 hit) edits start/duration, branching tree, ANO, position/speed, homing and sequence.\n" +
++        "\n" +
++        "**D. Combo / sequence inside a move**\n" +
++        "Set `ANIM_SEQ_CHAO`/`ANIM_SEQ_AR` (and optionally `ANIM_END_*`) to the follow-up ANO; make sure the first ANO has a hitbox with a reaction. Use hit flag 38 on a hit that must **not** trigger the sequence. The timeline lane \"Transições\" shows what will fire; `VER FLUXO` shows the flow. `TRANSIÇÃO` (top button) freezes ANO switching while editing one ANO.\n" +
++        "\n" +
++        "**E. Change what the defender does when hit (reactions)**\n" +
++        "Pick the reaction code in the hitbox menu (`REAÇÃO`, `ESCOLHER`), or edit the character's reaction (`EDITAR REAÇÃO`: steps, speeds, voice, wall, next reaction). Empty character slots can be filled. Remember the saved `000.bin.txt` must contain the `$HDAT_(14+slot)` block.\n" +
++        "\n" +
++        "**F. New sprites / sounds**\n" +
++        "Sprites: user opens `SPRITES` → add/replace (PNG/JPG/GIF), adjust cut, then uses the new `$IMG` index in frames. Sounds: add `.wav` to the character folder (ids shift!) or use the sound list in the frame's `Som` page.\n" +
++        "\n" +
++        "**G. Put a move in another character**\n" +
++        "`SALVAR` → `Salvar golpe atual` → `Salvar em outro personagem (Runtime)`: choose character, choose which move to replace (0/3/6 only into 0/3/6; others into non-special), the move's HDAT 4 row, its ANOs (appended at the end of the target DAC), sprites/CNV and the character's reactions it needs are copied; a backup goes to `TBRE/Backups/`. Sounds (id 80+) and hit flags 20 and 41–125 are not copied.\n" +
++        "\n" +
++        "## 9. Validation checklist (run it mentally before delivering data)\n" +
++        "\n" +
++        "1. Syntax: every `{` closes; keys are known; `$MPT_i` numbered 0.. consecutively; every frame has `$IMG`; the ANO has ≥ 1 frame.\n" +
++        "2. Per ANO: ≤ 255 frames; ≤ 13 links, no link-of-link; each `$LINK` `$ANO` exists.\n" +
++        "3. Per frame: ≤ 10 `$HITS`; `$TIME` ≤ 255 (and present unless a frozen frame is intended); `$IMG` < number of `$SPR_` entries; `$OPT` `d1` ≤ 249 and a hitbox exists when `d1` matters.\n" +
++        "4. A move: `ANIM_INICIAL` exists; every referenced ANO number exists (0 = none); no SEQ to its own ANO; if it grabs (8/128) it must not also use `MAX_REPETICOES` or have a SEQ with 128.\n" +
++        "5. Projectiles: ≤ 8 alive at a time (consider repeats and triple); the projectile ANO has a hitbox (flag 2) with damage/reaction.\n" +
++        "6. Speed/accel: remember accel is not inherited, `WACTFLAG` 64 to carry speed, the first frame after a jump has gravity written again.\n" +
++        "7. Interpolation (`$OPT` d2 ≠ 0): next frame has `$RAZ` and the same number of boxes.\n" +
++        "8. New ANO numbers do not collide with existing ones or the reserved 201–255 effect range (unless intended).\n" +
++        "9. Reaction rows: 14 values/columns, speeds −128..127, `DUR` ≥ 1, `$ROW`/`$SZ` consistent when hand-editing.\n" +
++        "\n" +
++        "## 10. How to test in the app\n" +
++        "\n" +
++        "1. Open the character (`CHAR`), choose the move (`MODO: GOLPES`) or the ANO (`MODO: ANO`).\n" +
++        "2. Press play (`TOCAR`) or drag the time bar / timeline; use `-1` / `+1` to step tick by tick; `INICIO` resets.\n" +
++        "3. Top-menu helpers: `CHAR`→`POS` changes distance/height between fighters (tests which projectile ANO spawns: normal/below/above) and `FLY`; `HITBOX` shows boxes (red hit, blue hurt, yellow others); `TEMPO` NORMAL/ESTENDIDO/ATAQUE (extended keeps the attacker on the last frame so you can see projectiles and the opponent's reaction to the end); `POUSO` ON/OFF; `TRANSIÇÃO` LIVRE/TRAVADA; `VIRAR` flips sides; `HIDE-EFF` hides effects; `FR-PREVIEW` ghost of previous/next frame; `TELA` grid/sounds/cutscenes options and a game-camera view; `CENTRO` camera modes.\n" +
++        "4. Read the warning line: red = the game would close or fail; amber = the editor sees something the game treats differently. Tap it to expand.\n" +
++        "5. If something looks wrong: `DESFAZER` (↶) undoes the last edit; `FR-PREVIEW` helps align sprites; the `Σ`/Movimento total shows pixels.\n" +
++        "6. Test the saved result in the game itself (see section 13). The app is a faithful simulator but the game is the final judge.\n" +
++        "\n" +
++        "## 11. Screens and buttons (what each control does)\n" +
++        "\n" +
++        "### 11.1 Top menu (14 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
++        "- `SALVAR` — save (section 13).\n" +
++        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size.\n" +
++        "- `SPRITES` — the character's sprite list: add, replace, remove, reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame.\n" +
++        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
++        "- `GOLPE SET` — the move's `ATK_FLAGS` options (checkboxes; table in 5.5).\n" +
++        "- `HITBOX` — draw boxes on the preview (red hit, blue hurt, yellow others).\n" +
++        "- `TEMPO` — NORMAL / ESTENDIDO / ATAQUE playback modes.\n" +
++        "- `CENTRO` — camera NORMAL (free, pinch to zoom) / TELA (game camera 480×320) / CHAR (auto-frame both).\n" +
++        "- `POUSO` — ON/OFF landing & fall ANO changes.\n" +
++        "- `TRANSIÇÃO` — LIVRE/TRAVADA: freeze ANO switching from the current frame (only for moves with a sequence).\n" +
++        "- `VIRAR` — flip sides. `HIDE-EFF` — hide effects/auras/scenes/projectiles. `FR-PREVIEW` — previous/next frame ghost (settings in `TELA` > FR‑PREVIEW SET). `TELA` — grid, sounds, cutscenes, \"lock\" (cinematic), yellow box of all sprites.\n" +
++        "\n" +
++        "### 11.2 Timeline\n" +
++        "Tap a sprite clip to open its drawer. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE (green), ESTILO (orange: flip/transform), LINKS, TRANSIÇÕES (SEQ/END/landing marks). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a clip/item at the pointer, `DUPLICAR`, `EXCLUIR`, `DESFAZER`. Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes.\n" +
++        "\n" +
++        "### 11.3 Edit drawer pages\n" +
++        "Sprite grid → `Imagem` (sprite picker, position, zoom, rotation, alpha, \"move links together\"), `Tempo` (ticks), `Som` (sound id list with preview), `Movimento` (speed/accel per axis, `MANTER VELOCIDADE`, total pixels, remove speed), `Efeitos` (flip X/Y, interpolation), `Copiar` (apply this frame's properties to other frames: next N, previous N, all, this sprite in ANO / in all ANOs). Hitbox/hurtbox menu: type switch, start frame & duration, preview, x/y/w/h, and (hitbox) `DANO`, `REAÇÃO` (◀ ▶, `ESCOLHER`, `EDITAR REAÇÃO`), transition (SEQ/END, `MUDAR ANO DESTINO`, `BLOQUEAR SEQUÊNCIA`). Projectile screen: start & duration, branching tree, projectile ANO, position/speed, homing, sequence.\n" +
++        "\n" +
++        "### 11.4 Reaction editor\n" +
++        "`EDITAR REAÇÃO` (character) / `VER REAÇÃO` (game, read-only). Same layout as the main screen: header (`CHÃO | AR` scenario), square preview, time bar, buttons `DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER`, timeline (PASSOS clips + lanes SPEED blocks, VOZ, EFEITOS, SEQ, CURVA; tabs `＋` and `#`), transport, drawer with a page grid (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL). Drag a step's right edge = duration; drag a SPEED block's right edge = how many steps keep that speed. `DIVIDIR` splits a step at the pointer (the defender's animation restarts in the 2nd half). `DADOS / EDITAR`: collapsed panel with text tabs and a pencil to edit/paste text.\n" +
++        "\n" +
++        "### 11.5 Importing what you cannot generate\n" +
++        "- Images: `SPRITES` → add/replace → pick the file; then set the frame's `Imagem`.\n" +
++        "- Sounds: put the `.wav` in `Tap Battle/assets/charNN/` (ids are in file-name order, from 80) or use the frame's `Som` page.\n" +
++        "\n" +
++        "## 12. OUTPUT CONTRACT — how you must deliver data to the user\n" +
++        "\n" +
++        "For **each** deliverable use this exact pattern:\n" +
++        "\n" +
++        "1. One line telling **what it is and where to paste it**, with the app's button names. Example: *\"Move 2 (`$GOLPE_2`) → open the move, tap `▲ DADOS / EDITAR`, tab `GOLPE`, tap the pencil `✎`, select all, paste, confirm.\"*\n" +
++        "2. A fenced code block containing **only the data**, whole block, never truncated and never with `...` or \"same as before\". First line inside the block is a comment naming the target:\n" +
++        "   ````\n" +
++        "   // TARGET: 000.dac.txt — add inside DAC_ACT_ { }  (new ANO)\n" +
++        "   $ANO_312: {\n" +
++        "      $MPTS:{ ... complete ... },\n" +
++        "   },\n" +
++        "   ````\n" +
++        "   (Comments with `//` are allowed by the parser.)\n" +
++        "3. After all blocks: a short **\"How to test\"** list (what to select, what to look for in the preview, which warning must NOT appear) and a reminder to `DESFAZER` if it looks wrong and to `SALVAR` (separate-folder mode) when happy.\n" +
++        "\n" +
++        "Rules:\n" +
++        "- One block per ANO (`$ANO_n`), one per move (`$GOLPE_i`), one per reaction slot (`$HDAT_14+t` block incl. `$info` and `$REACAO_DANO_t`), one per `$SPR_n` set. Don't mix kinds in one block.\n" +
++        "- Keep key spelling and capitals exactly as in section 3; numbers decimal; no trailing explanations inside blocks.\n" +
++        "- State the **ANO numbers you chose** and why they are free; list every other number the user must double-check (sprite indexes, sound ids, reaction codes).\n" +
++        "- If you modify an existing block, return the **complete modified block**, not a diff.\n" +
++        "- When the user pasted text, echo back only the lines you changed in a short bullet list *outside* the code block, so they can verify.\n" +
++        "- If the request cannot be done within the limits (section 7), say so and offer the closest valid alternative.\n" +
++        "- Never promise the game will not crash; recommend testing in the game and keeping the original character folder untouched.\n" +
++        "\n" +
++        "## 13. Saving, backups and testing in the real game\n" +
++        "\n" +
++        "The `SALVAR` menu first asks **what** to save, then **where**.\n" +
++        "\n" +
++        "What: the current move (HDAT 4 + its ANOs), only the current ANO, all moves, all ANOs, or everything. For the current move there is also **\"Salvar em outro personagem (Runtime)\"** (transplant, recipe G).\n" +
++        "\n" +
++        "",
++        "Where:\n" +
++        "1. **Salvar em pasta separada (Tap Battle/TBRE/Chars/)** — *recommended*. Copies the whole character (DAC, BIN, CNV, sheets, sounds) to `TBRE/Chars/charNN/` and applies the save there, ready to use; the original is not touched. If the folder already exists the app asks: replace (merge the two), delete the existing one, or save with another name.\n" +
++        "2. **Salvar no Runtime (Tap Battle/assets/charNN/)** — overwrites the `.txt` files of the character itself (the binaries stay intact).\n" +
++        "3. **Salvar em outro personagem (Runtime)** — only for the current move; saves directly into the target character.\n" +
++        "\n" +
++        "Backups/safety copies go to `Tap Battle/TBRE/Backups/` (e.g. `AAAAMMDD_HHMMSS_charNN_transplante/`).\n" +
++        "\n" +
++        "To test in the actual game: the game reads the character folder under `assets/charNN/`. How a \"separate folder\" copy reaches the game depends on the user's setup — ask how they run the game, and never advise overwriting the only copy of the original. After saving, reload in the editor with `CHAR` to confirm that the saved result loads.\n" +
++        "\n" +
++        "The save step also checks the game limits (boxes per frame, links, time…) and warns about anything that would close the game.\n" +
++        "\n" +
++        "## 14. FAQ — ready answers\n" +
++        "\n" +
++        "**Why does my attack not hit?** Check: a hitbox (flag 2) exists in the frames where the attack should connect; its `$OPT` `d1` is a valid reaction code (≤ 249) — and a character-slot code (30–49) points to a **non-empty** slot; the defender's hurtbox (flag 1) overlaps (use `HITBOX` and `POS`); `GOLPE SET` options are not hiding the hit (e.g. \"ground only\" only affects projectiles).\n" +
++        "\n" +
++        "**Why does the projectile not appear?** Flag 0 hit exists in a frame that plays; `PROJETIL_ANIM_NORMAL/ABAIXO/ACIMA` for the current height difference is non-zero and the ANO exists and is non-empty; already 8 projectiles alive; the move missed/was sequence-blocked (see warnings); a projectile ANO has links with links (ignored). The app shows a warning with the reason.\n" +
++        "\n" +
++        "**Why does a frame never end?** It has no `$TIME`.\n" +
++        "\n" +
++        "**Why does the character not keep moving in the next frame?** The next frame needs `$WACTFLAG: 64` (keep speed) and acceleration must be rewritten.\n" +
++        "\n" +
++        "**How do I change how far the opponent flies?** In the reaction (`EDITAR REAÇÃO`): steps' speeds (unit 0.1 px/tick), durations, and whether ground or air columns apply (opponent height). Use the other reaction group for different hitstop/knockback (5.4).\n" +
++        "\n" +
++        "**Where do I save?** Section 13: recommended `Salvar em pasta separada` → `Tap Battle/TBRE/Chars/charNN/`.\n" +
++        "\n" +
++        "**How do I undo?** `DESFAZER`/`↶`. Saved files keep what was saved; backups are in `Tap Battle/TBRE/Backups/`.\n" +
++        "\n" +
++        "**Can you make me a sprite/sound?** No. Tell me what is needed (size, frames, names); the user imports them (11.5).\n" +
++        "\n" +
++        "**What are the numbers 0, 3, 6 of moves?** Special move slots; they can only be transplanted onto 0, 3 and 6.\n" +
++        "\n" +
++        "**The app says \"recorte fora do PNG\".** A `$SPR_n` rectangle is outside its sheet: fix `$x/$y/$w/$h` (remember characters use 2× physical pixels in the `.cnv.txt`).\n" +
++        "\n" +
++        "**What does an amber vs. red warning mean?** Red = the game would close or fail; amber = the editor sees something the game handles differently.\n" +
++        "\n" +
++        "\n" +
++        "",
++    };
++}
+diff -ruN a/AiHelpShare.java b/AiHelpShare.java
+--- a/AiHelpShare.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AiHelpShare.java	2026-10-24 20:41:55.485551845 +0000
+@@ -0,0 +1,80 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.content.ClipData;
++import android.content.Intent;
++import android.media.MediaScannerConnection;
++import android.net.Uri;
++import android.os.Environment;
++import android.widget.Toast;
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.OutputStreamWriter;
++import java.io.Writer;
++
++/**
++ * Botao "Ajuda de IA": gera o TBRHelp.md ({@link AiHelp}), grava em Download/ e abre o compartilhamento do Android para o usuario mandar o arquivo a uma IA.
++ * O app ja tem acesso a todos os arquivos; o content:// vem do indexador de midia (nao precisa de FileProvider nem de manifest).
++ */
++final class AiHelpShare {
++    private AiHelpShare() { }
++
++    /** Versao do app, so informativa dentro do arquivo. */
++    static final String BUILD = "java_novo2-34";
++
++    static File target() {
++        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), AiHelp.FILE_NAME);
++    }
++
++    static void run(final Activity a) {
++        final BusyDialog bd = BusyDialog.show(a, "Criando " + AiHelp.FILE_NAME);
++        new Thread(new Runnable() {
++            @Override public void run() {
++                try {
++                    bd.set("Montando o documento…", 0, 3);
++                    String doc = AiHelp.build(BUILD);
++                    bd.set("Gravando em Download/…", 1, 3);
++                    final File f = target();
++                    File dir = f.getParentFile();
++                    if (dir != null && !dir.isDirectory() && !dir.mkdirs()) throw new java.io.IOException("não foi possível criar " + dir.getPath());
++                    Writer w = new OutputStreamWriter(new FileOutputStream(f), "UTF-8");
++                    try { w.write(doc); } finally { w.close(); }
++                    bd.set("Preparando o compartilhamento…", 2, 3);
++                    MediaScannerConnection.scanFile(a, new String[]{f.getPath()}, new String[]{"text/markdown"}, new MediaScannerConnection.OnScanCompletedListener() {
++                        @Override public void onScanCompleted(final String path, final Uri uri) {
++                            a.runOnUiThread(new Runnable() { @Override public void run() { bd.dismiss(); share(a, f, uri); } });
++                        }
++                    });
++                } catch (final Exception e) {
++                    a.runOnUiThread(new Runnable() { @Override public void run() {
++                        bd.dismiss();
++                        new android.app.AlertDialog.Builder(a).setTitle("Ajuda de IA")
++                                .setMessage("Não foi possível criar o " + AiHelp.FILE_NAME + " em Download/: " + e.getMessage()
++                                        + "\n\nConfira se o app tem \"Acesso a todos os arquivos\" (Configurações do Android > Apps > Attack Editor > Permissões).")
++                                .setPositiveButton("OK", null).show();
++                    } });
++                }
++            }
++        }, "ai-help").start();
++    }
++
++    private static void share(Activity a, File f, Uri uri) {
++        if (uri == null) {
++            Toast.makeText(a, AiHelp.FILE_NAME + " criado em Download/, mas o Android não liberou o compartilhamento. Envie o arquivo pelo gerenciador de arquivos.", Toast.LENGTH_LONG).show();
++            return;
++        }
++        Intent send = new Intent(Intent.ACTION_SEND);
++        send.setType("text/plain");
++        send.putExtra(Intent.EXTRA_STREAM, uri);
++        send.putExtra(Intent.EXTRA_SUBJECT, AiHelp.FILE_NAME);
++        send.putExtra(Intent.EXTRA_TEXT, "Leia este arquivo (" + AiHelp.FILE_NAME + "): ele descreve o app Attack Editor. Depois responda às minhas perguntas sobre como criar e editar ataques.");
++        send.setClipData(ClipData.newRawUri(AiHelp.FILE_NAME, uri));
++        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
++        try {
++            a.startActivity(Intent.createChooser(send, "Enviar " + AiHelp.FILE_NAME + " para uma IA"));
++            Toast.makeText(a, AiHelp.FILE_NAME + " salvo em Download/ (" + f.length() / 1024 + " KB)", Toast.LENGTH_SHORT).show();
++        } catch (Exception e) {
++            Toast.makeText(a, AiHelp.FILE_NAME + " criado em Download/. Não achei app para compartilhar: " + e.getMessage(), Toast.LENGTH_LONG).show();
++        }
++    }
++}
 diff -ruN a/AnimPreview.java b/AnimPreview.java
 --- a/AnimPreview.java	2026-10-20 10:46:55.000000000 +0000
 +++ b/AnimPreview.java	2026-10-23 16:36:43.619089530 +0000
@@ -2921,8 +3613,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpScreen.java b/HelpScreen.java
 --- a/HelpScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpScreen.java	2026-10-24 18:28:25.101231715 +0000
-@@ -0,0 +1,216 @@
++++ b/HelpScreen.java	2026-10-24 20:41:55.500854839 +0000
+@@ -0,0 +1,237 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Dialog;
@@ -2986,6 +3678,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
 +        titleView.setPadding(dp(6), 0, 0, 0);
 +        head.addView(titleView, new LinearLayout.LayoutParams(0, -2, 1f));
++        head.addView(btn("Ajuda de IA", false, new View.OnClickListener() { public void onClick(View v) { aiHelp(); } }));
 +        head.addView(btn("FECHAR", true, new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }));
 +        root.addView(head);
 +
@@ -3023,6 +3716,21 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +        TextView intro = text("Toque num capítulo para ler. Use a busca para achar uma palavra em qualquer capítulo.", LayoutManager.DIM, 12, false);
 +        intro.setPadding(dp(4), dp(8), dp(4), dp(8));
 +        body.addView(intro);
++        LinearLayout ai = new LinearLayout(c);
++        ai.setOrientation(LinearLayout.VERTICAL);
++        ai.setPadding(dp(12), dp(10), dp(12), dp(10));
++        GradientDrawable ag = new GradientDrawable();
++        ag.setColor(LayoutManager.PANEL);
++        ag.setCornerRadius(dp(10));
++        ag.setStroke(dp(1), LayoutManager.ACCENT);
++        ai.setBackground(ag);
++        ai.addView(text("Ajuda de IA", LayoutManager.ACCENT, 15, true));
++        ai.addView(text("Cria o arquivo " + AiHelp.FILE_NAME + " em Download/ e abre o compartilhar. Envie-o a uma IA e faça perguntas sobre como criar ataques, onde salvar, como testar…", LayoutManager.DIM, 12, false));
++        ai.setClickable(true);
++        ai.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { aiHelp(); } });
++        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-1, -2);
++        alp.setMargins(0, dp(3), 0, dp(8));
++        body.addView(ai, alp);
 +        for (final HelpText.Chapter ch : HelpText.chapters()) {
 +            LinearLayout card = new LinearLayout(c);
 +            card.setOrientation(LinearLayout.VERTICAL);
@@ -3039,6 +3747,11 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +            lp.setMargins(0, dp(3), 0, dp(3));
 +            body.addView(card, lp);
 +        }
++    }
++
++    private void aiHelp() {
++        if (c instanceof android.app.Activity) AiHelpShare.run((android.app.Activity) c);
++        else android.widget.Toast.makeText(c, "Disponível só dentro do app", android.widget.Toast.LENGTH_SHORT).show();
 +    }
 +
 +    private void renderChapter(HelpText.Chapter ch) {
@@ -3141,8 +3854,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 20:34:24.813118754 +0000
-@@ -0,0 +1,596 @@
++++ b/HelpText.java	2026-10-24 20:41:55.501561420 +0000
+@@ -0,0 +1,602 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -3215,6 +3928,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +            t("Faixas da timeline", "timeline faixas faixa sprite hitbox speed som estilo");
 +            t("＋ e #", "adicionar mais novo criar numero");
 +            t("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER", "dividir duplicar excluir apagar remover desfazer undo cortar");
++            t("Ajuda de IA (TBRHelp.md)", "ia ai inteligencia artificial chatgpt gemini claude arquivo markdown md download compartilhar ajuda perguntas tbrhelp prompt");
 +            t("Altura da gaveta: Y e T", "altura gaveta alca y t timeline tamanho");
 +            t("Onde salvar", "salvar pasta separada runtime backup caminho tap battle tbre chars");
 +            t("Salvar em outro personagem", "transplante transplantar outro personagem salvar golpe substituir hdat 4");
@@ -3326,6 +4040,11 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        inicio.add("Barra de tempo e transporte",
 +                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), PAUSAR/TOCAR reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
 +                + "O jogo roda a 60 ticks por segundo.");
++        inicio.add("Ajuda de IA (TBRHelp.md)",
++                "O botão Ajuda de IA (no topo desta tela) cria o arquivo TBRHelp.md na pasta Download do aparelho e abre o compartilhar do Android. O arquivo é um manual escrito para IAs (em inglês, com a instrução de responder no seu idioma): "
++                + "explica o app, os arquivos (DAC, BIN, CNV e seus .txt), os formatos, os limites do jogo, receitas de ataque, como testar e salvar, e o formato em que a IA deve entregar o resultado. "
++                + "Como usar: toque em Ajuda de IA, escolha o app de IA (ChatGPT, Gemini, Claude…) para enviar o arquivo e depois pergunte, por exemplo, \"como faço um golpe novo?\". Quando a IA pedir arquivos, mande o 000.dac.txt, 000.bin.txt e 000.cnv.txt do personagem "
++                + "(SALVAR > pasta separada > Tap Battle/TBRE/Chars/charNN/). O que a IA devolver cola no painel DADOS / EDITAR (lápis) ou nos .txt, e depois é só testar. Precisa do acesso a todos os arquivos, o mesmo que o app já usa.");
 +        inicio.add("Termos que aparecem em todo lugar",
 +                "ANO: uma animação (lista de frames). MPT / frame / sprite: um quadro da animação (imagem, tempo, posição, velocidade, caixas...). Tick: 1/60 s. HDAT 4: a tabela de golpes (um golpe = campos como ANIM_INICIAL, projéteis, SEQ). "
 +                + "Hit / box: hitbox (flag 2, ataque), hurtbox (flag 1, corpo) e as demais flags de ação. Link: animação ligada a outra, que nasce junto e segue o pai. OPT: bloco opcional do frame (dano, reação...). "
@@ -10965,6 +11684,119 @@ diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 +        return out;
 +    }
 +}
+diff -ruN a/test/AiHelpTest.java b/test/AiHelpTest.java
+--- a/test/AiHelpTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/AiHelpTest.java	2026-10-24 20:41:11.078128856 +0000
+@@ -0,0 +1,109 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++
++/** TBRHelp.md (Ajuda de IA): conteudo, exemplos que o parser do app le de volta, limites iguais ao validador e determinismo. */
++public class AiHelpTest {
++    public static void main(String[] args) throws Exception {
++        String doc = AiHelp.build("java_novo2-34");
++        String again = AiHelp.build("java_novo2-34");
++        check("determinístico: duas geracoes iguais", doc.equals(again), true);
++        int bytes = doc.getBytes("UTF-8").length;
++        check("tamanho entre 30 KB e 400 KB (" + bytes + " bytes)", bytes > 30 * 1024 && bytes < 400 * 1024, true);
++        check("sem marcadores soltos ({{ }}) nem TODO", !doc.contains("{{") && !doc.contains("}}") && !doc.contains("TODO") && !doc.contains("%s"), true);
++        check("cercas ``` balanceadas", countOf(doc, "\n```") % 2 == 0 || countOf(doc, "```") % 2 == 0, true);
++
++        // idioma e instrucoes para a IA
++        check("diz que o arquivo esta em ingles por conveniencia e nao e o idioma do usuario", doc.contains("written in English only because that is convenient for you") && doc.contains("**not necessarily the user's language**"), true);
++        check("manda responder no idioma do usuario", doc.contains("always answer in the user's language"), true);
++        check("contrato de saida e checklist presentes", doc.contains("## 12. OUTPUT CONTRACT") && doc.contains("## 9. Validation checklist"), true);
++        check("pede os arquivos certos (000.dac.txt, 000.bin.txt, 000.cnv.txt)", doc.contains("`000.dac.txt`, `000.bin.txt`, `000.cnv.txt`"), true);
++        check("diz que a IA nao cria PNG/WAV", doc.contains("cannot create or edit **images (PNG) or sounds (WAV)**"), true);
++
++        // secoes numeradas existem uma vez
++        List<String> secs = AiHelp.sectionTitles(doc);
++        Set<String> uniq = new HashSet<String>(secs);
++        check("titulos de secao unicos", secs.size(), uniq.size());
++        String[] want = {"0. READ THIS FIRST", "1. What the app is", "2. Files and folders", "3. Text formats", "4. What to ask the user", "5. Data dictionary",
++                "6. How a move works", "7. Limits", "8. Recipes", "9. Validation checklist", "10. How to test", "11. Screens and buttons", "12. OUTPUT CONTRACT",
++                "13. Saving", "14. FAQ", "Appendix A"};
++        boolean allSecs = true;
++        StringBuilder missing = new StringBuilder();
++        for (String w : want) {
++            boolean found = false;
++            for (String s : secs) found |= s.startsWith(w);
++            if (!found) { allSecs = false; missing.append(w).append("; "); }
++        }
++        check("todas as secoes 0..14 e o anexo existem " + missing, allSecs, true);
++        check("indice (Contents) lista as secoes", doc.contains("- 5. Data dictionary") && doc.contains("- Appendix A"), true);
++
++        // exemplos: o app le de volta o que escreveu no documento
++        String ano = block(doc, "DAC_ACT_ {\n");
++        String inner = ano.substring(ano.indexOf("$ANO_5"), ano.lastIndexOf("// ... the other ANOs ...")).trim();
++        inner = inner.substring(0, inner.lastIndexOf("},") + 2);
++        Ano parsed = DacText.parseAno(inner, 5, null);
++        check("exemplo de ANO: relido pelo parser do app (3 frames, 1 link, prio 3)", parsed.mpts.length + ":" + parsed.links.length + ":" + parsed.priority, "3:1:3");
++        check("exemplo de ANO: reescrever da o mesmo texto", DacText.ano(parsed, -1).replaceAll("\\s+", "").equals(inner.replaceAll("\\s+", "")), true);
++        check("exemplo de frame: velocidade, aceleracao, WACTFLAG 64, OPT de dano 12 e reacao 52", parsed.mpts[1].moveMask == 5 && parsed.mpts[1].wActFlag == 64 && parsed.mpts[1].optData[0] == 12 && parsed.mpts[1].optData[1] == 52, true);
++
++        CharData.Move mv = new CharData.Move();
++        String golpe = AiHelp.sampleGolpe();
++        DacText.parseMove(golpe, mv);
++        check("exemplo de golpe: relido (ANIM_INICIAL 5, projetil 21, SEQ chao 6, END 7)", mv.animInicial + ":" + mv.projNormal + ":" + mv.animSeqChao + ":" + mv.animEndChao, "5:21:6:7");
++        check("exemplo de golpe esta no documento", doc.contains(golpe), true);
++        String react = AiHelp.sampleReaction();
++        check("exemplo de reacao tem $info, $REACAO_DANO_3 e 2 linhas $FR_", react.contains("$HDAT_17") && react.contains("$REACAO_DANO_3") && react.contains("$FR_1") && !react.contains("$FR_2") && react.contains("$ROW: 2"), true);
++        Cnv cnv = Cnv.fromTxt(AiHelp.sampleCnv(), true);
++        check("exemplo de CNV relido (2 entradas)", cnv != null && cnv.toTxt().contains("$SPR_1") && !cnv.toTxt().contains("$SPR_2"), true);
++
++        // tudo que o app define aparece no documento
++        boolean keys = true;
++        StringBuilder lost = new StringBuilder();
++        for (String k : DacText.MOVE_KEYS) if (!doc.contains("`" + k + "`")) { keys = false; lost.append(k).append(' '); }
++        check("todos os campos do HDAT 4 estao no dicionario " + lost, keys, true);
++        check("uma descricao por campo do HDAT 4", AiHelp.MOVE_DOC.length, DacText.MOVE_KEYS.length);
++        boolean docs = true;
++        for (String s : AiHelp.MOVE_DOC) docs &= s.length() > 10;
++        check("descricoes dos campos nao vazias", docs, true);
++        check("bits do ATK_FLAGS (1,2,4,8,16,32,64,128)", doc.contains("| 1 | GROUND_ONLY") && doc.contains("| 128 | GRAB_HIT") && doc.contains("| 16 | GHOST"), true);
++
++        check("limites impressos = GameRules", doc.contains("| Boxes (`$HITS`) per frame | " + GameRules.MAX_HITS + " |") && doc.contains("| Links per ANO | " + GameRules.MAX_LINKS + " |")
++                && doc.contains("| Frames (`$MPT`) per ANO | " + GameRules.MAX_MPTS + " |") && doc.contains("| `$TIME` per frame | " + GameRules.MAX_TIME + " |")
++                && doc.contains("(reaction code) with a hitbox | " + GameRules.MAX_OPT1 + " "), true);
++        check("grupos de reacao vem da classe Opt1 (efeito/som/empurrao/hitstop)", doc.contains("| 2 | strong | 100–149 | 1 | se_06 | yes | normal |") && doc.contains("| 3 | light | 150–199 | 0 | se_03 | no | half (melee) |")
++                && doc.contains("| 4 | no effect | 200–249 | none | none | no | none |"), true);
++        check("flags dos hits do jogo (0 projetil, 38 bloquear seq, 71-125 ANO 201+)", doc.contains("| 38 | **Block the sequence**") && doc.contains("`201 + (f − 71)`"), true);
++        check("reacao: colunas (14) e unidades", doc.contains("`DUR_C`") && doc.contains("`COMP`") && doc.contains("`VOZ`") && doc.contains("Unit **1 = 0.1 px per tick**"), true);
++        check("diz onde ficam os arquivos (assets/charNN, TBRE/Chars, TBRE/Backups)", doc.contains("assets/") && doc.contains("TBRE/") && doc.contains("Chars/charNN/") && doc.contains("Backups/"), true);
++
++        // anexo: toda secao da ajuda do app esta, literalmente
++        boolean appendix = true;
++        StringBuilder gone = new StringBuilder();
++        for (HelpText.Chapter ch : HelpText.chapters()) {
++            for (HelpText.Section s : ch.sections) if (!doc.contains("#### " + s.title + "\n\n" + s.body)) { appendix = false; gone.append(s.title).append("; "); }
++        }
++        check("anexo A tem todas as secoes da ajuda do app " + gone, appendix, true);
++        check("botoes do menu superior citados", doc.contains("`SALVAR`") && doc.contains("`FR-PREVIEW`") && doc.contains("`HIDE-EFF`") && doc.contains("`TRANSIÇÃO`"), true);
++        check("nome do arquivo", AiHelp.FILE_NAME, "TBRHelp.md");
++
++        System.out.println("AiHelpTest fails=" + BattleTest.fails);
++    }
++
++    static int countOf(String s, String sub) {
++        int n = 0, i = 0;
++        while ((i = s.indexOf(sub, i)) >= 0) { n++; i += sub.length(); }
++        return n;
++    }
++
++    /** O bloco de codigo (entre cercas) que contem {@code marker}. */
++    static String block(String doc, String marker) {
++        int at = doc.indexOf(marker);
++        int a = doc.lastIndexOf("```", at);
++        int z = doc.indexOf("```", at);
++        return doc.substring(doc.indexOf('\n', a) + 1, z);
++    }
++}
 diff -ruN a/test/BattleTest.java b/test/BattleTest.java
 --- a/test/BattleTest.java	2026-10-20 14:59:24.000000000 +0000
 +++ b/test/BattleTest.java	2026-10-24 10:15:45.435626360 +0000
@@ -11899,8 +12731,8 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +}
 diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
 --- a/test/HelpSearchTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/HelpSearchTest.java	2026-10-24 18:39:07.758756010 +0000
-@@ -0,0 +1,92 @@
++++ b/test/HelpSearchTest.java	2026-10-24 20:42:10.502743423 +0000
+@@ -0,0 +1,94 @@
 +package com.zue.attackeditor;
 +
 +import java.util.List;
@@ -11970,6 +12802,8 @@ diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
 +        boolean warn = false;
 +        for (HelpText.Hit h : HelpText.search("dividir")) warn |= h.section.body.contains("reinicia a animação");
 +        check("a ajuda avisa que o ANO recomeca ao dividir", warn, true);
++        check("ia / chatgpt / TBRHelp levam a aba Ajuda de IA", first("chatgpt") + "|" + first("tbrhelp") + "|" + first("inteligencia artificial"),
++                "Ajuda de IA (TBRHelp.md)[aba]|Ajuda de IA (TBRHelp.md)[aba]|Ajuda de IA (TBRHelp.md)[aba]");
 +        check("lixo nao acha nada", HelpText.search("xqzwkjv").size(), 0);
 +        check("palavra extra inexistente zera", HelpText.search("speed palavraqueNaoExiste").size(), 0);
 +        check("busca vazia", HelpText.search("   ").size(), 0);

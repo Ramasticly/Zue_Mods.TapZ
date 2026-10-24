@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 919 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 951 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -183,7 +183,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Correlação**: grupos de sinônimos (speed/velocidade/dash/mover/pixels…, accel/aceleração/gravidade…, hitbox/dano/alcance…, reação/knockback/empurrão…, sequência/combo/transição/cancel…, projétil/tiro/ramificação…, som/áudio/voz…, salvar/backup/pasta…) expandem a consulta (peso 70%).
 - **Abas com tags**: toda aba/menu (14 botões do menu superior, páginas Imagem/Tempo/Som/Movimento/Efeitos/Copiar, menus da hitbox, tela do projétil, Editor de reações, etc.) tem `tags` em `HelpText.Section`; a ordem das tags pesa (a primeira vale mais). Ex.: **Movimento** = speed, velocidade, dash, accel, aceleração, mover, pixels, pulo, gravidade…
 - **Resultado em duas faixas**: **ABAS E MENUS** primeiro (a melhor com contorno e “MELHOR RESULTADO”), depois **TEXTOS** dentro dos capítulos, cada um com o trecho que bateu (tocar abre o capítulo). Todas as palavras da consulta precisam bater (AND).
-- Testes: `HelpSearchTest` (47).
+- Testes: `HelpSearchTest` (48).
 
 ### 3.1u Editor de reações: campos que digitam e que seguram
 - **Causa**: toda edição chamava `refresh()` → `buildPage()` e recriava os campos; o botão − / + que estava sendo segurado saía da tela (o `Hold` para) e o campo digitado perdia o foco; o valor digitado só valia ao confirmar.
@@ -213,6 +213,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Gaveta = grade + páginas** como a da sprite: tocar num passo abre a grade (ANIMAÇÃO · TEMPO · SPEED · VOZ · EFEITOS · SEQ · TOTAL); tocar num item de faixa abre a página dele direto; ◀/✕ voltam; o botão voltar do aparelho fecha uma camada por vez. Os atualizadores (edição no lugar) continuam.
 - **＋** (menu): passo novo, speed, voz, parede, SEQ, mover ◀ ▶ e Σ total.
 - Testes: `ReactionLayoutTest` (23: alturas, teto, resumo x aberta, filtro, rolagem, hit-test). Desenho, gestos, gaveta e botões só compilados e revisados.
+
+### 3.1y Botão “Ajuda de IA” → `Download/TBRHelp.md`
+- Na tela AJUDA, o botão **Ajuda de IA** (cabeçalho e cartão no topo da lista) gera o **TBRHelp.md**, grava em `Download/` e abre o **compartilhar** do Android (`AiHelpShare`: `BusyDialog`, escrita UTF-8, `MediaScannerConnection` devolve o `content://`, `ACTION_SEND` com `EXTRA_STREAM`, `ClipData` e `FLAG_GRANT_READ_URI_PERMISSION`; sem FileProvider nem manifest). Falhas mostram o motivo (ex.: falta “acesso a todos os arquivos”).
+- **Documento** (`AiHelp`, 77 KB, **em inglês**, com a instrução de **responder no idioma do usuário** e o aviso de que o arquivo não está necessariamente nesse idioma): 0 instruções à IA · 1 o app · 2 arquivos e pastas (Runtime, `TBRE/Chars`, `TBRE/Backups`; os `.txt` mandam sobre os binários) · 3 formatos exatos de `000.dac.txt`, `000.bin.txt` (`$GOLPE_n`, `$HDAT_14+t` / `$REACAO_DANO_t`) e `000.cnv.txt` · 4 o que pedir ao usuário e como ele obtém · 5 dicionário (flags dos hits, `$OPT`, `WACTFLAG`, reações, ATK_FLAGS, sons, sprites) · 6 mecânica (tempo, speed/accel, hit, sequências, pouso, projéteis, efeitos) · 7 limites · 8 receitas · 9 checklist de validação · 10 como testar · 11 telas e botões · 12 **contrato de saída** (blocos completos, alvo na 1ª linha, onde colar, como testar) · 13 salvar e backups · 14 FAQ · Anexo A: a ajuda do app inteira, literal (PT).
+- **Gerado, não digitado**: os exemplos de ANO / golpe / reação / CNV passam pelo **leitor e pelo escritor do próprio app**; a tabela do HDAT 4 vem de `DacText.MOVE_KEYS`; os grupos de reação de `Opt1`; os limites de `GameRules`; o anexo de `HelpText`. O texto fixo fica em `AiHelpDoc` (gerado de `aihelp_src/*.md`).
+- AJUDA: nova seção “Ajuda de IA (TBRHelp.md)” (e tags de busca: ia, chatgpt, gemini, claude, markdown…).
+- Testes: `AiHelpTest` (31: determinismo, tamanho, instruções de idioma, seções 0–14 + anexo, exemplo de ANO relido pelo parser e reescrito igual, exemplo de golpe relido, todos os campos do HDAT 4, limites iguais ao `GameRules`, grupos de `Opt1`, anexo literal). Escrita em Download e intent só compilados e revisados.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -258,8 +265,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionTraceTest (novo)** | 26 |
 | **SaverCopyTest (novo)** | 17 |
 | **ReactionEditTest (novo)** | 35 |
-| **HelpSearchTest (novo)** | 47 |
+| **HelpSearchTest (novo)** | 48 |
 | **ReactionLayoutTest (novo)** | 23 |
+| **AiHelpTest (novo)** | 31 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
