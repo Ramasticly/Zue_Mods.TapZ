@@ -185,6 +185,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Resultado em duas faixas**: **ABAS E MENUS** primeiro (a melhor com contorno e “MELHOR RESULTADO”), depois **TEXTOS** dentro dos capítulos, cada um com o trecho que bateu (tocar abre o capítulo). Todas as palavras da consulta precisam bater (AND).
 - Testes: `HelpSearchTest` (44).
 
+### 3.1u Editor de reações: campos que digitam e que seguram
+- **Causa**: toda edição chamava `refresh()` → `buildPage()` e recriava os campos; o botão − / + que estava sendo segurado saía da tela (o `Hold` para) e o campo digitado perdia o foco; o valor digitado só valia ao confirmar.
+- **Edição no lugar**: `ReactionScreen.setCell` grava a célula e só atualiza os campos abertos (`upd`/`runUpdaters`: valor do `Stepper`, rótulos, botões marcados); timeline, prévia e simulação seguem em `refreshLight()`, no máximo a cada ~150 ms (continua atualizando enquanto se segura o −/+). A página só é recriada ao trocar de passo, aba ou cenário.
+- **Digitar**: `Stepper.live(true)` aplica o valor ao digitar (pausa de 300 ms) e ao confirmar; não reescreve o texto enquanto o campo está em foco e vale o mesmo número (o cursor não pula); seleciona tudo ao focar; a janela usa `SOFT_INPUT_ADJUST_RESIZE`.
+- **Desfazer**: `AttackView.editReaction(type, key, change)` junta as edições seguidas da mesma célula numa única entrada e refaz a simulação principal uma vez, 250 ms depois (e ao fechar, `flushReactionEdit()`).
+- Só compilado e revisado (gesto/teclado não rodam sem aparelho).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 

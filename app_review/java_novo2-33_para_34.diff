@@ -269,7 +269,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-24 00:01:29.819236774 +0000
++++ b/AttackView.java	2026-10-24 18:30:50.551692485 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -362,7 +362,41 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
          float lh = warnText.getFontSpacing();
          float btnH = lh + pad, gap = 6f * density;
-@@ -1127,7 +1159,7 @@
+@@ -947,6 +979,33 @@
+         rebuild(frame);
+     }
+ 
++    private final Runnable reactionRebuild = new Runnable() { public void run() { reactionRebuildPending = false; if (data != null) rebuild(frame); } };
++    private boolean reactionRebuildPending;
++
++    /**
++     * Edicao rapida de uma tabela de reacao (campo digitado ou - / + segurado): grava na hora, junta as edicoes seguidas de {@code key}
++     * numa unica entrada de desfazer e refaz a simulacao principal uma vez, 250 ms depois da ultima edicao (ou em {@link #flushReactionEdit}).
++     */
++    public void editReaction(int type, String key, Runnable change) {
++        final ReactionTable t = charReaction(type);
++        if (t == null) return;
++        final ReactionTable before = t.copy();
++        change.run();
++        pushUndo(key, new Runnable() { public void run() { t.restoreFrom(before); } });
++        editVersion++;
++        removeCallbacks(reactionRebuild);
++        reactionRebuildPending = true;
++        postDelayed(reactionRebuild, 250);
++    }
++
++    /** Se uma edicao rapida de reacao ainda espera a simulacao, refaz agora (ao fechar o editor, por exemplo). */
++    public void flushReactionEdit() {
++        if (!reactionRebuildPending) return;
++        removeCallbacks(reactionRebuild);
++        reactionRebuildPending = false;
++        if (data != null) rebuild(frame);
++    }
++
+     /** Edita o golpe (HDAT 4) em runtime: executa a mudanca, empilha o desfazer e reconstroi a simulacao. */
+     public void editMove(Runnable change) {
+         if (data == null) return;
+@@ -1127,7 +1186,7 @@
  
      public interface MoveEdit { void apply(CharData.Move m); }
  
@@ -371,7 +405,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void editMove(MoveEdit e) {
          if (data == null || data.move == null) return;
          final CharData.Move mv = data.move;
-@@ -1139,6 +1171,40 @@
+@@ -1139,6 +1198,40 @@
          rebuild(frame);
      }
  
@@ -412,7 +446,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1349,6 +1415,7 @@
+@@ -1349,6 +1442,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -5712,8 +5746,8 @@ diff -ruN a/ReactionPreview.java b/ReactionPreview.java
  }
 diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 --- a/ReactionScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/ReactionScreen.java	2026-10-24 17:21:35.000108636 +0000
-@@ -0,0 +1,522 @@
++++ b/ReactionScreen.java	2026-10-24 18:31:41.506677693 +0000
+@@ -0,0 +1,608 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -5779,6 +5813,7 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        if (table() == null) return;
 +        dlg = new Dialog(c, android.R.style.Theme_DeviceDefault_NoActionBar);
 +        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
++        dlg.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 +        LinearLayout root = new LinearLayout(c);
 +        root.setOrientation(LinearLayout.VERTICAL);
 +        root.setBackgroundColor(LayoutManager.BG);
@@ -5836,7 +5871,7 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +            @Override public void onResize(int row, int ticks) {
 +                int[] r = ReactionEdit.resize(table(), row, air, ticks);
 +                if (r == null) return;
-+                sel = row;
++                selectRow(row);
 +                setCell(r[0], r[1]);
 +            }
 +            @Override public void onOpenLane(int lane, int row) {
@@ -5881,7 +5916,7 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        }
 +        dlg.setContentView(root);
 +        dlg.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
-+            @Override public void onDismiss(android.content.DialogInterface i) { preview.pause(); }
++            @Override public void onDismiss(android.content.DialogInterface i) { preview.pause(); pageBox.removeCallbacks(lightRun); view.flushReactionEdit(); onChanged.run(); }
 +        });
 +        dlg.show();
 +        sel = 0;
@@ -5978,6 +6013,7 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +
 +    private void buildPage() {
 +        pageBox.removeAllViews();
++        updaters.clear();
 +        ReactionTable t = table();
 +        if (t == null || sel < 0 || sel >= t.rows) return;
 +        TextView h = text("Passo " + (sel + 1) + " de " + t.rows + (editable ? "" : "  ·  só leitura") + "  ·  cenário " + (air ? "AR" : "CHÃO"), LayoutManager.TEXT, 12, true);
@@ -5994,46 +6030,78 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        }
 +    }
 +
++    /** Atualiza, no lugar, os campos da pagina aberta (sem recria-los: o - / + segurado e o teclado continuam vivos). */
++    private final java.util.ArrayList<Runnable> updaters = new java.util.ArrayList<Runnable>();
++
++    private void upd(Runnable r) { updaters.add(r); r.run(); }
++
++    private void runUpdaters() {
++        ReactionTable t = table();
++        if (t == null || sel < 0 || sel >= t.rows) return;
++        for (int i = 0; i < updaters.size(); i++) updaters.get(i).run();
++    }
++
++    private int cell(int col) {
++        ReactionTable t = table();
++        if (t == null || sel < 0 || sel >= t.rows) return 0;
++        return SIGNED[col] ? t.s8(sel, col) : t.u8(sel, col);
++    }
++
 +    private void pageAnimation(ReactionTable t) {
-+        final int ano = t.s8(sel, 2);
 +        LinearLayout row = new LinearLayout(c);
 +        row.setGravity(Gravity.CENTER_VERTICAL);
-+        AnimPreview pv = new AnimPreview(c);
-+        pv.set(view.opponentDac(), view.opponentSprites(), Math.abs(ano), ano < 0);
++        final AnimPreview pv = new AnimPreview(c);
 +        row.addView(pv, new LinearLayout.LayoutParams(dp(96), dp(96)));
 +        LinearLayout col = new LinearLayout(c);
 +        col.setOrientation(LinearLayout.VERTICAL);
 +        col.setPadding(dp(8), 0, 0, 0);
 +        label(col, "ANO do oponente");
++        final Stepper st = new Stepper(c).range(0, 127).step(1);
++        final TextView mir = btn("", false, new View.OnClickListener() { public void onClick(View v) {
++            int cur = cell(2);
++            if (cur != 0) setCell(2, -cur);
++        } });
++        final TextView ro = text("", LayoutManager.TEXT, 14, true);
 +        if (editable) {
-+            col.addView(new Stepper(c).range(0, 127).step(1).tap(new Runnable() { public void run() { pickAno(Math.abs(ano)); } })
-+                    .onChange(new Stepper.OnValue() { public void on(double v) { setCell(2, ano < 0 && v > 0 ? -(int) v : (int) v); } }).value(Math.abs(ano)).view());
-+            col.addView(btn(ano < 0 ? "● espelhado (⇄)" : "○ espelhado (⇄)", ano < 0, new View.OnClickListener() { public void onClick(View v) {
-+                if (ano != 0) setCell(2, -ano);
-+            } }));
++            st.tap(new Runnable() { public void run() { pickAno(Math.abs(cell(2))); } })
++                    .onChange(new Stepper.OnValue() { public void on(double v) { int cur = cell(2); setCell(2, cur < 0 && v > 0 ? -(int) v : (int) v); } });
++            col.addView(st.view());
++            col.addView(mir);
 +        } else {
-+            col.addView(text("ANO " + Math.abs(ano) + (ano < 0 ? "  ⇄ espelhado" : ""), LayoutManager.TEXT, 14, true));
++            col.addView(ro);
 +        }
 +        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
 +        pageBox.addView(row);
 +        pageBox.addView(text("Animação do oponente (defensor) tocada neste passo. Negativo vira o oponente (⇄). Tocar no número abre a grade de animações.", LayoutManager.DIM, 10, false));
++        upd(new Runnable() { public void run() {
++            int ano = cell(2);
++            pv.set(view.opponentDac(), view.opponentSprites(), Math.abs(ano), ano < 0);
++            if (editable) { st.value(Math.abs(ano)); mir.setText(ano < 0 ? "● espelhado (⇄)" : "○ espelhado (⇄)"); styleToggle(mir, ano < 0); }
++            else ro.setText("ANO " + Math.abs(ano) + (ano < 0 ? "  ⇄ espelhado" : ""));
++        } });
 +    }
 +
 +    private void pickAno(int cur) {
 +        if (!(c instanceof Activity)) return;
 +        AnoPicker.show((Activity) c, view.opponentDac(), view.opponentSprites(), false, cur, "ANO do oponente", false, new AnoPicker.Listener() {
-+            @Override public void onPick(int ano) { ReactionTable t = table(); int old = t == null ? 0 : t.s8(sel, 2); setCell(2, old < 0 && ano > 0 ? -ano : ano); }
++            @Override public void onPick(int ano) { int old = cell(2); setCell(2, old < 0 && ano > 0 ? -ano : ano); }
 +        });
 +    }
 +
 +    private void pageTime(ReactionTable t) {
-+        pageBox.addView(field("Duração no chão (ticks)", 0, 0, 255, t));
-+        pageBox.addView(field("Duração no ar (ticks)", 1, 0, 255, t));
-+        if (editable) pageBox.addView(btn("ATÉ POUSAR (255 no ar)", t.u8(sel, 1) == 255, new View.OnClickListener() { public void onClick(View v) { setCell(1, 255); } }));
-+        int dc = t.u8(sel, 0), da = t.u8(sel, 1);
++        pageBox.addView(field("Duração no chão (ticks)", 0, 0, 255));
++        pageBox.addView(field("Duração no ar (ticks)", 1, 0, 255));
++        final TextView until = btn("ATÉ POUSAR (255 no ar)", false, new View.OnClickListener() { public void onClick(View v) { setCell(1, 255); } });
++        if (editable) pageBox.addView(until);
 +        pageBox.addView(text("Dica: na timeline, arraste a borda direita do passo (a barra amarela) para mudar a duração do cenário atual.", LayoutManager.DIM, 10, false));
-+        pageBox.addView(text("Chão: " + secs(dc) + "  ·  Ar: " + (da == 255 ? "até pousar (limite de 255 ticks)" : secs(da))
-+                + ". O jogo usa a duração de chão enquanto o oponente está no chão e a de ar quando está no ar (60 ticks = 1 s).", LayoutManager.DIM, 10, false));
++        final TextView info = text("", LayoutManager.DIM, 10, false);
++        pageBox.addView(info);
++        upd(new Runnable() { public void run() {
++            int dc = cell(0), da = cell(1);
++            styleToggle(until, da == 255);
++            info.setText("Chão: " + secs(dc) + "  ·  Ar: " + (da == 255 ? "até pousar (limite de 255 ticks)" : secs(da))
++                    + ". O jogo usa a duração de chão enquanto o oponente está no chão e a de ar quando está no ar (60 ticks = 1 s).");
++        } });
 +    }
 +
 +    private static String secs(int ticks) { return ticks + " ticks = " + String.format(java.util.Locale.US, "%.2f", ticks / 60.0) + "s"; }
@@ -6041,10 +6109,10 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +    private void pageMove(ReactionTable t) {
 +        int b = air ? 7 : 3;
 +        String set = air ? "ar" : "chão";
-+        pageBox.addView(moveField("Velocidade x (" + set + ")", b, t));
-+        pageBox.addView(moveField("Velocidade y (" + set + ")", b + 1, t));
-+        pageBox.addView(moveField("Aceleração x (" + set + ")", b + 2, t));
-+        pageBox.addView(moveField("Aceleração y (" + set + ")", b + 3, t));
++        pageBox.addView(moveField("Velocidade x (" + set + ")", b));
++        pageBox.addView(moveField("Velocidade y (" + set + ")", b + 1));
++        pageBox.addView(moveField("Aceleração x (" + set + ")", b + 2));
++        pageBox.addView(moveField("Aceleração y (" + set + ")", b + 3));
 +        if (editable) pageBox.addView(btn("COPIAR ESTES 4 PARA O CENÁRIO " + (air ? "CHÃO" : "AR"), false, new View.OnClickListener() { public void onClick(View v) {
 +            final int from = air ? 7 : 3, to = air ? 3 : 7;
 +            final ReactionTable tt = table();
@@ -6057,83 +6125,114 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +                + "A aceleração soma na velocidade a cada tick, e quando a soma cruza o zero a velocidade para (atrito).", LayoutManager.DIM, 10, false));
 +    }
 +
-+    private View moveField(final String name, final int col, ReactionTable t) {
++    private View moveField(final String name, final int col) {
 +        LinearLayout box = new LinearLayout(c);
 +        box.setOrientation(LinearLayout.VERTICAL);
-+        int v = t.s8(sel, col);
-+        label(box, name + "  =  " + (v == -1 ? "mantém" : v == -2 ? "metade" : v + (col == 3 || col == 4 || col == 7 || col == 8 ? "  (" + (v / 10.0) + " px/tick)" : "")));
-+        if (!editable) return box;
-+        LinearLayout row = new LinearLayout(c);
-+        row.setGravity(Gravity.CENTER_VERTICAL);
-+        row.addView(new Stepper(c).range(-128, 127).step(1).keyboard(new Stepper.OnValue() { public void on(double nv) { setCell(col, (int) nv); } }).value(v).view());
-+        row.addView(btn("= mantém", v == -1, new View.OnClickListener() { public void onClick(View x) { setCell(col, -1); } }));
-+        row.addView(btn("½", v == -2, new View.OnClickListener() { public void onClick(View x) { setCell(col, -2); } }));
-+        box.addView(row);
++        final TextView lbl = text("", LayoutManager.DIM, 11, false);
++        lbl.setPadding(dp(4), dp(8), dp(4), dp(1));
++        box.addView(lbl);
++        final Stepper st = new Stepper(c).range(-128, 127).step(1);
++        final TextView keep = btn("= mantém", false, new View.OnClickListener() { public void onClick(View x) { setCell(col, -1); } });
++        final TextView half = btn("½", false, new View.OnClickListener() { public void onClick(View x) { setCell(col, -2); } });
++        if (editable) {
++            LinearLayout row = new LinearLayout(c);
++            row.setGravity(Gravity.CENTER_VERTICAL);
++            st.keyboard(new Stepper.OnValue() { public void on(double nv) { setCell(col, (int) nv); } }).live(true);
++            row.addView(st.view());
++            row.addView(keep);
++            row.addView(half);
++            box.addView(row);
++        }
++        upd(new Runnable() { public void run() {
++            int v = cell(col);
++            lbl.setText(name + "  =  " + (v == -1 ? "mantém" : v == -2 ? "metade" : v + (col == 3 || col == 4 || col == 7 || col == 8 ? "  (" + (v / 10.0) + " px/tick)" : "")));
++            if (editable) { st.value(v); styleToggle(keep, v == -1); styleToggle(half, v == -2); }
++        } });
 +        return box;
 +    }
 +
 +    private void pageVoice(ReactionTable t) {
-+        pageBox.addView(field("Voz do passo (0 = sem voz)", 13, 0, 127, t));
-+        if (editable) pageBox.addView(btn("SEM VOZ", t.s8(sel, 13) == 0, new View.OnClickListener() { public void onClick(View v) { setCell(13, 0); } }));
++        pageBox.addView(field("Voz do passo (0 = sem voz)", 13, 0, 127));
++        final TextView none = btn("SEM VOZ", false, new View.OnClickListener() { public void onClick(View v) { setCell(13, 0); } });
++        if (editable) pageBox.addView(none);
 +        pageBox.addView(text("O som da voz toca no tick em que o passo começa. O jogo lê o byte com sinal, então só valem 1 a 127 (acima disso nunca toca). Na timeline aparece como ♪ na faixa VOZ.", LayoutManager.DIM, 10, false));
++        upd(new Runnable() { public void run() { styleToggle(none, cell(13) == 0); } });
 +    }
 +
 +    private void pageEffects(ReactionTable t) {
-+        pageBox.addView(field("Parede (0 = nenhum efeito)", 12, 0, 255, t));
++        pageBox.addView(field("Parede (0 = nenhum efeito)", 12, 0, 255));
++        final TextView[] q = new TextView[3];
 +        if (editable) {
-+            LinearLayout q = new LinearLayout(c);
-+            final int w = t.u8(sel, 12);
-+            q.addView(btn("nenhum (0)", w == 0, new View.OnClickListener() { public void onClick(View v) { setCell(12, 0); } }));
-+            q.addView(btn("2", w == 2, new View.OnClickListener() { public void onClick(View v) { setCell(12, 2); } }));
-+            q.addView(btn("3", w == 3, new View.OnClickListener() { public void onClick(View v) { setCell(12, 3); } }));
-+            pageBox.addView(q);
++            LinearLayout row = new LinearLayout(c);
++            q[0] = btn("nenhum (0)", false, new View.OnClickListener() { public void onClick(View v) { setCell(12, 0); } });
++            q[1] = btn("2", false, new View.OnClickListener() { public void onClick(View v) { setCell(12, 2); } });
++            q[2] = btn("3", false, new View.OnClickListener() { public void onClick(View v) { setCell(12, 3); } });
++            for (TextView x : q) row.addView(x);
++            pageBox.addView(row);
 +        }
 +        pageBox.addView(text("Efeito de parede. Com 2 ou 3, se o oponente encosta na parede durante o passo a reação recomeça na reação indicada em SEQ (e o jogo marca a batida na parede). "
 +                + "Com 0 a parede não muda a reação. Outros valores seguem a regra do jogo para o tipo de parede.", LayoutManager.DIM, 10, false));
++        upd(new Runnable() { public void run() {
++            if (!editable) return;
++            int w = cell(12);
++            styleToggle(q[0], w == 0); styleToggle(q[1], w == 2); styleToggle(q[2], w == 3);
++        } });
 +    }
 +
 +    private void pageSeq(ReactionTable t) {
-+        pageBox.addView(field("Próxima reação (0 = nenhuma; 1-29 jogo; 30-49 personagem)", 11, 0, 49, t));
-+        if (editable) {
-+            LinearLayout q = new LinearLayout(c);
-+            q.addView(btn("nenhuma", t.u8(sel, 11) == 0, new View.OnClickListener() { public void onClick(View v) { setCell(11, 0); } }));
-+            pageBox.addView(q);
-+        }
-+        int comp = t.u8(sel, 11);
-+        pageBox.addView(text(comp == 0 ? "Sem próxima reação: ao acabar os passos, o oponente se levanta ou cai conforme a altura." : "Depois destes passos entra a reação " + (comp >= 30 ? "do personagem " + (comp - 30) : "do jogo " + comp)
-+                + (comp == 11 ? " (11: pousar e levantar)." : "."), LayoutManager.DIM, 10, false));
++        pageBox.addView(field("Próxima reação (0 = nenhuma; 1-29 jogo; 30-49 personagem)", 11, 0, 49));
++        final TextView none = btn("nenhuma", false, new View.OnClickListener() { public void onClick(View v) { setCell(11, 0); } });
++        if (editable) pageBox.addView(none);
++        final TextView info = text("", LayoutManager.DIM, 10, false);
++        pageBox.addView(info);
 +        pageBox.addView(text("É a faixa SEQ da timeline: a sequência de reações. Com parede 2 ou 3 é para ela que a reação volta ao bater na parede.", LayoutManager.DIM, 10, false));
++        upd(new Runnable() { public void run() {
++            int comp = cell(11);
++            styleToggle(none, comp == 0);
++            info.setText(comp == 0 ? "Sem próxima reação: ao acabar os passos, o oponente se levanta ou cai conforme a altura." : "Depois destes passos entra a reação " + (comp >= 30 ? "do personagem " + (comp - 30) : "do jogo " + comp)
++                    + (comp == 11 ? " (11: pousar e levantar)." : "."));
++        } });
 +    }
 +
 +    private void pageTotal(ReactionTable t) {
-+        if (trace == null) return;
++        final TextView body = text("", LayoutManager.TEXT, 11, false);
++        pageBox.addView(body);
++        pageBox.addView(text("Tudo vem da simulação do jogo (a mesma da prévia): arrastar o ponteiro na timeline mostra o estado do oponente naquele tick.", LayoutManager.DIM, 10, false));
++        upd(new Runnable() { public void run() { if (trace != null) body.setText(totalText()); } });
++    }
++
++    private String totalText() {
 +        StringBuilder sb = new StringBuilder();
 +        int n = trace.ticks.size();
 +        int[] all = trace.displacement(n);
 +        sb.append("Cenário ").append(air ? "AR (oponente a " + ReactionPreview.AIR_HEIGHT + " px do chão)" : "CHÃO").append(": ").append(n).append(" ticks = ")
 +                .append(String.format(java.util.Locale.US, "%.2f", n / 60.0)).append("s, deslocamento total x ").append(all[0]).append(" px, y ").append(all[1]).append(" px")
 +                .append(trace.ended ? "." : " (parou no limite de 420 ticks).").append("\n\n");
-+        int prevEnd = 0;
 +        for (ReactionTrace.Seg s : trace.segments) {
 +            int[] a = trace.displacement(s.start), bb = trace.displacement(s.end);
 +            boolean own = s.charSrc == editable && s.type == type;
 +            sb.append(own ? "passo " + (s.row + 1) : "→ reação " + (s.charSrc ? "do personagem " : "do jogo ") + s.type + " passo " + (s.row + 1)).append(": ticks ").append(s.start).append("–").append(s.end - 1)
 +                    .append(" (").append(s.length()).append("), Δx ").append(bb[0] - (s.start == 0 ? 0 : a[0])).append(" Δy ").append(bb[1] - (s.start == 0 ? 0 : a[1])).append(" px\n");
-+            prevEnd = s.end;
 +        }
-+        pageBox.addView(text(sb.toString(), LayoutManager.TEXT, 11, false));
-+        pageBox.addView(text("Tudo vem da simulação do jogo (a mesma da prévia): arrastar o ponteiro na timeline mostra o estado do oponente naquele tick.", LayoutManager.DIM, 10, false));
++        return sb.toString();
 +    }
 +
 +    // ---- campos e edicao ----
 +
-+    private View field(String name, final int col, int lo, int hi, ReactionTable t) {
++    private View field(String name, final int col, int lo, int hi) {
 +        LinearLayout box = new LinearLayout(c);
 +        box.setOrientation(LinearLayout.VERTICAL);
 +        label(box, name);
-+        int v = SIGNED[col] ? t.s8(sel, col) : t.u8(sel, col);
-+        if (editable) box.addView(new Stepper(c).range(lo, hi).step(1).keyboard(new Stepper.OnValue() { public void on(double nv) { setCell(col, (int) nv); } }).value(v).view());
-+        else box.addView(text(String.valueOf(v), LayoutManager.TEXT, 14, true));
++        if (editable) {
++            final Stepper st = new Stepper(c).range(lo, hi).step(1);
++            st.keyboard(new Stepper.OnValue() { public void on(double nv) { setCell(col, (int) nv); } }).live(true);
++            box.addView(st.view());
++            upd(new Runnable() { public void run() { st.value(cell(col)); } });
++        } else {
++            final TextView ro = text("", LayoutManager.TEXT, 14, true);
++            box.addView(ro);
++            upd(new Runnable() { public void run() { ro.setText(String.valueOf(cell(col))); } });
++        }
 +        return box;
 +    }
 +
@@ -6145,15 +6244,36 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        return SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
 +    }
 +
++    private boolean lightPending;
++    private final Runnable lightRun = new Runnable() { public void run() { lightPending = false; refreshLight(); } };
++
++    /** Grava uma celula no lugar: so atualiza os campos abertos agora; timeline, previa e simulacao seguem logo depois (no maximo a cada ~150 ms). Uma entrada de desfazer por celula. */
 +    private void setCell(final int col, int value) {
 +        if (!editable) return;
 +        final int v = limit(col, value);
 +        final ReactionTable t = table();
 +        final int row = sel;
 +        if (t == null || row < 0 || row >= t.rows) return;
-+        view.editReaction(type, new Runnable() { public void run() { t.set(row, col, v); } });
++        if (SIGNED[col] ? t.s8(row, col) == v : t.u8(row, col) == v) return;
++        view.editReaction(type, "reacao:" + type + ":" + row + ":" + col, new Runnable() { public void run() { t.set(row, col, v); } });
++        runUpdaters();
++        if (!lightPending) { lightPending = true; pageBox.postDelayed(lightRun, 150); }
++    }
++
++    /** Recalcula simulacao, timeline e previa sem recriar a pagina aberta. */
++    private void refreshLight() {
++        ReactionTable t = table();
++        if (t == null) return;
++        sel = Math.max(0, Math.min(sel, t.rows - 1));
++        trace = recordTrace();
++        tl.setData(trace, t, editable, type, air);
++        tl.setSelected(sel);
++        preview.setMaxTick(trace.ticks.size());
++        preview.setValue(optValue);
++        preview.seek(tl.pointerTick());
++        updateLabel();
++        runUpdaters();
 +        onChanged.run();
-+        refresh();
 +    }
 +
 +    private void addRow() {
@@ -7483,8 +7603,8 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
                  else if (which == 2) trimExisting(f);
 diff -ruN a/Stepper.java b/Stepper.java
 --- a/Stepper.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/Stepper.java	2026-10-22 10:04:09.034199705 +0000
-@@ -0,0 +1,163 @@
++++ b/Stepper.java	2026-10-24 18:30:41.656944830 +0000
+@@ -0,0 +1,197 @@
 +package com.zue.attackeditor;
 +
 +import android.content.Context;
@@ -7520,6 +7640,9 @@ diff -ruN a/Stepper.java b/Stepper.java
 +    private Runnable onTap;
 +    private int color = LayoutManager.TEXT;
 +    private String suffix = "";
++    private boolean live, silent;
++    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
++    private Runnable liveRun;
 +
 +    Stepper(Context c) {
 +        this.c = c;
@@ -7558,6 +7681,13 @@ diff -ruN a/Stepper.java b/Stepper.java
 +    Stepper suffix(String s) { suffix = s; return this; }
 +    Stepper value(double v) { value = clamp(v); show(); return this; }
 +
++    /** Com {@link #keyboard}: o valor digitado vale enquanto se digita (apos uma pausa curta), sem esperar OK ou sair do campo. */
++    Stepper live(boolean on) { live = on; return this; }
++
++    private Double parsed() {
++        try { return Double.valueOf(edit.getText().toString().trim().replace(',', '.')); } catch (NumberFormatException e) { return null; }
++    }
++
 +    /** O numero do meio e um campo de teclado; confirmar (ok ou sair do campo) chama o listener. */
 +    Stepper keyboard(OnValue l) {
 +        listener = l;
@@ -7572,17 +7702,34 @@ diff -ruN a/Stepper.java b/Stepper.java
 +        edit.setSelectAllOnFocus(true);
 +        edit.setPadding(dp(4), dp(4), dp(4), dp(4));
 +        final Runnable commit = new Runnable() { public void run() {
-+            double v;
-+            try { v = Double.parseDouble(edit.getText().toString().trim().replace(',', '.')); } catch (NumberFormatException e) { show(); return; }
-+            v = clamp(v);
++            Double p = parsed();
++            if (p == null) { show(); return; }
++            double v = clamp(p.doubleValue());
 +            if (v != value) { value = v; if (listener != null) listener.on(v); }
 +            show();
 +        } };
-+        edit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-+            @Override public boolean onEditorAction(TextView v, int a, android.view.KeyEvent k) { commit.run(); return false; }
++        // digitando: aplica o valor sem mexer no texto (nao pula o cursor); o texto so e reescrito ao confirmar
++        liveRun = new Runnable() { public void run() {
++            Double p = parsed();
++            if (p == null) return;
++            double v = clamp(p.doubleValue());
++            if (v != value) { value = v; if (listener != null) listener.on(v); }
++        } };
++        edit.addTextChangedListener(new android.text.TextWatcher() {
++            @Override public void beforeTextChanged(CharSequence x, int a, int b, int n) { }
++            @Override public void onTextChanged(CharSequence x, int a, int b, int n) { }
++            @Override public void afterTextChanged(android.text.Editable e) {
++                if (!live || silent) return;
++                handler.removeCallbacks(liveRun);
++                handler.postDelayed(liveRun, 300);
++            }
 +        });
++        edit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
++            @Override public boolean onEditorAction(TextView v, int a, android.view.KeyEvent k) { handler.removeCallbacks(liveRun); commit.run(); return false; }
++        });
++        edit.setFocusableInTouchMode(true);
 +        edit.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-+            @Override public void onFocusChange(View v, boolean has) { if (!has) commit.run(); }
++            @Override public void onFocusChange(View v, boolean has) { if (!has) { handler.removeCallbacks(liveRun); commit.run(); } }
 +        });
 +        center = edit;
 +        return this;
@@ -7621,7 +7768,14 @@ diff -ruN a/Stepper.java b/Stepper.java
 +
 +    private void show() {
 +        String s = LayoutManagerFmt.fmt(value) + suffix;
-+        if (edit != null) { if (!edit.isFocused() || !edit.getText().toString().equals(s)) edit.setText(LayoutManagerFmt.fmt(value)); }
++        if (edit != null) {
++            // com o campo em foco e o texto digitado valendo o mesmo numero, nao reescreve (ex.: "012" ou "5." seguem como o usuario digitou)
++            Double p = edit.isFocused() ? parsed() : null;
++            if (p == null || p.doubleValue() != value) {
++                silent = true;
++                try { edit.setText(LayoutManagerFmt.fmt(value)); edit.setSelection(edit.getText().length()); } finally { silent = false; }
++            }
++        }
 +        if (label != null) label.setText(s);
 +    }
 +
