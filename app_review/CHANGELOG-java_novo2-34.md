@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 740 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 761 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -144,6 +144,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Tela do projétil:** saiu o seletor de duração do topo (o genérico de `object()`); ficou só o "Início e duração" da própria tela.
 - **GOLPE SET:** o título agora é só "Opções do golpe" (sem "ATK_FLAGS = N"). Em "Hitbox destrói as hitboxes do oponente" o "(HDAT 3, byte 13)" virou a reação real que esse byte guarda: "do jogo N" (0 a 29) ou "do personagem N" (30 ou mais, N − 30), como o jogo escolhe a reação (md 876/877). `CharData.clashReaction/reactionName`.
 
+### 3.1n Slots vazios de reação do personagem
+- **Escolher reação** agora lista também os slots 30-49 (HDAT 14-33) **vazios**, como "＋ vazio · personagem k · adicionar". Tocar abre: **copiar de uma reação do personagem**, **copiar da game data** (globais 0-29), **importar de outro personagem** (lê o `000.bin`/`000.bin.txt` dele, com resumo e miniaturas dos ANOs) ou **em branco** (1 passo). A tabela vai para o slot (desfazível) e o hit passa a apontar para ele.
+- **Gravação** (`Saver.patchReaction`): se o bloco `$REACAO_DANO_n` não existe no `000.bin.txt`, ele é **criado** dentro do `$HDAT_14+n` (com `$COL: 14`, `$ROW` e `$SZ` certos e a vírgula do `$info`); se nem o `$HDAT_14+n` existe, avisa e não grava (o `$COUNT` do arquivo não muda).
+- **Salvar em outro personagem**: as reações usadas agora preferem um **slot vazio gravável** do destino (um `$HDAT_14+n` que exista no `.bin.txt` dele) antes de usar um cheio sem uso (`Saver.writableReactionSlots`, `MoveTransplant.build(..., writable)`).
+- Código: `ReactionSlots` (vazios, resumo, leitura de outro personagem), `ReactionTable.blank()`, `TimelineTools.pickReaction/addReactionDialog/pickSourceGrid/importReactionFromCharacter/fillSlot`. Telas só compiladas e revisadas (não executadas num aparelho).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -183,7 +189,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **FrameToolsTest (novo)** | 36 |
 | **ToolbarTest (novo)** | 65 |
 | **ObjMoveTest (novo)** | 42 |
-| **MoveTransplantTest (novo)** | 36 |
+| **MoveTransplantTest (novo)** | 37 |
+| **ReactionSlotsTest (novo)** | 20 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 

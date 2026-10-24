@@ -2830,8 +2830,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 10:15:45.434302054 +0000
-@@ -0,0 +1,160 @@
++++ b/HelpText.java	2026-10-24 11:02:28.337777115 +0000
+@@ -0,0 +1,165 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2962,6 +2962,11 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        s.add(new Section(null, "Tela do projétil",
 +                "Tocar num hit de projétil (flag 0) abre, de cima para baixo: início e duração; RAMIFICAÇÃO DO PROJÉTIL (a árvore com ao acertar, chão, abaixo, acima, global e sub-projétil); ANO do projétil (− N +, toque no número para a grade); "
 +                + "posição e velocidade; perseguição (e repetições); e a sequência SEQ_PROJETIL. A mesma tela abre no modo ANO e edita o golpe do HDAT 4 que é dono do ANO."));
++        s.add(new Section(null, "Slots de reação do personagem",
++                "O personagem tem 20 slots de reação (HDAT 14 a 33, que no hit valem de 30 a 49). Na tela \"Escolher reação\" os slots vazios aparecem como \"＋ vazio\". "
++                + "Tocar num deles oferece: copiar de uma reação do personagem, copiar da game data (as reações globais 0 a 29), importar de outro personagem (lê o 000.bin dele, com miniaturas dos ANOs) ou criar em branco (1 passo). "
++                + "A reação nova é criada no slot (dá para desfazer) e o hit passa a usá-la; depois é só ajustar nos passos. Ao salvar, o bloco do slot é criado no 000.bin.txt se faltar "
++                + "(precisa existir o $HDAT_14+n no arquivo; se não existir o app avisa). Ao salvar o golpe em outro personagem, as reações usadas preferem um slot vazio do destino."));
 +        s.add(new Section(null, "Limite de 8 projéteis",
 +                "O jogo só mantém 8 projéteis vivos ao mesmo tempo (BulletNum < 8), contando os sub-projéteis. Um hit de projétil (flag 0) que acontece com 8 já na tela "
 +                + "não cria nada, sem aviso: se um projétil \"não sai\" num golpe que lança vários, confira se os anteriores já sumiram. "
@@ -3098,7 +3103,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 10:29:34.762444188 +0000
++++ b/LayoutManager.java	2026-10-24 10:59:58.829912193 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3482,7 +3487,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
              android.widget.Toast.makeText(a, "Salvo: " + msg, android.widget.Toast.LENGTH_LONG).show();
          } catch (Exception e) {
-@@ -951,6 +1146,148 @@
+@@ -951,6 +1146,151 @@
          }
      }
  
@@ -3591,7 +3596,10 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                        return b == null ? -1 : dl.add(b);
 +                    }
 +                };
-+                MoveTransplant.Plan p = MoveTransplant.build(d.attacker.dac, d.attacker.data, move, tgt.dac, tgt.data, spr);
++                java.util.Set<Integer> writable = null;
++                File binTxt = new File(tgt.dir, "000.bin.txt");
++                if (binTxt.isFile()) writable = Saver.writableReactionSlots(Saver.readText(binTxt));
++                MoveTransplant.Plan p = MoveTransplant.build(d.attacker.dac, d.attacker.data, move, tgt.dac, tgt.data, spr, writable);
 +                java.util.ArrayList<String> warns = new java.util.ArrayList<String>(p.warnings);
 +                bd.set("Gravando...", 0, 0);
 +                File bk = MoveTransplant.write(tgt.dir, p, dstIdx, warns, new MoveTransplant.Commit() {
@@ -3631,7 +3639,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -1045,22 +1382,49 @@
+@@ -1045,22 +1385,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3691,7 +3699,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1599,7 @@
+@@ -1235,7 +1602,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -3700,7 +3708,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String note = "Arraste o atacante (azul) e o oponente (vermelho). As linhas sao as posicoes do jogo e o personagem gruda nelas."
                  + (PosPresets.fromGame(gd) ? " LONGE = medio + (medio - perto): o jogo so guarda perto e medio."
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
-@@ -1294,14 +1658,14 @@
+@@ -1294,14 +1661,14 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -4150,8 +4158,8 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          }
 diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 --- a/MoveTransplant.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/MoveTransplant.java	2026-10-24 10:15:45.426869388 +0000
-@@ -0,0 +1,253 @@
++++ b/MoveTransplant.java	2026-10-24 10:59:58.827993455 +0000
+@@ -0,0 +1,265 @@
 +package com.zue.attackeditor;
 +
 +import java.io.File;
@@ -4236,6 +4244,11 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +     * de reacao do destino e devolve o golpe novo. Nao escreve nada.
 +     */
 +    static Plan build(Dac srcDac, CharData srcData, CharData.Move m, Dac dstDac, CharData dstData, Sprites spr) throws IOException {
++        return build(srcDac, srcData, m, dstDac, dstData, spr, null);
++    }
++
++    /** {@code writable}: slots de reacao (0..19) do destino que o 000.bin.txt dele consegue receber ({@link Saver#writableReactionSlots}); null = todos. */
++    static Plan build(Dac srcDac, CharData srcData, CharData.Move m, Dac dstDac, CharData dstData, Sprites spr, java.util.Set<Integer> writable) throws IOException {
 +        Plan p = new Plan();
 +        TreeSet<Integer> set = anosToCopy(srcDac, m);
 +        int base = dstDac.size();
@@ -4245,7 +4258,7 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +        for (Integer s : set) p.anoMap.put(s, Integer.valueOf(base + k++));
 +
 +        // reacoes do personagem que o golpe usa
-+        planReactions(srcDac, srcData, set, dstDac, dstData, p);
++        planReactions(srcDac, srcData, set, dstDac, dstData, p, writable);
 +
 +        TreeMap<Integer, Integer> imgMap = new TreeMap<Integer, Integer>();
 +        int soundFrames = 0, charFlagFrames = 0, missingImages = 0, droppedLinks = 0;
@@ -4322,8 +4335,11 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +        return true;
 +    }
 +
-+    /** Escolhe, para cada tabela de reacao que o golpe usa, o slot do destino: igual > livre (nenhum ANO do destino usa) > o mesmo numero (sobrescreve, com aviso). */
-+    private static void planReactions(Dac srcDac, CharData srcData, TreeSet<Integer> set, Dac dstDac, CharData dstData, Plan p) {
++    /**
++     * Escolhe, para cada tabela de reacao que o golpe usa, o slot do destino: igual > slot VAZIO gravavel > slot cheio que nenhum ANO do destino usa >
++     * o mesmo numero (sobrescreve, com aviso).
++     */
++    private static void planReactions(Dac srcDac, CharData srcData, TreeSet<Integer> set, Dac dstDac, CharData dstData, Plan p, java.util.Set<Integer> writable) {
 +        TreeSet<Integer> needed = Saver.reactionsUsed(srcDac, set);
 +        if (needed.isEmpty()) return;
 +        TreeSet<Integer> dstAnos = new TreeSet<Integer>();
@@ -4339,7 +4355,11 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +            if (present(dstData.reaction(t)) && sameTable(st, dstData.reaction(t)) && !taken.contains(Integer.valueOf(t))) { pick = t; identical = true; }
 +            for (int s = 0; pick < 0 && s < CharData.REACTION_COUNT; s++)
 +                if (present(dstData.reaction(s)) && sameTable(st, dstData.reaction(s)) && !taken.contains(Integer.valueOf(s))) { pick = s; identical = true; }
-+            for (int s = 0; pick < 0 && s < CharData.REACTION_COUNT; s++) {
++            for (int s = 0; pick < 0 && s < CharData.REACTION_COUNT; s++) {                    // vazio gravavel
++                int slot = (t + s) % CharData.REACTION_COUNT;
++                if (!present(dstData.reaction(slot)) && !taken.contains(Integer.valueOf(slot)) && (writable == null || writable.contains(Integer.valueOf(slot)))) pick = slot;
++            }
++            for (int s = 0; pick < 0 && s < CharData.REACTION_COUNT; s++) {                    // cheio, mas nenhum ANO do destino usa
 +                int slot = (t + s) % CharData.REACTION_COUNT;
 +                if (present(dstData.reaction(slot)) && !dstUsed.contains(Integer.valueOf(slot)) && !taken.contains(Integer.valueOf(slot))) pick = slot;
 +            }
@@ -4576,6 +4596,71 @@ diff -ruN a/ReactionEditor.java b/ReactionEditor.java
          apply(col, v);
      }
  
+diff -ruN a/ReactionSlots.java b/ReactionSlots.java
+--- a/ReactionSlots.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReactionSlots.java	2026-10-24 10:59:33.256649695 +0000
+@@ -0,0 +1,44 @@
++package com.zue.attackeditor;
++
++import java.io.File;
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
++
++/** Slots de reacao do personagem (HDAT 14..33 = tipos 0..19, OPT 1 30..49): quais estao vazios, resumo de uma tabela e leitura de outro personagem. */
++final class ReactionSlots {
++    private ReactionSlots() { }
++
++    static boolean isEmpty(ReactionTable t) { return t == null || t.rows <= 0; }
++
++    /** Tipos (0..19) do personagem sem nenhum passo. */
++    static List<Integer> emptySlots(CharData cd) {
++        List<Integer> out = new ArrayList<Integer>();
++        for (int i = 0; i < CharData.REACTION_COUNT; i++) if (isEmpty(cd.reaction(i))) out.add(Integer.valueOf(i));
++        return out;
++    }
++
++    /** "3 passos · ANOs 20, 4, 7 · 1.2s no chão" (duração do chão somada; 255 = até pousar). */
++    static String summary(ReactionTable t) {
++        if (isEmpty(t)) return "vazia";
++        StringBuilder anos = new StringBuilder();
++        int ticks = 0;
++        boolean open = false;
++        for (int r = 0; r < t.rows; r++) {
++            if (r > 0) anos.append(", ");
++            anos.append(Math.abs(t.s8(r, 2)));
++            int d = t.u8(r, 0);
++            if (d == 255) open = true; else ticks += d;
++        }
++        return t.rows + (t.rows == 1 ? " passo" : " passos") + " · ANO" + (t.rows == 1 ? " " : "s ") + anos + " · "
++                + (open ? "até pousar" : String.format(java.util.Locale.US, "%.1fs no chão", ticks / 60.0));
++    }
++
++    /** Dados (HDAT) de outro personagem: o 000.bin e, por cima, o 000.bin.txt (como o app faz ao abrir). */
++    static CharData readChar(File dir) throws IOException {
++        File bin = new File(dir, "000.bin");
++        CharData cd = CharData.read(GameData.readAll(bin));
++        CharAssets.applyBinTxt(cd, bin);
++        return cd;
++    }
++}
+diff -ruN a/ReactionTable.java b/ReactionTable.java
+--- a/ReactionTable.java	2026-10-12 21:08:20.000000000 +0000
++++ b/ReactionTable.java	2026-10-24 10:59:33.250338319 +0000
+@@ -39,6 +39,13 @@
+         return t;
+     }
+ 
++    /** Reacao em branco: 1 passo (ANO 0, 6 ticks no chao e no ar, sem velocidade, sem proxima reacao). */
++    public static ReactionTable blank() {
++        ReactionTable t = new ReactionTable(new byte[0], 0);
++        t.insertRow(-1);
++        return t;
++    }
++
+     public void restoreFrom(ReactionTable o) {
+         d = o.d.clone();
+         rows = o.rows;
 diff -ruN a/ReorderBar.java b/ReorderBar.java
 --- a/ReorderBar.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ReorderBar.java	2026-10-21 22:28:37.440162865 +0000
@@ -4804,7 +4889,7 @@ diff -ruN a/ReorderBar.java b/ReorderBar.java
 +}
 diff -ruN a/Saver.java b/Saver.java
 --- a/Saver.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/Saver.java	2026-10-24 10:15:45.425906795 +0000
++++ b/Saver.java	2026-10-24 10:59:33.249782714 +0000
 @@ -13,22 +13,33 @@
  
  /**
@@ -4863,7 +4948,81 @@ diff -ruN a/Saver.java b/Saver.java
          StringBuilder sb = new StringBuilder();
          String[] ls = s.split("\n", -1);
          for (int i = 0; i < ls.length; i++) { sb.append("   ").append(ls[i]); if (i < ls.length - 1) sb.append('\n'); }
-@@ -222,7 +237,7 @@
+@@ -172,11 +187,14 @@
+         return text.substring(0, b[0]) + blk + text.substring(b[2] + 1);
+     }
+ 
+-    /** Troca as linhas $FR_n da reacao (mantem o dicionario de comentarios) e corrige $ROW/$SZ do HDAT. */
++    /**
++     * Troca as linhas $FR_n da reacao (mantem o dicionario de comentarios) e corrige $ROW/$SZ do HDAT. Se o bloco $REACAO_DANO_n nao existe
++     * (slot vazio no 000.bin.txt) ele e criado dentro do $HDAT_(14+n); se nem o $HDAT existe, {@code found[0]} = false e nada muda.
++     */
+     static String patchReaction(String text, ReactionTable t, int type, boolean[] found) {
+         int[] b = findBlock(text, "REACAO_DANO_" + type);
+-        found[0] = b != null;
+-        if (b == null) return text;
++        if (b == null) return insertReaction(text, t, type, found);
++        found[0] = true;
+         int fr = -1;
+         java.util.regex.Matcher fm = java.util.regex.Pattern.compile("\\$FR_\\d+\\s*:").matcher(text);
+         for (int from = b[1]; fm.find(from); from = fm.end()) {
+@@ -191,17 +209,47 @@
+             ind = lineIndent(text, fr);
+             head = text.substring(0, ls);
+         }
+-        int closeLs = text.lastIndexOf('\n', b[2]) + 1;
+         String closeInd = lineIndent(text, b[2]);
+         String out = head + frLines(t, ind) + closeInd + text.substring(b[2]);
+-        // $info do HDAT 14+type
++        return fixHdatInfo(out, type, t.rows);
++    }
++
++    /** Cria o bloco $REACAO_DANO_n dentro do $HDAT_(14+n) que ja existe no texto (slot vazio). */
++    private static String insertReaction(String text, ReactionTable t, int type, boolean[] found) {
++        int[] hb = findBlock(text, "HDAT_" + (CharData.FIRST_REACTION_HDAT + type));
++        found[0] = hb != null;
++        if (hb == null) return text;
++        String hind = lineIndent(text, hb[0]);
++        String ind = hind + "   ";
++        String inner = ind + "$REACAO_DANO_" + type + ":{\n" + frLines(t, ind + "   ") + ind + "},\n";
++        int closeLs = text.lastIndexOf('\n', hb[2]) + 1;
++        boolean ownLine = text.substring(closeLs, hb[2]).trim().isEmpty();
++        int at = ownLine ? closeLs : hb[2];
++        String before = text.substring(0, at);
++        int q = before.length() - 1;
++        while (q >= 0 && Character.isWhitespace(before.charAt(q))) q--;
++        String comma = q >= 0 && before.charAt(q) == '}' ? "," : "";          // o $info{...} anterior precisa de virgula
++        String out = ownLine
++                ? before.substring(0, q + 1) + comma + before.substring(q + 1) + inner + text.substring(at)
++                : before.substring(0, q + 1) + comma + "\n" + inner + hind + text.substring(at);
++        return fixHdatInfo(out, type, t.rows);
++    }
++
++    /** $COL/$ROW/$SZ do $info do HDAT_(14+type). */
++    private static String fixHdatInfo(String out, int type, int rows) {
+         int[] hb = findBlock(out, "HDAT_" + (CharData.FIRST_REACTION_HDAT + type));
+-        if (hb != null) {
+-            String hs = out.substring(hb[0], Math.min(out.length(), out.indexOf('}', hb[1]) + 1));
+-            String fixed = hs.replaceFirst("(\\$ROW\\s*:\\s*)\\d+", "$1" + t.rows)
+-                    .replaceFirst("(\\$SZ\\s*:\\s*&)[0-9A-Fa-f]+", "$1" + String.format(Locale.US, "%08X", t.rows * ReactionTable.STRIDE));
+-            out = out.substring(0, hb[0]) + fixed + out.substring(hb[0] + hs.length());
+-        }
++        if (hb == null) return out;
++        String hs = out.substring(hb[0], Math.min(out.length(), out.indexOf('}', hb[1]) + 1));
++        String fixed = hs.replaceFirst("(\\$COL\\s*:\\s*)\\d+", "$1" + ReactionTable.STRIDE)
++                .replaceFirst("(\\$ROW\\s*:\\s*)\\d+", "$1" + rows)
++                .replaceFirst("(\\$SZ\\s*:\\s*&)[0-9A-Fa-f]+", "$1" + String.format(Locale.US, "%08X", rows * ReactionTable.STRIDE));
++        return out.substring(0, hb[0]) + fixed + out.substring(hb[0] + hs.length());
++    }
++
++    /** Slots de reacao do personagem (0..19) cujo $HDAT_(14+n) existe no 000.bin.txt: so nesses da para gravar uma reacao nova. */
++    static java.util.TreeSet<Integer> writableReactionSlots(String binText) {
++        java.util.TreeSet<Integer> out = new java.util.TreeSet<Integer>();
++        for (int i = 0; i < CharData.REACTION_COUNT; i++) if (findBlock(binText, "HDAT_" + (CharData.FIRST_REACTION_HDAT + i)) != null) out.add(Integer.valueOf(i));
+         return out;
+     }
+ 
+@@ -222,7 +270,7 @@
          java.util.TreeSet<Integer> rs = new java.util.TreeSet<Integer>();
          if (moves != null) for (Integer mi : moves) {
              CharData.Move mv = data.moves[mi.intValue()];
@@ -4872,7 +5031,7 @@ diff -ruN a/Saver.java b/Saver.java
              if (anos != null) as.addAll(anos);
              anos = as;
              rs.addAll(reactionsUsed(dac, as));
-@@ -264,14 +279,18 @@
+@@ -264,14 +312,18 @@
                  if (!t1.equals(t0)) write(fb2, t1);
              }
          }
@@ -4893,7 +5052,7 @@ diff -ruN a/Saver.java b/Saver.java
          sb.append(DacText.move(m, idx)).append("\n\n");
          TreeSet<Integer> rs = reactionsUsed(dac, anos);
          if (!rs.isEmpty()) {
-@@ -288,8 +307,16 @@
+@@ -288,8 +340,16 @@
  
      // ---- gravacao ----
  
@@ -4911,7 +5070,7 @@ diff -ruN a/Saver.java b/Saver.java
          d.mkdirs();
          return d;
      }
-@@ -321,7 +348,7 @@
+@@ -321,7 +381,7 @@
          return f;
      }
  
@@ -5250,7 +5409,7 @@ diff -ruN a/ThumbView.java b/ThumbView.java
 +}
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-24 10:29:34.753336346 +0000
++++ b/TimelineTools.java	2026-10-24 11:01:01.733446272 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -5369,15 +5528,15 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          ViewGroup.LayoutParams p = root.getLayoutParams();
          if (p != null && p.height != h) { p.height = h; root.setLayoutParams(p); }
 +        if (onResize != null) onResize.run();
-     }
- 
++    }
++
 +    /** Fracao 0..1 de quanto a gaveta subiu entre o minimo e o maximo (0 se fechada). */
 +    float sheetFraction() {
 +        if (root.getVisibility() != View.VISIBLE) return 0f;
 +        int lo = peekH(), hi = maxH();
 +        return hi <= lo ? 0f : Math.max(0f, Math.min(1f, (sheetH - lo) / (float) (hi - lo)));
-+    }
-+
+     }
+ 
 +    private Runnable onResize;
 +    void setOnSheetResize(Runnable r) { onResize = r; }
 +
@@ -6517,7 +6676,219 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private static final String[] GROUPS = {"normal (efeito 0, som 3, empurra)", "som alternativo (efeito 0, som 4, empurra)",
              "forte (efeito 1, som 6, empurra)", "leve (meio hitstop, sem empurrar)", "sem efeito, som nem hitstop"};
  
-@@ -1382,40 +1742,60 @@
+@@ -1315,7 +1675,8 @@
+         LinearLayout row = null;
+         int n = 0;
+         for (int i = 0; i < 50; i++) {
+-            if (!view.hasReaction(i)) continue;
++            final boolean empty = i >= 30 && ReactionSlots.isEmpty(view.charReaction(i - 30));      // slot do personagem sem passos: da para criar uma reacao nele
++            if (!empty && !view.hasReaction(i)) continue;
+             if (n % 3 == 0) { row = new LinearLayout(c); col.addView(row); }
+             n++;
+             final int index = i;
+@@ -1324,20 +1685,37 @@
+             cell.setGravity(Gravity.CENTER_HORIZONTAL);
+             cell.setPadding(dp(2), dp(2), dp(2), dp(4));
+             GradientDrawable g = new GradientDrawable();
+-            g.setColor(i == value % 50 ? 0xFF1E3A66 : 0x00000000);
++            g.setColor(i == value % 50 && !empty ? 0xFF1E3A66 : 0x00000000);
+             g.setCornerRadius(dp(6));
+             cell.setBackground(g);
+-            ReactionPreview rp = new ReactionPreview(c, view);
+-            rp.setValue(group * 50 + i);
+-            cell.addView(rp, new LinearLayout.LayoutParams(dp(92), dp(92)));
+             TextView lab = new TextView(c);
+-            lab.setText(i < 30 ? "jogo " + i : "personagem " + (i - 30));
+             lab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+             lab.setTextColor(LayoutManager.DIM);
+             lab.setGravity(Gravity.CENTER);
++            if (empty) {
++                TextView plus = new TextView(c);
++                plus.setText("＋\nvazio");
++                plus.setGravity(Gravity.CENTER);
++                plus.setTextColor(LayoutManager.DIM);
++                plus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
++                GradientDrawable eg = new GradientDrawable();
++                eg.setColor(0xFF12151B);
++                eg.setStroke(dp(1), LayoutManager.PANEL_HI);
++                eg.setCornerRadius(dp(8));
++                plus.setBackground(eg);
++                cell.addView(plus, new LinearLayout.LayoutParams(dp(92), dp(92)));
++                lab.setText("personagem " + (i - 30) + " · adicionar");
++                lab.setTextColor(C_BLUE);
++            } else {
++                ReactionPreview rp = new ReactionPreview(c, view);
++                rp.setValue(group * 50 + i);
++                cell.addView(rp, new LinearLayout.LayoutParams(dp(92), dp(92)));
++                lab.setText(i < 30 ? "jogo " + i : "personagem " + (i - 30));
++            }
+             cell.addView(lab);
+             cell.setClickable(true);
+             cell.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
++                if (empty) { addReactionDialog(pat, value, index - 30, dlg[0]); return; }
+                 dlg[0].dismiss();
+                 applyReaction(pat, group * 50 + index);
+             } });
+@@ -1350,6 +1728,158 @@
+         styleDialog(dlg[0]);
+     }
+ 
++    // ---- slot vazio de reacao do personagem: criar copiando, importando ou em branco ----
++
++    private void addReactionDialog(final int pat, final int value, final int slot, final android.app.AlertDialog parent) {
++        String[] items = {"Copiar de uma reação do personagem", "Copiar da game data (reações globais 0 a 29)", "Importar de outro personagem", "Em branco (1 passo)"};
++        android.app.AlertDialog d2 = new android.app.AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Adicionar reação no slot " + slot + " (personagem)")
++                .setItems(items, new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int which) {
++                        if (which == 0) pickSourceGrid(pat, value, slot, parent, false);
++                        else if (which == 1) pickSourceGrid(pat, value, slot, parent, true);
++                        else if (which == 2) importReactionFromCharacter(pat, value, slot, parent);
++                        else fillSlot(pat, value, slot, ReactionTable.blank(), parent);
++                    }
++                }).setNegativeButton("VOLTAR", null).create();
++        d2.show();
++        styleDialog(d2);
++    }
++
++    /** Grade com previa das reacoes do personagem (game = false) ou do jogo (game = true) para usar como base do slot. */
++    private void pickSourceGrid(final int pat, final int value, final int slot, final android.app.AlertDialog parent, final boolean game) {
++        LinearLayout col = new LinearLayout(c);
++        col.setOrientation(LinearLayout.VERTICAL);
++        col.setPadding(dp(6), dp(6), dp(6), dp(6));
++        final android.app.AlertDialog[] d3 = new android.app.AlertDialog[1];
++        LinearLayout row = null;
++        int n = 0;
++        for (int k = 0; k < (game ? 30 : CharData.REACTION_COUNT); k++) {
++            if (!game && k == slot) continue;
++            final ReactionTable src = game ? view.gameReaction(k) : view.charReaction(k);
++            if (ReactionSlots.isEmpty(src)) continue;
++            if (n % 3 == 0) { row = new LinearLayout(c); col.addView(row); }
++            n++;
++            LinearLayout cell = new LinearLayout(c);
++            cell.setOrientation(LinearLayout.VERTICAL);
++            cell.setGravity(Gravity.CENTER_HORIZONTAL);
++            cell.setPadding(dp(2), dp(2), dp(2), dp(4));
++            ReactionPreview rp = new ReactionPreview(c, view);
++            rp.setValue(game ? k : 30 + k);
++            cell.addView(rp, new LinearLayout.LayoutParams(dp(92), dp(92)));
++            TextView lab = new TextView(c);
++            lab.setText((game ? "jogo " : "personagem ") + k + "\n" + src.rows + (src.rows == 1 ? " passo" : " passos"));
++            lab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
++            lab.setTextColor(LayoutManager.DIM);
++            lab.setGravity(Gravity.CENTER);
++            cell.addView(lab);
++            cell.setClickable(true);
++            cell.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
++                d3[0].dismiss();
++                fillSlot(pat, value, slot, src, parent);
++            } });
++            row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
++        }
++        if (n == 0) { android.widget.Toast.makeText(c, game ? "A game data não tem reações" : "O personagem não tem outra reação para copiar", android.widget.Toast.LENGTH_SHORT).show(); return; }
++        ScrollView sv = new ScrollView(c);
++        sv.addView(col);
++        d3[0] = new android.app.AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle(game ? "Base: reação do jogo" : "Base: reação do personagem").setView(sv).setNegativeButton("VOLTAR", null).create();
++        d3[0].show();
++        styleDialog(d3[0]);
++    }
++
++    /** Escolhe outro personagem (pastas charNN de assets) e uma reacao dele (lida do 000.bin/000.bin.txt dele) para usar no slot. */
++    private void importReactionFromCharacter(final int pat, final int value, final int slot, final android.app.AlertDialog parent) {
++        AttackData ad = view.attackData();
++        if (ad == null) return;
++        java.io.File root = ad.attacker.dir.getParentFile();
++        java.io.File[] fs = root == null ? null : root.listFiles();
++        final java.util.ArrayList<java.io.File> chars = new java.util.ArrayList<java.io.File>();
++        if (fs != null) for (java.io.File f : fs) if (f.isDirectory() && f.getName().matches("char\\d{2}") && !f.equals(ad.attacker.dir)) chars.add(f);
++        java.util.Collections.sort(chars);
++        if (chars.isEmpty()) { android.widget.Toast.makeText(c, "Nenhum outro personagem em assets", android.widget.Toast.LENGTH_SHORT).show(); return; }
++        String[] names = new String[chars.size()];
++        for (int i = 0; i < names.length; i++) names[i] = chars.get(i).getName();
++        android.app.AlertDialog d4 = new android.app.AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Importar de qual personagem?")
++                .setItems(names, new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int which) { pickImportedReaction(pat, value, slot, parent, chars.get(which)); }
++                }).setNegativeButton("VOLTAR", null).create();
++        d4.show();
++        styleDialog(d4);
++    }
++
++    private void pickImportedReaction(final int pat, final int value, final int slot, final android.app.AlertDialog parent, java.io.File dir) {
++        final CharData other;
++        try { other = ReactionSlots.readChar(dir); }
++        catch (Exception e) { android.widget.Toast.makeText(c, "Erro ao ler " + dir.getName() + ": " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show(); return; }
++        LinearLayout col = new LinearLayout(c);
++        col.setOrientation(LinearLayout.VERTICAL);
++        col.setPadding(dp(6), dp(6), dp(6), dp(6));
++        final android.app.AlertDialog[] d5 = new android.app.AlertDialog[1];
++        int n = 0;
++        for (int k = 0; k < CharData.REACTION_COUNT; k++) {
++            final ReactionTable src = other.reaction(k);
++            if (ReactionSlots.isEmpty(src)) continue;
++            n++;
++            LinearLayout cell = new LinearLayout(c);
++            cell.setOrientation(LinearLayout.VERTICAL);
++            cell.setPadding(dp(8), dp(6), dp(8), dp(6));
++            GradientDrawable g = new GradientDrawable();
++            g.setColor(0xFF1B2029);
++            g.setCornerRadius(dp(6));
++            cell.setBackground(g);
++            TextView t1 = new TextView(c);
++            t1.setText("Reação " + k + " de " + dir.getName());
++            t1.setTextColor(LayoutManager.TEXT);
++            t1.setTypeface(Typeface.DEFAULT_BOLD);
++            t1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++            cell.addView(t1);
++            TextView t2 = new TextView(c);
++            t2.setText(ReactionSlots.summary(src));
++            t2.setTextColor(LayoutManager.DIM);
++            t2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
++            cell.addView(t2);
++            LinearLayout thumbs = new LinearLayout(c);
++            for (int r = 0; r < Math.min(6, src.rows); r++) {              // o ANO da reacao e do oponente (defensor): miniatura do primeiro frame
++                AnimPreview pv = new AnimPreview(c);
++                pv.setFirstFrameOnly(true);
++                int ano = src.s8(r, 2);
++                pv.set(view.opponentDac(), view.opponentSprites(), Math.abs(ano), ano < 0);
++                LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(dp(46), dp(46));
++                tp.setMargins(0, dp(4), dp(4), 0);
++                thumbs.addView(pv, tp);
++            }
++            cell.addView(thumbs);
++            cell.setClickable(true);
++            cell.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
++                d5[0].dismiss();
++                fillSlot(pat, value, slot, src, parent);
++            } });
++            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++            lp.setMargins(0, dp(3), 0, dp(3));
++            col.addView(cell, lp);
++        }
++        if (n == 0) { android.widget.Toast.makeText(c, dir.getName() + " não tem reações do personagem", android.widget.Toast.LENGTH_SHORT).show(); return; }
++        ScrollView sv = new ScrollView(c);
++        sv.addView(col);
++        d5[0] = new android.app.AlertDialog.Builder(c, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Importar de " + dir.getName()).setView(sv).setNegativeButton("VOLTAR", null).create();
++        d5[0].show();
++        styleDialog(d5[0]);
++    }
++
++    /** Grava a copia no slot (desfazivel) e faz o hit apontar para ele. */
++    private void fillSlot(int pat, int value, final int slot, ReactionTable src, android.app.AlertDialog parent) {
++        final ReactionTable copy = src.copy();
++        view.editReaction(slot, new Runnable() { public void run() {
++            ReactionTable t = view.charReaction(slot);
++            if (t != null) t.restoreFrom(copy);
++        } });
++        if (parent != null) parent.dismiss();
++        android.widget.Toast.makeText(c, "Reação do personagem " + slot + " criada (" + copy.rows + (copy.rows == 1 ? " passo" : " passos") + "). Salve para gravar no 000.bin.txt.", android.widget.Toast.LENGTH_LONG).show();
++        applyReaction(pat, Math.max(0, Math.min(4, value / 50)) * 50 + 30 + slot);
++    }
++
+     private Setter optSetter(final int pat, final int field) {
+         return new Setter() { public void set(double v) {
+             Ano a = cur();
+@@ -1382,40 +1912,60 @@
          return false;
      }
  
@@ -6606,7 +6977,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          final Ano pa = view.anoAt(mv.projNormal);
          if (pa != null && pa.present) {
              AnimPreview pv = new AnimPreview(c);
-@@ -1428,53 +1808,71 @@
+@@ -1428,53 +1978,71 @@
              col.addView(btn("✎ EDITAR ANIMACAO", true, new View.OnClickListener() { public void onClick(View v) {
                  if (nav != null) nav.openAno(mv.projNormal, true);
              } }));
@@ -6708,7 +7079,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          projSeqBlock(mv);
          if (focusOn) scrollBodyToEnd();
      }
-@@ -1483,7 +1881,7 @@
+@@ -1483,7 +2051,7 @@
      private void projSeqBlock(final CharData.Move mv) {
          head("Sequência do projétil (SEQ_PROJETIL)");
          note("SEQ_PROJETIL: " + anoText(mv.animAoAcertar));
@@ -6717,7 +7088,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          LinearLayout r = line();
          final boolean any = mv.animAoAcertar != 0;
          r.addView(btn(any ? "✎ Editar SEQ_PROJETIL" : "+ SEQ_PROJETIL", true, new View.OnClickListener() { public void onClick(View v) { projSeqDialog(mv); } }));
-@@ -1497,7 +1895,7 @@
+@@ -1497,7 +2065,7 @@
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
          TextView info = new TextView(c);
@@ -6726,7 +7097,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setTextColor(LayoutManager.DIM);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
          col.addView(info);
-@@ -1515,7 +1913,7 @@
+@@ -1515,7 +2083,7 @@
              pos.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
                  final int val = parse255(e);
                  dlg.dismiss();
@@ -6735,7 +7106,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  show(type, idx, flag, occ);
                  onChanged.run();
              } });
-@@ -1563,7 +1961,7 @@
+@@ -1563,7 +2131,7 @@
          LinearLayout grid = animGrid(dac, view.packSprites(2), 0, dac.size() - 1, "ANO ", mv.projNormal, new AnimPick() { public void on(int ano) {
              chosen[0] = ano;
              dlg[0].dismiss();
@@ -6744,7 +7115,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              show(type, idx, flag, occ);
              onChanged.run();
          } });
-@@ -1716,20 +2114,20 @@
+@@ -1716,20 +2284,20 @@
      private String describe(int f) {
          switch (f) {
              case 3: case 4: case 5: return "Faz o fundo tremer enquanto o objeto existe. Escolha a intensidade.";
@@ -6769,7 +7140,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              case ObjModel.VF_WALL: return "Impacto na parede: toca o som 6, zera o cancelamento do oponente e cria a poeira de impacto na borda da tela. Precisa ter um ataque que jogue o oponente na parede (o jogo ignora o frame se o personagem nao estiver batendo na parede). Disponivel so nas ANOs de reacao do gamedata com velocidade/aceleracao X.";
              default:
                  if (ObjModel.isDust(f)) return "Poeira / fumaca: cria um efeito de fumaca na posicao do personagem (vira para o lado em que ele olha). Escolha o tipo abaixo (1 a 15). Tipos 1-5: pacote bobj ANOs 10-14; 6-7: effect ANOs 78-79; 8-15: effect ANOs 70-77. Cada frame com a flag cria um novo efeito.";
-@@ -1780,6 +2178,8 @@
+@@ -1780,6 +2348,8 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -6778,7 +7149,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
-@@ -1848,10 +2248,10 @@
+@@ -1848,10 +2418,10 @@
          title.setTextColor(TimelineView.markColor(m));
          title.setText(m.title() + "  ·  frame " + (m.pat + 1) + (kind == SeqMark.LAND || kind == SeqMark.FALL ? "" : (m.air ? "  ·  no ar" : "  ·  no chao")) + (m.projectile ? "  ·  projetil" : ""));
          switch (kind) {
@@ -6793,7 +7164,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +2318,7 @@
+@@ -1918,7 +2488,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -8071,8 +8442,8 @@ diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
 +}
 diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 --- a/test/MoveTransplantTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/MoveTransplantTest.java	2026-10-24 10:16:12.429258820 +0000
-@@ -0,0 +1,171 @@
++++ b/test/MoveTransplantTest.java	2026-10-24 11:00:16.550085163 +0000
+@@ -0,0 +1,177 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -8133,7 +8504,8 @@ diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 +            int next = 100;
 +            public int add(int image) { asked.add(Integer.valueOf(image)); return image == 5000 ? -1 : next++; }
 +        };
-+        MoveTransplant.Plan p = MoveTransplant.build(sd, src, m, dd, dst, spr);
++        // so o slot 5 existe no .bin.txt do destino (o 2, vazio, nao tem bloco para receber a tabela)
++        MoveTransplant.Plan p = MoveTransplant.build(sd, src, m, dd, dst, spr, new java.util.TreeSet<Integer>(java.util.Arrays.asList(Integer.valueOf(1), Integer.valueOf(5))));
 +        check("ANOs novos vao para o fim do DAC do destino (8..15)", p.anoMap.toString(), "{10=8, 11=9, 12=10, 13=11, 14=12, 20=13, 21=14, 22=15}");
 +        check("golpe renumerado", p.move.animInicial + ":" + p.move.projNormal + ":" + p.move.animSeqChao + ":" + p.move.animAoAcertar + ":" + p.move.animSeqAr, "8:13:9:10:0");
 +        check("campos que nao sao ANO ficam", p.move.flags, m.flags);
@@ -8176,6 +8548,11 @@ diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
 +        boolean threw = false;
 +        try { MoveTransplant.patchBin(bin.toString(), p, 9, warns); } catch (java.io.IOException e) { threw = true; }
 +        check("golpe sem bloco no .bin.txt do destino: erro", threw, true);
++
++        // slot vazio gravavel e preferido ao cheio sem uso
++        asked.clear();
++        MoveTransplant.Plan pe = MoveTransplant.build(sd, src, m, dd, dst, spr);
++        check("com o slot vazio 2 gravavel, a reacao 2 ocupa o proprio slot vazio (e nao o cheio 5)", pe.reactionMap.toString() + ":" + pe.reactionWrites.keySet(), "{1=1, 2=2}:[2]");
 +
 +        // ---- gravacao: .txt trocados e backup em Tap Battle/TBRE/Backups/
 +        java.io.File tb = new java.io.File(System.getProperty("java.io.tmpdir"), "transplante_test_tapbattle");
@@ -8458,6 +8835,100 @@ diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
 +        check("reacao do choque: 30 ou mais e do personagem (N - 30)", CharData.reactionName(32) + "|" + CharData.reactionName(30) + "|" + CharData.reactionName(0), "do personagem 2|do personagem 0|do jogo 0");
 +
 +        System.out.println("ObjMoveTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/ReactionSlotsTest.java b/test/ReactionSlotsTest.java
+--- a/test/ReactionSlotsTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ReactionSlotsTest.java	2026-10-24 11:02:01.368338126 +0000
+@@ -0,0 +1,90 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.io.File;
++
++/** Slots de reacao do personagem (HDAT 14..33): vazios, copiar/importar, e gravar no 000.bin.txt mesmo sem o bloco $REACAO_DANO_n. */
++public class ReactionSlotsTest {
++    static byte[] bin(byte[][] reactionsByType) throws Exception {
++        byte[][] t = new byte[40][];
++        int[] cols = new int[40], rows = new int[40];
++        for (int i = 0; i < 40; i++) t[i] = new byte[0];
++        byte[] moves = move(new int[]{0, 4}, new int[]{2, 3});
++        t[4] = moves; cols[4] = 48; rows[4] = 1;
++        for (int i = 0; i < reactionsByType.length; i++) {
++            if (reactionsByType[i] == null) continue;
++            t[14 + i] = reactionsByType[i]; cols[14 + i] = 14; rows[14 + i] = reactionsByType[i].length / 14;
++        }
++        return hdat(t, cols, rows);
++    }
++
++    static void del(File f) { File[] k = f.listFiles(); if (k != null) for (File c : k) del(c); f.delete(); }
++
++    public static void main(String[] args) throws Exception {
++        byte[][] rs = new byte[8][];
++        rs[0] = react(new int[]{20, 20, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
++        rs[5] = react(new int[]{6, 6, 3, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}, new int[]{12, 255, -4, -1, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0});
++        CharData cd = chr(move(new int[]{0, 4}, new int[]{2, 3}), rs);
++
++        // ---- vazios e resumo
++        java.util.List<Integer> empty = ReactionSlots.emptySlots(cd);
++        check("slots vazios: 20 - 2 preenchidos", empty.size() + ":" + empty.contains(Integer.valueOf(0)) + ":" + empty.contains(Integer.valueOf(5)) + ":" + empty.contains(Integer.valueOf(19)), "18:false:false:true");
++        check("resumo de um passo", ReactionSlots.summary(cd.reaction(0)), "1 passo · ANO 7 · 0.3s no chão");
++        check("resumo de dois passos (ANO negativo vira positivo; 255 = ate pousar)", ReactionSlots.summary(cd.reaction(5)), "2 passos · ANOs 3, 4 · 0.3s no chão");
++        check("resumo de vazia", ReactionSlots.summary(cd.reaction(3)), "vazia");
++        ReactionTable open = new ReactionTable(react(new int[]{255, 255, 2}), 1);
++        check("duracao 255 no chao = ate pousar", ReactionSlots.summary(open).endsWith("até pousar"), true);
++
++        // ---- em branco e copia
++        ReactionTable bl = ReactionTable.blank();
++        check("em branco: 1 passo, ANO 0, 6 ticks", bl.rows + ":" + bl.s8(0, 2) + ":" + bl.u8(0, 0) + ":" + bl.u8(0, 1) + ":" + bl.u8(0, 11), "1:0:6:6:0");
++        ReactionTable slot = cd.reaction(9);
++        slot.restoreFrom(cd.reaction(5).copy());
++        check("copiar para o slot vazio: mesmas linhas", slot.rows + ":" + slot.s8(1, 2) + ":" + slot.u8(1, 1), "2:-4:255");
++        slot.set(0, 2, 99);
++        check("a copia nao muda a origem", cd.reaction(5).s8(0, 2), 3);
++
++        // ---- gravar no 000.bin.txt
++        ReactionTable two = cd.reaction(5);
++        // a) HDAT em linha unica, ROW 0 e sem o bloco $REACAO_DANO_n
++        String a = "BIN_CNV_ {$COUNT: 43,\n   $HDAT_29:{$info:{$COL: 14, $ROW: 1, $SZ: &0000000E},\n      $REACAO_DANO_15:{\n         $FR_0: {$DUR_C: 1, $DUR_A: 1, $ANO: 1, $XSPEED: 0, $YSPEED: 0, $XACCEL: 0, $YACCEL: 0, $XSPEED_A: 0, $YSPEED_A: 0, $XACCEL_A: 0, $YACCEL_A: 0, $COMP: 0, $WALL: 0, $VOZ: 0},\n      },\n   },\n"
++                + "   $HDAT_30:{$info:{$COL: 0, $ROW: 0, $SZ: &00000000}},\n"
++                + "   $HDAT_31:{$info:{$COL: 14, $ROW: 0, $SZ: &00000000},\n      $REACAO_DANO_17:{\n      },\n   },\n"
++                + "   $HDAT_32:{$info:{$COL: 14, $ROW: 0, $SZ: &00000000},\n   },\n}\n";
++        boolean[] f = new boolean[1];
++        String r1 = Saver.patchReaction(a, two, 16, f);
++        check("slot sem bloco: criado dentro do HDAT_30", f[0] && Saver.findBlock(r1, "REACAO_DANO_16") != null, true);
++        int[] hb = Saver.findBlock(r1, "HDAT_30");
++        String h30 = r1.substring(hb[0], hb[2] + 1);
++        check("info do HDAT_30 corrigida (COL 14, ROW 2, SZ 0x1C)", h30.contains("$COL: 14") && h30.contains("$ROW: 2") && h30.contains("$SZ: &0000001C"), true);
++        check("virgula depois do $info", h30.replaceAll("\\s", "").contains("&0000001C},$REACAO_DANO_16"), true);
++        check("os outros blocos ficam como estavam", Saver.findBlock(r1, "REACAO_DANO_15") != null && r1.contains("$HDAT_31:{$info:{$COL: 14, $ROW: 0"), true);
++        String r2 = Saver.patchReaction(r1, two, 17, f);
++        int[] hb31 = Saver.findBlock(r2, "HDAT_31");
++        check("bloco existente mas vazio: preenchido e ROW 2", f[0] && r2.substring(hb31[0], hb31[2] + 1).contains("$ROW: 2") && r2.substring(hb31[0], hb31[2] + 1).contains("$FR_1"), true);
++        String r3 = Saver.patchReaction(r2, two, 18, f);
++        check("HDAT_32 com info e chaves em linhas separadas", f[0] && Saver.findBlock(r3, "REACAO_DANO_18") != null, true);
++        String r4 = Saver.patchReaction(r3, two, 19, f);
++        check("nem o HDAT_33 existe: nao grava e avisa (found = false), texto igual", !f[0] && r4.equals(r3), true);
++        check("slots gravaveis = HDAT_14+n que existem", Saver.writableReactionSlots(a).toString(), "[15, 16, 17, 18]");
++        String r5 = Saver.patchReaction(a, bl, 15, f);
++        check("bloco existente continua sendo trocado (regressao)", f[0] && r5.contains("$DUR_C: 6") && r5.indexOf("$FR_0") == r5.lastIndexOf("$FR_0"), true);
++
++        // ---- ida e volta: o app le de volta o que gravou (applyBinTxt)
++        File tmp = new File(System.getProperty("java.io.tmpdir"), "reaction_slots_test");
++        del(tmp);
++        File dir = new File(tmp, "assets/char07");
++        dir.mkdirs();
++        java.nio.file.Files.write(new File(dir, "000.bin").toPath(), bin(rs));
++        Saver.write(new File(dir, "000.bin.txt"), r3);
++        CharData back = ReactionSlots.readChar(dir);
++        ReactionTable b16 = back.reaction(16);
++        check("importar de outro personagem: o slot que estava vazio no .bin vem do .bin.txt", b16.rows + ":" + b16.s8(1, 2) + ":" + b16.u8(1, 1), "2:-4:255");
++        check("os preenchidos do .bin continuam", back.reaction(0).rows == 1 && back.reaction(5).rows == 2, true);
++        check("e os vazios sem bloco continuam vazios", ReactionSlots.isEmpty(back.reaction(19)) && ReactionSlots.isEmpty(back.reaction(3)), true);
++        del(tmp);
++
++        System.out.println("ReactionSlotsTest fails=" + BattleTest.fails);
 +    }
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
