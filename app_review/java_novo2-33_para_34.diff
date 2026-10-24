@@ -2862,7 +2862,7 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 11:10:29.847130141 +0000
++++ b/HelpText.java	2026-10-24 17:19:34.803623180 +0000
 @@ -0,0 +1,172 @@
 +package com.zue.attackeditor;
 +
@@ -2900,7 +2900,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        List<Section> s = new ArrayList<Section>();
 +        s.add(new Section(ToolbarOrder.SAVE, "SALVAR",
 +                "Grava as edições em .txt: o golpe atual (HDAT 4 + os ANOs dele), só o ANO atual, todos os golpes, todos os ANOs ou tudo. "
-+                + "Dá para salvar numa pasta separada (Tap Battle/TBRE/Chars/charNN/, não mexe no original) ou sobrescrever os .txt do Runtime (Tap Battle/assets/charNN/). "
++                + "Dá para salvar numa pasta separada ou sobrescrever os .txt do Runtime (Tap Battle/assets/charNN/). A pasta separada (Tap Battle/TBRE/Chars/charNN/) é uma cópia COMPLETA do personagem (DAC, BIN, CNV, folhas, sons) com a mesma gravação do Runtime aplicada nela: fica pronta para usar, e o original não muda; se a pasta já existe o app pergunta se une (mantém o que já está lá e aplica por cima), deleta e copia de novo ou usa outro nome. "
 +                + "Em \"Salvar golpe atual\" há ainda \"Salvar em outro personagem (Runtime)\": escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele, com cópia dos .txt dele em Tap Battle/TBRE/Backups/: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot livre. Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. "
 +                + "Ao salvar, o app confere os limites do jogo (hitboxes por frame, links, tempo...) e avisa o que faria o jogo fechar."));
 +        s.add(new Section(ToolbarOrder.CHAR, "CHAR",
@@ -3142,7 +3142,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 10:59:58.829912193 +0000
++++ b/LayoutManager.java	2026-10-24 17:18:44.400385478 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3496,7 +3496,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -896,11 +1085,17 @@
+@@ -896,20 +1085,25 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -3517,19 +3517,125 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }).setNegativeButton("VOLTAR", null).show();
      }
  
-@@ -943,7 +1138,7 @@
-             else {
-                 StringBuilder sb = new StringBuilder();
-                 for (File f : Saver.saveAll(dir, dac, cd)) sb.append(f.getName()).append("  ");
--                msg = new File(dir, Saver.DIR).getPath() + "/  (" + sb.toString().trim() + ")";
-+                msg = Saver.dirOf(dir).getPath() + "/  (" + sb.toString().trim() + ")";
+     /** Chamado antes de gravar (ex.: desfaz o frame provisorio de uma ANO vazia que ninguem editou). */
+     public Runnable beforeSave;
+ 
+-    private void doSave(Activity a, AttackView view, AttackData d, int which, boolean runtime) {
++    private void doSave(final Activity a, AttackView view, final AttackData d, final int which, boolean runtime) {
+         if (beforeSave != null) beforeSave.run();
+-        String msg;
+         try {
+             File dir = d.attacker.dir;
+             Dac dac = d.attacker.dac;
+@@ -923,34 +1117,235 @@
+                 idx = java.util.Arrays.asList(cd.moves).indexOf(own);
              }
-             android.widget.Toast.makeText(a, "Salvo: " + msg, android.widget.Toast.LENGTH_LONG).show();
+             Ano cur = view.currentAno();
+-            int ai = cur != null ? cur.index : d.move.animInicial;
+-            java.util.ArrayList<Integer> allM = new java.util.ArrayList<Integer>();
+-            for (int i = 0; i < cd.moves.length; i++) allM.add(Integer.valueOf(i));
+-            java.util.ArrayList<Integer> allA = new java.util.ArrayList<Integer>();
+-            for (int i = 0; i < dac.size(); i++) { Ano an = dac.getAno(i); if (an != null && an.present) allA.add(Integer.valueOf(i)); }
++            final int ai = cur != null ? cur.index : d.move.animInicial;
++            final int mi = idx;
+             if (runtime) {
+-                String r;
+-                if (which == 0) r = Saver.saveRuntime(dir, dac, cd, null, java.util.Collections.singletonList(Integer.valueOf(idx)), false);
+-                else if (which == 1) r = Saver.saveRuntime(dir, dac, cd, java.util.Collections.singletonList(Integer.valueOf(ai)), null, false);
+-                else if (which == 2) r = Saver.saveRuntime(dir, dac, cd, null, allM, true);
+-                else if (which == 3) r = Saver.saveRuntime(dir, dac, cd, allA, null, false);
+-                else r = Saver.saveRuntime(dir, dac, cd, allA, allM, true);
+-                msg = "Runtime: " + r;
+-            } else if (which == 0) msg = Saver.saveMove(dir, dac, cd, m, idx).getPath();
+-            else if (which == 1) msg = Saver.saveAno(dir, dac, ai).getPath();
+-            else if (which == 2) msg = Saver.saveAllMoves(dir, dac, cd).getPath();
+-            else if (which == 3) msg = Saver.saveAllAnos(dir, dac).getPath();
+-            else {
+-                StringBuilder sb = new StringBuilder();
+-                for (File f : Saver.saveAll(dir, dac, cd)) sb.append(f.getName()).append("  ");
+-                msg = new File(dir, Saver.DIR).getPath() + "/  (" + sb.toString().trim() + ")";
++                android.widget.Toast.makeText(a, "Salvo no Runtime: " + Saver.saveInto(dir, dac, cd, which, mi, ai), android.widget.Toast.LENGTH_LONG).show();
++                return;
+             }
+-            android.widget.Toast.makeText(a, "Salvo: " + msg, android.widget.Toast.LENGTH_LONG).show();
++            // pasta separada: copia completa do personagem em Tap Battle/TBRE/Chars/charNN e a mesma gravacao do Runtime nela
++            final File dest = Saver.separateDir(dir, dir.getName());
++            if (!dest.exists()) { runSeparateSave(a, d, which, mi, ai, dest, false); return; }
++            askExistingCopy(a, d, which, mi, ai, dest);
          } catch (Exception e) {
-@@ -951,6 +1146,151 @@
+             android.widget.Toast.makeText(a, "Erro ao salvar: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
          }
      }
  
++    /** A pasta separada ja existe: unir (aplica por cima, sem sobrescrever o que ja esta la), deletar e copiar de novo, ou salvar com outro nome. */
++    private void askExistingCopy(final Activity a, final AttackData d, final int which, final int mi, final int ai, final File dest) {
++        final File dir = d.attacker.dir;
++        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("A pasta já existe")
++                .setMessage(dest.getPath() + "\n\nUNIR: mantém os arquivos que já estão lá, copia só o que falta e aplica este salvamento por cima (o que você salvou antes continua).\n"
++                        + "DELETAR: apaga a pasta e copia o personagem de novo.\nOUTRO NOME: salva numa pasta nova.")
++                .setPositiveButton("UNIR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int w) { runSeparateSave(a, d, which, mi, ai, dest, true); }
++                })
++                .setNeutralButton("DELETAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int w) {
++                        try {
++                            if (!Saver.isSeparateCopy(dest)) throw new java.io.IOException("so apago pastas dentro de TBRE/Chars");
++                            Saver.deleteTree(dest);
++                        } catch (Exception e) { android.widget.Toast.makeText(a, "Erro ao apagar: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show(); return; }
++                        runSeparateSave(a, d, which, mi, ai, dest, false);
++                    }
++                })
++                .setNegativeButton("OUTRO NOME", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int w) { askNewName(a, d, which, mi, ai, Saver.freeName(dir, dir.getName())); }
++                }).show();
++    }
++
++    private void askNewName(final Activity a, final AttackData d, final int which, final int mi, final int ai, String suggestion) {
++        final android.widget.EditText et = new android.widget.EditText(a);
++        et.setText(suggestion);
++        et.setSingleLine(true);
++        et.setSelectAllOnFocus(true);
++        et.setTextColor(TEXT);
++        LinearLayout box = new LinearLayout(a);
++        box.setPadding(dp(16), dp(8), dp(16), dp(4));
++        box.addView(et, new LinearLayout.LayoutParams(-1, -2));
++        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Nome da pasta em TBRE/Chars").setView(box)
++                .setPositiveButton("SALVAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int w) {
++                        String name = et.getText().toString().trim().replaceAll("[^A-Za-z0-9_.\\- ]", "_");
++                        if (name.isEmpty() || name.equals(".") || name.equals("..")) { android.widget.Toast.makeText(a, "Nome inválido", android.widget.Toast.LENGTH_SHORT).show(); return; }
++                        File dest = Saver.separateDir(d.attacker.dir, name);
++                        if (dest.exists()) askExistingCopy(a, d, which, mi, ai, dest); else runSeparateSave(a, d, which, mi, ai, dest, false);
++                    }
++                }).setNegativeButton("CANCELAR", null).show();
++    }
++
++    private void runSeparateSave(final Activity a, final AttackData d, final int which, final int mi, final int ai, final File dest, final boolean merge) {
++        final BusyDialog bd = BusyDialog.show(a, "Salvando em " + dest.getName());
++        bd.set("Copiando o personagem...", 0, 0);
++        new Thread(new Runnable() { @Override public void run() {
++            String out;
++            try {
++                Saver.copyChar(d.attacker.dir, dest, merge, new Saver.CopyProgress() {
++                    @Override public void on(String file, int done, int total) { bd.set(file, done, total); }
++                });
++                bd.set("Aplicando as mudanças...", 0, 0);
++                out = "Cópia completa pronta para o Runtime em:\n" + dest.getPath() + "/\n\n" + Saver.saveInto(dest, d.attacker.dac, d.attacker.data, which, mi, ai);
++            } catch (Exception e) {
++                out = "Erro ao salvar em " + dest.getPath() + ": " + e.getMessage();
++            }
++            final String text = out;
++            bd.dismiss();
++            a.runOnUiThread(new Runnable() { @Override public void run() {
++                TextView tv = text(a, text, 13, TEXT);
++                tv.setPadding(dp(16), dp(8), dp(16), dp(8));
++                android.widget.ScrollView sv = new android.widget.ScrollView(a);
++                sv.addView(tv);
++                new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Salvar em pasta separada").setView(sv).setPositiveButton("OK", null).show();
++            } });
++        } }).start();
++    }
++
 +    // ---- salvar este golpe em outro personagem ----
 +
 +    /** Escolhe o personagem de destino (as pastas charNN de assets, menos o atual), depois o golpe a substituir, e grava direto no Runtime dele. */
@@ -3678,7 +3784,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -1045,22 +1385,49 @@
+@@ -1045,22 +1440,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3738,7 +3844,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1602,7 @@
+@@ -1235,7 +1657,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -3747,7 +3853,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String note = "Arraste o atacante (azul) e o oponente (vermelho). As linhas sao as posicoes do jogo e o personagem gruda nelas."
                  + (PosPresets.fromGame(gd) ? " LONGE = medio + (medio - perto): o jogo so guarda perto e medio."
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
-@@ -1294,14 +1661,14 @@
+@@ -1294,14 +1716,14 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -6189,7 +6295,7 @@ diff -ruN a/ReorderBar.java b/ReorderBar.java
 +}
 diff -ruN a/Saver.java b/Saver.java
 --- a/Saver.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/Saver.java	2026-10-24 10:59:33.249782714 +0000
++++ b/Saver.java	2026-10-24 17:18:44.398728852 +0000
 @@ -13,22 +13,33 @@
  
  /**
@@ -6352,7 +6458,7 @@ diff -ruN a/Saver.java b/Saver.java
          sb.append(DacText.move(m, idx)).append("\n\n");
          TreeSet<Integer> rs = reactionsUsed(dac, anos);
          if (!rs.isEmpty()) {
-@@ -288,8 +340,16 @@
+@@ -288,12 +340,111 @@
  
      // ---- gravacao ----
  
@@ -6370,7 +6476,102 @@ diff -ruN a/Saver.java b/Saver.java
          d.mkdirs();
          return d;
      }
-@@ -321,7 +381,7 @@
+ 
++    // ---- salvar em pasta separada: copia completa do personagem + a mesma gravacao do Runtime ----
++
++    /** Progresso da copia: arquivo atual e quantos ja foram, de quantos. */
++    interface CopyProgress { void on(String file, int done, int total); }
++
++    /** Pasta separada do personagem: Tap Battle/TBRE/Chars/{@code name}/ (nao cria). */
++    static File separateDir(File charDir, String name) { return new File(new File(tbreRoot(charDir), "Chars"), name); }
++
++    /** Primeiro nome livre em TBRE/Chars: base_2, base_3... */
++    static String freeName(File charDir, String base) {
++        File chars = new File(tbreRoot(charDir), "Chars");
++        for (int i = 2; i < 10000; i++) if (!new File(chars, base + "_" + i).exists()) return base + "_" + i;
++        return base + "_" + System.currentTimeMillis();
++    }
++
++    /** So apaga pastas dentro de TBRE/Chars (nunca assets nem o proprio Chars). */
++    static boolean isSeparateCopy(File dir) {
++        File p = dir.getAbsoluteFile().getParentFile(), gp = p == null ? null : p.getParentFile();
++        return p != null && gp != null && p.getName().equals("Chars") && gp.getName().equals(TBRE);
++    }
++
++    static void deleteTree(File f) throws IOException {
++        File[] k = f.listFiles();
++        if (k != null) for (File c : k) deleteTree(c);
++        if (f.exists() && !f.delete()) throw new IOException("nao consegui apagar " + f.getPath());
++    }
++
++    private static int countFiles(File dir) {
++        int n = 0;
++        File[] k = dir.listFiles();
++        if (k != null) for (File c : k) n += c.isDirectory() ? (c.getName().equals("salvos") ? 0 : countFiles(c)) : 1;
++        return n;
++    }
++
++    /**
++     * Copia o personagem inteiro (arquivos e subpastas, menos a velha pasta salvos/) de {@code src} para {@code dst}. {@code merge}: o que ja existe em
++     * {@code dst} fica como esta (une as duas pastas); sem merge sobrescreve.
++     */
++    static void copyChar(File src, File dst, boolean merge, CopyProgress prog) throws IOException {
++        int[] done = {0};
++        int total = countFiles(src);
++        copyTree(src, dst, merge, prog, done, total);
++    }
++
++    private static void copyTree(File src, File dst, boolean merge, CopyProgress prog, int[] done, int total) throws IOException {
++        if (!dst.isDirectory() && !dst.mkdirs()) throw new IOException("nao consegui criar " + dst.getPath());
++        File[] kids = src.listFiles();
++        if (kids == null) return;
++        java.util.Arrays.sort(kids);
++        for (File k : kids) {
++            File to = new File(dst, k.getName());
++            if (k.isDirectory()) {
++                if (k.getName().equals("salvos")) continue;
++                copyTree(k, to, merge, prog, done, total);
++                continue;
++            }
++            if (!(merge && to.exists())) {
++                File tmp = new File(to.getPath() + ".tmp");
++                java.io.FileInputStream in = new java.io.FileInputStream(k);
++                try {
++                    FileOutputStream out = new FileOutputStream(tmp);
++                    try {
++                        byte[] buf = new byte[65536];
++                        int n;
++                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
++                    } finally { out.close(); }
++                } finally { in.close(); }
++                if (to.exists() && !to.delete()) throw new IOException("nao consegui substituir " + to.getPath());
++                if (!tmp.renameTo(to)) throw new IOException("nao consegui gravar " + to.getPath());
++            }
++            done[0]++;
++            if (prog != null) prog.on(k.getName(), done[0], total);
++        }
++    }
++
++    /**
++     * As 5 formas de salvar do menu aplicadas a uma pasta de personagem (o Runtime ou uma copia): 0 golpe {@code moveIdx}, 1 ANO {@code anoIdx},
++     * 2 todos os golpes (com todas as reacoes), 3 todos os ANOs, 4 tudo. Devolve o resumo de {@link #saveRuntime}.
++     */
++    static String saveInto(File dir, Dac dac, CharData cd, int which, int moveIdx, int anoIdx) throws IOException {
++        java.util.ArrayList<Integer> allM = new java.util.ArrayList<Integer>();
++        for (int i = 0; i < cd.moves.length; i++) allM.add(Integer.valueOf(i));
++        java.util.ArrayList<Integer> allA = new java.util.ArrayList<Integer>();
++        for (int i = 0; i < dac.size(); i++) { Ano an = dac.getAno(i); if (an != null && an.present) allA.add(Integer.valueOf(i)); }
++        if (which == 0) return saveRuntime(dir, dac, cd, null, Collections.singletonList(Integer.valueOf(moveIdx)), false);
++        if (which == 1) return saveRuntime(dir, dac, cd, Collections.singletonList(Integer.valueOf(anoIdx)), null, false);
++        if (which == 2) return saveRuntime(dir, dac, cd, null, allM, true);
++        if (which == 3) return saveRuntime(dir, dac, cd, allA, null, false);
++        return saveRuntime(dir, dac, cd, allA, allM, true);
++    }
++
+     static void write(File f, String text) throws IOException {
+         Writer w = new OutputStreamWriter(new FileOutputStream(f), "UTF-8");
+         try { w.write(text); } finally { w.close(); }
+@@ -321,7 +472,7 @@
          return f;
      }
  
@@ -10318,6 +10519,87 @@ diff -ruN a/test/ReactionTraceTest.java b/test/ReactionTraceTest.java
 +        check("remover o passo 0", t.rows + ":" + t.u8(0, 2) + t.u8(1, 2) + t.u8(2, 2), "3:223");
 +
 +        System.out.println("ReactionTraceTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/SaverCopyTest.java b/test/SaverCopyTest.java
+--- a/test/SaverCopyTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/SaverCopyTest.java	2026-10-24 17:19:34.789945894 +0000
+@@ -0,0 +1,77 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.io.File;
++
++/** Salvar em pasta separada: copia completa do personagem para Tap Battle/TBRE/Chars e a mesma gravacao do Runtime na copia. */
++public class SaverCopyTest {
++    static void put(File f, String text) throws Exception { f.getParentFile().mkdirs(); Saver.write(f, text); }
++
++    public static void main(String[] args) throws Exception {
++        File tb = new File(System.getProperty("java.io.tmpdir"), "savercopy_test_tapbattle");
++        Saver.deleteTree(tb);
++        File src = new File(tb, "assets/char03");
++        A[] anos = new A[6];
++        for (int i = 0; i < 6; i++) anos[i] = new A().mpt(new M().time(5).img(1));
++        Dac dac = dac(anos);
++        CharData cd = chr(move(new int[]{0, 4}, new int[]{2, 3}), new byte[][] {});
++        put(new File(src, "000.dac.txt"), Saver.dacText(dac, null));
++        put(new File(src, "000.bin.txt"), "BIN_CNV_ {\n" + DacText.move(cd.moves[0], 0) + "\n}\n");
++        put(new File(src, "000.cnv.txt"), "CNV_TXT_ {\n}\n");
++        put(new File(src, "000.dac"), "binario");
++        put(new File(src, "000.png"), "folha");
++        put(new File(src, "sons/001.wav"), "wav1");
++        put(new File(src, "salvos/velho.txt"), "arquivo da pasta antiga");
++        String dac0 = Saver.readText(new File(src, "000.dac.txt")), bin0 = Saver.readText(new File(src, "000.bin.txt"));
++
++        File dst = Saver.separateDir(src, src.getName());
++        check("pasta separada = Tap Battle/TBRE/Chars/char03", dst.getPath().endsWith("savercopy_test_tapbattle/TBRE/Chars/char03"), true);
++        final int[] last = new int[2];
++        Saver.copyChar(src, dst, false, new Saver.CopyProgress() { public void on(String f, int done, int total) { last[0] = done; last[1] = total; } });
++        check("copia completa: txt, binario, folha e subpasta", new File(dst, "000.dac.txt").isFile() && new File(dst, "000.bin.txt").isFile() && new File(dst, "000.dac").isFile()
++                && new File(dst, "000.png").isFile() && new File(dst, "sons/001.wav").isFile() && new File(dst, "000.cnv.txt").isFile(), true);
++        check("a velha pasta salvos/ nao vai", new File(dst, "salvos").exists(), false);
++        check("progresso chegou ao fim (6 arquivos, sem o de salvos/)", last[0] + "/" + last[1], "6/6");
++        check("conteudo igual", Saver.readText(new File(dst, "000.png")).equals("folha") && Saver.readText(new File(dst, "sons/001.wav")).equals("wav1"), true);
++
++        // salvar golpe 0 na copia: altera o golpe do HDAT 4 e nao toca no original
++        cd.moves[0].animInicial = 4;
++        String r = Saver.saveInto(dst, dac, cd, 0, 0, 0);
++        String binCopy = Saver.readText(new File(dst, "000.bin.txt"));
++        check("a copia recebeu o golpe editado", binCopy.replaceAll("\\s", "").contains("$ANIM_INICIAL:4,"), true);
++        check("o original continua igual", Saver.readText(new File(src, "000.bin.txt")).equals(bin0) && Saver.readText(new File(src, "000.dac.txt")).equals(dac0), true);
++        check("resumo do salvamento", r.contains("1 golpe(s)"), true);
++
++        // ANO: edita o ANO 2 em memoria e salva so ele
++        Ano a2 = dac.getAno(2);
++        Ano.Mpt[] m2 = a2.mpts.clone();
++        m2[0] = m2[0].copy();
++        m2[0].time = 77;
++        dac.setAno(2, new Ano(2, true, a2.flags, a2.priority, a2.links, m2));
++        String r2 = Saver.saveInto(dst, dac, cd, 1, 0, 2);
++        check("salvar ANO 2 na copia", Saver.readText(new File(dst, "000.dac.txt")).contains("$TIME: 77") && !Saver.readText(new File(src, "000.dac.txt")).contains("$TIME: 77") && r2.contains("1 ANO(s)"), true);
++        String all = Saver.saveInto(dst, dac, cd, 4, 0, 0);
++        check("salvar tudo na copia", all.contains("6 ANO(s)") && all.contains("golpe(s)"), true);
++
++        // unir: nao sobrescreve o que ja esta na copia, so acrescenta o que falta
++        put(new File(dst, "000.png"), "folha editada na copia");
++        new File(dst, "sons/001.wav").delete();
++        Saver.copyChar(src, dst, true, null);
++        check("unir: arquivo existente fica como esta", Saver.readText(new File(dst, "000.png")), "folha editada na copia");
++        check("unir: arquivo que faltava volta", new File(dst, "sons/001.wav").isFile(), true);
++        Saver.copyChar(src, dst, false, null);
++        check("sem unir: sobrescreve", Saver.readText(new File(dst, "000.png")), "folha");
++
++        // outro nome e delecao segura
++        check("nome livre: char03_2, depois char03_3", Saver.freeName(src, "char03"), "char03_2");
++        new File(Saver.separateDir(src, "char03_2"), "x").mkdirs();
++        check("nome livre pula o existente", Saver.freeName(src, "char03"), "char03_3");
++        check("so pastas dentro de TBRE/Chars podem ser apagadas", Saver.isSeparateCopy(dst) + ":" + Saver.isSeparateCopy(src) + ":" + Saver.isSeparateCopy(new File(tb, "TBRE/Chars")), "true:false:false");
++        Saver.deleteTree(dst);
++        check("deletar a copia", dst.exists() + ":" + src.exists(), "false:true");
++
++        Saver.deleteTree(tb);
++        System.out.println("SaverCopyTest fails=" + BattleTest.fails);
 +    }
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
