@@ -1,7 +1,7 @@
 diff -ruN a/AiHelp.java b/AiHelp.java
 --- a/AiHelp.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelp.java	2026-10-24 22:16:53.697509793 +0000
-@@ -0,0 +1,175 @@
++++ b/AiHelp.java	2026-10-24 22:23:41.568778628 +0000
+@@ -0,0 +1,183 @@
 +package com.zue.attackeditor;
 +
 +import java.util.List;
@@ -93,6 +93,14 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +        "Unknown (offset 44): keep the value of an existing move.",
 +        "Unknown (offset 46): keep the value of an existing move.",
 +    };
++
++    /** Texto que acompanha o arquivo no compartilhamento, no idioma da interface (o TBRHelp.md em si nao muda). */
++    static String shareMessage() {
++        return I18n.tr("Leia este arquivo (" + FILE_NAME + "): ele descreve o app Attack Editor. Depois responda às minhas perguntas sobre como criar e editar ataques.");
++    }
++
++    /** Titulo da janela de compartilhamento, no idioma da interface. */
++    static String chooserTitle() { return I18n.tr("Enviar " + FILE_NAME + " para uma IA"); }
 +
 +    /** Byte dentro do registro de 48 bytes do HDAT 4, na ordem de {@link DacText#MOVE_KEYS} (igual ao leitor de CharData). */
 +    static final int[] MOVE_BYTE = {0, 2, 4, 34, 36, 38, 6, 40, 26, 28, 30, 18, 20, 42, 32, 10, 12, 14, 16, 8, 22, 24, 44, 46};
@@ -1011,7 +1019,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +}
 diff -ruN a/AiHelpShare.java b/AiHelpShare.java
 --- a/AiHelpShare.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpShare.java	2026-10-24 21:48:19.977745746 +0000
++++ b/AiHelpShare.java	2026-10-24 22:23:41.569032233 +0000
 @@ -0,0 +1,80 @@
 +package com.zue.attackeditor;
 +
@@ -1082,11 +1090,11 @@ diff -ruN a/AiHelpShare.java b/AiHelpShare.java
 +        send.setType("text/plain");
 +        send.putExtra(Intent.EXTRA_STREAM, uri);
 +        send.putExtra(Intent.EXTRA_SUBJECT, AiHelp.FILE_NAME);
-+        send.putExtra(Intent.EXTRA_TEXT, "Leia este arquivo (" + AiHelp.FILE_NAME + "): ele descreve o app Attack Editor. Depois responda às minhas perguntas sobre como criar e editar ataques.");
++        send.putExtra(Intent.EXTRA_TEXT, AiHelp.shareMessage());
 +        send.setClipData(ClipData.newRawUri(AiHelp.FILE_NAME, uri));
 +        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 +        try {
-+            a.startActivity(Intent.createChooser(send, "Enviar " + AiHelp.FILE_NAME + " para uma IA"));
++            a.startActivity(Intent.createChooser(send, AiHelp.chooserTitle()));
 +            I18nUi.toast(a, AiHelp.FILE_NAME + " salvo em Download/ (" + f.length() / 1024 + " KB)", Toast.LENGTH_SHORT).show();
 +        } catch (Exception e) {
 +            I18nUi.toast(a, AiHelp.FILE_NAME + " criado em Download/. Não achei app para compartilhar: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -4209,8 +4217,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpScreen.java b/HelpScreen.java
 --- a/HelpScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpScreen.java	2026-10-24 21:48:56.249101834 +0000
-@@ -0,0 +1,237 @@
++++ b/HelpScreen.java	2026-10-24 22:22:42.303290896 +0000
+@@ -0,0 +1,251 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Dialog;
@@ -4238,6 +4246,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +    private final float d;
 +    private final Runnable resetToolbar;
 +    private Dialog dlg;
++    private LinearLayout root;
 +    private LinearLayout body;
 +    private ScrollView sv;
 +    private EditText search;
@@ -4259,7 +4268,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +            }
 +        };
 +        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
-+        LinearLayout root = new LinearLayout(c);
++        root = new LinearLayout(c);
 +        root.setOrientation(LinearLayout.VERTICAL);
 +        root.setBackgroundColor(LayoutManager.BG);
 +        root.setPadding(dp(10), dp(26), dp(10), dp(8));
@@ -4274,12 +4283,20 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
 +        titleView.setPadding(dp(6), 0, 0, 0);
 +        head.addView(titleView, new LinearLayout.LayoutParams(0, -2, 1f));
++        final TextView lang = btn(I18n.code(), false, new View.OnClickListener() { public void onClick(View v) {
++            I18nUi.cycle(c);                       // grava a escolha, atualiza o botao da tela principal e retraduz a activity
++            I18nUi.retranslate(root);
++            applyHint();
++            render();
++        } });
++        I18nUi.registerLang(lang);
++        head.addView(lang);
 +        head.addView(btn("Ajuda de IA", false, new View.OnClickListener() { public void onClick(View v) { aiHelp(); } }));
 +        head.addView(btn("FECHAR", true, new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }));
 +        root.addView(head);
 +
 +        search = new EditText(c);
-+        search.setHint(I18n.tr("Buscar na ajuda (ex.: speed, SEQ, reação, bit 64)"));
++        applyHint();
 +        search.setHintTextColor(LayoutManager.DIM);
 +        search.setTextColor(LayoutManager.TEXT);
 +        search.setSingleLine(true);
@@ -4301,6 +4318,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +        dlg.show();
 +        render();
 +    }
++
++    private void applyHint() { search.setHint(I18n.tr("Buscar na ajuda (ex.: speed, SEQ, reação, bit 64)")); }
 +
 +    private void render() {
 +        body.removeAllViews();
@@ -4408,7 +4427,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +        box.addView(text(s.title, LayoutManager.TEXT, 15, true));
 +        // na busca, os textos mostram so o trecho que bateu; as abas e a leitura do capitulo mostram tudo
 +        boolean excerpt = chapterTitle != null && !s.tab && snippet != null && snippet.length() > 0;
-+        TextView b = text(excerpt ? snippet : s.body, 0xFFC4C9D4, 13, false);
++        TextView b = text(excerpt ? snippet : s.body, 0xFFC4C9D4, 13, false, excerpt);   // o trecho ja vem no idioma atual
 +        b.setLineSpacing(0f, 1.15f);
 +        box.addView(b);
 +        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
@@ -4417,8 +4436,11 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +        return box;
 +    }
 +
-+    private TextView text(String s, int color, int sp, boolean bold) {
-+        TextView t = new I18nTextView(c);
++    private TextView text(String s, int color, int sp, boolean bold) { return text(s, color, sp, bold, false); }
++
++    private TextView text(String s, int color, int sp, boolean bold, boolean noTr) {
++        I18nTextView t = new I18nTextView(c);
++        if (noTr) t.noTranslate();
 +        t.setText(s);
 +        t.setTextColor(color);
 +        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
@@ -4450,8 +4472,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 22:15:49.121705061 +0000
-@@ -0,0 +1,602 @@
++++ b/HelpText.java	2026-10-24 22:25:19.985832560 +0000
+@@ -0,0 +1,623 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -4629,7 +4651,10 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "4) Ajuste: as mudanças aparecem na preview na hora. 5) APLICAR mantém o que você fez e fecha a gaveta; ✕ fecha primeiro a página aberta e, se a gaveta já está na grade, descarta o que não foi aplicado (a mensagem avisa). "
 +                + "6) DESFAZER volta a última edição. 7) SALVAR grava (veja o capítulo Salvar e backups).");
 +        inicio.add("Barra de título",
-+                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube) e o botão AJUDA, à direita, que abre esta tela.");
++                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube), o botão de idioma (PT / EN / ES) e o botão AJUDA, à direita, que abre esta tela.");
++        inicio.add("Idioma da interface",
++                "O botão PT / EN / ES (ao lado do AJUDA e também no topo desta tela) troca o idioma do app na hora: PT é o português, EN o inglês e ES o espanhol latino. Traduz botões, menus, avisos, esta ajuda e a busca (dá para buscar em qualquer um dos três). Nada se perde: as telas abertas são retraduzidas no lugar e a escolha fica salva no aparelho. "
++                + "Termos sem idioma (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END e os nomes dos campos) não mudam, e os arquivos e os dados do golpe também não. O TBRHelp.md é o mesmo em qualquer idioma; só a mensagem que acompanha o arquivo no compartilhar muda. Textos que o app monta na hora e ainda não têm tradução aparecem em português.");
 +        inicio.add("MODO: GOLPES / ANO",
 +                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. "
 +                + "Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO.");
@@ -4899,21 +4924,21 @@ diff -ruN a/HelpText.java b/HelpText.java
 +
 +    /** Grupos de palavras relacionadas: quem busca uma acha as outras (com peso menor). Tudo normalizado. */
 +    private static final String[][] SYNONYMS = {
-+        {"speed", "velocidade", "dash", "mover", "movimento", "andar", "correr", "deslocar", "deslocamento", "pixels", "px", "avanco", "recuo", "impulso", "pulo", "salto"},
-+        {"accel", "aceleracao", "acelerar", "gravidade", "queda", "freio", "frear", "desacelerar"},
-+        {"hitbox", "hurtbox", "caixa", "caixas", "ataque", "dano", "alcance", "colisao", "box"},
-+        {"reacao", "reacoes", "knockback", "empurrao", "empurrar", "hitstun", "stun", "atordoamento", "lancamento"},
-+        {"sequencia", "seq", "combo", "transicao", "cancel", "cancelar", "encadear", "encadeamento", "fluxo"},
-+        {"projetil", "projeteis", "tiro", "bala", "fireball", "bullet", "ramificacao", "ramo", "arvore", "perseguicao"},
-+        {"som", "audio", "sfx", "wav", "voz", "musica", "sons"},
-+        {"salvar", "save", "gravar", "backup", "copia", "exportar", "runtime", "pasta"},
-+        {"imagem", "sprite", "sprites", "recorte", "cnv", "png", "folha", "thumb"},
-+        {"tempo", "duracao", "ticks", "tick", "frames", "frame", "time"},
-+        {"camera", "zoom", "tela", "tremor", "shake", "cutscene", "cena", "cenas"},
-+        {"link", "links", "filho", "aura", "sincronia"},
-+        {"limite", "limites", "maximo", "aviso", "avisos", "erro", "crash", "alerta"},
-+        {"pouso", "chao", "aterrissar", "cair"},
-+        {"flip", "virar", "espelhar", "espelhado", "inverter", "rotacao"},
++        {"speed", "velocidade", "dash", "mover", "movimento", "andar", "correr", "deslocar", "deslocamento", "pixels", "px", "avanco", "recuo", "impulso", "pulo", "salto", "velocity", "walk", "run", "displacement", "recoil", "jump", "leap", "caminar", "desplazar", "desplazamiento", "pixeles", "retroceso", "velocidad"},
++        {"accel", "aceleracao", "acelerar", "gravidade", "queda", "freio", "frear", "desacelerar", "acceleration", "accelerate", "brake", "gravity", "fall", "aceleracion", "gravedad", "caida", "freno", "frenar"},
++        {"hitbox", "hurtbox", "caixa", "caixas", "ataque", "dano", "alcance", "colisao", "box", "damage", "reach", "collision", "cajas", "ataque", "dano", "alcance", "colision"},
++        {"reacao", "reacoes", "knockback", "empurrao", "empurrar", "hitstun", "stun", "atordoamento", "lancamento", "reaction", "reactions", "pushback", "launch", "reacciones", "empuje", "aturdimiento", "lanzamiento"},
++        {"sequencia", "seq", "combo", "transicao", "cancel", "cancelar", "encadear", "encadeamento", "fluxo", "sequence", "chain", "transition", "flow", "secuencia", "encadenar", "transicion", "flujo"},
++        {"projetil", "projeteis", "tiro", "bala", "fireball", "bullet", "ramificacao", "ramo", "arvore", "perseguicao", "projectile", "projectiles", "shot", "branching", "tree", "homing", "proyectil", "proyectiles", "disparo", "ramificacion", "arbol", "persecucion"},
++        {"som", "audio", "sfx", "wav", "voz", "musica", "sons", "sound", "voice", "music", "sonido", "sonidos", "voz"},
++        {"salvar", "save", "gravar", "backup", "copia", "exportar", "runtime", "pasta", "write", "copy", "export", "folder", "escribir", "respaldo", "copia", "carpeta"},
++        {"imagem", "sprite", "sprites", "recorte", "cnv", "png", "folha", "thumb", "image", "crop", "sheet", "imagen", "recorte", "hoja", "miniatura"},
++        {"tempo", "duracao", "ticks", "tick", "frames", "frame", "time", "duration", "tiempo", "duracion"},
++        {"camera", "zoom", "tela", "tremor", "shake", "cutscene", "cena", "cenas", "camara", "screen", "scene", "scenes", "pantalla", "temblor", "escena", "escenas"},
++        {"link", "links", "filho", "aura", "sincronia", "child", "sync", "hijo"},
++        {"limite", "limites", "maximo", "aviso", "avisos", "erro", "crash", "alerta", "limit", "limits", "maximum", "warning", "warnings", "alert", "limite", "limites", "maximo", "aviso", "avisos"},
++        {"pouso", "chao", "aterrissar", "cair", "landing", "floor", "ground", "aterrizaje", "suelo", "piso", "caer"},
++        {"flip", "virar", "espelhar", "espelhado", "inverter", "rotacao", "mirror", "invert", "rotation", "voltear", "espejar", "invertir", "rotacion"},
 +    };
 +
 +    /** Tolerancia de erro por tamanho da palavra buscada: ate 3 letras so exata, 4 a 6 uma troca, 7 ou mais duas. */
@@ -4965,11 +4990,22 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        return out;
 +    }
 +
++    /** O texto em PT, EN e ES, um depois do outro (so o PT se nao ha traducao). */
++    static String allLangs(String pt) {
++        if (pt == null || pt.isEmpty()) return "";
++        StringBuilder b = new StringBuilder(pt);
++        String en = I18n.trTo(pt, I18n.EN), es = I18n.trTo(pt, I18n.ES);
++        if (!en.equals(pt)) b.append(' ').append(en);
++        if (!es.equals(pt) && !es.equals(en)) b.append(' ').append(es);
++        return b.toString();
++    }
++
 +    private static void prepare(Section s) {
 +        if (s.tokBody != null) return;
-+        s.tokTitle = tokens(norm(s.title));
-+        s.tokTags = tokens(norm(s.tags));
-+        s.tokBody = tokens(norm(s.body));
++        // a busca vale nos tres idiomas: os termos do texto em PT, EN e ES entram juntos
++        s.tokTitle = tokens(norm(allLangs(s.title)));
++        s.tokTags = tokens(norm(allLangs(s.tags)));
++        s.tokBody = tokens(norm(allLangs(s.body)));
 +    }
 +
 +    /** Melhor nota da palavra (com parentes) nos termos; {@code posWeight}: a primeira posicao pesa mais (tags). */
@@ -4998,7 +5034,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        List<List<Object[]>> vars = new ArrayList<List<Object[]>>();
 +        for (String w : words) vars.add(expand(w));
 +        for (Chapter ch : chapters()) {
-+            String[] chTitle = tokens(norm(ch.title));
++            String[] chTitle = tokens(norm(allLangs(ch.title)));
 +            for (Section sec : ch.sections) {
 +                prepare(sec);
 +                boolean allHead = true, allAny = true;
@@ -5038,7 +5074,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +
 +    /** Trecho do texto em volta da melhor palavra que bateu; vazio se o titulo ja basta. */
 +    private static String snippet(Section sec, List<List<Object[]>> vars) {
-+        String nb = norm(sec.body);
++        String body = I18n.tr(sec.body);
++        String nb = norm(body);
 +        java.util.regex.Matcher m = WORD.matcher(nb);
 +        int bestPos = -1, bestSc = 0;
 +        while (m.find()) {
@@ -5047,17 +5084,23 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                if (sc > bestSc) { bestSc = sc; bestPos = m.start(); }
 +            }
 +        }
-+        if (bestPos < 0) return "";
-+        int a = Math.max(0, bestPos - 50), z = Math.min(sec.body.length(), bestPos + 110);
-+        while (a > 0 && a < bestPos && sec.body.charAt(a - 1) != ' ') a++;
-+        while (z < sec.body.length() && z > bestPos && sec.body.charAt(z) != ' ') z--;
-+        return (a > 0 ? "… " : "") + sec.body.substring(a, z).trim() + (z < sec.body.length() ? " …" : "");
++        if (bestPos < 0) {
++            // bateu so nos termos de outro idioma: mostra o comeco do texto no idioma atual
++            if (body.length() <= 160) return body;
++            int z0 = 160;
++            while (z0 > 80 && body.charAt(z0) != ' ') z0--;
++            return body.substring(0, z0).trim() + " …";
++        }
++        int a = Math.max(0, bestPos - 50), z = Math.min(body.length(), bestPos + 110);
++        while (a > 0 && a < bestPos && body.charAt(a - 1) != ' ') a++;
++        while (z < body.length() && z > bestPos && body.charAt(z) != ' ') z--;
++        return (a > 0 ? "… " : "") + body.substring(a, z).trim() + (z < body.length() ? " …" : "");
 +    }
 +}
 diff -ruN a/I18n.java b/I18n.java
 --- a/I18n.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18n.java	2026-10-24 21:49:36.520016004 +0000
-@@ -0,0 +1,206 @@
++++ b/I18n.java	2026-10-24 22:21:54.510991426 +0000
+@@ -0,0 +1,215 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -5133,6 +5176,14 @@ diff -ruN a/I18n.java b/I18n.java
 +        return all;
 +    }
 +
++    /** Textos da AJUDA {pt, en, es}: so busca exata (nao entram nos fragmentos). */
++    static List<String[]> helpEntries() {
++        if (testEntries != null) return new ArrayList<String[]>();
++        List<String[]> all = new ArrayList<String[]>();
++        for (String[][] block : I18nHelpCatalog.blocks()) for (String[] e : block) all.add(e);
++        return all;
++    }
++
 +    private static synchronized void load() {
 +        if (loaded) return;
 +        loaded = true;
@@ -5144,6 +5195,7 @@ diff -ruN a/I18n.java b/I18n.java
 +                if (e[0].length() >= 3 && !(e[0].equals(e[1]) && e[0].equals(e[2]))) fragments.add(e);
 +            }
 +        }
++        for (String[] e : helpEntries()) if (e.length >= 3 && e[0].length() > 0 && !exact.containsKey(e[0])) exact.put(e[0], e);   // so exata: texto longo nao vira fragmento
 +        java.util.Collections.sort(fragments, new java.util.Comparator<String[]>() {
 +            @Override public int compare(String[] a, String[] b) { return b[0].length() - a[0].length(); }
 +        });
@@ -5311,7 +5363,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-24 22:15:58.387665147 +0000
++++ b/I18nCatalog.java	2026-10-24 22:24:02.511760048 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -5320,12 +5372,12 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +    private I18nCatalog() { }
 +
 +    static String[][][] blocks() {
-+        return new String[][][] { I18nCatalog0.E, I18nCatalog1.E, I18nCatalog2.E, I18nCatalog3.E, I18nCatalog4.E };
++        return new String[][][] { I18nCatalog0.E, I18nCatalog1.E, I18nCatalog2.E, I18nCatalog3.E, I18nCatalog4.E, I18nCatalog5.E };
 +    }
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-24 22:15:58.384291447 +0000
++++ b/I18nCatalog0.java	2026-10-24 22:24:02.506826488 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -5598,7 +5650,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-24 22:15:58.385056419 +0000
++++ b/I18nCatalog1.java	2026-10-24 22:24:02.507668390 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -5871,7 +5923,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-24 22:15:58.385681563 +0000
++++ b/I18nCatalog2.java	2026-10-24 22:24:02.508498794 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6144,7 +6196,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-24 22:15:58.386413566 +0000
++++ b/I18nCatalog3.java	2026-10-24 22:24:02.509281385 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6417,8 +6469,8 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-24 22:15:58.387351959 +0000
-@@ -0,0 +1,264 @@
++++ b/I18nCatalog4.java	2026-10-24 22:24:02.511258802 +0000
+@@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 4 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -6681,6 +6733,26 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +        {"Erro", "Error", "Error"},
 +        {"Aviso", "Warning", "Aviso"},
 +        {"Ok", "OK", "OK"},
++        {"Leia este arquivo ({0}): ele descreve o app Attack Editor. Depois responda às minhas perguntas sobre como criar e editar ataques.", "Read this file ({0}): it describes the Attack Editor app. Then answer my questions about how to create and edit attacks.", "Lee este archivo ({0}): describe la app Attack Editor. Después responde a mis preguntas sobre cómo crear y editar ataques."},
++        {"Enviar {0} para uma IA", "Send {0} to an AI", "Enviar {0} a una IA"},
++        {"Criando {0}", "Creating {0}", "Creando {0}"},
++        {"{0} salvo em Download/ ({1} KB)", "{0} saved in Download/ ({1} KB)", "{0} guardado en Download/ ({1} KB)"},
++        {"{0} criado em Download/, mas o Android não liberou o compartilhamento. Envie o arquivo pelo gerenciador de arquivos.", "{0} was created in Download/, but Android did not allow sharing. Send the file from your file manager.", "{0} se creó en Download/, pero Android no permitió compartir. Envía el archivo desde el administrador de archivos."},
++    };
++}
+diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
+--- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nCatalog5.java	2026-10-24 22:24:02.511465571 +0000
+@@ -0,0 +1,11 @@
++package com.zue.attackeditor;
++
++/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
++final class I18nCatalog5 {
++    private I18nCatalog5() { }
++
++    static final String[][] E = {
++        {"{0} criado em Download/. Não achei app para compartilhar: {1}", "{0} created in Download/. I could not find an app to share with: {1}", "{0} creado en Download/. No encontré una app para compartir: {1}"},
++        {"Não foi possível criar o {0} em Download/: {1}\n\nConfira se o app tem \"Acesso a todos os arquivos\" (Configurações do Android > Apps > Attack Editor > Permissões).", "Could not create {0} in Download/: {1}\n\nCheck that the app has \"All files access\" (Android Settings > Apps > Attack Editor > Permissions).", "No se pudo crear {0} en Download/: {1}\n\nRevisa que la app tenga \"Acceso a todos los archivos\" (Ajustes de Android > Apps > Attack Editor > Permisos)."},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -6727,6 +6799,764 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +/** EditText cujo texto digitado nunca e traduzido (dicas: use {@code setHint(I18n.tr(...))}). */
 +class I18nEditText extends EditText {
 +    I18nEditText(Context c) { super(c); }
++}
+diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
+--- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog.java	2026-10-24 22:25:24.457474840 +0000
+@@ -0,0 +1,10 @@
++package com.zue.attackeditor;
++
++/** Catalogo dos textos da AJUDA: blocos de entradas {pt, en, es}. */
++final class I18nHelpCatalog {
++    private I18nHelpCatalog() { }
++
++    static String[][][] blocks() {
++        return new String[][][] { I18nHelpCatalog0.E, I18nHelpCatalog1.E, I18nHelpCatalog2.E, I18nHelpCatalog3.E, I18nHelpCatalog4.E, I18nHelpCatalog5.E, I18nHelpCatalog6.E, I18nHelpCatalog7.E, I18nHelpCatalog8.E };
++    }
++}
+diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
+--- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog0.java	2026-10-24 22:25:24.456392336 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 0 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog0 {
++    private I18nHelpCatalog0() { }
++
++    static final String[][] E = {
++        {"ORDEM DOS BOTÕES: segure um botão do menu superior e arraste para frente ou para trás para mudar a ordem; perto da borda a barra rola sozinha. O primeiro botão fica fixo no início da linha (hoje, por padrão, o SALVAR): solte qualquer botão em cima dele para ele virar o fixo. A ordem fica salva no aparelho. RESTAURAR ORDEM volta ao padrão.",
++         "BUTTON ORDER: hold a button of the top menu and drag it forward or backward to change the order; near the edge the bar scrolls by itself. The first button stays fixed at the start of the row (by default, SAVE): drop any button on top of it to make it the fixed one. The order is saved on the device. RESTORE ORDER goes back to the default.",
++         "ORDEN DE LOS BOTONES: mantén presionado un botón del menú superior y arrástralo hacia delante o hacia atrás para cambiar el orden; cerca del borde la barra se desplaza sola. El primer botón queda fijo al inicio de la fila (por defecto, GUARDAR): suelta cualquier botón encima de él para que pase a ser el fijo. El orden se guarda en el dispositivo. RESTAURAR ORDEN vuelve al predeterminado."},
++        {"SALVAR",
++         "SAVE",
++         "GUARDAR"},
++        {"Grava as edições em .txt: o golpe atual (HDAT 4 + os ANOs dele), só o ANO atual, todos os golpes, todos os ANOs ou tudo. Dá para salvar numa pasta separada ou sobrescrever os .txt do Runtime (Tap Battle/assets/charNN/). A pasta separada (Tap Battle/TBRE/Chars/charNN/) é uma cópia COMPLETA do personagem (DAC, BIN, CNV, folhas, sons) com a mesma gravação do Runtime aplicada nela: fica pronta para usar, e o original não muda; se a pasta já existe o app pergunta se une (mantém o que já está lá e aplica por cima), deleta e copia de novo ou usa outro nome. Em \"Salvar golpe atual\" há ainda \"Salvar em outro personagem (Runtime)\": escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele, com cópia dos .txt dele em Tap Battle/TBRE/Backups/: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot livre. Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. Ao salvar, o app confere os limites do jogo (hitboxes por frame, links, tempo...) e avisa o que faria o jogo fechar.",
++         "Writes the edits to .txt: the current move (HDAT 4 + its ANOs), only the current ANO, all moves, all ANOs, or everything. You can save into a separate folder or overwrite the Runtime .txt files (Tap Battle/assets/charNN/). The separate folder (Tap Battle/TBRE/Chars/charNN/) is a COMPLETE copy of the character (DAC, BIN, CNV, sheets, sounds) with the same Runtime write applied to it: it is ready to use and the original does not change; if the folder already exists the app asks whether to merge (keeps what is already there and applies on top), delete and copy again, or use another name. Under \"Save current move\" there is also \"Save to another character (Runtime)\": pick the character (the char folders in assets), then the move to replace (moves 0, 3 and 6 can only replace 0, 3 and 6; the others can replace any move except those three) and it writes straight into that character's Runtime, with a copy of its .txt files in Tap Battle/TBRE/Backups/: the HDAT 4 move is swapped, the ANOs are appended to the end of the DAC (renumbered), the sprites used are appended to the end of the CNV and the sheets, and the character reactions used go to a free slot. Character sounds (id 80+) and hitbox flags 20 and 41-125 do not go along. When saving, the app checks the game limits (hitboxes per frame, links, time...) and warns about whatever would make the game close.",
++         "Escribe las ediciones en .txt: el golpe actual (HDAT 4 + sus ANOs), solo el ANO actual, todos los golpes, todos los ANOs o todo. Se puede guardar en una carpeta separada o sobrescribir los .txt del Runtime (Tap Battle/assets/charNN/). La carpeta separada (Tap Battle/TBRE/Chars/charNN/) es una copia COMPLETA del personaje (DAC, BIN, CNV, hojas, sonidos) con la misma escritura del Runtime aplicada en ella: queda lista para usar y el original no cambia; si la carpeta ya existe, la app pregunta si la une (conserva lo que ya está y aplica encima), la elimina y copia de nuevo, o usa otro nombre. En \"Guardar golpe actual\" también hay \"Guardar en otro personaje (Runtime)\": eliges el personaje (las carpetas char de assets), luego el golpe a reemplazar (los golpes 0, 3 y 6 solo reemplazan el 0, 3 y 6; los demás, cualquiera salvo esos tres) y escribe directo en el Runtime de ese personaje, con una copia de sus .txt en Tap Battle/TBRE/Backups/: se cambia el golpe del HDAT 4, los ANOs entran al final del DAC (renumerados), los sprites usados entran al final del CNV y de las hojas, y las reacciones del personaje usadas van a un slot libre. Los sonidos del personaje (id 80+) y las hitbox flags 20 y 41-125 no van incluidos. Al guardar, la app revisa los límites del juego (hitboxes por frame, links, tiempo...) y avisa lo que haría que el juego se cierre."},
++        {"salvar gravar save backup pasta runtime exportar copia transplante outro personagem txt",
++         "save write backup folder runtime export copy transplant other character txt",
++         "guardar escribir respaldo backup carpeta runtime exportar copia trasplante otro personaje txt"},
++        {"CHAR",
++         "CHAR",
++         "CHAR"},
++        {"Escolhe o ATACANTE e o OPONENTE (cada um com os próprios dados e sprites). POS ajusta a distância entre eles e a altura de cada um arrastando na tela (as linhas são as posições do jogo: perto, médio, longe) e tem o FLY, que deixa o atacante voando em vez de cair. CHAR OBJ mostra a caixa do corpo (HDAT 3) e as âncoras dos sprites, hurtboxes, hitboxes, efeitos e projéteis, e permite mudar o tamanho do corpo. Use para testar o golpe contra outros lutadores e em outras alturas: a altura relativa decide qual ANO de projétil nasce (normal, de baixo ou de cima).",
++         "Picks the ATTACKER and the OPPONENT (each with its own data and sprites). POS adjusts the distance between them and the height of each one by dragging on the screen (the lines are the game's positions: near, medium, far) and has FLY, which makes the attacker fly instead of fall. CHAR OBJ shows the body box (HDAT 3) and the anchors of sprites, hurtboxes, hitboxes, effects and projectiles, and lets you change the body size. Use it to test the move against other fighters and at other heights: the relative height decides which projectile ANO is born (normal, from below or from above).",
++         "Elige al ATACANTE y al OPONENTE (cada uno con sus propios datos y sprites). POS ajusta la distancia entre ellos y la altura de cada uno arrastrando en la pantalla (las líneas son las posiciones del juego: cerca, medio, lejos) y tiene FLY, que hace que el atacante vuele en vez de caer. CHAR OBJ muestra la caja del cuerpo (HDAT 3) y las anclas de sprites, hurtboxes, hitboxes, efectos y proyectiles, y permite cambiar el tamaño del cuerpo. Úsalo para probar el golpe contra otros luchadores y a otras alturas: la altura relativa decide qué ANO de proyectil nace (normal, de abajo o de arriba)."},
++        {"personagem char lutador atacante oponente pos distancia altura fly voar corpo hdat 3 ancora",
++         "character char fighter attacker opponent pos distance height fly flying body hdat 3 anchor",
++         "personaje char luchador atacante oponente pos distancia altura fly volar cuerpo hdat 3 ancla"},
++        {"SPRITES",
++         "SPRITES",
++         "SPRITES"},
++        {"Lista os sprites (SPR_0, SPR_1...) do personagem atacante, já recortados pelo CNV; as folhas ficam intactas no disco. Serve para adicionar, substituir e remover sprites, mudar o recorte e o índice, e para escolher qual sprite entra num frame do golpe.",
++         "Lists the sprites (SPR_0, SPR_1...) of the attacking character, already cropped by the CNV; the sheets stay untouched on disk. Use it to add, replace and remove sprites, change the crop and the index, and to choose which sprite goes into a frame of the move.",
++         "Lista los sprites (SPR_0, SPR_1...) del personaje atacante, ya recortados por el CNV; las hojas quedan intactas en el disco. Sirve para agregar, reemplazar y quitar sprites, cambiar el recorte y el índice, y elegir qué sprite entra en un frame del golpe."},
++        {"sprites sprite imagem recorte cnv png folha adicionar substituir remover",
++         "sprites sprite image crop cnv png sheet add replace remove",
++         "sprites sprite imagen recorte cnv png hoja agregar reemplazar quitar"},
++        {"LINKS",
++         "LINKS",
++         "LINKS"},
++        {"Mostra e edita os links do ANO atual: objetos filhos (efeitos, partes do corpo, auras) que o jogo cria junto com a animação e que seguem o pai. O jogo aceita no máximo 13 por ANO e só 1 nível: link de link não nasce, e hitboxes/flags/animações dentro de um link não valem (o link mostra só as sprites dele). Animações disparadas por flag (efeito de hit, projétil, aura, cutscene) são raízes e mostram os próprios links. Ao abrir com a prévia num ANO que tem links, a lista rola para o primeiro e a seta ▶ vai para o próximo.",
++         "Shows and edits the links of the current ANO: child objects (effects, body parts, auras) that the game creates together with the animation and that follow the parent. The game accepts at most 13 per ANO and only 1 level: a link of a link is not born, and hitboxes/flags/animations inside a link do not count (the link only shows its own sprites). Animations triggered by a flag (hit effect, projectile, aura, cutscene) are roots and show their own links. When opening the preview on an ANO that has links, the list scrolls to the first one and the ▶ arrow goes to the next.",
++         "Muestra y edita los links del ANO actual: objetos hijos (efectos, partes del cuerpo, auras) que el juego crea junto con la animación y que siguen al padre. El juego acepta como máximo 13 por ANO y solo 1 nivel: un link de un link no nace, y las hitboxes/flags/animaciones dentro de un link no valen (el link muestra solo sus sprites). Las animaciones disparadas por una flag (efecto de golpe, proyectil, aura, cutscene) son raíces y muestran sus propios links. Al abrir la vista previa en un ANO que tiene links, la lista se desplaza al primero y la flecha ▶ va al siguiente."},
++        {"links link filho aura efeito sincronia animacao ligada pai",
++         "links link child aura effect sync linked animation parent",
++         "links link hijo aura efecto sincronia animacion ligada padre"},
++        {"GOLPE SET",
++         "MOVE SET",
++         "GOLPE SET"},
++        {"Opções do golpe (ATK_FLAGS do HDAT 4): agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, lançar 3 projéteis (usa ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente e atravessar o oponente. Só vale para o ANO inicial de um golpe. Define como o golpe é executado no jogo, não como ele é desenhado.",
++         "Move options (ATK_FLAGS of the HDAT 4): grab (at the end of the initial ANO or only during the hit), projectile born on the opponent or under them, throw 3 projectiles (uses ANO, ANO+1 and ANO+2), projectile that only explodes on the floor, hitbox that destroys the opponent's and passing through the opponent. It only applies to the initial ANO of a move. It defines how the move is executed in the game, not how it is drawn.",
++         "Opciones del golpe (ATK_FLAGS del HDAT 4): agarre (al final del ANO inicial o solo durante el hit), proyectil que nace en el oponente o debajo de él, lanzar 3 proyectiles (usa ANO, ANO+1 y ANO+2), proyectil que solo explota en el suelo, hitbox que destruye las del oponente y atravesar al oponente. Solo vale para el ANO inicial de un golpe. Define cómo se ejecuta el golpe en el juego, no cómo se dibuja."},
++        {"golpe set atk_flags agarrao agarrar projetil 3 tiro triplo atravessar flags opcoes",
++         "move set golpe atk_flags grab projectile 3 triple shot pass through flags options",
++         "golpe set atk_flags agarre agarrar proyectil 3 disparo triple atravesar flags opciones"},
++        {"HITBOX",
++         "HITBOX",
++         "HITBOX"},
++        {"Liga e desliga o desenho das caixas na preview: vermelha = hitbox (onde o golpe acerta), azul = hurtbox (onde o personagem leva dano) e amarela = as demais caixas de flag. Ligado ajuda a posicionar o alcance; desligado deixa ver só a arte.",
++         "Turns the drawing of the boxes on and off in the preview: red = hitbox (where the move hits), blue = hurtbox (where the character takes damage) and yellow = the other flag boxes. On helps to position the reach; off lets you see only the art.",
++         "Activa y desactiva el dibujo de las cajas en la vista previa: roja = hitbox (donde el golpe acierta), azul = hurtbox (donde el personaje recibe daño) y amarilla = las demás cajas de flag. Activado ayuda a posicionar el alcance; desactivado deja ver solo el arte."},
++        {"hitbox hurtbox caixa caixas ataque dano alcance vermelha azul amarela desenho",
++         "hitbox hurtbox box boxes attack damage reach red blue yellow drawing",
++         "hitbox hurtbox caja cajas ataque dano alcance roja azul amarilla dibujo"},
++        {"TEMPO",
++         "TIME",
++         "TIEMPO"},
++        {"Muda como o tempo corre na simulação. NORMAL: o golpe roda como no jogo e a preview termina quando tudo acaba. ESTENDIDO: o atacante fica parado no último frame quando o ANO acaba, para você ver projéteis e a reação do oponente até o fim. ATAQUE: como estendido, mas a reprodução para sozinha no pouso (a barra continua livre).",
++         "Changes how time runs in the simulation. NORMAL: the move runs as in the game and the preview ends when everything is over. EXTENDED: the attacker stays still on the last frame when the ANO ends, so you can see projectiles and the opponent's reaction to the end. ATTACK: like extended, but playback stops by itself on landing (the bar stays free).",
++         "Cambia cómo corre el tiempo en la simulación. NORMAL: el golpe corre como en el juego y la vista previa termina cuando todo acaba. EXTENDIDO: el atacante se queda quieto en el último frame cuando el ANO termina, para que veas los proyectiles y la reacción del oponente hasta el final. ATAQUE: como extendido, pero la reproducción se detiene sola al aterrizar (la barra sigue libre)."},
++        {"tempo normal estendido ataque reproducao simulacao",
++         "time normal extended attack playback simulation",
++         "tiempo normal extendido ataque reproduccion simulacion"},
++        {"CENTRO",
++         "CENTER",
++         "CENTRO"},
++        {"Câmera da preview. NORMAL: livre; você arrasta e dá zoom com os dedos, e o mapa inteiro fica enquadrado ao centralizar. TELA: segue o recorte que o jogo realmente mostra (480x320, com a rolagem, o zoom e o tremor da câmera do jogo). CHAR: enquadra os dois lutadores com zoom automático, bom para golpes de longe ou de ar.",
++         "Preview camera. NORMAL: free; you drag and zoom with your fingers, and the whole map is framed when centering. SCREEN: follows the crop the game really shows (480x320, with the scroll, zoom and shake of the game camera). CHAR: frames both fighters with automatic zoom, good for long-range or air moves.",
++         "Cámara de la vista previa. NORMAL: libre; arrastras y haces zoom con los dedos, y todo el mapa queda encuadrado al centrar. PANTALLA: sigue el recorte que el juego realmente muestra (480x320, con el desplazamiento, el zoom y el temblor de la cámara del juego). CHAR: encuadra a los dos luchadores con zoom automático, bueno para golpes de lejos o de aire."},
++    };
++}
+diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
+--- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog1.java	2026-10-24 22:25:24.456562577 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 1 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog1 {
++    private I18nHelpCatalog1() { }
++
++    static final String[][] E = {
++        {"centro camera zoom enquadrar tela char",
++         "center camera zoom frame screen char",
++         "centro camara zoom encuadrar pantalla char"},
++        {"POUSO",
++         "LANDING",
++         "ATERRIZAJE"},
++        {"ON: o atacante cai e pousa como no jogo, e a troca de ANO de pouso/queda acontece (SEQ e END de ar/chão). OFF: só zera a velocidade no chão e segue no mesmo ANO. Desligue para editar um ANO sem a queda interferir.",
++         "ON: the attacker falls and lands as in the game, and the landing/fall ANO swap happens (SEQ and END of air/ground). OFF: it only zeroes the speed on the floor and stays in the same ANO. Turn it off to edit an ANO without the fall getting in the way.",
++         "ON: el atacante cae y aterriza como en el juego, y ocurre el cambio de ANO de aterrizaje/caída (SEQ y END de aire/suelo). OFF: solo pone la velocidad en cero en el suelo y sigue en el mismo ANO. Desactívalo para editar un ANO sin que la caída interfiera."},
++        {"pouso chao queda cair aterrissar gravidade seq end",
++         "landing floor ground fall drop gravity seq end",
++         "aterrizaje suelo piso caida caer gravedad seq end"},
++        {"TRANSIÇÃO",
++         "TRANSITION",
++         "TRANSICIÓN"},
++        {"LIVRE: o fluxo do golpe acontece (SEQ, fim, pouso, queda trocam de ANO sozinhos). TRAVADA: congela as trocas a partir do frame atual, para você editar um ANO sem a simulação sair dele. Travar desliga o POUSO; destravar devolve o estado anterior.",
++         "FREE: the move flow happens (SEQ, end, landing, fall switch ANO by themselves). LOCKED: freezes the swaps from the current frame on, so you can edit an ANO without the simulation leaving it. Locking turns LANDING off; unlocking restores the previous state.",
++         "LIBRE: el flujo del golpe ocurre (SEQ, fin, aterrizaje y caída cambian de ANO solos). BLOQUEADA: congela los cambios a partir del frame actual, para que edites un ANO sin que la simulación salga de él. Bloquear desactiva ATERRIZAJE; desbloquear devuelve el estado anterior."},
++        {"transicao trava travada travar sequencia seq fluxo trocar ano",
++         "transition lock locked freeze sequence seq flow switch ano",
++         "transicion bloqueo bloqueada bloquear secuencia seq flujo cambiar ano"},
++        {"VIRAR",
++         "FLIP",
++         "VOLTEAR"},
++        {"Vira o lado da luta: o atacante passa a olhar para o outro lado e o oponente fica do lado oposto. Útil para conferir espelhamentos, ANO espelhado, projéteis indo para trás e efeitos com flip.",
++         "Flips the side of the fight: the attacker now faces the other way and the opponent ends up on the opposite side. Useful for checking mirroring, a mirrored ANO, projectiles going backward and effects with flip.",
++         "Voltea el lado de la pelea: el atacante pasa a mirar hacia el otro lado y el oponente queda del lado opuesto. Útil para revisar espejados, ANO espejado, proyectiles yendo hacia atrás y efectos con flip."},
++        {"virar flip espelhar lado inverter espelhamento",
++         "flip mirror side invert mirroring",
++         "voltear flip espejar lado invertir espejado"},
++        {"HIDE-EFF",
++         "HIDE-EFF",
++         "HIDE-EFF"},
++        {"Esconde efeitos, auras, cenas (bobj) e projéteis e deixa só atacante e oponente. Serve para ver o que é do personagem e o que é do efeito.",
++         "Hides effects, auras, scenes (bobj) and projectiles and leaves only the attacker and the opponent. Use it to see what belongs to the character and what belongs to the effect.",
++         "Oculta efectos, auras, escenas (bobj) y proyectiles y deja solo al atacante y al oponente. Sirve para ver qué es del personaje y qué es del efecto."},
++        {"hide esconder efeitos aura cena projeteis bobj",
++         "hide effects aura scene projectiles bobj",
++         "hide ocultar esconder efectos aura escena proyectiles bobj"},
++        {"FR-PREVIEW",
++         "FR-PREVIEW",
++         "FR-PREVIEW"},
++        {"Frame preview: desenha o frame anterior (PREV) ou o próximo (NEXT) em transparência por cima do atual, para alinhar sprites e hitboxes entre frames. Em TELA > FR-PREVIEW SET dá para ajustar a transparência e incluir projéteis e efeitos.",
++         "Frame preview: draws the previous frame (PREV) or the next one (NEXT) in transparency over the current one, to align sprites and hitboxes between frames. In SCREEN > FR-PREVIEW SET you can adjust the transparency and include projectiles and effects.",
++         "Frame preview: dibuja el frame anterior (PREV) o el siguiente (NEXT) en transparencia sobre el actual, para alinear sprites y hitboxes entre frames. En PANTALLA > FR-PREVIEW SET se puede ajustar la transparencia e incluir proyectiles y efectos."},
++        {"frame preview ghost transparencia anterior proximo prev next alinhar",
++         "frame preview ghost transparency previous next prev next align",
++         "frame preview fantasma transparencia anterior siguiente prev next alinear"},
++        {"TELA",
++         "SCREEN",
++         "PANTALLA"},
++        {"Opções do que aparece na preview: grade, sons, cenas (cutscenes da flag 20), travar (modo cinemático do jogo), box amarela de todos os sprites e FR-PREVIEW SET. Desligar cenas ou sons ajuda a editar sem distração; o jogo sempre os executa.",
++         "Options for what appears in the preview: grid, sounds, scenes (flag 20 cutscenes), lock (the game's cinematic mode), yellow box of all sprites and FR-PREVIEW SET. Turning scenes or sounds off helps you edit without distraction; the game always runs them.",
++         "Opciones de lo que aparece en la vista previa: cuadrícula, sonidos, escenas (cutscenes de la flag 20), bloqueo (modo cinemático del juego), caja amarilla de todos los sprites y FR-PREVIEW SET. Desactivar escenas o sonidos ayuda a editar sin distracción; el juego siempre los ejecuta."},
++        {"tela grade sons cenas cutscene travar box amarela fr-preview opcoes",
++         "screen grid sounds scenes cutscene lock yellow box fr-preview options",
++         "pantalla cuadricula sonidos escenas cutscene bloqueo caja amarilla fr-preview opciones"},
++        {"Primeiros passos",
++         "Getting started",
++         "Primeros pasos"},
++        {"Como o editor funciona, o fluxo de edição e os termos que aparecem em todo lugar.",
++         "How the editor works, the editing flow and the terms that appear everywhere.",
++         "Cómo funciona el editor, el flujo de edición y los términos que aparecen en todas partes."},
++        {"Como o editor funciona",
++         "How the editor works",
++         "Cómo funciona el editor"},
++        {"O app lê os arquivos do jogo (a pasta assets: DAC com as animações, BIN com os dados dos golpes, CNV com os recortes das sprites) e simula a luta inteira na preview: atacante, oponente, projéteis, efeitos, câmera, zoom, tremor e cutscenes, do mesmo jeito que o jogo faz. Em cima fica o menu superior; no meio, a preview; embaixo, a timeline do ANO atual e a barra de tempo. Tocar em qualquer item da timeline abre o menu de edição daquele item numa gaveta por cima da tela, e a preview atualiza ao vivo enquanto você mexe.",
++         "The app reads the game files (the assets folder: DAC with the animations, BIN with the move data, CNV with the sprite crops) and simulates the whole fight in the preview: attacker, opponent, projectiles, effects, camera, zoom, shake and cutscenes, the same way the game does. The top menu is on top; the preview in the middle; at the bottom, the timeline of the current ANO and the time bar. Tapping any timeline item opens that item's edit menu in a drawer over the screen, and the preview updates live while you tweak.",
++         "La app lee los archivos del juego (la carpeta assets: DAC con las animaciones, BIN con los datos de los golpes, CNV con los recortes de los sprites) y simula toda la pelea en la vista previa: atacante, oponente, proyectiles, efectos, cámara, zoom, temblor y cutscenes, igual que el juego. Arriba está el menú superior; en el medio, la vista previa; abajo, la timeline del ANO actual y la barra de tiempo. Tocar cualquier elemento de la timeline abre el menú de edición de ese elemento en un cajón sobre la pantalla, y la vista previa se actualiza en vivo mientras modificas."},
++        {"Fluxo básico de edição",
++         "Basic editing flow",
++         "Flujo básico de edición"},
++    };
++}
+diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
+--- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog2.java	2026-10-24 22:25:24.456693299 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 2 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog2 {
++    private I18nHelpCatalog2() { }
++
++    static final String[][] E = {
++        {"1) Escolha o personagem (CHAR) e o golpe (ou o ANO, no modo ANO). 2) Toque em TOCAR ou arraste a barra de tempo para ver o golpe. 3) Toque num item da timeline (sprite, hitbox, projétil, som, velocidade...) para abrir o menu dele. 4) Ajuste: as mudanças aparecem na preview na hora. 5) APLICAR mantém o que você fez e fecha a gaveta; ✕ fecha primeiro a página aberta e, se a gaveta já está na grade, descarta o que não foi aplicado (a mensagem avisa). 6) DESFAZER volta a última edição. 7) SALVAR grava (veja o capítulo Salvar e backups).",
++         "1) Pick the character (CHAR) and the move (or the ANO, in ANO mode). 2) Tap PLAY or drag the time bar to see the move. 3) Tap a timeline item (sprite, hitbox, projectile, sound, speed...) to open its menu. 4) Adjust: the changes show in the preview right away. 5) APPLY keeps what you did and closes the drawer; ✕ first closes the open page and, if the drawer is already on the grid, discards what was not applied (the message warns you). 6) UNDO reverts the last edit. 7) SAVE writes (see the Saving and backups chapter).",
++         "1) Elige el personaje (CHAR) y el golpe (o el ANO, en modo ANO). 2) Toca REPRODUCIR o arrastra la barra de tiempo para ver el golpe. 3) Toca un elemento de la timeline (sprite, hitbox, proyectil, sonido, velocidad...) para abrir su menú. 4) Ajusta: los cambios aparecen en la vista previa al instante. 5) APLICAR conserva lo que hiciste y cierra el cajón; ✕ cierra primero la página abierta y, si el cajón ya está en la cuadrícula, descarta lo que no fue aplicado (el mensaje avisa). 6) DESHACER revierte la última edición. 7) GUARDAR escribe (mira el capítulo Guardar y respaldos)."},
++        {"Barra de título",
++         "Title bar",
++         "Barra de título"},
++        {"No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube), o botão de idioma (PT / EN / ES) e o botão AJUDA, à direita, que abre esta tela.",
++         "At the top: \"Attack Editor by Zue Mods\" (tapping Zue Mods opens the YouTube channel), the language button (PT / EN / ES) and the HELP button, on the right, which opens this screen.",
++         "Arriba: \"Attack Editor by Zue Mods\" (tocar Zue Mods abre el canal de YouTube), el botón de idioma (PT / EN / ES) y el botón AYUDA, a la derecha, que abre esta pantalla."},
++        {"Idioma da interface",
++         "Interface language",
++         "Idioma de la interfaz"},
++        {"O botão PT / EN / ES (ao lado do AJUDA e também no topo desta tela) troca o idioma do app na hora: PT é o português, EN o inglês e ES o espanhol latino. Traduz botões, menus, avisos, esta ajuda e a busca (dá para buscar em qualquer um dos três). Nada se perde: as telas abertas são retraduzidas no lugar e a escolha fica salva no aparelho. Termos sem idioma (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END e os nomes dos campos) não mudam, e os arquivos e os dados do golpe também não. O TBRHelp.md é o mesmo em qualquer idioma; só a mensagem que acompanha o arquivo no compartilhar muda. Textos que o app monta na hora e ainda não têm tradução aparecem em português.",
++         "The PT / EN / ES button (next to HELP and also at the top of this screen) switches the app language instantly: PT is Portuguese, EN is English and ES is Latin American Spanish. It translates buttons, menus, warnings, this help and the search (you can search in any of the three). Nothing is lost: open screens are retranslated in place and the choice is saved on the device. Language-neutral terms (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END and the field names) do not change, and neither do the files and the move data. The TBRHelp.md is the same in any language; only the message that goes with the file when sharing changes. Texts the app builds on the fly that do not have a translation yet appear in Portuguese.",
++         "El botón PT / EN / ES (junto a AYUDA y también arriba en esta pantalla) cambia el idioma de la app al instante: PT es portugués, EN inglés y ES español latino. Traduce botones, menús, avisos, esta ayuda y la búsqueda (se puede buscar en cualquiera de los tres). No se pierde nada: las pantallas abiertas se retraducen en su lugar y la elección queda guardada en el dispositivo. Los términos sin idioma (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END y los nombres de los campos) no cambian, ni tampoco los archivos y los datos del golpe. El TBRHelp.md es el mismo en cualquier idioma; solo cambia el mensaje que acompaña al archivo al compartir. Los textos que la app arma al momento y todavía no tienen traducción aparecen en portugués."},
++        {"MODO: GOLPES / ANO",
++         "MODE: MOVES / ANO",
++         "MODO: GOLPES / ANO"},
++        {"GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO.",
++         "MOVES lists the character's moves (each with its ANOs, projectiles and reactions). ANO lists the loose ANOs, to open and edit an animation on its own, without the move around it. Tapping the selector next to it picks the move or the ANO. In ANO mode the projectile screen and MOVE SET are still available for the move that owns the ANO.",
++         "GOLPES lista los golpes del personaje (cada uno con sus ANOs, proyectiles y reacciones). ANO lista los ANOs sueltos, para abrir y editar una animación aislada, sin el golpe alrededor. Al tocar el selector de al lado, se elige el golpe o el ANO. En el modo ANO la pantalla del proyectil y el GOLPE SET siguen disponibles para el golpe dueño del ANO."},
++        {"Barra de tempo e transporte",
++         "Time bar and transport",
++         "Barra de tiempo y transporte"},
++        {"A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), PAUSAR/TOCAR reproduz, e o botão de velocidade alterna a velocidade da reprodução. O jogo roda a 60 ticks por segundo.",
++         "The bar shows the simulation tick (and the frame/total). START goes back to tick 0, -1 and +1 move one tick (to check frame by frame), PAUSE/PLAY plays, and the speed button switches the playback speed. The game runs at 60 ticks per second.",
++         "La barra muestra el tick de la simulación (y el frame/total). INICIO vuelve al tick 0, -1 y +1 avanzan un tick (para revisar frame a frame), PAUSAR/REPRODUCIR reproduce, y el botón de velocidad alterna la velocidad de reproducción. El juego corre a 60 ticks por segundo."},
++        {"Ajuda de IA (TBRHelp.md)",
++         "AI Help (TBRHelp.md)",
++         "Ayuda de IA (TBRHelp.md)"},
++        {"O botão Ajuda de IA (no topo desta tela) cria o arquivo TBRHelp.md na pasta Download do aparelho e abre o compartilhar do Android. O arquivo é um manual escrito para IAs (em inglês, com a instrução de responder no seu idioma): explica o app, os arquivos (DAC, BIN, CNV e seus .txt), os formatos, os limites do jogo, receitas de ataque, como testar e salvar, e o formato em que a IA deve entregar o resultado. Como usar: toque em Ajuda de IA, escolha o app de IA (ChatGPT, Gemini, Claude…) para enviar o arquivo e depois pergunte, por exemplo, \"como faço um golpe novo?\". Quando a IA pedir arquivos, mande o 000.dac.txt, 000.bin.txt e 000.cnv.txt do personagem (SALVAR > pasta separada > Tap Battle/TBRE/Chars/charNN/). O que a IA devolver cola no painel DADOS / EDITAR (lápis) ou nos .txt, e depois é só testar. Precisa do acesso a todos os arquivos, o mesmo que o app já usa.",
++         "The AI Help button (at the top of this screen) creates the TBRHelp.md file in the device's Download folder and opens Android's share sheet. The file is a manual written for AIs (in English, with the instruction to answer in your language): it explains the app, the files (DAC, BIN, CNV and their .txt), the formats, the game limits, attack recipes, how to test and save, and the format in which the AI must deliver the result. How to use: tap AI Help, choose the AI app (ChatGPT, Gemini, Claude…) to send the file and then ask, for example, \"how do I make a new move?\". When the AI asks for files, send the character's 000.dac.txt, 000.bin.txt and 000.cnv.txt (SAVE > separate folder > Tap Battle/TBRE/Chars/charNN/). Paste what the AI returns into the DATA / EDIT panel (pencil) or into the .txt files, and then just test it. It needs access to all files, the same one the app already uses.",
++         "El botón Ayuda de IA (arriba en esta pantalla) crea el archivo TBRHelp.md en la carpeta Download del dispositivo y abre el menú de compartir de Android. El archivo es un manual escrito para IAs (en inglés, con la instrucción de responder en tu idioma): explica la app, los archivos (DAC, BIN, CNV y sus .txt), los formatos, los límites del juego, recetas de ataques, cómo probar y guardar, y el formato en el que la IA debe entregar el resultado. Cómo usarlo: toca Ayuda de IA, elige la app de IA (ChatGPT, Gemini, Claude…) para enviar el archivo y después pregunta, por ejemplo, \"¿cómo hago un golpe nuevo?\". Cuando la IA pida archivos, envía el 000.dac.txt, 000.bin.txt y 000.cnv.txt del personaje (GUARDAR > carpeta separada > Tap Battle/TBRE/Chars/charNN/). Lo que la IA devuelva se pega en el panel DATOS / EDITAR (lápiz) o en los .txt, y luego solo hay que probar. Necesita el acceso a todos los archivos, el mismo que la app ya usa."},
++        {"ia ai inteligencia artificial chatgpt gemini claude arquivo markdown md download compartilhar ajuda perguntas tbrhelp prompt",
++         "ai artificial intelligence chatgpt gemini claude file markdown md download share help questions tbrhelp prompt",
++         "ia ai inteligencia artificial chatgpt gemini claude archivo markdown md download compartir ayuda preguntas tbrhelp prompt"},
++        {"Termos que aparecem em todo lugar",
++         "Terms that appear everywhere",
++         "Términos que aparecen en todas partes"},
++        {"ANO: uma animação (lista de frames). MPT / frame / sprite: um quadro da animação (imagem, tempo, posição, velocidade, caixas...). Tick: 1/60 s. HDAT 4: a tabela de golpes (um golpe = campos como ANIM_INICIAL, projéteis, SEQ). Hit / box: hitbox (flag 2, ataque), hurtbox (flag 1, corpo) e as demais flags de ação. Link: animação ligada a outra, que nasce junto e segue o pai. OPT: bloco opcional do frame (dano, reação...). Oponente / defensor: quem recebe o golpe. CNV: tabela que recorta cada sprite de uma folha PNG.",
++         "ANO: an animation (list of frames). MPT / frame / sprite: one picture of the animation (image, time, position, speed, boxes...). Tick: 1/60 s. HDAT 4: the move table (one move = fields such as ANIM_INICIAL, projectiles, SEQ). Hit / box: hitbox (flag 2, attack), hurtbox (flag 1, body) and the other action flags. Link: an animation attached to another, born together and following the parent. OPT: optional block of the frame (damage, reaction...). Opponent / defender: whoever receives the move. CNV: table that crops each sprite from a PNG sheet.",
++         "ANO: una animación (lista de frames). MPT / frame / sprite: un cuadro de la animación (imagen, tiempo, posición, velocidad, cajas...). Tick: 1/60 s. HDAT 4: la tabla de golpes (un golpe = campos como ANIM_INICIAL, proyectiles, SEQ). Hit / box: hitbox (flag 2, ataque), hurtbox (flag 1, cuerpo) y las demás flags de acción. Link: animación ligada a otra, que nace junto y sigue al padre. OPT: bloque opcional del frame (daño, reacción...). Oponente / defensor: quien recibe el golpe. CNV: tabla que recorta cada sprite de una hoja PNG."},
++        {"Menu superior",
++         "Top menu",
++         "Menú superior"},
++        {"Os 14 botões da fileira de cima, o que cada um faz e como reordená-los.",
++         "The 14 buttons of the top row, what each one does and how to reorder them.",
++         "Los 14 botones de la fila de arriba, qué hace cada uno y cómo reordenarlos."},
++        {"Ordem dos botões",
++         "Button order",
++         "Orden de los botones"},
++        {"Timeline e ferramentas",
++         "Timeline and tools",
++         "Timeline y herramientas"},
++        {"As faixas, o ＋ e o #, DIVIDIR/DUPLICAR/EXCLUIR, arrastar duração e a altura da gaveta (Y e T).",
++         "The lanes, the ＋ and the #, SPLIT/DUPLICATE/DELETE, dragging the duration and the drawer height (Y and T).",
++         "Las pistas, el ＋ y el #, DIVIDIR/DUPLICAR/ELIMINAR, arrastrar la duración y la altura del cajón (Y y T)."},
++        {"Faixas da timeline",
++         "Timeline lanes",
++         "Pistas de la timeline"},
++        {"A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE, ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. Tocar no nome da faixa de sprites abre ou recolhe o resumo.",
++         "The timeline shows, per frame: SPRITES (the images), and below them the lanes of hitbox (red), hurtbox (green), projectile, effect, special action, SOUND (blue), SPEED, STYLE (flip/transform), linked animations (links) and transitions (SEQ/END). Only lanes in use appear: with no sound, speed or style in the ANO, the lane disappears. Equal items in different frames share the same lane; equal items in the same frame (two equal hitboxes, two transitions) go in different lanes. Tapping the name of the sprites lane opens or collapses the summary.",
++         "La timeline muestra, por frame: SPRITES (las imágenes), y debajo las pistas de hitbox (roja), hurtbox (verde), proyectil, efecto, acción especial, SONIDO (azul), VELOCIDAD, ESTILO (espejar/transformar), animaciones ligadas (links) y transiciones (SEQ/END). Solo aparecen las pistas en uso: sin sonido, velocidad o estilo en el ANO, la pista desaparece. Elementos iguales en frames distintos comparten la misma pista; elementos iguales en el mismo frame (dos hitboxes iguales, dos transiciones) van en pistas distintas. Tocar el nombre de la pista de sprites abre o contrae el resumen."},
++        {"timeline faixas faixa sprite hitbox speed som estilo",
++         "timeline lanes lane sprite hitbox speed sound style",
++         "timeline pistas pista sprite hitbox speed sonido estilo"},
++        {"＋ e #",
++         "＋ and #",
++         "＋ y #"},
++        {"O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO).",
++         "The ＋ adds at the pointer a sprite, hitbox, hurtbox, projectile, effect, sound, speed, linked animation or a special action (shake the stage, cutscene, camera zoom, teleport to the opponent, pull the opponent, heal life...). The # chooses what the timeline shows (turns each category on and off; SHOW ALL).",
++         "El ＋ agrega en el puntero un sprite, hitbox, hurtbox, proyectil, efecto, sonido, velocidad, animación ligada o una acción especial (temblor de escenario, cutscene, zoom de cámara, teletransportar hasta el oponente, jalar al oponente, curar vida...). El # elige lo que la timeline muestra (activa y desactiva cada categoría; MOSTRAR TODO)."},
++    };
++}
+diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
+--- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog3.java	2026-10-24 22:25:24.456801940 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 3 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog3 {
++    private I18nHelpCatalog3() { }
++
++    static final String[][] E = {
++        {"adicionar mais novo criar numero",
++         "add more new create number",
++         "agregar mas nuevo crear numero"},
++        {"DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
++         "SPLIT / DUPLICATE / DELETE / UNDO",
++         "DIVIDIR / DUPLICAR / ELIMINAR / DESHACER"},
++        {"Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto na divisa de frames mais próxima; DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição.",
++         "They edit the item selected on the timeline: SPLIT cuts the sprite under the pointer in two (the visual result stays the same) or, with an object selected, separates the object at the nearest frame boundary; DUPLICATE copies the sprite or object to the next frame; DELETE removes the selected sprite, object or link; UNDO reverts the last edit.",
++         "Editan el elemento seleccionado en la timeline: DIVIDIR corta el sprite bajo el puntero en dos (el resultado visual sigue igual) o, con un objeto seleccionado, separa el objeto en el límite de frames más cercano; DUPLICAR copia el sprite o el objeto al frame siguiente; ELIMINAR quita el sprite, objeto o link seleccionado; DESHACER revierte la última edición."},
++        {"dividir duplicar excluir apagar remover desfazer undo cortar",
++         "split duplicate delete erase remove undo cut",
++         "dividir duplicar eliminar borrar quitar deshacer undo cortar"},
++        {"Arrastar, ponteiro e zoom",
++         "Dragging, pointer and zoom",
++         "Arrastrar, puntero y zoom"},
++        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar.",
++         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them.",
++         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos."},
++        {"Altura da gaveta: Y e T",
++         "Drawer height: Y and T",
++         "Altura del cajón: Y y T"},
++        {"A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; isso vale só para aquela abertura. Y (na borda, à direita) grava a altura atual como a nova altura padrão. T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela, o menu superior some e a timeline mostra de 6 a 2 faixas conforme o menu sobe; tocar em T de novo volta ao normal. O modo T só vale com a gaveta aberta e nunca fica salvo: o app sempre abre com ele desligado.",
++         "The drawer always opens at the default height: over the screen, rising up to the base of the preview. Drag the edge (the handle) to raise or lower it freely, even over the preview; this only applies to that opening. Y (on the edge, to the right) saves the current height as the new default height. T puts the timeline above the menu: the preview shrinks in proportion, the menu only rises to half the screen, the top menu disappears and the timeline shows 6 to 2 lanes depending on how high the menu is; tapping T again goes back to normal. T mode only works with the drawer open and is never saved: the app always opens with it off.",
++         "El cajón siempre abre a la altura predeterminada: sobre la pantalla, subiendo hasta la base de la vista previa. Arrastra el borde (el asa) para subir o bajar a voluntad, incluso sobre la vista previa; esto vale solo para esa apertura. Y (en el borde, a la derecha) guarda la altura actual como la nueva altura predeterminada. T pone la timeline encima del menú: la vista previa se reduce en proporción, el menú solo sube hasta la mitad de la pantalla, el menú superior desaparece y la timeline muestra de 6 a 2 pistas según sube el menú; tocar T de nuevo vuelve a lo normal. El modo T solo vale con el cajón abierto y nunca se guarda: la app siempre abre con él apagado."},
++        {"altura gaveta alca y t timeline tamanho",
++         "drawer height handle y t timeline size",
++         "altura cajon asa y t timeline tamano"},
++        {"Menus de edição da sprite",
++         "Sprite edit menus",
++         "Menús de edición del sprite"},
++        {"A grade Imagem, Tempo, Som, Movimento, Efeitos e Copiar, página por página.",
++         "The Image, Time, Sound, Movement, Effects and Copy grid, page by page.",
++         "La cuadrícula Imagen, Tiempo, Sonido, Movimiento, Efectos y Copiar, página por página."},
++        {"Menu da sprite (gaveta)",
++         "Sprite menu (drawer)",
++         "Menú del sprite (cajón)"},
++        {"Tocar numa sprite da timeline abre uma grade de botões: Imagem, Tempo, Som, Movimento, Efeitos e Copiar. Cada um abre uma página dentro da gaveta (a preview continua visível; ◀ volta à grade). Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele.",
++         "Tapping a sprite on the timeline opens a grid of buttons: Image, Time, Sound, Movement, Effects and Copy. Each one opens a page inside the drawer (the preview stays visible; ◀ goes back to the grid). Tapping a speed, sound or style item on the timeline opens its page directly.",
++         "Tocar un sprite en la timeline abre una cuadrícula de botones: Imagen, Tiempo, Sonido, Movimiento, Efectos y Copiar. Cada uno abre una página dentro del cajón (la vista previa sigue visible; ◀ vuelve a la cuadrícula). Tocar un elemento de velocidad, sonido o estilo en la timeline abre directamente su página."},
++        {"sprite menu gaveta imagem tempo som movimento efeitos copiar grade",
++         "sprite menu drawer image time sound movement effects copy grid",
++         "sprite menu cajon imagen tiempo sonido movimiento efectos copiar cuadricula"},
++        {"Imagem",
++         "Image",
++         "Imagen"},
++        {"Thumb da sprite e − N + (segure para percorrer; tocar no número abre a grade de sprites). Depois posição (x e y do centro), zoom (com a caixa \"unir X e Y\"), rotação e alpha. \"Mover links junto\" soma o mesmo deslocamento no bx/by de todos os links do ANO; \"Editar posição do Link\" abre uma tela com a animação principal de base para ajustar sprite, tempo e posição do link. REMOVER IMAGEM deixa o frame sem imagem.",
++         "Sprite thumb and − N + (hold to scroll; tapping the number opens the sprite grid). Then position (x and y of the center), zoom (with the \"join X and Y\" box), rotation and alpha. \"Move links along\" adds the same offset to the bx/by of all links of the ANO; \"Edit Link position\" opens a screen with the main animation as a base to adjust the link's sprite, time and position. REMOVE IMAGE leaves the frame without an image.",
++         "Miniatura del sprite y − N + (mantén para recorrer; tocar el número abre la cuadrícula de sprites). Luego posición (x e y del centro), zoom (con la casilla \"unir X e Y\"), rotación y alpha. \"Mover links juntos\" suma el mismo desplazamiento al bx/by de todos los links del ANO; \"Editar posición del Link\" abre una pantalla con la animación principal de base para ajustar el sprite, el tiempo y la posición del link. QUITAR IMAGEN deja el frame sin imagen."},
++        {"imagem sprite posicao zoom rotacao alpha thumb link x y",
++         "image sprite position zoom rotation alpha thumb link x y",
++         "imagen sprite posicion zoom rotacion alpha miniatura link x y"},
++        {"Tempo",
++         "Time",
++         "Tiempo"},
++        {"Ticks do frame (60 ticks = 1 s) e a duração em segundos. Tempo 0 é o mesmo que desativar o campo TIME: o frame fica travado e nunca avança sozinho. REMOVER FRAME apaga o frame (o ANO precisa de ao menos um).",
++         "Ticks of the frame (60 ticks = 1 s) and the duration in seconds. Time 0 is the same as disabling the TIME field: the frame gets stuck and never advances by itself. REMOVE FRAME deletes the frame (the ANO needs at least one).",
++         "Ticks del frame (60 ticks = 1 s) y la duración en segundos. Tiempo 0 es lo mismo que desactivar el campo TIME: el frame queda trabado y nunca avanza solo. QUITAR FRAME borra el frame (el ANO necesita al menos uno)."},
++        {"tempo duracao ticks segundos time frame remover frame",
++         "time duration ticks seconds time frame remove frame",
++         "tiempo duracion ticks segundos time frame quitar frame"},
++        {"Som",
++         "Sound",
++         "Sonido"},
++        {"O som do frame no estilo da lista de sons (tocar/pausar, trocar, cortar...). − e + andam só pelos ids que existem: 0 até o último som comum do jogo, e depois os áudios do personagem a partir do 80. ESCOLHER abre a lista; REMOVER ÁUDIO tira o som do frame.",
++         "The frame's sound, in the style of the sound list (play/pause, swap, trim...). − and + only walk through ids that exist: 0 up to the game's last common sound, and then the character's audios starting at 80. CHOOSE opens the list; REMOVE AUDIO takes the sound off the frame.",
++         "El sonido del frame, al estilo de la lista de sonidos (reproducir/pausar, cambiar, cortar...). − y + solo recorren los ids que existen: de 0 hasta el último sonido común del juego, y después los audios del personaje a partir del 80. ELEGIR abre la lista; QUITAR AUDIO saca el sonido del frame."},
++        {"som audio sfx wav efeito sonoro id tocar",
++         "sound audio sfx wav sound effect id play",
++         "sonido audio sfx wav efecto sonoro id reproducir"},
++        {"Movimento",
++         "Movement",
++         "Movimiento"},
++    };
++}
+diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
+--- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog4.java	2026-10-24 22:25:24.456910134 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 4 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog4 {
++    private I18nHelpCatalog4() { }
++
++    static final String[][] E = {
++        {"Velocidade x/y do frame (veja o capítulo Speed e aceleração). Num frame que recebe velocidade do anterior os campos ficam zerados e somam à recebida, que aparece em amarelo com o botão Remover. A aceleração só aparece quando o frame já tem speed. Frame inicial e duração do trecho de movimento, MANTER VELOCIDADE (passa a velocidade deste frame ao próximo), o total de pixels percorridos e REMOVER SPEED.",
++         "The frame's x/y speed (see the Speed and acceleration chapter). In a frame that receives speed from the previous one the fields are zeroed and add to the received one, which shows in yellow with the Remove button. Acceleration only appears when the frame already has speed. Start frame and duration of the movement stretch, KEEP SPEED (passes this frame's speed on to the next), the total pixels covered and REMOVE SPEED.",
++         "La velocidad x/y del frame (mira el capítulo Speed y aceleración). En un frame que recibe velocidad del anterior los campos quedan en cero y se suman a la recibida, que aparece en amarillo con el botón Quitar. La aceleración solo aparece cuando el frame ya tiene speed. Frame inicial y duración del tramo de movimiento, MANTENER VELOCIDAD (pasa la velocidad de este frame al siguiente), el total de píxeles recorridos y QUITAR SPEED."},
++        {"speed velocidade dash accel aceleracao mover andar correr deslocar deslocamento pixels recuo pulo salto queda gravidade manter bit 64 px",
++         "speed velocity dash accel acceleration move walk run shift displacement pixels recoil jump leap fall gravity keep bit 64 px",
++         "speed velocidad dash accel aceleracion mover caminar correr desplazar desplazamiento pixeles retroceso salto caida gravedad mantener bit 64 px"},
++        {"Efeitos",
++         "Effects",
++         "Efectos"},
++        {"Liga e desliga Flip X e Flip Y e a Interpolação (o frame atual suaviza até chegar no próximo).",
++         "Turns Flip X and Flip Y and Interpolation on and off (the current frame smooths until it reaches the next).",
++         "Activa y desactiva Flip X y Flip Y y la Interpolación (el frame actual se suaviza hasta llegar al siguiente)."},
++        {"efeitos flip espelhar interpolacao suavizar rotacao alpha zoom",
++         "effects flip mirror interpolation smooth rotation alpha zoom",
++         "efectos flip espejar interpolacion suavizar rotacion alpha zoom"},
++        {"Copiar",
++         "Copy",
++         "Copiar"},
++        {"Aplica as coisas deste frame em outros frames. Primeiro escolha os frames atingidos: próximos N, N anteriores, todos do ANO, esta sprite no ANO ou esta sprite em todos os ANOs (o app diz quantos frames vai atingir); depois marque o que copiar (imagem, tempo, som, velocidade, estilo, caixas...) e aplique.",
++         "Applies the things of this frame to other frames. First choose the frames to reach: next N, previous N, all of the ANO, this sprite in the ANO or this sprite in all ANOs (the app says how many frames it will reach); then check what to copy (image, time, sound, speed, style, boxes...) and apply.",
++         "Aplica las cosas de este frame a otros frames. Primero elige los frames alcanzados: siguientes N, N anteriores, todos del ANO, este sprite en el ANO o este sprite en todos los ANOs (la app dice cuántos frames va a alcanzar); luego marca qué copiar (imagen, tiempo, sonido, velocidad, estilo, cajas...) y aplica."},
++        {"copiar colar aplicar frames todos proximos duplicar",
++         "copy paste apply frames all next duplicate",
++         "copiar pegar aplicar frames todos siguientes duplicar"},
++        {"Menus de box",
++         "Box menus",
++         "Menús de caja"},
++        {"Hitbox e hurtbox: início, duração, prévia, coordenadas, dano, reação e transição.",
++         "Hitbox and hurtbox: start, duration, preview, coordinates, damage, reaction and transition.",
++         "Hitbox y hurtbox: inicio, duración, vista previa, coordenadas, daño, reacción y transición."},
++        {"Hitbox / Hurtbox",
++         "Hitbox / Hurtbox",
++         "Hitbox / Hurtbox"},
++        {"Tocar numa box da timeline abre, de cima para baixo: o interruptor Hurtbox | Hitbox; FRAME DE INÍCIO (move a box inteira mantendo a duração; se cair em cima de outra box igual ela ganha uma faixa própria) e DURAÇÃO; a prévia parada do frame atual, mostrando só a box que você edita (hurtbox sem a hitbox e vice-versa); x, y, largura e altura; e remover a box. Ao mover o ponteiro, o menu só muda se o novo frame tem esta box; se não tem, fica como está.",
++         "Tapping a box on the timeline opens, from top to bottom: the Hurtbox | Hitbox switch; START FRAME (moves the whole box keeping the duration; if it lands on top of another equal box it gets its own lane) and DURATION; the frozen preview of the current frame, showing only the box you are editing (hurtbox without the hitbox and vice versa); x, y, width and height; and remove the box. When you move the pointer, the menu only changes if the new frame has this box; if it does not, it stays as it is.",
++         "Tocar una caja en la timeline abre, de arriba abajo: el interruptor Hurtbox | Hitbox; FRAME DE INICIO (mueve la caja entera manteniendo la duración; si cae encima de otra caja igual, gana una pista propia) y DURACIÓN; la vista previa detenida del frame actual, mostrando solo la caja que editas (hurtbox sin la hitbox y viceversa); x, y, ancho y alto; y quitar la caja. Al mover el puntero, el menú solo cambia si el nuevo frame tiene esta caja; si no la tiene, queda como está."},
++        {"hitbox hurtbox caixa caixas ataque dano alcance inicio duracao coordenadas largura altura",
++         "hitbox hurtbox box boxes attack damage reach start duration coordinates width height",
++         "hitbox hurtbox caja cajas ataque dano alcance inicio duracion coordenadas ancho alto"},
++        {"Dano e reação",
++         "Damage and reaction",
++         "Daño y reacción"},
++        {"Só na hitbox: DANO e REAÇÃO (com prévia e botões ◀ ▶ para trocar, ESCOLHER na grade, EDITAR REAÇÃO). São do sprite (frame) sob o ponteiro, não da box em si, e acompanham a hitbox quando você muda o frame de início ou a duração (cada frame leva o seu par). Veja o capítulo Reações.",
++         "Hitbox only: DAMAGE and REACTION (with preview and ◀ ▶ buttons to switch, CHOOSE on the grid, EDIT REACTION). They belong to the sprite (frame) under the pointer, not to the box itself, and follow the hitbox when you change the start frame or the duration (each frame carries its own pair). See the Reactions chapter.",
++         "Solo en la hitbox: DAÑO y REACCIÓN (con vista previa y botones ◀ ▶ para cambiar, ELEGIR en la cuadrícula, EDITAR REACCIÓN). Pertenecen al sprite (frame) bajo el puntero, no a la caja en sí, y acompañan a la hitbox cuando cambias el frame de inicio o la duración (cada frame lleva su par). Mira el capítulo Reacciones."},
++        {"dano reacao hit acertar knockback empurrao opt 1 hitstun grupo",
++         "damage reaction hit knockback pushback opt 1 hitstun group",
++         "dano reaccion hit acertar knockback empuje opt 1 hitstun grupo"},
++        {"Transição no menu da hitbox",
++         "Transition in the hitbox menu",
++         "Transición en el menú de la hitbox"},
++        {"Também só na hitbox: a transição atual do ANO (SEQ ou END), MUDAR ANO DESTINO e, se o golpe tem SEQ, BLOQUEAR SEQUÊNCIA neste hit (flag 38). Veja o capítulo Sequências e transições.",
++         "Also hitbox only: the ANO's current transition (SEQ or END), CHANGE TARGET ANO and, if the move has SEQ, BLOCK SEQUENCE on this hit (flag 38). See the Sequences and transitions chapter.",
++         "También solo en la hitbox: la transición actual del ANO (SEQ o END), CAMBIAR ANO DESTINO y, si el golpe tiene SEQ, BLOQUEAR SECUENCIA en este hit (flag 38). Mira el capítulo Secuencias y transiciones."},
++        {"transicao seq end sequencia destino bloquear flag 38 ano destino",
++         "transition seq end sequence target block flag 38 target ano",
++         "transicion seq end secuencia destino bloquear flag 38 ano destino"},
++        {"Golpe e HDAT 4",
++         "Move and HDAT 4",
++         "Golpe y HDAT 4"},
++        {"GOLPE SET, os campos do HDAT 4 e o painel DADOS / EDITAR.",
++         "MOVE SET, the HDAT 4 fields and the DATA / EDIT panel.",
++         "GOLPE SET, los campos del HDAT 4 y el panel DATOS / EDITAR."},
++        {"O que é um golpe",
++         "What a move is",
++         "Qué es un golpe"},
++        {"Cada golpe é uma linha da tabela HDAT 4: ANIM_INICIAL (o ANO que começa o golpe), os ANOs de projétil (normal, abaixo, acima, global, ao acertar, chão, sub-projétil), a sequência (SEQ e END de chão e de ar, SEQ_PROJETIL), pouso ao errar e ao acertar, o oponente agarrado, perseguição e repetições, mais as opções do GOLPE SET. Todos os campos de ANO aceitam números de 16 bits, então ANOs acima de 255 são normais.",
++         "Each move is a row of the HDAT 4 table: ANIM_INICIAL (the ANO that starts the move), the projectile ANOs (normal, below, above, global, on hit, floor, sub-projectile), the sequence (SEQ and END for ground and air, SEQ_PROJETIL), landing on miss and on hit, the grabbed opponent, homing and repetitions, plus the MOVE SET options. All ANO fields accept 16-bit numbers, so ANOs above 255 are normal.",
++         "Cada golpe es una fila de la tabla HDAT 4: ANIM_INICIAL (el ANO que inicia el golpe), los ANOs de proyectil (normal, abajo, arriba, global, al acertar, suelo, sub-proyectil), la secuencia (SEQ y END de suelo y de aire, SEQ_PROJETIL), aterrizaje al fallar y al acertar, el oponente agarrado, persecución y repeticiones, más las opciones del GOLPE SET. Todos los campos de ANO aceptan números de 16 bits, así que ANOs por encima de 255 son normales."},
++        {"GOLPE SET (ATK_FLAGS)",
++         "MOVE SET (ATK_FLAGS)",
++         "GOLPE SET (ATK_FLAGS)"},
++    };
++}
+diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
+--- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog5.java	2026-10-24 22:25:24.457037556 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 5 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog5 {
++    private I18nHelpCatalog5() { }
++
++    static final String[][] E = {
++        {"As opções do golpe: agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, lançar 3 projéteis (usa o ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente (o oponente entra na reação do byte 13 do HDAT 3) e atravessar o oponente. Só vale para o ANO inicial de um golpe e define como o golpe é executado, não como ele é desenhado.",
++         "The move options: grab (at the end of the initial ANO or only during the hit), projectile born on the opponent or under them, throw 3 projectiles (uses the ANO, ANO+1 and ANO+2), projectile that only explodes on the floor, hitbox that destroys the opponent's (the opponent enters the reaction of byte 13 of the HDAT 3) and passing through the opponent. It only applies to the initial ANO of a move and defines how the move is executed, not how it is drawn.",
++         "Las opciones del golpe: agarre (al final del ANO inicial o solo durante el hit), proyectil que nace en el oponente o debajo de él, lanzar 3 proyectiles (usa el ANO, ANO+1 y ANO+2), proyectil que solo explota en el suelo, hitbox que destruye las del oponente (el oponente entra en la reacción del byte 13 del HDAT 3) y atravesar al oponente. Solo vale para el ANO inicial de un golpe y define cómo se ejecuta el golpe, no cómo se dibuja."},
++        {"golpe set atk_flags agarrao projetil 3 tiro triplo atravessar destruir hitbox oponente flags opcoes",
++         "move set atk_flags grab projectile 3 triple shot pass through destroy hitbox opponent flags options",
++         "golpe set atk_flags agarre proyectil 3 disparo triple atravesar destruir hitbox oponente flags opciones"},
++        {"DADOS / EDITAR",
++         "DATA / EDIT",
++         "DATOS / EDITAR"},
++        {"Painel recolhido com os dados em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. O lápis abre o editor em texto para mudar o valor direto.",
++         "Collapsed panel with the data as text: MOVE (HDAT 4), ANO and FRAME tabs in moves mode, and ANO, FRAME and LINKS in ANO mode. The pencil opens the text editor to change the value directly.",
++         "Panel contraído con los datos en texto: pestañas GOLPE (HDAT 4), ANO y FRAME en el modo golpes, y ANO, FRAME y LINKS en el modo ANO. El lápiz abre el editor de texto para cambiar el valor directamente."},
++        {"dados editar texto hdat 4 ano frame links lapis painel",
++         "data edit text hdat 4 ano frame links pencil panel",
++         "datos editar texto hdat 4 ano frame links lapiz panel"},
++        {"Projéteis e ramificação",
++         "Projectiles and branching",
++         "Proyectiles y ramificación"},
++        {"A tela do projétil, a árvore de ramificação, tiro triplo, perseguição e o limite de 8.",
++         "The projectile screen, the branching tree, triple shot, homing and the limit of 8.",
++         "La pantalla del proyectil, el árbol de ramificación, disparo triple, persecución y el límite de 8."},
++        {"Tela do projétil",
++         "Projectile screen",
++         "Pantalla del proyectil"},
++        {"Tocar num hit de projétil (flag 0) abre, de cima para baixo: INÍCIO E DURAÇÃO; RAMIFICAÇÃO DO PROJÉTIL; ANO do projétil (− N +; tocar no número abre a grade de animações; ✎ EDITAR ANIMAÇÃO); POSIÇÃO E VELOCIDADE (x, y e a velocidade inicial do projétil); PERSEGUIÇÃO (liga/desliga, velocidade de giro e repetições) e SEQUÊNCIA (SEQ_PROJETIL). A mesma tela abre no modo ANO e edita o golpe do HDAT 4 que é dono do ANO.",
++         "Tapping a projectile hit (flag 0) opens, from top to bottom: START AND DURATION; PROJECTILE BRANCHING; projectile ANO (− N +; tapping the number opens the animation grid; ✎ EDIT ANIMATION); POSITION AND SPEED (x, y and the projectile's initial speed); HOMING (on/off, turn speed and repetitions) and SEQUENCE (SEQ_PROJETIL). The same screen opens in ANO mode and edits the HDAT 4 move that owns the ANO.",
++         "Tocar un hit de proyectil (flag 0) abre, de arriba abajo: INICIO Y DURACIÓN; RAMIFICACIÓN DEL PROYECTIL; ANO del proyectil (− N +; tocar el número abre la cuadrícula de animaciones; ✎ EDITAR ANIMACIÓN); POSICIÓN Y VELOCIDAD (x, y y la velocidad inicial del proyectil); PERSECUCIÓN (activar/desactivar, velocidad de giro y repeticiones) y SECUENCIA (SEQ_PROJETIL). La misma pantalla abre en el modo ANO y edita el golpe del HDAT 4 que es dueño del ANO."},
++        {"projetil tiro bala fireball ano inicio duracao posicao velocidade perseguicao sequencia",
++         "projectile shot bullet fireball ano start duration position speed homing sequence",
++         "proyectil disparo bala fireball ano inicio duracion posicion velocidad persecucion secuencia"},
++        {"Ramificação do projétil",
++         "Projectile branching",
++         "Ramificación del proyectil"},
++        {"A árvore mostra o caminho completo do projétil: ANIM_INICIAL → projétil (+ANO+1/+2 com 3 projéteis) → reações (ao acertar, chão, abaixo, acima, global) → sub-projétil. É onde você escolhe cada uma dessas animações. O projétil é escolhido pela altura do atacante em relação ao oponente: NORMAL perto da mesma altura, ABAIXO quando o atacante está bem mais baixo que o oponente (≥ 51 px) e ACIMA quando está bem mais alto (≥ 37 px). POS ajusta a altura.",
++         "The tree shows the projectile's full path: ANIM_INICIAL → projectile (+ANO+1/+2 with 3 projectiles) → reactions (on hit, floor, below, above, global) → sub-projectile. It is where you choose each of those animations. The projectile is chosen by the attacker's height relative to the opponent: NORMAL near the same height, BELOW when the attacker is much lower than the opponent (≥ 51 px) and ABOVE when it is much higher (≥ 37 px). POS adjusts the height.",
++         "El árbol muestra el camino completo del proyectil: ANIM_INICIAL → proyectil (+ANO+1/+2 con 3 proyectiles) → reacciones (al acertar, suelo, abajo, arriba, global) → sub-proyectil. Es donde eliges cada una de esas animaciones. El proyectil se elige por la altura del atacante respecto al oponente: NORMAL cerca de la misma altura, ABAJO cuando el atacante está mucho más bajo que el oponente (≥ 51 px) y ARRIBA cuando está mucho más alto (≥ 37 px). POS ajusta la altura."},
++        {"ramificacao projetil arvore ramo sub-projetil reacao caminho",
++         "branching projectile tree branch sub-projectile reaction path",
++         "ramificacion proyectil arbol rama sub-proyectil reaccion camino"},
++        {"Posição e velocidade",
++         "Position and speed",
++         "Posición y velocidad"},
++        {"O projétil principal nasce em x do atacante + x do hit; se cair atrás do atacante, o jogo o lança a 480 px à frente (por isso o x mínimo é 0). Com as flags de nascer no oponente (32/64) o x/y do hit é ignorado. Se o projétil ficar abaixo do chão o jogo o puxa para o chão a cada tick. A velocidade que a tela mostra é a velocidade horizontal inicial do primeiro sprite do ANO do projétil.",
++         "The main projectile is born at the attacker's x + the hit's x; if it would land behind the attacker, the game throws it 480 px ahead (that is why the minimum x is 0). With the flags that spawn on the opponent (32/64) the hit's x/y is ignored. If the projectile ends up below the floor the game pulls it back to the floor on every tick. The speed the screen shows is the initial horizontal speed of the first sprite of the projectile's ANO.",
++         "El proyectil principal nace en x del atacante + x del hit; si cayera detrás del atacante, el juego lo lanza a 480 px adelante (por eso la x mínima es 0). Con las flags de nacer en el oponente (32/64) la x/y del hit se ignora. Si el proyectil queda debajo del suelo, el juego lo jala al suelo en cada tick. La velocidad que muestra la pantalla es la velocidad horizontal inicial del primer sprite del ANO del proyectil."},
++        {"Perseguição e repetições",
++         "Homing and repetitions",
++         "Persecución y repeticiones"},
++        {"Persegue o oponente: o projétil vira na direção dele com a velocidade de giro indicada. Repetições (MAX_REPETICOES) fazem o projétil se repetir e usam a mesma janela 512 do frame que o agarrão, então o agarrão fica indisponível.",
++         "Chases the opponent: the projectile turns toward them at the given turn speed. Repetitions (MAX_REPETICOES) make the projectile repeat and use the same 512 window of the frame as the grab, so the grab becomes unavailable.",
++         "Persigue al oponente: el proyectil gira hacia él con la velocidad de giro indicada. Las repeticiones (MAX_REPETICOES) hacen que el proyectil se repita y usan la misma ventana 512 del frame que el agarre, así que el agarre queda no disponible."},
++        {"Limite de 8 projéteis",
++         "Limit of 8 projectiles",
++         "Límite de 8 proyectiles"},
++        {"O jogo só mantém 8 projéteis vivos ao mesmo tempo (BulletNum < 8), contando os sub-projéteis. Um hit de projétil (flag 0) que acontece com 8 já na tela não cria nada, sem aviso: se um projétil \"não sai\" num golpe que lança vários, confira se os anteriores já sumiram. O editor também não avisa isso na tela; os outros motivos de projétil que não nasce (ANO vazio, campo do HDAT 4 vazio, golpe que errou, transição travada...) continuam avisando.",
++         "The game only keeps 8 projectiles alive at the same time (BulletNum < 8), counting sub-projectiles. A projectile hit (flag 0) that happens with 8 already on screen creates nothing, with no warning: if a projectile \"does not come out\" in a move that throws several, check whether the previous ones have already vanished. The editor does not warn about this on screen either; the other reasons a projectile is not born (empty ANO, empty HDAT 4 field, move that missed, locked transition...) still warn.",
++         "El juego solo mantiene 8 proyectiles vivos al mismo tiempo (BulletNum < 8), contando los sub-proyectiles. Un hit de proyectil (flag 0) que ocurre con 8 ya en pantalla no crea nada, sin aviso: si un proyectil \"no sale\" en un golpe que lanza varios, revisa si los anteriores ya desaparecieron. El editor tampoco avisa esto en pantalla; los otros motivos por los que un proyectil no nace (ANO vacío, campo del HDAT 4 vacío, golpe que falló, transición bloqueada...) siguen avisando."},
++        {"Sequências e transições",
++         "Sequences and transitions",
++         "Secuencias y transiciones"},
++        {"SEQ, END, SEQ_PROJETIL, bloquear sequência (flag 38), pouso e queda, TRANSIÇÃO travada e VER FLUXO.",
++         "SEQ, END, SEQ_PROJETIL, block sequence (flag 38), landing and fall, locked TRANSITION and VIEW FLOW.",
++         "SEQ, END, SEQ_PROJETIL, bloquear secuencia (flag 38), aterrizaje y caída, TRANSICIÓN bloqueada y VER FLUJO."},
++        {"SEQ e END",
++         "SEQ and END",
++         "SEQ y END"},
++        {"SEQ (ANIM_SEQ_CHAO / ANIM_SEQ_AR) é o ANO para onde o golpe vai quando um hit conecta no ANO onde ela está definida; chão e ar são definidos separadamente (o jogo escolhe pela posição do atacante). END (ANIM_END_CHAO / ANIM_END_AR) só existe dentro do ANO de destino da SEQ: dispara num novo hit enquanto o atacante está nessa ANO. A ANO de END não tem transição própria. No menu da hitbox: + TRANSIÇÃO / MUDAR ANO DESTINO. Se você define só chão ou só ar, o app pergunta se usa a mesma no outro. A transição não pode apontar para a própria ANO.",
++         "SEQ (ANIM_SEQ_CHAO / ANIM_SEQ_AR) is the ANO the move goes to when a hit connects in the ANO where it is defined; ground and air are defined separately (the game picks by the attacker's position). END (ANIM_END_CHAO / ANIM_END_AR) only exists inside the SEQ's target ANO: it fires on a new hit while the attacker is in that ANO. The END ANO has no transition of its own. In the hitbox menu: + TRANSITION / CHANGE TARGET ANO. If you define only ground or only air, the app asks whether to use the same one for the other. A transition cannot point to its own ANO.",
++         "SEQ (ANIM_SEQ_CHAO / ANIM_SEQ_AR) es el ANO al que va el golpe cuando un hit conecta en el ANO donde está definida; suelo y aire se definen por separado (el juego elige según la posición del atacante). END (ANIM_END_CHAO / ANIM_END_AR) solo existe dentro del ANO de destino de la SEQ: se dispara en un nuevo hit mientras el atacante está en ese ANO. El ANO de END no tiene transición propia. En el menú de la hitbox: + TRANSICIÓN / CAMBIAR ANO DESTINO. Si defines solo suelo o solo aire, la app pregunta si usa la misma en el otro. La transición no puede apuntar a su propio ANO."},
++        {"SEQ_PROJETIL (ANIM_AO_ACERTAR)",
++         "SEQ_PROJETIL (ANIM_AO_ACERTAR)",
++         "SEQ_PROJETIL (ANIM_AO_ACERTAR)"},
++    };
++}
+diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
+--- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog6.java	2026-10-24 22:25:24.457176081 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 6 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog6 {
++    private I18nHelpCatalog6() { }
++
++    static final String[][] E = {
++        {"Quando o primeiro acerto de cada projétil conecta, o atacante troca para este ANO (vale para o golpe todo). A SEQ vem logo depois, a não ser que o primeiro frame deste ANO tenha uma hitbox flag 38. Fica no fim da tela do projétil e aceita qualquer ANO do DAC.",
++         "When the first hit of each projectile connects, the attacker switches to this ANO (applies to the whole move). The SEQ comes right after, unless the first frame of this ANO has a flag 38 hitbox. It sits at the end of the projectile screen and accepts any ANO in the DAC.",
++         "Cuando el primer acierto de cada proyectil conecta, el atacante cambia a este ANO (vale para todo el golpe). La SEQ viene justo después, a menos que el primer frame de este ANO tenga una hitbox flag 38. Está al final de la pantalla del proyectil y acepta cualquier ANO del DAC."},
++        {"Bloquear sequência (flag 38)",
++         "Block sequence (flag 38)",
++         "Bloquear secuencia (flag 38)"},
++        {"Uma hitbox com a flag 38 no hit impede a SEQ de disparar quando ele conecta. O menu da hitbox oferece BLOQUEAR SEQUÊNCIA só quando o golpe tem SEQ.",
++         "A hitbox with flag 38 on the hit prevents the SEQ from firing when it connects. The hitbox menu offers BLOCK SEQUENCE only when the move has a SEQ.",
++         "Una hitbox con la flag 38 en el hit impide que la SEQ se dispare cuando conecta. El menú de la hitbox ofrece BLOQUEAR SECUENCIA solo cuando el golpe tiene SEQ."},
++        {"Pouso e queda",
++         "Landing and fall",
++         "Aterrizaje y caída"},
++        {"O pouso troca de ANO quando o atacante toca o chão: POUSO_ERRAR e POUSO_ACERTAR do HDAT 4. O botão POUSO do menu superior liga/desliga isso na preview; com ele desligado a velocidade só zera no chão e o golpe segue no mesmo ANO.",
++         "Landing switches ANO when the attacker touches the floor: POUSO_ERRAR and POUSO_ACERTAR of the HDAT 4. The LANDING button of the top menu turns this on/off in the preview; with it off the speed only zeroes on the floor and the move stays in the same ANO.",
++         "El aterrizaje cambia de ANO cuando el atacante toca el suelo: POUSO_ERRAR y POUSO_ACERTAR del HDAT 4. El botón ATERRIZAJE del menú superior activa/desactiva esto en la vista previa; con él desactivado la velocidad solo se pone en cero en el suelo y el golpe sigue en el mismo ANO."},
++        {"TRANSIÇÃO travada e VER FLUXO",
++         "Locked TRANSITION and VIEW FLOW",
++         "TRANSICIÓN bloqueada y VER FLUJO"},
++        {"O botão TRANSIÇÃO (só em golpes com sequência) trava as trocas de ANO a partir do frame atual, para editar um ANO sem a simulação sair dele; com a trava, a SEQ não é vista. VER FLUXO mostra o caminho completo do golpe (ANIM_INICIAL → SEQ → END → pouso...) e deixa editar cada passo.",
++         "The TRANSITION button (only on moves with a sequence) locks the ANO swaps from the current frame on, to edit an ANO without the simulation leaving it; with the lock, the SEQ is not seen. VIEW FLOW shows the move's full path (ANIM_INICIAL → SEQ → END → landing...) and lets you edit each step.",
++         "El botón TRANSICIÓN (solo en golpes con secuencia) bloquea los cambios de ANO a partir del frame actual, para editar un ANO sin que la simulación salga de él; con el bloqueo, la SEQ no se ve. VER FLUJO muestra el camino completo del golpe (ANIM_INICIAL → SEQ → END → aterrizaje...) y permite editar cada paso."},
++        {"transicao travada fluxo sequencia seq ver fluxo",
++         "transition locked flow sequence seq view flow",
++         "transicion bloqueada flujo secuencia seq ver flujo"},
++        {"Reações",
++         "Reactions",
++         "Reacciones"},
++        {"O que é uma reação (OPT 1), grupos, tabelas do jogo e do personagem, slots vazios e o editor estilo timeline.",
++         "What a reaction (OPT 1) is, groups, game and character tables, empty slots and the timeline-style editor.",
++         "Qué es una reacción (OPT 1), grupos, tablas del juego y del personaje, slots vacíos y el editor estilo timeline."},
++        {"O que é uma reação",
++         "What a reaction is",
++         "Qué es una reacción"},
++        {"Quando um hit acerta, o OPT 1 do frame diz como o oponente reage. O valor é GRUPO × 50 + NÚMERO: o número 0 a 29 é uma reação do jogo (tabela fixa da game data) e 30 a 49 é uma reação do personagem (20 slots, HDAT 14 a 33, editáveis). O grupo (0 a 4) escolhe o efeito, o som e o empurrão: 0 normal (efeito 0, som 3, empurra); 1 som alternativo (efeito 0, som 4, empurra); 2 forte (efeito 1, som 6, empurra); 3 leve (meio hitstop, sem empurrar); 4 sem efeito, som nem hitstop.",
++         "When a hit connects, the frame's OPT 1 says how the opponent reacts. The value is GROUP × 50 + NUMBER: number 0 to 29 is a game reaction (fixed game data table) and 30 to 49 is a character reaction (20 slots, HDAT 14 to 33, editable). The group (0 to 4) picks the effect, the sound and the pushback: 0 normal (effect 0, sound 3, pushes); 1 alternate sound (effect 0, sound 4, pushes); 2 strong (effect 1, sound 6, pushes); 3 light (half hitstop, no push); 4 no effect, sound or hitstop.",
++         "Cuando un hit acierta, el OPT 1 del frame dice cómo reacciona el oponente. El valor es GRUPO × 50 + NÚMERO: el número 0 a 29 es una reacción del juego (tabla fija de la game data) y 30 a 49 es una reacción del personaje (20 slots, HDAT 14 a 33, editables). El grupo (0 a 4) elige el efecto, el sonido y el empuje: 0 normal (efecto 0, sonido 3, empuja); 1 sonido alternativo (efecto 0, sonido 4, empuja); 2 fuerte (efecto 1, sonido 6, empuja); 3 leve (medio hitstop, sin empujar); 4 sin efecto, sonido ni hitstop."},
++        {"Cada reação é uma lista de passos",
++         "Each reaction is a list of steps",
++         "Cada reacción es una lista de pasos"},
++        {"Um passo é uma linha da tabela: a animação do oponente (ANO; negativo = espelhado), a duração no chão e no ar (ticks), velocidade e aceleração no chão e no ar, a próxima reação (COMP), o efeito de parede e a voz. Os passos tocam em ordem; o jogo usa os valores de chão enquanto o oponente está no chão e os de ar quando está no ar. Velocidade −1 mantém a do passo anterior e −2 reduz pela metade; 255 na duração do ar significa \"até pousar\" (limite de 255 ticks).",
++         "A step is a row of the table: the opponent's animation (ANO; negative = mirrored), the duration on the ground and in the air (ticks), speed and acceleration on the ground and in the air, the next reaction (COMP), the wall effect and the voice. The steps play in order; the game uses the ground values while the opponent is on the ground and the air ones when in the air. Speed −1 keeps the previous step's and −2 halves it; 255 in the air duration means \"until landing\" (limit of 255 ticks).",
++         "Un paso es una fila de la tabla: la animación del oponente (ANO; negativo = espejado), la duración en el suelo y en el aire (ticks), velocidad y aceleración en el suelo y en el aire, la siguiente reacción (COMP), el efecto de pared y la voz. Los pasos se reproducen en orden; el juego usa los valores de suelo mientras el oponente está en el suelo y los de aire cuando está en el aire. Velocidad −1 mantiene la del paso anterior y −2 la reduce a la mitad; 255 en la duración de aire significa \"hasta aterrizar\" (límite de 255 ticks)."},
++        {"Escolher reação e slots vazios",
++         "Choose reaction and empty slots",
++         "Elegir reacción y slots vacíos"},
++        {"A tela \"Escolher reação\" mostra a prévia de cada reação do jogo e do personagem. Os slots do personagem vazios aparecem como \"＋ vazio\": tocar oferece copiar de uma reação do personagem, copiar da game data, importar de outro personagem (lê o 000.bin dele) ou criar em branco. Em todas as listas a reação toca em laço como ficaria no slot (⏸ PAUSAR / ▶ TOCAR, ou toque na prévia) e USAR escolhe. A reação nova entra no slot (dá para desfazer) e o hit passa a usá-la. Ao salvar, o bloco do slot é criado no 000.bin.txt se faltar (precisa existir o $HDAT_14+n no arquivo; se não existir o app avisa).",
++         "The \"Choose reaction\" screen shows the preview of each game and character reaction. Empty character slots appear as \"＋ empty\": tapping offers to copy from a character reaction, copy from the game data, import from another character (reads its 000.bin) or create blank. In every list the reaction loops as it would in the slot (⏸ PAUSE / ▶ PLAY, or tap the preview) and USE picks it. The new reaction goes into the slot (you can undo) and the hit starts using it. When saving, the slot's block is created in 000.bin.txt if missing (the $HDAT_14+n must exist in the file; if it does not, the app warns).",
++         "La pantalla \"Elegir reacción\" muestra la vista previa de cada reacción del juego y del personaje. Los slots vacíos del personaje aparecen como \"＋ vacío\": tocar ofrece copiar de una reacción del personaje, copiar de la game data, importar de otro personaje (lee su 000.bin) o crear en blanco. En todas las listas la reacción se reproduce en bucle como quedaría en el slot (⏸ PAUSAR / ▶ REPRODUCIR, o toca la vista previa) y USAR la elige. La reacción nueva entra en el slot (se puede deshacer) y el hit pasa a usarla. Al guardar, el bloque del slot se crea en el 000.bin.txt si falta (el $HDAT_14+n debe existir en el archivo; si no existe, la app avisa)."},
++        {"reacao slot vazio slots escolher importar copiar personagem game data 14 33",
++         "reaction slot empty slots choose import copy character game data 14 33",
++         "reaccion slot vacio slots elegir importar copiar personaje game data 14 33"},
++        {"Editor de reações",
++         "Reaction editor",
++         "Editor de reacciones"},
++        {"EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela com o mesmo layout da tela principal: no topo o cabeçalho (CHÃO | AR escolhe o cenário simulado: oponente no chão, ou a 60 px do chão), a prévia quadrada do oponente recebendo a reação, abaixo (numa área que rola) a barra de tempo, os botões DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER e a timeline, e na base o transporte (INICIO, −1, TOCAR, +1, velocidade). A edição é na própria timeline; a gaveta de edição sobe por cima (arraste a alça para mudar a altura; Y grava a altura padrão) e só abre ao tocar num passo ou num item. Timeline: a faixa PASSOS tem um clipe amarelo por passo (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra escura da borda direita para mudar a duração do cenário atual). Tocar em PASSOS (ou no cabeçalho dela) abre e fecha as faixas: SPEED em blocos, como no ANO (um bloco por velocidade própria, cobrindo os passos seguintes que a mantêm com −1; ARRASTE a borda direita do bloco para estender ou encurtar), VOZ (♪), EFEITOS (parede), SEQ (próxima reação) e CURVA (x e y em px/tick, só leitura). Fechada, cada faixa com dados vira uma linha fina de resumo. A aba # escolhe quais faixas aparecem; arrastar na vertical rola as faixas. Tocar num passo abre a grade de páginas (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL); tocar num item de faixa abre a página dele direto, e numa célula vazia (＋) abre para adicionar. ◀ volta à grade, ✕ fecha. Digitar no campo vale na hora, e segurar − ou + muda continuamente. Tudo vem da simulação do jogo, a mesma da prévia.",
++         "EDIT REACTION (character) or VIEW REACTION (game, read-only) opens a screen with the same layout as the main screen: at the top the header (GROUND | AIR picks the simulated scenario: opponent on the ground, or 60 px off the ground), the square preview of the opponent receiving the reaction, below (in a scrolling area) the time bar, the SPLIT · DUPLICATE · DELETE · UNDO buttons and the timeline, and at the bottom the transport (START, −1, PLAY, +1, speed). Editing happens on the timeline itself; the edit drawer slides up over it (drag the handle to change the height; Y saves the default height) and only opens when you tap a step or an item. Timeline: the STEPS lane has one yellow clip per step (thumbnail of the opponent's ANO, ⇄ if mirrored, duration; the following reactions appear in gray; DRAG the dark bar on the right edge to change the duration of the current scenario). Tapping STEPS (or its header) opens and closes the lanes: SPEED in blocks, as in the ANO (one block per own speed, covering the following steps that keep it with −1; DRAG the right edge of the block to extend or shorten), VOICE (♪), EFFECTS (wall), SEQ (next reaction) and CURVE (x and y in px/tick, read-only). When closed, each lane with data becomes a thin summary line. The # tab chooses which lanes appear; dragging vertically scrolls the lanes. Tapping a step opens the page grid (ANIMATION, TIME, SPEED, VOICE, EFFECTS, SEQ, TOTAL); tapping a lane item opens its page directly, and an empty cell (＋) opens it to add. ◀ goes back to the grid, ✕ closes. Typing in the field takes effect immediately, and holding − or + changes continuously. Everything comes from the game's simulation, the same one as the preview.",
++         "EDITAR REACCIÓN (del personaje) o VER REACCIÓN (del juego, solo lectura) abre una pantalla con el mismo diseño de la pantalla principal: arriba el encabezado (SUELO | AIRE elige el escenario simulado: oponente en el suelo, o a 60 px del suelo), la vista previa cuadrada del oponente recibiendo la reacción, debajo (en un área que se desplaza) la barra de tiempo, los botones DIVIDIR · DUPLICAR · ELIMINAR · DESHACER y la timeline, y en la base el transporte (INICIO, −1, REPRODUCIR, +1, velocidad). La edición se hace en la propia timeline; el cajón de edición sube por encima (arrastra el asa para cambiar la altura; Y guarda la altura predeterminada) y solo abre al tocar un paso o un elemento. Timeline: la pista PASOS tiene un clip amarillo por paso (miniatura del ANO del oponente, ⇄ si está espejado, duración; las reacciones siguientes aparecen en gris; ARRASTRA la barra oscura del borde derecho para cambiar la duración del escenario actual). Tocar PASOS (o su encabezado) abre y cierra las pistas: SPEED en bloques, como en el ANO (un bloque por velocidad propia, cubriendo los pasos siguientes que la mantienen con −1; ARRASTRA el borde derecho del bloque para extender o acortar), VOZ (♪), EFECTOS (pared), SEQ (siguiente reacción) y CURVA (x e y en px/tick, solo lectura). Cerrada, cada pista con datos se vuelve una línea fina de resumen. La pestaña # elige qué pistas aparecen; arrastrar en vertical desplaza las pistas. Tocar un paso abre la cuadrícula de páginas (ANIMACIÓN, TIEMPO, SPEED, VOZ, EFECTOS, SEQ, TOTAL); tocar un elemento de una pista abre su página directamente, y una celda vacía (＋) abre para agregar. ◀ vuelve a la cuadrícula, ✕ cierra. Escribir en el campo vale al instante, y mantener − o + cambia de forma continua. Todo viene de la simulación del juego, la misma de la vista previa."},
++        {"reacao reacoes editor timeline passo passos speed velocidade voz efeitos parede seq dividir knockback empurrao hitstun duracao ano oponente",
++         "reaction reactions editor timeline step steps speed velocity voice effects wall seq split knockback pushback hitstun duration ano opponent",
++         "reaccion reacciones editor timeline paso pasos speed velocidad voz efectos pared seq dividir knockback empuje hitstun duracion ano oponente"},
++        {"Barra de ferramentas da reação",
++         "Reaction toolbar",
++         "Barra de herramientas de la reacción"},
++        {"A aba ＋ (colada na borda da timeline) cria no passo selecionado: passo novo (depois dele), speed, voz, efeito de parede ou próxima reação (SEQ); também move o passo (◀ ▶) e mostra o total (Σ). DIVIDIR parte o passo onde está o ponteiro em dois: a duração é repartida, o 2º passo mantém a velocidade (com aceleração, já parte da velocidade em que o 1º terminou) e a voz fica só no 1º. ATENÇÃO: cada passo reinicia a animação do oponente, então o ANO recomeça no 2º passo. DUPLICAR copia o passo; EXCLUIR apaga o item selecionado (o passo, o bloco SPEED, a voz, a parede ou a SEQ); DESFAZER volta a última edição. Em reação do jogo só vale olhar.",
++         "The ＋ tab (stuck to the edge of the timeline) creates on the selected step: a new step (after it), speed, voice, wall effect or next reaction (SEQ); it also moves the step (◀ ▶) and shows the total (Σ). SPLIT cuts the step where the pointer is into two: the duration is shared out, the 2nd step keeps the speed (with acceleration, it already starts at the speed where the 1st ended) and the voice stays only on the 1st. WARNING: each step restarts the opponent's animation, so the ANO starts over on the 2nd step. DUPLICATE copies the step; DELETE erases the selected item (the step, the SPEED block, the voice, the wall or the SEQ); UNDO reverts the last edit. On a game reaction you can only look.",
++         "La pestaña ＋ (pegada al borde de la timeline) crea en el paso seleccionado: paso nuevo (después de él), speed, voz, efecto de pared o siguiente reacción (SEQ); también mueve el paso (◀ ▶) y muestra el total (Σ). DIVIDIR parte el paso donde está el puntero en dos: la duración se reparte, el 2.º paso mantiene la velocidad (con aceleración, ya parte de la velocidad en que terminó el 1.º) y la voz queda solo en el 1.º. ATENCIÓN: cada paso reinicia la animación del oponente, así que el ANO vuelve a empezar en el 2.º paso. DUPLICAR copia el paso; ELIMINAR borra el elemento seleccionado (el paso, el bloque SPEED, la voz, la pared o la SEQ); DESHACER revierte la última edición. En una reacción del juego solo se puede mirar."},
++        {"dividir duplicar excluir apagar mais adicionar reacao passo speed voz parede seq total desfazer ferramentas cortar",
++         "split duplicate delete erase more add reaction step speed voice wall seq total undo tools cut",
++         "dividir duplicar eliminar borrar mas agregar reaccion paso speed voz pared seq total deshacer herramientas cortar"},
++        {"Parede e próxima reação",
++         "Wall and next reaction",
++         "Pared y siguiente reacción"},
++    };
++}
+diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
+--- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog7.java	2026-10-24 22:25:24.457290102 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 7 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog7 {
++    private I18nHelpCatalog7() { }
++
++    static final String[][] E = {
++        {"EFEITOS (parede): com 2 ou 3, se o oponente encosta na parede durante o passo a reação recomeça na reação indicada em SEQ; com 0 a parede não muda nada. SEQ (próxima reação): depois dos passos entra a reação indicada (1 a 29 do jogo, 30 a 49 do personagem); 0 = nenhuma, e o oponente se levanta ou cai conforme a altura.",
++         "EFFECTS (wall): with 2 or 3, if the opponent touches the wall during the step the reaction restarts at the reaction given in SEQ; with 0 the wall changes nothing. SEQ (next reaction): after the steps the given reaction enters (1 to 29 from the game, 30 to 49 from the character); 0 = none, and the opponent gets up or falls depending on the height.",
++         "EFECTOS (pared): con 2 o 3, si el oponente toca la pared durante el paso la reacción vuelve a empezar en la reacción indicada en SEQ; con 0 la pared no cambia nada. SEQ (siguiente reacción): después de los pasos entra la reacción indicada (1 a 29 del juego, 30 a 49 del personaje); 0 = ninguna, y el oponente se levanta o cae según la altura."},
++        {"Speed e aceleração",
++         "Speed and acceleration",
++         "Speed y aceleración"},
++        {"A diferença entre speed e accel, Manter velocidade (bit 64) e a velocidade recebida.",
++         "The difference between speed and accel, Keep speed (bit 64) and the received speed.",
++         "La diferencia entre speed y accel, Mantener velocidad (bit 64) y la velocidad recibida."},
++        {"Speed x Accel (velocidade e aceleração)",
++         "Speed x Accel (velocity and acceleration)",
++         "Speed x Accel (velocidad y aceleración)"},
++        {"SPEED é uma velocidade constante: o objeto anda essa quantidade de pixels a cada tick, sempre igual. Ex.: speed 50 por 5 ticks = 250 px. ACCEL é uma velocidade de aceleração: a cada tick ela soma o valor dela na velocidade atual (o objeto anda com a velocidade que tem e só depois soma). Ex.: accel 50 por 5 ticks, partindo do repouso, anda 0, 50, 100, 150 e 200 = 500 px e termina com velocidade 250. A accel só vale no frame em que está escrita; a velocidade que ela acumulou só passa para o frame seguinte se ele tiver Manter velocidade, senão volta a 0. Para continuar acelerando (ou frear) no frame seguinte, escreva a accel de novo nele. Accel sozinha, sem speed e sem velocidade recebida, é uma aceleração a partir do repouso (queda, arrancada) e não equivale a uma speed.",
++         "SPEED is a constant velocity: the object moves that many pixels every tick, always the same. E.g. speed 50 for 5 ticks = 250 px. ACCEL is an acceleration: every tick it adds its value to the current speed (the object moves at the speed it has and only then adds). E.g. accel 50 for 5 ticks, starting from rest, moves 0, 50, 100, 150 and 200 = 500 px and ends with speed 250. The accel only applies in the frame where it is written; the speed it accumulated only passes to the next frame if that one has Keep speed, otherwise it goes back to 0. To keep accelerating (or braking) in the next frame, write the accel again in it. Accel alone, with no speed and no received speed, is an acceleration from rest (fall, dash start) and is not equivalent to a speed.",
++         "SPEED es una velocidad constante: el objeto anda esa cantidad de píxeles en cada tick, siempre igual. Ej.: speed 50 por 5 ticks = 250 px. ACCEL es una aceleración: en cada tick suma su valor a la velocidad actual (el objeto anda con la velocidad que tiene y solo después suma). Ej.: accel 50 por 5 ticks, partiendo del reposo, anda 0, 50, 100, 150 y 200 = 500 px y termina con velocidad 250. La accel solo vale en el frame en que está escrita; la velocidad que acumuló solo pasa al frame siguiente si este tiene Mantener velocidad, si no vuelve a 0. Para seguir acelerando (o frenar) en el frame siguiente, escribe la accel de nuevo en él. Accel sola, sin speed y sin velocidad recibida, es una aceleración desde el reposo (caída, arranque) y no equivale a una speed."},
++        {"Manter velocidade (bit 64) e velocidade recebida",
++         "Keep speed (bit 64) and received speed",
++         "Mantener velocidad (bit 64) y velocidad recibida"},
++        {"Ao carregar um frame, o jogo zera a velocidade, a não ser que o frame tenha o bit 64 (Manter velocidade): aí ele começa com a velocidade em que o frame anterior terminou (a speed dele mais a accel × ticks). Essa velocidade recebida conta como speed, não como accel; se o frame tem speed própria, ela substitui a recebida; a accel nunca é herdada. É por isso que um salto é escrito em vários frames: o primeiro com speed e accel, e os seguintes com Manter velocidade e a accel de novo (ex.: YSPEED −16 e YACCEL 1; depois só YACCEL 0,8, e só YACCEL 1).",
++         "When loading a frame, the game zeroes the speed, unless the frame has bit 64 (Keep speed): then it starts with the speed the previous frame ended with (its speed plus accel × ticks). This received speed counts as speed, not as accel; if the frame has its own speed, it replaces the received one; accel is never inherited. That is why a jump is written in several frames: the first with speed and accel, and the following ones with Keep speed and the accel again (e.g. YSPEED −16 and YACCEL 1; then only YACCEL 0.8, and only YACCEL 1).",
++         "Al cargar un frame, el juego pone la velocidad en cero, a menos que el frame tenga el bit 64 (Mantener velocidad): entonces empieza con la velocidad con que terminó el frame anterior (su speed más accel × ticks). Esa velocidad recibida cuenta como speed, no como accel; si el frame tiene speed propia, esta reemplaza a la recibida; la accel nunca se hereda. Por eso un salto se escribe en varios frames: el primero con speed y accel, y los siguientes con Mantener velocidad y la accel de nuevo (ej.: YSPEED −16 e YACCEL 1; después solo YACCEL 0,8, y solo YACCEL 1)."},
++        {"Detalhes que pegam",
++         "Details that bite",
++         "Detalles que atrapan"},
++        {"Um frame sem TIME (tempo 0) não avança nem soma accel. Links e frames sincronizados com o pai (flags 0x2000/0x8000) não andam sozinhos: seguem a posição do pai. No editor, o total de pixels do menu Movimento já considera a velocidade recebida e a aceleração.",
++         "A frame without TIME (time 0) does not advance or add accel. Links and frames synchronized with the parent (flags 0x2000/0x8000) do not move on their own: they follow the parent's position. In the editor, the total pixels in the Movement menu already take the received speed and the acceleration into account.",
++         "Un frame sin TIME (tiempo 0) no avanza ni suma accel. Los links y frames sincronizados con el padre (flags 0x2000/0x8000) no andan solos: siguen la posición del padre. En el editor, el total de píxeles del menú Movimiento ya considera la velocidad recibida y la aceleración."},
++        {"Links e animações por flag",
++         "Links and flag animations",
++         "Links y animaciones por flag"},
++        {"Animações ligadas (links), o limite de 1 nível e as animações disparadas por flag.",
++         "Linked animations (links), the 1-level limit and the animations triggered by flag.",
++         "Animaciones ligadas (links), el límite de 1 nivel y las animaciones disparadas por flag."},
++        {"Links (animações ligadas)",
++         "Links (linked animations)",
++         "Links (animaciones ligadas)"},
++        {"Um link é outro ANO que nasce junto com o ANO e segue o pai (efeitos, partes do corpo, auras). O jogo aceita no máximo 13 por ANO e só 1 nível: link de link não nasce, e hitboxes, flags e animações dentro de um link não valem (o link mostra só as sprites dele). O botão LINKS lista os links do ANO atual; com a preview num ANO que tem links, a lista rola para o primeiro e a seta ▶ vai para o próximo.",
++         "A link is another ANO that is born together with the ANO and follows the parent (effects, body parts, auras). The game accepts at most 13 per ANO and only 1 level: a link of a link is not born, and hitboxes, flags and animations inside a link do not count (the link only shows its own sprites). The LINKS button lists the links of the current ANO; with the preview on an ANO that has links, the list scrolls to the first one and the ▶ arrow goes to the next.",
++         "Un link es otro ANO que nace junto con el ANO y sigue al padre (efectos, partes del cuerpo, auras). El juego acepta como máximo 13 por ANO y solo 1 nivel: un link de un link no nace, y las hitboxes, flags y animaciones dentro de un link no valen (el link muestra solo sus sprites). El botón LINKS lista los links del ANO actual; con la vista previa en un ANO que tiene links, la lista se desplaza al primero y la flecha ▶ va al siguiente."},
++        {"Animações por flag",
++         "Animations by flag",
++         "Animaciones por flag"},
++        {"Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora.",
++         "Hitboxes with special flags create animations: projectile (0), shake (3 to 5), dust (10 to 17), cutscene (20), camera zoom (30/31), teleport (39/40) and character animations (41 to 125). These animations are roots: they show their own links. The warning \"ANOs N, N and N have links that have other links or animations/effects\" in the warning list says which links the game ignores.",
++         "Las hitboxes con flags especiales crean animaciones: proyectil (0), temblor (3 a 5), polvo (10 a 17), cutscene (20), zoom de cámara (30/31), teletransporte (39/40) y animaciones del personaje (41 a 125). Esas animaciones son raíces: muestran sus propios links. El aviso \"Los ANOs N, N y N tienen links que tienen otros links o animaciones/efectos\" en la lista de avisos dice qué links ignora el juego."},
++        {"Sincronia do link",
++         "Link sync",
++         "Sincronía del link"},
++        {"Cada link tem posição base (bx, by) e flags: sincronizar MPT (acompanha o frame do pai), sincronizar XY (acompanha a posição do pai) e \"não copiar a posição ao nascer\". O menu Imagem tem \"mover links junto\" e \"Editar posição do Link\".",
++         "Each link has a base position (bx, by) and flags: sync MPT (follows the parent's frame), sync XY (follows the parent's position) and \"do not copy the position at birth\". The Image menu has \"move links along\" and \"Edit Link position\".",
++         "Cada link tiene posición base (bx, by) y flags: sincronizar MPT (acompaña el frame del padre), sincronizar XY (acompaña la posición del padre) y \"no copiar la posición al nacer\". El menú Imagen tiene \"mover links juntos\" y \"Editar posición del Link\"."},
++        {"Sons, sprites e CNV",
++         "Sounds, sprites and CNV",
++         "Sonidos, sprites y CNV"},
++        {"Ids de som, a lista de sprites e como as imagens são recortadas.",
++         "Sound ids, the sprite list and how images are cropped.",
++         "Ids de sonido, la lista de sprites y cómo se recortan las imágenes."},
++        {"Sons",
++         "Sounds",
++         "Sonidos"},
++        {"Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs).",
++         "The frame's sounds (SE) use ids: from 0 up to the game's last common sound, and from 80 on the character's audios (NNN.wav files in its folder). The sound list lets you play, swap, trim (audios longer than 20 s suggest trimming), adjust the volume and remove (the sound becomes silence and the uses are taken out of the ANOs).",
++         "Los sonidos del frame (SE) usan ids: de 0 hasta el último sonido común del juego, y a partir del 80 los audios del personaje (archivos NNN.wav de su carpeta). La lista de sonidos permite reproducir, cambiar, cortar (audios de más de 20 s sugieren cortar), ajustar el volumen y quitar (el sonido pasa a silencio y los usos se retiran de los ANOs)."},
++        {"Sprites e CNV",
++         "Sprites and CNV",
++         "Sprites y CNV"},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber.",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit.",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe."},
++        {"Salvar e backups",
++         "Saving and backups",
++         "Guardar y respaldos"},
++    };
++}
+diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
+--- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog8.java	2026-10-24 22:25:24.457388473 +0000
+@@ -0,0 +1,60 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 8 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog8 {
++    private I18nHelpCatalog8() { }
++
++    static final String[][] E = {
++        {"Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.",
++         "Separate folder, Runtime, saving to another character and where the safety copies go.",
++         "Carpeta separada, Runtime, guardar en otro personaje y dónde quedan las copias de seguridad."},
++        {"O que o SALVAR grava",
++         "What SAVE writes",
++         "Qué escribe GUARDAR"},
++        {"Os binários originais (000.dac / 000.bin / 000.cnv) nunca são tocados: o app grava nos .txt legíveis (000.dac.txt, 000.bin.txt, 000.cnv.txt). Dá para salvar o golpe atual (HDAT 4 + ANOs + as reações que ele usa), só o ANO atual, todos os golpes, todos os ANOs ou tudo. Ao salvar o app confere os limites do jogo e avisa o que faria o jogo fechar.",
++         "The original binaries (000.dac / 000.bin / 000.cnv) are never touched: the app writes to the readable .txt files (000.dac.txt, 000.bin.txt, 000.cnv.txt). You can save the current move (HDAT 4 + ANOs + the reactions it uses), only the current ANO, all moves, all ANOs or everything. When saving, the app checks the game limits and warns about whatever would make the game close.",
++         "Los binarios originales (000.dac / 000.bin / 000.cnv) nunca se tocan: la app escribe en los .txt legibles (000.dac.txt, 000.bin.txt, 000.cnv.txt). Se puede guardar el golpe actual (HDAT 4 + ANOs + las reacciones que usa), solo el ANO actual, todos los golpes, todos los ANOs o todo. Al guardar, la app revisa los límites del juego y avisa lo que haría que el juego se cierre."},
++        {"Onde salvar",
++         "Where to save",
++         "Dónde guardar"},
++        {"Pasta separada (Tap Battle/TBRE/Chars/charNN/): copia o personagem inteiro (DAC, BIN, CNV, folhas, sons) e aplica a mesma gravação do Runtime na cópia, pronta para usar; o original não muda. Se a pasta já existe o app pergunta se une (mantém o que já está lá e aplica por cima), deleta e copia de novo ou usa outro nome. Runtime (Tap Battle/assets/charNN/): sobrescreve os .txt do próprio personagem. Salvar em outro personagem (Runtime) só aparece em \"Salvar golpe atual\".",
++         "Separate folder (Tap Battle/TBRE/Chars/charNN/): copies the whole character (DAC, BIN, CNV, sheets, sounds) and applies the same Runtime write to the copy, ready to use; the original does not change. If the folder already exists the app asks whether to merge (keeps what is already there and applies on top), delete and copy again, or use another name. Runtime (Tap Battle/assets/charNN/): overwrites the character's own .txt files. Save to another character (Runtime) only appears under \"Save current move\".",
++         "Carpeta separada (Tap Battle/TBRE/Chars/charNN/): copia el personaje entero (DAC, BIN, CNV, hojas, sonidos) y aplica la misma escritura del Runtime en la copia, lista para usar; el original no cambia. Si la carpeta ya existe, la app pregunta si la une (conserva lo que ya está y aplica encima), la elimina y copia de nuevo, o usa otro nombre. Runtime (Tap Battle/assets/charNN/): sobrescribe los .txt del propio personaje. Guardar en otro personaje (Runtime) solo aparece en \"Guardar golpe actual\"."},
++        {"salvar pasta separada runtime backup caminho tap battle tbre chars",
++         "save separate folder runtime backup path tap battle tbre chars",
++         "guardar carpeta separada runtime respaldo backup ruta tap battle tbre chars"},
++        {"Salvar em outro personagem",
++         "Save to another character",
++         "Guardar en otro personaje"},
++        {"Escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot (preferem um vazio). Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. Recarregue o personagem destino depois.",
++         "Pick the character (the char folders in assets), then the move to replace (moves 0, 3 and 6 can only replace 0, 3 and 6; the others can replace any move except those three) and it writes straight into that character's Runtime: the HDAT 4 move is swapped, the ANOs are appended to the end of the DAC (renumbered), the sprites used are appended to the end of the CNV and the sheets, and the character reactions used go to a slot (preferring an empty one). Character sounds (id 80+) and hitbox flags 20 and 41-125 do not go along. Reload the target character afterwards.",
++         "Eliges el personaje (las carpetas char de assets), luego el golpe a reemplazar (los golpes 0, 3 y 6 solo reemplazan el 0, 3 y 6; los demás, cualquiera salvo esos tres) y escribe directo en el Runtime de ese personaje: se cambia el golpe del HDAT 4, los ANOs entran al final del DAC (renumerados), los sprites usados entran al final del CNV y de las hojas, y las reacciones del personaje usadas van a un slot (prefiere uno vacío). Los sonidos del personaje (id 80+) y las hitbox flags 20 y 41-125 no van incluidos. Recarga el personaje destino después."},
++        {"transplante transplantar outro personagem salvar golpe substituir hdat 4",
++         "transplant other character save move replace hdat 4",
++         "trasplante trasplantar otro personaje guardar golpe reemplazar hdat 4"},
++        {"Backups",
++         "Backups",
++         "Respaldos"},
++        {"As cópias de segurança ficam em Tap Battle/TBRE/Backups/AAAAMMDD_HHMMSS_charNN_transplante/ (os três .txt do destino como estavam antes de salvar em outro personagem).",
++         "Safety copies go to Tap Battle/TBRE/Backups/YYYYMMDD_HHMMSS_charNN_transplante/ (the target's three .txt files as they were before saving to another character).",
++         "Las copias de seguridad quedan en Tap Battle/TBRE/Backups/AAAAMMDD_HHMMSS_charNN_transplante/ (los tres .txt del destino como estaban antes de guardar en otro personaje)."},
++        {"Avisos e limites",
++         "Warnings and limits",
++         "Avisos y límites"},
++        {"Os avisos da tela, as cores, o que fecha o jogo e os limites do jogo.",
++         "The on-screen warnings, the colors, what closes the game and the game limits.",
++         "Los avisos de la pantalla, los colores, lo que cierra el juego y los límites del juego."},
++        {"Avisos na tela",
++         "On-screen warnings",
++         "Avisos en pantalla"},
++        {"Os avisos sobre a preview têm cor: vermelho quando o jogo fecharia ou erraria, âmbar quando o editor vê algo que o jogo trata diferente. Mostram o primeiro e \"(+N)\"; tocar expande e lista todos. OCULTAR esconde aquele aviso; alguns têm um botão que leva ao ajuste (POS, DESATIVAR). Avisos: transição travada com sequência, pouso antecipado, projétil que não nasce (ANO vazio, campo do HDAT 4 vazio, golpe que errou...), e as regras do jogo abaixo. A barra de aviso acima da preview junta os avisos de carga (DAC, gamedata, effect, charf, sprites).",
++         "The warnings over the preview have a color: red when the game would close or get it wrong, amber when the editor sees something the game treats differently. They show the first one and \"(+N)\"; tapping expands and lists them all. HIDE hides that warning; some have a button that takes you to the fix (POS, DISABLE). Warnings: locked transition with sequence, early landing, projectile that is not born (empty ANO, empty HDAT 4 field, move that missed...), and the game rules below. The warning bar above the preview gathers the load warnings (DAC, gamedata, effect, charf, sprites).",
++         "Los avisos sobre la vista previa tienen color: rojo cuando el juego se cerraría o fallaría, ámbar cuando el editor ve algo que el juego trata distinto. Muestran el primero y \"(+N)\"; tocar expande y lista todos. OCULTAR esconde ese aviso; algunos tienen un botón que lleva al ajuste (POS, DESACTIVAR). Avisos: transición bloqueada con secuencia, aterrizaje anticipado, proyectil que no nace (ANO vacío, campo del HDAT 4 vacío, golpe que falló...), y las reglas del juego de abajo. La barra de avisos sobre la vista previa reúne los avisos de carga (DAC, gamedata, effect, charf, sprites)."},
++        {"Limites do jogo",
++         "Game limits",
++         "Límites del juego"},
++        {"Por ANO: no máximo 255 frames, 13 links e tempo de 255 ticks por frame (campo de 1 byte). Por frame: no máximo 10 caixas (hitboxes, hurtboxes e flags de ação; o jogo guarda 50 números, 5 por caixa). OPT 1 de reação com hitbox precisa apontar para um grupo que exista. Interpolação (rotação/alpha/zoom) lê o frame seguinte e pode dar valores errados se o seguinte tem mais caixas. Imagem que não existe no CNV deixa o frame sem desenho. Os campos do HDAT 4 aceitam números de 16 bits; as tabelas de reação usam 1 byte por campo (ANO −127 a 127, voz 0 a 127).",
++         "Per ANO: at most 255 frames, 13 links and 255 ticks of time per frame (1-byte field). Per frame: at most 10 boxes (hitboxes, hurtboxes and action flags; the game stores 50 numbers, 5 per box). A reaction OPT 1 with a hitbox must point to a group that exists. Interpolation (rotation/alpha/zoom) reads the next frame and can give wrong values if the next one has more boxes. An image that does not exist in the CNV leaves the frame with no drawing. The HDAT 4 fields accept 16-bit numbers; the reaction tables use 1 byte per field (ANO −127 to 127, voice 0 to 127).",
++         "Por ANO: como máximo 255 frames, 13 links y tiempo de 255 ticks por frame (campo de 1 byte). Por frame: como máximo 10 cajas (hitboxes, hurtboxes y flags de acción; el juego guarda 50 números, 5 por caja). El OPT 1 de reacción con hitbox debe apuntar a un grupo que exista. La interpolación (rotación/alpha/zoom) lee el frame siguiente y puede dar valores incorrectos si el siguiente tiene más cajas. Una imagen que no existe en el CNV deja el frame sin dibujo. Los campos del HDAT 4 aceptan números de 16 bits; las tablas de reacción usan 1 byte por campo (ANO −127 a 127, voz 0 a 127)."},
++    };
 +}
 diff -ruN a/I18nTextView.java b/I18nTextView.java
 --- a/I18nTextView.java	1970-01-01 00:00:00.000000000 +0000
@@ -6776,8 +7606,8 @@ diff -ruN a/I18nTextView.java b/I18nTextView.java
 +}
 diff -ruN a/I18nUi.java b/I18nUi.java
 --- a/I18nUi.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nUi.java	2026-10-24 21:48:43.067832233 +0000
-@@ -0,0 +1,50 @@
++++ b/I18nUi.java	2026-10-24 22:22:36.501875952 +0000
+@@ -0,0 +1,68 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -6785,6 +7615,7 @@ diff -ruN a/I18nUi.java b/I18nUi.java
 +import android.content.SharedPreferences;
 +import android.view.View;
 +import android.view.ViewGroup;
++import android.widget.TextView;
 +import android.widget.Toast;
 +
 +/** Parte Android do idioma: preferencia salva, toasts traduzidos e retraducao das telas abertas. */
@@ -6803,6 +7634,23 @@ diff -ruN a/I18nUi.java b/I18nUi.java
 +
 +    static void save(Context c) {
 +        try { c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, I18n.code()).apply(); } catch (Exception ignored) { }
++    }
++
++    private static final java.util.Map<TextView, Boolean> LANG_LABELS = new java.util.WeakHashMap<TextView, Boolean>();
++
++    /** Registra um botao de idioma: o rotulo (PT/EN/ES) acompanha a troca, de onde ela vier. */
++    static void registerLang(TextView t) {
++        if (t instanceof I18nTextView) ((I18nTextView) t).noTranslate();
++        t.setText(I18n.code());
++        LANG_LABELS.put(t, Boolean.TRUE);
++    }
++
++    /** Proximo idioma (PT, EN, ES): grava a escolha, atualiza os botoes de idioma e retraduz a tela da activity. */
++    static void cycle(Context c) {
++        I18n.next();
++        save(c);
++        for (TextView t : new java.util.ArrayList<TextView>(LANG_LABELS.keySet())) t.setText(I18n.code());
++        if (c instanceof Activity) retranslate((Activity) c);
 +    }
 +
 +    /** Substitui Toast.makeText: o texto passa por {@link I18n#tr}. */
@@ -6934,7 +7782,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 22:17:10.226751997 +0000
++++ b/LayoutManager.java	2026-10-24 22:22:36.503098210 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -7030,7 +7878,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.sq.setText(letter);
          t.sq.setGravity(Gravity.CENTER);
          t.sq.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-@@ -262,6 +279,38 @@
+@@ -262,6 +279,34 @@
          r.setPadding(pad, pad, pad, pad);
          applyInsets(r, pad);
  
@@ -7053,12 +7901,8 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +        final TextView bLang = button(a, I18n.code(), false);
 +        bLang.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
 +        bLang.setPadding(dp(12), dp(7), dp(12), dp(7));
-+        bLang.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
-+            I18n.next();
-+            I18nUi.save(a);
-+            ((TextView) v).setText(I18n.code());
-+            I18nUi.retranslate(a);
-+        } });
++        I18nUi.registerLang(bLang);
++        bLang.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { I18nUi.cycle(a); } });
 +        titleBar.addView(bLang, lp(-2, -2, 0, 0, 6, 0));
 +        final TextView bHelp = button(a, "AJUDA", false);
 +        bHelp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -7069,7 +7913,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          // ---- topo: estado, titulo do golpe, aviso e espaco reservado para opcoes futuras
          backBar = button(a, "", true);
          backBar.setVisibility(View.GONE);
-@@ -296,41 +345,57 @@
+@@ -296,41 +341,57 @@
          final TextView bSpr = button(a, "SPRITES", false);
          final TextView bLinks = button(a, "LINKS", false);
          lockBtnRef = bLock;
@@ -7141,7 +7985,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          TextView wr = text(a, "", 12, WARN);
          wr.setSingleLine(true);
          wr.setEllipsize(android.text.TextUtils.TruncateAt.END);
-@@ -338,9 +403,10 @@
+@@ -338,9 +399,10 @@
          wr.setClickable(true);
          wr.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              warnExpanded = !warnExpanded;
@@ -7154,7 +7998,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
  
  
          // ---- preview no centro
-@@ -383,7 +449,7 @@
+@@ -383,7 +445,7 @@
          });
          final android.widget.FrameLayout tlBox = new android.widget.FrameLayout(a);
          tlBox.addView(tl, new android.widget.FrameLayout.LayoutParams(-1, -2));
@@ -7163,7 +8007,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          plus.setText("\uFF0B");
          plus.setGravity(Gravity.CENTER);
          plus.setTextColor(Color.WHITE);
-@@ -399,7 +465,7 @@
+@@ -399,7 +461,7 @@
          plp2.setMargins(0, dp(4), 0, 0);
          tlBox.addView(plus, plp2);
          tlBox.setMinimumHeight(dp(104));
@@ -7172,7 +8016,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          filt.setText("#");
          filt.setGravity(Gravity.CENTER);
          filt.setTextColor(Color.WHITE);
-@@ -452,6 +518,7 @@
+@@ -452,6 +514,7 @@
          }
          panel.addView(tabRow, lp(-1, -2, 0, 0, 0, 3));
          final TextView fi = mono(a, "", 11, TEXT);
@@ -7180,7 +8024,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          fi.setBackgroundColor(0xFF161A21);
          fi.setPadding(dp(8), dp(6), dp(8), dp(6));
          fi.setLines(8);                       // altura fixa: o texto rola, a preview nao muda de tamanho
-@@ -460,7 +527,7 @@
+@@ -460,7 +523,7 @@
          fi.setMovementMethod(new android.text.method.ScrollingMovementMethod());
          android.widget.FrameLayout box = new android.widget.FrameLayout(a);
          box.addView(fi, new android.widget.FrameLayout.LayoutParams(-1, -2));
@@ -7189,7 +8033,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          pencil.setText("\u270E");
          pencil.setGravity(Gravity.CENTER);
          pencil.setTextColor(Color.WHITE);
-@@ -506,23 +573,103 @@
+@@ -506,23 +569,103 @@
          toolsRef[0] = tools;
          hsRef[0] = hs;
          // gaveta entre a area que rola e a barra de controle (que continua na base)
@@ -7296,7 +8140,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -531,11 +678,11 @@
+@@ -531,11 +674,11 @@
                  tl.clearSelection();
                  if (!tools.sheetOpen()) return;
                  int n = tools.discardSession();
@@ -7311,7 +8155,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { pick.on(which); }
                  }).show();
              }
-@@ -546,7 +693,7 @@
+@@ -546,7 +689,7 @@
          bDup.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { ops.duplicateSelected(); } });
          bDel.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { ops.deleteSelected(); } });
          bUndo.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
@@ -7320,7 +8164,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          } });
          timelineRef = tl;
          sc.addView(bottom, lp(-1, -2, 0, 6, 0, 0));
-@@ -596,6 +743,8 @@
+@@ -596,6 +739,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -7329,7 +8173,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -657,7 +806,7 @@
+@@ -657,7 +802,7 @@
                  tbox.setPadding(dp(16), dp(8), dp(16), dp(8));
                  for (int k = 0; k < ids.length; k++) {
                      final int id = ids[k];
@@ -7338,7 +8182,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      cb.setText(names[k]);
                      cb.setTextColor(TEXT);
                      cb.setChecked(checked[k]);
-@@ -666,7 +815,7 @@
+@@ -666,7 +811,7 @@
                      });
                      tbox.addView(cb);
                  }
@@ -7347,7 +8191,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbBox.setText("Box dos sprites (amarela, bordas de todas as sprites)");
                  cbBox.setTextColor(0xFFFFE04C);
                  cbBox.setChecked(spriteBoxesOn[0]);
-@@ -681,7 +830,7 @@
+@@ -681,7 +826,7 @@
                  tbox.addView(bGs, lp(-1, -2, 0, 12, 0, 0));
                  android.widget.ScrollView tsv = new android.widget.ScrollView(a);
                  tsv.addView(tbox);
@@ -7356,7 +8200,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                          .setView(tsv).setPositiveButton("OK", null).show();
              }
          });
-@@ -715,7 +864,7 @@
+@@ -715,7 +860,7 @@
              final String[] nm = {"Âncora dos sprites (amarelo)", "Âncora das hurtboxes (azul)", "Âncora das hitboxes (vermelho)", "Âncora dos efeitos/animações (cinza) e globais (roxo)", "Âncora dos projéteis (laranja)"};
              for (int k = 0; k < nm.length; k++) {
                  final int kk = k;
@@ -7365,7 +8209,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  if (k == 3) {
                      android.text.SpannableString sp = new android.text.SpannableString(nm[k]);
                      int g = nm[k].indexOf("cinza"), pu = nm[k].indexOf("roxo");
-@@ -729,7 +878,7 @@
+@@ -729,7 +874,7 @@
                  });
                  ob.addView(cb);
              }
@@ -7374,7 +8218,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              cl.setText("Links (linhas e pontos entre objetos)"); cl.setTextColor(0xFF7CFFB2); cl.setChecked(on[2]);
              cl.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                  @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { on[2] = v; applyObj.run(); }
-@@ -759,17 +908,17 @@
+@@ -759,17 +904,17 @@
                  ap.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) {
                      int w, h;
                      try { w = Integer.parseInt(ew.getText().toString().trim()); h = Integer.parseInt(eh.getText().toString().trim()); }
@@ -7395,7 +8239,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      .setView(osv).setPositiveButton("OK", null).show();
          } };
          bChar.setOnClickListener(new View.OnClickListener() {
-@@ -788,7 +937,7 @@
+@@ -788,7 +933,7 @@
                  objRow.setGravity(Gravity.CENTER_VERTICAL);
                  TextView bObj = button(a, "CHAR OBJ  (box branca + âncoras)", false);
                  bObj.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); showObjOptions.run(); } });
@@ -7404,7 +8248,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbObj.setChecked(objOn[0]);
                  cbObj.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                      @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { objOn[0] = v; applyObj.run(); }
-@@ -799,7 +948,7 @@
+@@ -799,7 +944,7 @@
                  box.addView(bA, lp(-1, -2, 0, 0, 0, 8));
                  box.addView(bO, lp(-1, -2, 0, 0, 0, 8));
                  box.addView(bP, lp(-1, -2, 0, 0, 0, 0));
@@ -7413,7 +8257,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                          .setTitle("Personagens").setView(box).setNegativeButton("FECHAR", null).create();
                  dlg[0].show();
              }
-@@ -856,7 +1005,9 @@
+@@ -856,7 +1001,9 @@
              }
          });
  
@@ -7424,7 +8268,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -877,18 +1028,44 @@
+@@ -877,18 +1024,44 @@
      /** SPRITES: lista de sprites do personagem atacante atual. */
      private void showSpritePacks(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
@@ -7472,7 +8316,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setItems(items, new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { askWhere(a, view, d, which); }
                  }).setNegativeButton("FECHAR", null).show();
-@@ -896,20 +1073,25 @@
+@@ -896,20 +1069,25 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -7504,7 +8348,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          try {
              File dir = d.attacker.dir;
              Dac dac = d.attacker.dac;
-@@ -918,39 +1100,240 @@
+@@ -918,39 +1096,240 @@
              int idx = d.moveIndex;
              if ((which == 0) && m.generic) {
                  CharData.Move own = cd.ownerOf(d.moveIndex);
@@ -7768,7 +8612,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -980,12 +1363,12 @@
+@@ -980,12 +1359,12 @@
      private void openPicker(Activity a, String title, final Spinner sp) {
          android.widget.SpinnerAdapter ad = sp.getAdapter();
          if (ad == null || ad.getCount() == 0) {
@@ -7783,7 +8627,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title)
                  .setSingleChoiceItems(items, sp.getSelectedItemPosition(), new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface d, int which) {
-@@ -1019,7 +1402,7 @@
+@@ -1019,7 +1398,7 @@
              row.addView(b, lpw(1f, k == 0 ? 0 : 3, 0, k == 3 ? 0 : 3, 0));
          }
          box.addView(row, lp(-1, -2, 0, 0, 0, 0));
@@ -7792,7 +8636,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title).setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1045,22 +1428,49 @@
+@@ -1045,22 +1424,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -7852,7 +8696,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1121,7 +1531,7 @@
+@@ -1121,7 +1527,7 @@
                  c.drawLine(pad(), y, w - pad(), y, p);
                  p.setColor(0xFFB8C2D6);
                  p.setTextAlign(android.graphics.Paint.Align.LEFT);
@@ -7861,7 +8705,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
              // grade vertical: distancias predefinidas ao redor do personagem parado
              float ref = drag == 0 ? ox : drag == 1 ? ax : ax;
-@@ -1135,7 +1545,7 @@
+@@ -1135,7 +1541,7 @@
                      if (sg > 0 || ref - px < 0) {
                          p.setColor(0xFFFFC857);
                          p.setTextAlign(android.graphics.Paint.Align.CENTER);
@@ -7870,7 +8714,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      }
                  }
              }
-@@ -1145,9 +1555,9 @@
+@@ -1145,9 +1551,9 @@
              p.setTextAlign(android.graphics.Paint.Align.CENTER);
              p.setTextSize(11f * den);
              p.setTextSize(10.5f * den);
@@ -7882,7 +8726,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      w / 2f, gy() + 31f * den, p);
          }
  
-@@ -1235,12 +1645,12 @@
+@@ -1235,12 +1641,12 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -7897,7 +8741,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("Posicao").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1253,7 +1663,7 @@
+@@ -1253,7 +1659,7 @@
          final AttackView view = attackView;
          final AttackData d = view == null ? null : view.attackData();
          if (d == null || d.move == null || d.move.generic) {
@@ -7906,7 +8750,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              return;
          }
          final CharData.Move mv = d.move;
-@@ -1294,21 +1704,21 @@
+@@ -1294,21 +1700,21 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -7932,7 +8776,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cb.setText(label);
          cb.setTextColor(TEXT);
          box.addView(cb, lp(-1, -2, 0, 4, 0, 0));
-@@ -1350,7 +1760,7 @@
+@@ -1350,7 +1756,7 @@
          LinearLayout box = new LinearLayout(a);
          box.setOrientation(LinearLayout.VERTICAL);
          box.setPadding(dp(16), dp(8), dp(16), dp(8));
@@ -7941,7 +8785,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cp.setText("Mostrar projeteis");
          cp.setTextColor(TEXT);
          cp.setChecked(view.isGhostProj());
-@@ -1358,7 +1768,7 @@
+@@ -1358,7 +1764,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostProj(on); }
          });
          box.addView(cp);
@@ -7950,7 +8794,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          ce.setText("Mostrar efeitos (os mesmos do HIDE-EFF, menos projeteis)");
          ce.setTextColor(TEXT);
          ce.setChecked(view.isGhostFx());
-@@ -1366,7 +1776,7 @@
+@@ -1366,7 +1772,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostFx(on); }
          });
          box.addView(ce);
@@ -7959,7 +8803,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cc.setText("Aplicar tambem ao Frame atual");
          cc.setTextColor(TEXT);
          cc.setChecked(view.isGhostCurrent());
-@@ -1389,7 +1799,7 @@
+@@ -1389,7 +1795,7 @@
              @Override public void onStopTrackingTouch(SeekBar s2) { }
          });
          box.addView(gs);
@@ -7968,7 +8812,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1528,7 +1938,7 @@
+@@ -1528,7 +1934,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -7977,7 +8821,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1544,7 +1954,7 @@
+@@ -1544,7 +1950,7 @@
          et.setText(attackView.editText(tab));
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(et);
@@ -7986,7 +8830,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +1969,7 @@
+@@ -1559,7 +1965,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -7995,7 +8839,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +1977,9 @@
+@@ -1567,9 +1973,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -8007,7 +8851,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2010,7 @@
+@@ -1600,7 +2006,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -8016,7 +8860,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2024,7 @@
+@@ -1614,7 +2020,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -8025,7 +8869,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1662,7 +2072,7 @@
+@@ -1662,7 +2068,7 @@
              LinearLayout box = new LinearLayout(c);
              box.setOrientation(LinearLayout.VERTICAL);
              box.setBackgroundColor(PANEL);
@@ -8034,7 +8878,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              top.setText("\u25A6  ABRIR LISTA (com pr\u00E9vias)");
              top.setTextColor(0xFF4C8DFF);
              top.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-@@ -1766,12 +2176,13 @@
+@@ -1766,12 +2172,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -16298,6 +17142,130 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +        System.out.println("GameRulesTest fails=" + BattleTest.fails);
 +    }
 +}
+diff -ruN a/test/HelpI18nTest.java b/test/HelpI18nTest.java
+--- a/test/HelpI18nTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/HelpI18nTest.java	2026-10-24 22:24:23.639937745 +0000
+@@ -0,0 +1,120 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.ArrayList;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++/** AJUDA em EN/ES: todo texto traduzido, numeros e identificadores preservados, busca nos tres idiomas e mensagem de compartilhamento. */
++public class HelpI18nTest {
++    /** Titulos que sao iguais em PT e EN (so identificadores) ou em PT e ES (cognatos). */
++    static final Set<String> SAME = new HashSet<String>(java.util.Arrays.asList("SEQ_PROJETIL (ANIM_AO_ACERTAR)", "Hitbox / Hurtbox", "Barra de título", "MODO: GOLPES / ANO", "GOLPE SET (ATK_FLAGS)"));
++
++    static List<String> all() {
++        List<String> l = new ArrayList<String>();
++        l.add(HelpText.REORDER_TIP);
++        List<HelpText.Section> secs = new ArrayList<HelpText.Section>(HelpText.toolbar());
++        for (HelpText.Chapter c : HelpText.chapters()) {
++            l.add(c.title); l.add(c.summary);
++            secs.addAll(c.sections);
++        }
++        for (HelpText.Section s : secs) { l.add(s.title); l.add(s.body); if (s.tags.length() > 0) l.add(s.tags); }
++        return l;
++    }
++
++    static List<String> numbers(String s) {
++        List<String> out = new ArrayList<String>();
++        Matcher m = Pattern.compile("\\d+").matcher(s);
++        while (m.find()) out.add(m.group());
++        java.util.Collections.sort(out);
++        return out;
++    }
++
++    static Set<String> idents(String s) {
++        Set<String> out = new HashSet<String>();
++        Matcher m = Pattern.compile("\\b(?!AAAA)[A-Z][A-Za-z0-9]*_[A-Za-z0-9_]+\\b|\\$[A-Z_0-9+]+|\\b(?:ANO|DAC|BIN|CNV|MPT|HDAT|OPT|SEQ|END|TBRHelp|ATK_FLAGS|BulletNum)\\b").matcher(s);
++        while (m.find()) out.add(m.group());
++        return out;
++    }
++
++    public static void main(String[] args) {
++        int old = I18n.lang();
++        List<String> texts = all();
++        // os mesmos textos sao unicos ou repetidos; so interessa o conjunto
++        Set<String> uniq = new HashSet<String>(texts);
++        int untranslated = 0, emptyEs = 0, numBad = 0, idBad = 0;
++        StringBuilder bad = new StringBuilder();
++        for (String pt : uniq) {
++            String en = I18n.trTo(pt, I18n.EN), es = I18n.trTo(pt, I18n.ES);
++            boolean neutral = pt.length() < 30 && !pt.contains(" ") || pt.matches("[A-Z0-9 /_.\\-]+") || SAME.contains(pt);
++            if (!neutral && (en.equals(pt) || (es.equals(pt) && pt.length() > 40))) { untranslated++; bad.append("[sem traducao] ").append(pt, 0, Math.min(40, pt.length())).append('\n'); }
++            if (en.trim().isEmpty() || es.trim().isEmpty()) emptyEs++;
++            if (!numbers(pt).equals(numbers(en)) || !numbers(pt).equals(numbers(es))) { numBad++; bad.append("[numeros] ").append(pt, 0, Math.min(40, pt.length())).append(' ').append(numbers(pt)).append(numbers(en)).append(numbers(es)).append('\n'); }
++            Set<String> ip = idents(pt);
++            if (!idents(en).containsAll(ip) || !idents(es).containsAll(ip)) { idBad++; bad.append("[identificadores] ").append(pt, 0, Math.min(40, pt.length())).append('\n'); }
++        }
++        if (bad.length() > 0) System.out.println(bad);
++        check("todo texto da ajuda (" + uniq.size() + ") tem EN e ES (exceto termos neutros)", untranslated, 0);
++        check("nenhuma traducao vazia", emptyEs, 0);
++        check("numeros iguais em PT, EN e ES (limites, bits, ids)", numBad, 0);
++        check("identificadores ($KEYS, SEQ_PROJETIL, ANO, DAC...) preservados", idBad, 0);
++
++        // titulos de botao traduzidos de forma coerente com o resto da interface
++        check("titulos EN: Movimento -> Movement, Salvar e backups -> Saving and backups", I18n.trTo("Movimento", I18n.EN).equals("Movement") && I18n.trTo("Salvar e backups", I18n.EN).equals("Saving and backups"), true);
++        check("titulos ES: Reações -> Reacciones", I18n.trTo("Reações", I18n.ES), "Reacciones");
++        check("PT continua sendo a fonte (trTo PT devolve igual)", I18n.trTo("Movimento", I18n.PT), "Movimento");
++
++        // busca nos tres idiomas
++        I18n.set(I18n.PT);
++        check("EN: 'velocity' acha Movimento", found("velocity", "Movimento"), true);
++        check("ES: 'velocidad' acha Movimento", found("velocidad", "Movimento"), true);
++        check("EN: 'backup' acha SALVAR", found("backup", "SALVAR"), true);
++        check("ES: 'respaldo' acha SALVAR", found("respaldo", "SALVAR"), true);
++        check("EN: 'landing' acha POUSO", found("landing", "POUSO"), true);
++        check("ES: 'aterrizaje' acha POUSO", found("aterrizaje", "POUSO"), true);
++        check("EN: 'projectile' acha Tela do projétil", found("projectile", "Tela do projétil"), true);
++        check("ES: 'proyectil' acha Tela do projétil", found("proyectil", "Tela do projétil"), true);
++        check("EN: 'reaction' acha Editor de reações", found("reaction", "Editor de reações"), true);
++        check("ES: 'reaccion' acha Editor de reações", found("reaccion", "Editor de reações"), true);
++        check("EN com erro de digitacao: 'acelleration' acha Speed x Accel", found("acelleration", "Speed x Accel (velocidade e aceleração)"), true);
++        I18n.set(I18n.EN);
++        List<HelpText.Hit> hits = HelpText.search("speed");
++        boolean sn = !hits.isEmpty();
++        for (HelpText.Hit h : hits) if (!h.tab) sn &= h.snippet.length() > 0 && h.snippet.length() < 260 && I18n.tr(h.section.body).contains(h.snippet.replace("… ", "").replace(" …", "").trim());
++        check("em EN o trecho da busca vem do texto em EN", sn, true);
++        I18n.set(old);
++
++        // mensagem que acompanha o MD no compartilhamento
++        I18n.set(I18n.PT);
++        String pt = AiHelp.shareMessage();
++        I18n.set(I18n.EN);
++        String en = AiHelp.shareMessage(), enTitle = AiHelp.chooserTitle();
++        I18n.set(I18n.ES);
++        String es = AiHelp.shareMessage(), esTitle = AiHelp.chooserTitle();
++        I18n.set(old);
++        check("mensagem PT cita o arquivo", pt.startsWith("Leia este arquivo (TBRHelp.md)"), true);
++        check("mensagem EN", en, "Read this file (TBRHelp.md): it describes the Attack Editor app. Then answer my questions about how to create and edit attacks.");
++        check("mensagem ES", es, "Lee este archivo (TBRHelp.md): describe la app Attack Editor. Después responde a mis preguntas sobre cómo crear y editar ataques.");
++        check("titulo do compartilhar EN/ES", enTitle + "|" + esTitle, "Send TBRHelp.md to an AI|Enviar TBRHelp.md a una IA");
++        // o arquivo nao muda com o idioma
++        I18n.set(I18n.PT);
++        String docPt = AiHelp.build("x");
++        I18n.set(I18n.EN);
++        String docEn = AiHelp.build("x");
++        I18n.set(I18n.ES);
++        String docEs = AiHelp.build("x");
++        I18n.set(old);
++        check("TBRHelp.md identico em PT, EN e ES", docPt.equals(docEn) && docPt.equals(docEs), true);
++        check("anexo A do MD fica em PT (a ajuda do app literal)", docEn.contains("Primeiros passos") && !docEn.contains("Getting started"), true);
++        System.out.println("HelpI18nTest fails=" + fails);
++    }
++
++    static boolean found(String q, String title) {
++        for (HelpText.Hit h : HelpText.search(q)) if (h.section.title.equals(title)) return true;
++        return false;
++    }
++}
 diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
 --- a/test/HelpSearchTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/HelpSearchTest.java	2026-10-24 20:42:10.502743423 +0000
@@ -16516,7 +17484,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-24 22:15:58.483834287 +0000
++++ b/test/I18nIgnored.java	2026-10-24 22:24:02.606334134 +0000
 @@ -0,0 +1,476 @@
 +package com.zue.attackeditor;
 +

@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 999 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1024 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -227,7 +227,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
 
-### 3.1za Idioma: catálogo da interface (1 295 entradas PT/EN/ES)
+### 3.1za Idioma: catálogo da interface (1 302 entradas PT/EN/ES)
 - Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
 - Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
 - **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
@@ -241,6 +241,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 
 ### 3.1zc Correção: projétil ABAIXO / ACIMA estava invertido nos textos
 - No jogo (jogo:31664-31672) `PROJETIL_ANIM_ABAIXO` vale quando o **atacante** está ≥ 51 px mais baixo que o oponente e `PROJETIL_ANIM_ACIMA` quando está ≥ 37 px mais alto. A tela de ramificação (“oponente bem abaixo/acima”), a AJUDA e o TBRHelp.md diziam o contrário. Agora: “atacante bem abaixo/acima do oponente” (PT/EN/ES). O simulador (`BattleSim`) já estava certo.
+
+### 3.1zd Idioma: AJUDA inteira em EN/ES, busca nos três idiomas e botão na tela de ajuda
+- **Todos os textos da AJUDA** (capítulos, resumos, títulos, corpos, tags e a dica de ordem dos botões: 209 trechos) estão em PT/EN/ES em `I18nHelpCatalog*` (gerado de `i18n_src/help_tr.json`). Entram só na busca exata (textos longos não viram “fragmentos” do `I18n.tr`). PT continua a fonte; o **anexo A do TBRHelp.md usa sempre o PT** e o arquivo é **idêntico** em qualquer idioma.
+- **Botão PT/EN/ES no cabeçalho da AJUDA** (ao lado de “Ajuda de IA”): troca na hora, grava a escolha, atualiza o botão da tela principal (`I18nUi.registerLang`/`cycle`) e re-renderiza capítulos, busca e dica de busca. Seção nova **“Idioma da interface”** em *Primeiros passos*.
+- **Busca multilíngue**: os termos de cada seção em PT + EN + ES entram juntos no índice, e os grupos de sinônimos ganharam palavras em EN/ES (digitar `velocity`, `velocidad` ou `velocidade` acha Movimento; `backup`/`respaldo`/`backup` acha SALVAR; `landing`/`aterrizaje` acha POUSO). O trecho mostrado vem do texto no idioma atual (se só bateu em outro idioma, mostra o começo do texto).
+- **Compartilhamento**: a mensagem que acompanha o `TBRHelp.md` (`AiHelp.shareMessage()`), o título do seletor e os avisos/toasts de erro passam por modelos `{0}` do catálogo e saem em PT/EN/ES; o arquivo e o nome dele não mudam.
+- Testes: `HelpI18nTest` (25): todo texto tem EN e ES, números e identificadores (`$KEYS`, `SEQ_PROJETIL`, ANO, DAC…) iguais nas três línguas, buscas em EN/ES, trecho da busca em EN, mensagem e título de compartilhamento nos 3 idiomas e `TBRHelp.md` idêntico em PT/EN/ES. Troca de idioma e tela de ajuda só compiladas e revisadas (não rodadas num aparelho).
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -291,6 +298,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **AiHelpTest (novo)** | 46 |
 | **I18nTest (novo)** | 28 |
 | **I18nCoverageTest (novo)** | 5 |
+| **HelpI18nTest (novo)** | 25 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
