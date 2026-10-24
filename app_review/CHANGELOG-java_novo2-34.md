@@ -155,6 +155,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - `ReactionTable.duplicateRow/moveRow` (ao lado de `insertRow/removeRow`).
 - Testes em `ReactionTraceTest`: duração de chão (DUR_C) e de ar (DUR_A) viram o tamanho de cada trecho, "mantém" (−1) segue a velocidade, deslocamento por tick, 255 (até pousar) e as operações de passo.
 
+### 3.1p Editor de reações estilo timeline (substitui o `ReactionEditor`)
+- **Tela própria** (`ReactionScreen`): prévia da reação no topo (`ReactionPreview` em modo controlado: **TOCAR/PAUSAR, −1, +1, ⏮** e salto para qualquer tick), **timeline** no meio (`ReactionTimelineView`) e **abas** do passo embaixo. Botão **EDITAR REAÇÃO** (do personagem) ou **VER REAÇÃO** (do jogo, só leitura) no menu da hitbox.
+- **CHÃO | AR**: escolhe o cenário simulado (oponente em y = 0, ou a 60 px do chão); o jogo usa duração/velocidade de chão no chão e as de ar no ar.
+- **Timeline** (ponteiro no centro; arrastar rola e leva a prévia; pinça faz zoom; tocar num passo seleciona): faixas **PASSOS** (miniatura do ANO do oponente, ⇄, duração, "até pousar"; reações seguintes em cinza), **VELOC.** (curva x/y em px/tick), **VALORES** (velocidade/aceleração da tabela; = mantém, ½ metade), **VOZ**, **FLUXO** (próxima reação e parede). O ponteiro entrando num passo seleciona esse passo na aba.
+- **Abas**: ANIMAÇÃO (ANO do oponente com grade, espelhar), TEMPO (duração de chão/ar, ATÉ POUSAR = 255), MOVIMENTO (velocidade e aceleração do cenário, **= mantém** e **½**, copiar para o outro cenário), FLUXO (próxima reação, parede, voz) e TOTAL (deslocamento e ticks por passo). Barra: **＋ PASSO, DUPLICAR, ◀ ▶, ✕ REMOVER**, mais DESFAZER no cabeçalho.
+- Tudo parte de `ReactionTrace` (a simulação real), então a timeline não diverge da prévia. **Telas só compiladas e revisadas, não executadas num aparelho.**
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 

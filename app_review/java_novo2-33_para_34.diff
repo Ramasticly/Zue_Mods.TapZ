@@ -2862,8 +2862,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 11:02:28.337777115 +0000
-@@ -0,0 +1,165 @@
++++ b/HelpText.java	2026-10-24 11:10:29.847130141 +0000
+@@ -0,0 +1,172 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2994,6 +2994,13 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        s.add(new Section(null, "Tela do projétil",
 +                "Tocar num hit de projétil (flag 0) abre, de cima para baixo: início e duração; RAMIFICAÇÃO DO PROJÉTIL (a árvore com ao acertar, chão, abaixo, acima, global e sub-projétil); ANO do projétil (− N +, toque no número para a grade); "
 +                + "posição e velocidade; perseguição (e repetições); e a sequência SEQ_PROJETIL. A mesma tela abre no modo ANO e edita o golpe do HDAT 4 que é dono do ANO."));
++        s.add(new Section(null, "Editor de reações",
++                "No menu da hitbox, EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela no estilo da timeline: no topo a prévia do oponente recebendo a reação "
++                + "(TOCAR, −1, +1, ⏮), no meio a timeline e embaixo as abas do passo selecionado. CHÃO | AR escolhe o cenário simulado: o jogo usa a duração e a velocidade de chão enquanto o oponente está no chão e as de ar quando está no ar. "
++                + "A timeline mostra PASSOS (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza), VELOC. (curva de x e y em px/tick), VALORES (velocidade e aceleração da tabela; = mantém, ½ metade), VOZ e FLUXO (próxima reação e parede). "
++                + "Arraste a timeline para mover o ponteiro (a prévia acompanha), belisque para dar zoom, toque num passo para selecioná-lo; tocar a prévia/arrastar também troca o passo da aba. "
++                + "Abas: ANIMAÇÃO (ANO do oponente e espelhar), TEMPO (duração de chão e de ar; 255 no ar = até pousar), MOVIMENTO (velocidade e aceleração do cenário; = mantém e ½; copiar para o outro cenário), FLUXO (próxima reação, parede, voz) e TOTAL (deslocamento). "
++                + "＋ PASSO, DUPLICAR, ◀ ▶ (mover), ✕ REMOVER e DESFAZER editam os passos. Tudo vem da simulação do jogo, a mesma da prévia."));
 +        s.add(new Section(null, "Slots de reação do personagem",
 +                "O personagem tem 20 slots de reação (HDAT 14 a 33, que no hit valem de 30 a 49). Na tela \"Escolher reação\" os slots vazios aparecem como \"＋ vazio\". "
 +                + "Tocar num deles oferece: copiar de uma reação do personagem, copiar da game data (as reações globais 0 a 29), importar de outro personagem (lê o 000.bin dele, com miniaturas dos ANOs) ou criar em branco (1 passo). "
@@ -4589,45 +4596,853 @@ diff -ruN a/QuickNotice.java b/QuickNotice.java
      QuickNotice left(String label, Runnable run) { left.add(new Action(label, true, run)); return this; }
 diff -ruN a/ReactionEditor.java b/ReactionEditor.java
 --- a/ReactionEditor.java	2026-10-12 23:53:53.000000000 +0000
-+++ b/ReactionEditor.java	2026-10-22 07:58:27.951695679 +0000
-@@ -22,10 +22,10 @@
-  * Tabelas do char do atacante sao editaveis; as do gamedata sao fixas (so visualizacao).
-  */
- final class ReactionEditor {
++++ b/ReactionEditor.java	1970-01-01 00:00:00.000000000 +0000
+@@ -1,272 +0,0 @@
+-package com.zue.attackeditor;
+-
+-import android.app.Dialog;
+-import android.content.Context;
+-import android.graphics.Color;
+-import android.graphics.Typeface;
+-import android.graphics.drawable.GradientDrawable;
+-import android.text.InputType;
+-import android.util.TypedValue;
+-import android.view.Gravity;
+-import android.view.View;
+-import android.view.ViewGroup;
+-import android.view.Window;
+-import android.widget.EditText;
+-import android.widget.HorizontalScrollView;
+-import android.widget.LinearLayout;
+-import android.widget.ScrollView;
+-import android.widget.TextView;
+-
+-/**
+- * Editor dos passos de uma reacao: cada passo (linha de 14 bytes da tabela) e um bloco com a animacao do oponente.
+- * Tabelas do char do atacante sao editaveis; as do gamedata sao fixas (so visualizacao).
+- */
+-final class ReactionEditor {
 -    private static final String[] COLS = {"duracao no chao", "duracao no ar (255 = ate cair)", "ANO do oponente (negativo = vira)",
-+    private static final String[] COLS = {"duracao no chao", "duracao no ar (255 = ate cair)", "ANO do oponente (-127..127; negativo = vira)",
-             "chao: veloc. x", "chao: veloc. y", "chao: acel. x", "chao: acel. y",
-             "ar: veloc. x", "ar: veloc. y", "ar: acel. x", "ar: acel. y",
+-            "chao: veloc. x", "chao: veloc. y", "chao: acel. x", "chao: acel. y",
+-            "ar: veloc. x", "ar: veloc. y", "ar: acel. x", "ar: acel. y",
 -            "proxima reacao (0 = nenhuma)", "parede", "voz"};
-+            "proxima reacao (0 = nenhuma)", "parede", "voz (1..127; o jogo le com sinal)"};
-     private static final boolean[] SIGNED = {false, false, true, true, true, true, true, true, true, true, true, false, false, false};
- 
-     private final Context c;
-@@ -216,7 +216,7 @@
-         final Runnable commit = new Runnable() { public void run() {
-             int v;
-             try { v = Integer.parseInt(et.getText().toString().trim()); } catch (NumberFormatException e) { et.setText(String.valueOf(cur[0])); return; }
+-    private static final boolean[] SIGNED = {false, false, true, true, true, true, true, true, true, true, true, false, false, false};
+-
+-    private final Context c;
+-    private final AttackView view;
+-    private final Runnable onChanged;
+-    private final boolean editable;
+-    private final int type;          // 0..29 gamedata ou 0..19 char
+-    private final float d;
+-    private Dialog dlg;
+-    private LinearLayout stripBox, fields;
+-    private ReactionPreview player;
+-    private int sel;
+-
+-    ReactionEditor(Context c, AttackView view, int optIndex, Runnable onChanged) {
+-        this.c = c;
+-        this.view = view;
+-        this.onChanged = onChanged;
+-        this.editable = optIndex >= 30;
+-        this.type = optIndex >= 30 ? optIndex - 30 : optIndex;
+-        this.d = c.getResources().getDisplayMetrics().density;
+-    }
+-
+-    private int dp(int v) { return Math.round(v * d); }
+-
+-    private ReactionTable table() {
+-        if (editable) return view.charReaction(type);
+-        return view.gameReaction(type);
+-    }
+-
+-    void show() {
+-        if (table() == null) return;
+-        dlg = new Dialog(c, android.R.style.Theme_DeviceDefault_NoActionBar);
+-        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
+-        LinearLayout root = new LinearLayout(c);
+-        root.setOrientation(LinearLayout.VERTICAL);
+-        root.setBackgroundColor(LayoutManager.BG);
+-        root.setPadding(dp(10), dp(30), dp(10), dp(10));
+-        LinearLayout head = new LinearLayout(c);
+-        head.setGravity(Gravity.CENTER_VERTICAL);
+-        TextView tt = new TextView(c);
+-        tt.setText(editable ? "Reacao do personagem " + type + "  ·  editavel" : "Reacao do jogo " + type + "  ·  fixa (so leitura)");
+-        tt.setTextColor(LayoutManager.TEXT);
+-        tt.setTypeface(Typeface.DEFAULT_BOLD);
+-        tt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+-        head.addView(tt, new LinearLayout.LayoutParams(0, -2, 1f));
+-        if (editable) head.addView(btn("DESFAZER", false, new View.OnClickListener() { public void onClick(View v) {
+-            if (view.undoEdit()) { sel = Math.min(sel, table().rows - 1); rebuild(); onChanged.run(); }
+-        } }));
+-        head.addView(btn("FECHAR", true, new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }));
+-        root.addView(head);
+-        ScrollView sv = new ScrollView(c);
+-        LinearLayout col = new LinearLayout(c);
+-        col.setOrientation(LinearLayout.VERTICAL);
+-        sv.addView(col);
+-        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+-
+-        LinearLayout top = new LinearLayout(c);
+-        top.setGravity(Gravity.CENTER_VERTICAL);
+-        player = new ReactionPreview(c, view);
+-        player.setValue(editable ? 30 + type : type);
+-        top.addView(player, new LinearLayout.LayoutParams(dp(150), dp(150)));
+-        LinearLayout side = new LinearLayout(c);
+-        side.setOrientation(LinearLayout.VERTICAL);
+-        side.addView(btn("↻ REPETIR", false, new View.OnClickListener() { public void onClick(View v) { player.replay(); } }));
+-        TextView hint = new TextView(c);
+-        hint.setText("A previa mostra o oponente recebendo esta reacao. Cada bloco abaixo e um passo (uma animacao do oponente).");
+-        hint.setTextColor(LayoutManager.DIM);
+-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+-        hint.setPadding(dp(6), dp(4), dp(4), 0);
+-        side.addView(hint);
+-        top.addView(side, new LinearLayout.LayoutParams(0, -2, 1f));
+-        col.addView(top);
+-
+-        HorizontalScrollView hs = new HorizontalScrollView(c);
+-        stripBox = new LinearLayout(c);
+-        stripBox.setOrientation(LinearLayout.HORIZONTAL);
+-        hs.addView(stripBox);
+-        col.addView(hs, new LinearLayout.LayoutParams(-1, -2));
+-        fields = new LinearLayout(c);
+-        fields.setOrientation(LinearLayout.VERTICAL);
+-        col.addView(fields);
+-        dlg.setContentView(root);
+-        dlg.show();
+-        sel = 0;
+-        rebuild();
+-    }
+-
+-    private void rebuild() {
+-        final ReactionTable t = table();
+-        stripBox.removeAllViews();
+-        fields.removeAllViews();
+-        if (t == null) return;
+-        if (sel >= t.rows) sel = t.rows - 1;
+-        for (int r = 0; r < t.rows; r++) {
+-            final int row = r;
+-            int ano = t.s8(r, 2);
+-            int dur = t.u8(r, 0);
+-            LinearLayout blk = new LinearLayout(c);
+-            blk.setOrientation(LinearLayout.VERTICAL);
+-            blk.setGravity(Gravity.CENTER_HORIZONTAL);
+-            blk.setPadding(dp(3), dp(3), dp(3), dp(3));
+-            GradientDrawable g = new GradientDrawable();
+-            g.setColor(r == sel ? 0xFF1E3A66 : 0xFF1B2029);
+-            g.setCornerRadius(dp(6));
+-            blk.setBackground(g);
+-            AnimPreview pv = new AnimPreview(c);
+-            pv.set(view.opponentDac(), view.opponentSprites(), Math.abs(ano), ano < 0);
+-            blk.addView(pv, new LinearLayout.LayoutParams(dp(72), dp(72)));
+-            blk.addView(label("passo " + (r + 1), LayoutManager.TEXT, 10));
+-            blk.addView(label("ANO " + Math.abs(ano) + (ano < 0 ? " ⇄" : ""), LayoutManager.DIM, 10));
+-            blk.addView(label(dur == 255 ? "∞" : ObjModel.seconds(dur), LayoutManager.DIM, 10));
+-            blk.setClickable(true);
+-            blk.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { sel = row; rebuild(); } });
+-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Math.max(dp(84), Math.min(dp(160), dp(84) + dur * dp(1))), -2);
+-            lp.setMargins(dp(2), dp(4), dp(2), dp(4));
+-            stripBox.addView(blk, lp);
+-        }
+-        if (editable) {
+-            TextView add = btn("＋ passo", true, new View.OnClickListener() { public void onClick(View v) {
+-                final int after = sel;
+-                view.editReaction(type, new Runnable() { public void run() { t.insertRow(after); } });
+-                sel = after + 1;
+-                rebuild();
+-                player.replay();
+-                onChanged.run();
+-            } });
+-            stripBox.addView(add);
+-        }
+-        // campos do passo selecionado
+-        TextView h = label("Passo " + (sel + 1) + " de " + t.rows, LayoutManager.TEXT, 12);
+-        h.setTypeface(Typeface.DEFAULT_BOLD);
+-        h.setPadding(dp(4), dp(10), 0, dp(2));
+-        fields.addView(h);
+-        for (int k = 0; k < ReactionTable.STRIDE; k++) {
+-            int v = SIGNED[k] ? t.s8(sel, k) : t.u8(sel, k);
+-            fields.addView(field(k, v));
+-        }
+-        if (editable) {
+-            LinearLayout b = new LinearLayout(c);
+-            b.addView(btn("✕ remover este passo", false, new View.OnClickListener() { public void onClick(View v) {
+-                if (t.rows <= 1) return;
+-                final int at = sel;
+-                view.editReaction(type, new Runnable() { public void run() { t.removeRow(at); } });
+-                rebuild();
+-                player.replay();
+-                onChanged.run();
+-            } }));
+-            fields.addView(b);
+-        }
+-        TextView note = label("Velocidades em unidades do jogo (1 = 0,1 px por tick; -1 mantem, -2 reduz pela metade). A proxima reacao: 1-29 usa o gamedata, 30-49 usa as do personagem.", LayoutManager.DIM, 10);
+-        note.setPadding(dp(4), dp(8), dp(4), dp(24));
+-        fields.addView(note);
+-    }
+-
+-    private TextView label(String s, int color, int sp) {
+-        TextView t = new TextView(c);
+-        t.setText(s);
+-        t.setTextColor(color);
+-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+-        t.setGravity(Gravity.CENTER);
+-        return t;
+-    }
+-
+-    private View field(final int col, int value) {
+-        LinearLayout l = new LinearLayout(c);
+-        l.setGravity(Gravity.CENTER_VERTICAL);
+-        TextView n = new TextView(c);
+-        n.setText(COLS[col]);
+-        n.setTextColor(LayoutManager.DIM);
+-        n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+-        l.addView(n, new LinearLayout.LayoutParams(0, -2, 1f));
+-        if (!editable) {
+-            TextView v = new TextView(c);
+-            v.setText(String.valueOf(value));
+-            v.setTextColor(LayoutManager.TEXT);
+-            v.setTypeface(Typeface.MONOSPACE);
+-            l.addView(v, new LinearLayout.LayoutParams(dp(90), -2));
+-            return l;
+-        }
+-        final EditText et = new EditText(c);
+-        et.setText(String.valueOf(value));
+-        et.setTextColor(LayoutManager.TEXT);
+-        et.setTypeface(Typeface.MONOSPACE);
+-        et.setSingleLine(true);
+-        et.setGravity(Gravity.CENTER);
+-        et.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED);
+-        final int[] cur = {value};
+-        final Runnable commit = new Runnable() { public void run() {
+-            int v;
+-            try { v = Integer.parseInt(et.getText().toString().trim()); } catch (NumberFormatException e) { et.setText(String.valueOf(cur[0])); return; }
 -            v = SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
-+            v = limit(col, v);
-             if (v == cur[0]) return;
-             cur[0] = v;
-             apply(col, v);
-@@ -235,8 +235,14 @@
-         return l;
+-            if (v == cur[0]) return;
+-            cur[0] = v;
+-            apply(col, v);
+-        } };
+-        et.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+-            public boolean onEditorAction(TextView v, int a, android.view.KeyEvent k) { commit.run(); return false; } });
+-        et.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+-            public void onFocusChange(View v, boolean has) { if (!has) commit.run(); } });
+-        View bm = btn("−", false, null);
+-        Hold.attach(bm, new Runnable() { public void run() { cur[0] -= 1; et.setText(String.valueOf(cur[0])); commit2(col, cur[0]); } });
+-        l.addView(bm);
+-        l.addView(et, new LinearLayout.LayoutParams(dp(70), -2));
+-        View bp = btn("+", false, null);
+-        Hold.attach(bp, new Runnable() { public void run() { cur[0] += 1; et.setText(String.valueOf(cur[0])); commit2(col, cur[0]); } });
+-        l.addView(bp);
+-        return l;
+-    }
+-
+-    private void commit2(int col, int v) {
+-        v = SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
+-        apply(col, v);
+-    }
+-
+-    private void apply(final int col, final int v) {
+-        final ReactionTable t = table();
+-        final int row = sel;
+-        view.editReaction(type, new Runnable() { public void run() { t.set(row, col, v); } });
+-        onChanged.run();
+-        if (col == 2 || col == 0 || col == 1) rebuild();
+-        player.replay();
+-    }
+-
+-    private TextView btn(String s, boolean on, View.OnClickListener l) {
+-        TextView t = new TextView(c);
+-        t.setText(s);
+-        t.setGravity(Gravity.CENTER);
+-        t.setSingleLine(true);
+-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+-        t.setTypeface(Typeface.DEFAULT_BOLD);
+-        t.setTextColor(on ? Color.WHITE : LayoutManager.TEXT);
+-        t.setPadding(dp(10), dp(8), dp(10), dp(8));
+-        GradientDrawable g = new GradientDrawable();
+-        g.setColor(on ? LayoutManager.ACCENT : LayoutManager.PANEL);
+-        g.setCornerRadius(dp(7));
+-        t.setBackground(g);
+-        t.setClickable(true);
+-        t.setOnClickListener(l);
+-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
+-        p.setMargins(dp(2), dp(2), dp(2), dp(2));
+-        t.setLayoutParams(p);
+-        return t;
+-    }
+-}
+diff -ruN a/ReactionPreview.java b/ReactionPreview.java
+--- a/ReactionPreview.java	2026-10-13 21:46:10.000000000 +0000
++++ b/ReactionPreview.java	2026-10-24 11:08:23.994444383 +0000
+@@ -32,10 +32,42 @@
+         invalidate();
      }
  
-+    /** Colunas de 1 byte: o jogo le o ANO e a voz com sinal ((byte), jogo:12378-12379), entao a voz acima de 127 nunca toca. */
+-    void replay() { sim = null; invalidate(); }
++    void replay() { sim = null; tick = 0; invalidate(); }
++
++    // ---- modo controlado (editor de reacoes): o tick e o play vem de fora; nada de laco automatico ----
++    /** Altura do oponente no cenario "ar" (px). */
++    static final int AIR_HEIGHT = 60;
++    private boolean controlled, air, playing;
++    private int tick, target, maxTick = Integer.MAX_VALUE;
++    private Runnable onTick;
++
++    void setControlled(boolean on) { controlled = on; sim = null; tick = 0; invalidate(); }
++    void setAir(boolean on) { if (air != on) { air = on; sim = null; tick = 0; invalidate(); } }
++    void setMaxTick(int n) { maxTick = Math.max(0, n); }
++    void setOnTick(Runnable r) { onTick = r; }
++    boolean isPlaying() { return playing; }
++    int tickNow() { return tick; }
++
++    /** Mostra o estado depois de {@code t} ticks (para o play). */
++    void seek(int t) { target = Math.max(0, Math.min(maxTick, t)); playing = false; invalidate(); }
++
++    void play() {
++        if (target >= maxTick) target = 0;
++        playing = true;
++        last = 0;
++        acc = 0;
++        invalidate();
++    }
++
++    void pause() { playing = false; }
+ 
+     private void build() {
+-        sim = av.newReactionSim();
++        int oldH = BattleSim.oppHeightPx;
++        if (controlled && air) BattleSim.oppHeightPx = AIR_HEIGHT;
++        else if (controlled) BattleSim.oppHeightPx = 0;
++        try { sim = av.newReactionSim(); }
++        finally { BattleSim.oppHeightPx = oldH; }
++        tick = 0;
+         age = 0;
+         idle = 0;
+         last = 0;
+@@ -58,6 +90,19 @@
+         acc += (now - last) / (1000.0 / AttackSim.TICKS_PER_SECOND);
+         last = now;
+         int steps = 0;
++        if (controlled) {
++            if (playing) {
++                while (acc >= 1 && target < maxTick) { acc -= 1; target++; }
++                if (target >= maxTick) playing = false;
++                if (onTick != null) onTick.run();
++            } else acc = 0;
++            if (target < tick) { build(); if (sim == null) return; }
++            int guard = 0;
++            while (tick < target && guard++ < 600) { sim.step(); tick++; }
++            drawWorld(c);
++            if (playing) postInvalidateOnAnimation();
++            return;
++        }
+         while (acc >= 1 && steps < 6) {
+             acc -= 1;
+             steps++;
+@@ -66,6 +111,11 @@
+             if (!sim.defenderInDamage()) idle++;
+             if (idle > 30 || age > 420) { build(); break; }
+         }
++        drawWorld(c);
++        postInvalidateOnAnimation();
++    }
++
++    private void drawWorld(Canvas c) {
+         float s = getWidth() / 250f;
+         c.save();
+         c.translate(getWidth() / 2f - centerX * s, getHeight() * 0.8f);
+@@ -79,6 +129,5 @@
+             renderer.drawLayer(c, l, av.spritesForOwner(l.owner));
+         }
+         c.restore();
+-        postInvalidateOnAnimation();
+     }
+ }
+diff -ruN a/ReactionScreen.java b/ReactionScreen.java
+--- a/ReactionScreen.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReactionScreen.java	2026-10-24 11:09:53.974181641 +0000
+@@ -0,0 +1,482 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.app.Dialog;
++import android.content.Context;
++import android.graphics.Color;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.view.Window;
++import android.widget.HorizontalScrollView;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++
++/**
++ * Editor de reacao estilo timeline: previa da reacao (com play e ponteiro), timeline dos passos (ANO do oponente, duracao, velocidade...) e abas de edicao.
++ * Os dados vem de {@link ReactionTrace} (a simulacao real). Cenario CHAO | AR escolhe qual duracao/velocidade a timeline simula e mostra.
++ * Reacoes do personagem sao editaveis (desfazer pelo editor principal); as do jogo, so leitura.
++ */
++final class ReactionScreen {
++    private static final String[] PAGES = {"ANIMAÇÃO", "TEMPO", "MOVIMENTO", "FLUXO", "TOTAL"};
++    private static final int C_BLUE = 0xFF4C8DFF, C_AMBER = 0xFFFFB454;
++
++    private final Context c;
++    private final AttackView view;
++    private final Runnable onChanged;
++    private final boolean editable;
++    private final int type;                 // 0..29 jogo ou 0..19 personagem
++    private final int optValue;             // valor de OPT 1 que representa esta reacao (0..29 / 30..49)
++    private final float d;
++
++    private Dialog dlg;
++    private ReactionPreview preview;
++    private ReactionTimelineView tl;
++    private LinearLayout pageBox, tabs;
++    private TextView tickLabel, playBtn, btnGround, btnAir, title;
++    private final java.util.ArrayList<TextView> tabViews = new java.util.ArrayList<TextView>();
++    private ReactionTrace trace;
++    private boolean air;
++    private int sel, page;
++
++    ReactionScreen(Context c, AttackView view, int optIndex, Runnable onChanged) {
++        this.c = c;
++        this.view = view;
++        this.onChanged = onChanged;
++        this.editable = optIndex >= 30;
++        this.type = optIndex >= 30 ? optIndex - 30 : optIndex;
++        this.optValue = optIndex;
++        this.d = c.getResources().getDisplayMetrics().density;
++    }
++
++    private int dp(int v) { return Math.round(v * d); }
++
++    private ReactionTable table() { return editable ? view.charReaction(type) : view.gameReaction(type); }
++
++    // ---- tela ----
++
++    void show() {
++        if (table() == null) return;
++        dlg = new Dialog(c, android.R.style.Theme_DeviceDefault_NoActionBar);
++        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
++        LinearLayout root = new LinearLayout(c);
++        root.setOrientation(LinearLayout.VERTICAL);
++        root.setBackgroundColor(LayoutManager.BG);
++        root.setPadding(dp(8), dp(26), dp(8), dp(6));
++
++        // cabecalho
++        LinearLayout head = new LinearLayout(c);
++        head.setGravity(Gravity.CENTER_VERTICAL);
++        title = new TextView(c);
++        title.setText(editable ? "Reação do personagem " + type : "Reação do jogo " + type + "  ·  só leitura");
++        title.setTextColor(LayoutManager.TEXT);
++        title.setTypeface(Typeface.DEFAULT_BOLD);
++        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
++        head.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
++        btnGround = btn("CHÃO", true, new View.OnClickListener() { public void onClick(View v) { setAir(false); } });
++        btnAir = btn("AR", false, new View.OnClickListener() { public void onClick(View v) { setAir(true); } });
++        head.addView(btnGround);
++        head.addView(btnAir);
++        if (editable) head.addView(btn("DESFAZER", false, new View.OnClickListener() { public void onClick(View v) {
++            if (view.undoEdit()) { onChanged.run(); sel = Math.min(sel, Math.max(0, table().rows - 1)); refresh(); }
++        } }));
++        head.addView(btn("FECHAR", true, new View.OnClickListener() { public void onClick(View v) { close(); } }));
++        root.addView(head);
++
++        // previa + transporte
++        int side = Math.min(Math.round(c.getResources().getDisplayMetrics().widthPixels * 0.62f), Math.round(c.getResources().getDisplayMetrics().heightPixels * 0.27f));
++        preview = new ReactionPreview(c, view);
++        preview.setControlled(true);
++        preview.setValue(optValue);
++        preview.setOnTick(new Runnable() { public void run() { onPlayTick(); } });
++        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(side, side);
++        pl.gravity = Gravity.CENTER_HORIZONTAL;
++        pl.setMargins(0, dp(4), 0, dp(2));
++        root.addView(preview, pl);
++        LinearLayout tr = new LinearLayout(c);
++        tr.setGravity(Gravity.CENTER);
++        tr.addView(btn("⏮", false, new View.OnClickListener() { public void onClick(View v) { goTo(0); } }));
++        tr.addView(btn("−1", false, new View.OnClickListener() { public void onClick(View v) { goTo(tl.pointerTick() - 1); } }));
++        playBtn = btn("▶ TOCAR", true, new View.OnClickListener() { public void onClick(View v) { togglePlay(); } });
++        tr.addView(playBtn);
++        tr.addView(btn("+1", false, new View.OnClickListener() { public void onClick(View v) { goTo(tl.pointerTick() + 1); } }));
++        tickLabel = new TextView(c);
++        tickLabel.setTextColor(LayoutManager.DIM);
++        tickLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
++        tickLabel.setPadding(dp(8), 0, 0, 0);
++        tr.addView(tickLabel);
++        root.addView(tr);
++
++        // timeline
++        tl = new ReactionTimelineView(c);
++        tl.setOpponent(view.opponentDac(), view.opponentSprites());
++        tl.setListener(new ReactionTimelineView.Listener() {
++            @Override public void onSelectRow(int row) { selectRow(row); }
++            @Override public void onScrub(int tick) { preview.seek(tick); followRow(tick); updateLabel(); stopPlayUi(); }
++        });
++        root.addView(tl, new LinearLayout.LayoutParams(-1, -2));
++
++        // abas + pagina
++        HorizontalScrollView hs = new HorizontalScrollView(c);
++        hs.setHorizontalScrollBarEnabled(false);
++        tabs = new LinearLayout(c);
++        for (int i = 0; i < PAGES.length; i++) {
++            final int pi = i;
++            TextView tv = btn(PAGES[i], i == 0, new View.OnClickListener() { public void onClick(View v) { page = pi; updateTabs(); buildPage(); } });
++            tabViews.add(tv);
++            tabs.addView(tv);
++        }
++        hs.addView(tabs);
++        root.addView(hs, new LinearLayout.LayoutParams(-1, -2));
++        ScrollView sv = new ScrollView(c);
++        pageBox = new LinearLayout(c);
++        pageBox.setOrientation(LinearLayout.VERTICAL);
++        pageBox.setPadding(dp(4), dp(2), dp(4), dp(16));
++        sv.addView(pageBox);
++        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++
++        // barra de passos
++        if (editable) {
++            LinearLayout bar = new LinearLayout(c);
++            bar.setGravity(Gravity.CENTER);
++            bar.addView(btn("＋ PASSO", true, new View.OnClickListener() { public void onClick(View v) { addRow(); } }));
++            bar.addView(btn("DUPLICAR", false, new View.OnClickListener() { public void onClick(View v) { dupRow(); } }));
++            bar.addView(btn("◀", false, new View.OnClickListener() { public void onClick(View v) { moveRow(-1); } }));
++            bar.addView(btn("▶", false, new View.OnClickListener() { public void onClick(View v) { moveRow(1); } }));
++            bar.addView(btn("✕ REMOVER", false, new View.OnClickListener() { public void onClick(View v) { delRow(); } }));
++            root.addView(bar);
++        }
++        dlg.setContentView(root);
++        dlg.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
++            @Override public void onDismiss(android.content.DialogInterface i) { preview.pause(); }
++        });
++        dlg.show();
++        sel = 0;
++        refresh();
++    }
++
++    private void close() { if (dlg != null) dlg.dismiss(); }
++
++    // ---- dados: simulacao, cenario, ponteiro ----
++
++    private ReactionTrace recordTrace() {
++        int old = BattleSim.oppHeightPx;
++        BattleSim.oppHeightPx = air ? ReactionPreview.AIR_HEIGHT : 0;
++        BattleSim s;
++        try { s = view.newReactionSim(); } finally { BattleSim.oppHeightPx = old; }
++        return ReactionTrace.record(s, optValue, 420);
++    }
++
++    /** Recalcula a simulacao e refaz timeline, previa e aba (depois de qualquer edicao ou troca de cenario). */
++    private void refresh() {
++        ReactionTable t = table();
++        if (t == null) return;
++        sel = Math.max(0, Math.min(sel, t.rows - 1));
++        trace = recordTrace();
++        tl.setData(trace, t, editable, type, air);
++        tl.setSelected(sel);
++        preview.setAir(air);
++        preview.setMaxTick(trace.ticks.size());
++        preview.setValue(optValue);
++        preview.seek(tl.pointerTick());
++        updateLabel();
++        buildPage();
++    }
++
++    private void setAir(boolean on) {
++        if (air == on) return;
++        air = on;
++        styleToggle(btnGround, !air);
++        styleToggle(btnAir, air);
++        refresh();
++    }
++
++    private void goTo(int tick) {
++        int max = trace == null ? 0 : trace.ticks.size();
++        tick = Math.max(0, Math.min(max, tick));
++        tl.setPointer(tick);
++        preview.seek(tick);
++        followRow(tick);
++        updateLabel();
++        stopPlayUi();
++    }
++
++    private void togglePlay() {
++        if (preview.isPlaying()) { preview.pause(); stopPlayUi(); return; }
++        if (tl.pointerTick() >= (trace == null ? 0 : trace.ticks.size())) { tl.setPointer(0); preview.seek(0); }
++        preview.play();
++        playBtn.setText("⏸ PAUSAR");
++    }
++
++    private void stopPlayUi() { if (!preview.isPlaying()) playBtn.setText("▶ TOCAR"); }
++
++    private void onPlayTick() {
++        tl.setPointer(preview.tickNow());
++        followRow(preview.tickNow());
++        updateLabel();
++        stopPlayUi();
++    }
++
++    private void updateLabel() {
++        int n = trace == null ? 0 : trace.ticks.size();
++        int tk = tl.pointerTick();
++        int[] dsp = trace == null ? new int[]{0, 0} : trace.displacement(tk);
++        tickLabel.setText("t " + tk + "/" + n + " (" + String.format(java.util.Locale.US, "%.2f", tk / 60.0) + "s)  Δ " + dsp[0] + "," + dsp[1] + " px");
++    }
++
++    /** O ponteiro entrou num passo da tabela: a aba passa a editar esse passo. */
++    private void followRow(int tick) {
++        ReactionTrace.Seg s = tl.segAt(tick);
++        if (tl.isOwn(s) && s.row != sel) selectRow(s.row);
++    }
++
++    private void selectRow(int row) {
++        if (row == sel) return;
++        sel = row;
++        tl.setSelected(row);
++        buildPage();
++    }
++
++    // ---- abas ----
++
++    private void updateTabs() {
++        for (int i = 0; i < tabViews.size(); i++) styleToggle(tabViews.get(i), i == page);
++    }
++
++    private void buildPage() {
++        pageBox.removeAllViews();
++        ReactionTable t = table();
++        if (t == null || sel < 0 || sel >= t.rows) return;
++        TextView h = text("Passo " + (sel + 1) + " de " + t.rows + (editable ? "" : "  ·  só leitura") + "  ·  cenário " + (air ? "AR" : "CHÃO"), LayoutManager.TEXT, 12, true);
++        h.setPadding(dp(4), dp(8), 0, dp(4));
++        pageBox.addView(h);
++        switch (page) {
++            case 0: pageAnimation(t); break;
++            case 1: pageTime(t); break;
++            case 2: pageMove(t); break;
++            case 3: pageFlow(t); break;
++            default: pageTotal(t); break;
++        }
++    }
++
++    private void pageAnimation(ReactionTable t) {
++        final int ano = t.s8(sel, 2);
++        LinearLayout row = new LinearLayout(c);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        AnimPreview pv = new AnimPreview(c);
++        pv.set(view.opponentDac(), view.opponentSprites(), Math.abs(ano), ano < 0);
++        row.addView(pv, new LinearLayout.LayoutParams(dp(96), dp(96)));
++        LinearLayout col = new LinearLayout(c);
++        col.setOrientation(LinearLayout.VERTICAL);
++        col.setPadding(dp(8), 0, 0, 0);
++        label(col, "ANO do oponente");
++        if (editable) {
++            col.addView(new Stepper(c).range(0, 127).step(1).tap(new Runnable() { public void run() { pickAno(Math.abs(ano)); } })
++                    .onChange(new Stepper.OnValue() { public void on(double v) { setCell(2, ano < 0 && v > 0 ? -(int) v : (int) v); } }).value(Math.abs(ano)).view());
++            col.addView(btn(ano < 0 ? "● espelhado (⇄)" : "○ espelhado (⇄)", ano < 0, new View.OnClickListener() { public void onClick(View v) {
++                if (ano != 0) setCell(2, -ano);
++            } }));
++        } else {
++            col.addView(text("ANO " + Math.abs(ano) + (ano < 0 ? "  ⇄ espelhado" : ""), LayoutManager.TEXT, 14, true));
++        }
++        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
++        pageBox.addView(row);
++        pageBox.addView(text("Animação do oponente (defensor) tocada neste passo. Negativo vira o oponente (⇄). Tocar no número abre a grade de animações.", LayoutManager.DIM, 10, false));
++    }
++
++    private void pickAno(int cur) {
++        if (!(c instanceof Activity)) return;
++        AnoPicker.show((Activity) c, view.opponentDac(), view.opponentSprites(), false, cur, "ANO do oponente", false, new AnoPicker.Listener() {
++            @Override public void onPick(int ano) { ReactionTable t = table(); int old = t == null ? 0 : t.s8(sel, 2); setCell(2, old < 0 && ano > 0 ? -ano : ano); }
++        });
++    }
++
++    private void pageTime(ReactionTable t) {
++        pageBox.addView(field("Duração no chão (ticks)", 0, 0, 255, t));
++        pageBox.addView(field("Duração no ar (ticks)", 1, 0, 255, t));
++        if (editable) pageBox.addView(btn("ATÉ POUSAR (255 no ar)", t.u8(sel, 1) == 255, new View.OnClickListener() { public void onClick(View v) { setCell(1, 255); } }));
++        int dc = t.u8(sel, 0), da = t.u8(sel, 1);
++        pageBox.addView(text("Chão: " + secs(dc) + "  ·  Ar: " + (da == 255 ? "até pousar (limite de 255 ticks)" : secs(da))
++                + ". O jogo usa a duração de chão enquanto o oponente está no chão e a de ar quando está no ar (60 ticks = 1 s).", LayoutManager.DIM, 10, false));
++    }
++
++    private static String secs(int ticks) { return ticks + " ticks = " + String.format(java.util.Locale.US, "%.2f", ticks / 60.0) + "s"; }
++
++    private void pageMove(ReactionTable t) {
++        int b = air ? 7 : 3;
++        String set = air ? "ar" : "chão";
++        pageBox.addView(moveField("Velocidade x (" + set + ")", b, t));
++        pageBox.addView(moveField("Velocidade y (" + set + ")", b + 1, t));
++        pageBox.addView(moveField("Aceleração x (" + set + ")", b + 2, t));
++        pageBox.addView(moveField("Aceleração y (" + set + ")", b + 3, t));
++        if (editable) pageBox.addView(btn("COPIAR ESTES 4 PARA O CENÁRIO " + (air ? "CHÃO" : "AR"), false, new View.OnClickListener() { public void onClick(View v) {
++            final int from = air ? 7 : 3, to = air ? 3 : 7;
++            final ReactionTable tt = table();
++            final int row = sel;
++            view.editReaction(type, new Runnable() { public void run() { for (int k = 0; k < 4; k++) tt.set(row, to + k, tt.u8(row, from + k)); } });
++            onChanged.run();
++            refresh();
++        } }));
++        pageBox.addView(text("Unidades do jogo: 1 = 0,1 px por tick (a velocidade x só vale para o lado: o oponente virado anda para trás). −1 mantém o valor do passo anterior e −2 reduz pela metade. "
++                + "A aceleração soma na velocidade a cada tick, e quando a soma cruza o zero a velocidade para (atrito).", LayoutManager.DIM, 10, false));
++    }
++
++    private View moveField(final String name, final int col, ReactionTable t) {
++        LinearLayout box = new LinearLayout(c);
++        box.setOrientation(LinearLayout.VERTICAL);
++        int v = t.s8(sel, col);
++        label(box, name + "  =  " + (v == -1 ? "mantém" : v == -2 ? "metade" : v + (col == 3 || col == 4 || col == 7 || col == 8 ? "  (" + (v / 10.0) + " px/tick)" : "")));
++        if (!editable) return box;
++        LinearLayout row = new LinearLayout(c);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        row.addView(new Stepper(c).range(-128, 127).step(1).keyboard(new Stepper.OnValue() { public void on(double nv) { setCell(col, (int) nv); } }).value(v).view());
++        row.addView(btn("= mantém", v == -1, new View.OnClickListener() { public void onClick(View x) { setCell(col, -1); } }));
++        row.addView(btn("½", v == -2, new View.OnClickListener() { public void onClick(View x) { setCell(col, -2); } }));
++        box.addView(row);
++        return box;
++    }
++
++    private void pageFlow(ReactionTable t) {
++        pageBox.addView(field("Próxima reação (0 = nenhuma; 1-29 jogo; 30-49 personagem)", 11, 0, 49, t));
++        int comp = t.u8(sel, 11);
++        pageBox.addView(text(comp == 0 ? "Sem próxima reação: ao acabar os passos, o oponente se levanta ou cai conforme a altura." : "Depois destes passos entra a reação " + (comp >= 30 ? "do personagem " + (comp - 30) : "do jogo " + comp)
++                + (comp == 11 ? " (11: pousar e levantar)." : "."), LayoutManager.DIM, 10, false));
++        pageBox.addView(field("Parede (0 = nenhum efeito)", 12, 0, 255, t));
++        pageBox.addView(text("2 ou 3: ao encostar na parede a reação recomeça na próxima reação. Outros valores seguem a regra do jogo.", LayoutManager.DIM, 10, false));
++        pageBox.addView(field("Voz (0 = nenhuma; o jogo lê com sinal, então até 127)", 13, 0, 127, t));
++    }
++
++    private void pageTotal(ReactionTable t) {
++        if (trace == null) return;
++        StringBuilder sb = new StringBuilder();
++        int n = trace.ticks.size();
++        int[] all = trace.displacement(n);
++        sb.append("Cenário ").append(air ? "AR (oponente a " + ReactionPreview.AIR_HEIGHT + " px do chão)" : "CHÃO").append(": ").append(n).append(" ticks = ")
++                .append(String.format(java.util.Locale.US, "%.2f", n / 60.0)).append("s, deslocamento total x ").append(all[0]).append(" px, y ").append(all[1]).append(" px")
++                .append(trace.ended ? "." : " (parou no limite de 420 ticks).").append("\n\n");
++        int prevEnd = 0;
++        for (ReactionTrace.Seg s : trace.segments) {
++            int[] a = trace.displacement(s.start), bb = trace.displacement(s.end);
++            boolean own = s.charSrc == editable && s.type == type;
++            sb.append(own ? "passo " + (s.row + 1) : "→ reação " + (s.charSrc ? "do personagem " : "do jogo ") + s.type + " passo " + (s.row + 1)).append(": ticks ").append(s.start).append("–").append(s.end - 1)
++                    .append(" (").append(s.length()).append("), Δx ").append(bb[0] - (s.start == 0 ? 0 : a[0])).append(" Δy ").append(bb[1] - (s.start == 0 ? 0 : a[1])).append(" px\n");
++            prevEnd = s.end;
++        }
++        pageBox.addView(text(sb.toString(), LayoutManager.TEXT, 11, false));
++        pageBox.addView(text("Tudo vem da simulação do jogo (a mesma da prévia): arrastar o ponteiro na timeline mostra o estado do oponente naquele tick.", LayoutManager.DIM, 10, false));
++    }
++
++    // ---- campos e edicao ----
++
++    private View field(String name, final int col, int lo, int hi, ReactionTable t) {
++        LinearLayout box = new LinearLayout(c);
++        box.setOrientation(LinearLayout.VERTICAL);
++        label(box, name);
++        int v = SIGNED[col] ? t.s8(sel, col) : t.u8(sel, col);
++        if (editable) box.addView(new Stepper(c).range(lo, hi).step(1).keyboard(new Stepper.OnValue() { public void on(double nv) { setCell(col, (int) nv); } }).value(v).view());
++        else box.addView(text(String.valueOf(v), LayoutManager.TEXT, 14, true));
++        return box;
++    }
++
++    private static final boolean[] SIGNED = {false, false, true, true, true, true, true, true, true, true, true, false, false, false};
++
++    /** Colunas de 1 byte: o jogo le o ANO e a voz com sinal, entao a voz acima de 127 nunca toca. */
 +    private static int limit(int col, int v) {
 +        if (col == 13) return Math.max(0, Math.min(127, v));
 +        return SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
 +    }
 +
-     private void commit2(int col, int v) {
--        v = SIGNED[col] ? Math.max(-128, Math.min(127, v)) : Math.max(0, Math.min(255, v));
-+        v = limit(col, v);
-         apply(col, v);
-     }
- 
++    private void setCell(final int col, int value) {
++        if (!editable) return;
++        final int v = limit(col, value);
++        final ReactionTable t = table();
++        final int row = sel;
++        if (t == null || row < 0 || row >= t.rows) return;
++        view.editReaction(type, new Runnable() { public void run() { t.set(row, col, v); } });
++        onChanged.run();
++        refresh();
++    }
++
++    private void addRow() {
++        final ReactionTable t = table();
++        final int after = sel;
++        view.editReaction(type, new Runnable() { public void run() { t.insertRow(after); } });
++        sel = after + 1;
++        onChanged.run();
++        refresh();
++    }
++
++    private void dupRow() {
++        final ReactionTable t = table();
++        final int row = sel;
++        view.editReaction(type, new Runnable() { public void run() { t.duplicateRow(row); } });
++        sel = row + 1;
++        onChanged.run();
++        refresh();
++    }
++
++    private void delRow() {
++        final ReactionTable t = table();
++        if (t.rows <= 1) { android.widget.Toast.makeText(c, "A reação precisa de ao menos um passo", android.widget.Toast.LENGTH_SHORT).show(); return; }
++        final int row = sel;
++        view.editReaction(type, new Runnable() { public void run() { t.removeRow(row); } });
++        onChanged.run();
++        refresh();
++    }
++
++    private void moveRow(final int dir) {
++        final ReactionTable t = table();
++        final int from = sel, to = Math.max(0, Math.min(t.rows - 1, from + dir));
++        if (to == from) return;
++        view.editReaction(type, new Runnable() { public void run() { t.moveRow(from, to); } });
++        sel = to;
++        onChanged.run();
++        refresh();
++    }
++
++    // ---- widgets ----
++
++    private TextView text(String s, int color, int sp, boolean bold) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setTextColor(color);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
++        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
++        t.setPadding(dp(4), dp(2), dp(4), dp(2));
++        return t;
++    }
++
++    private void label(LinearLayout box, String s) {
++        TextView t = text(s, LayoutManager.DIM, 11, false);
++        t.setPadding(dp(4), dp(8), dp(4), dp(1));
++        box.addView(t);
++    }
++
++    private void styleToggle(TextView t, boolean on) {
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(on ? LayoutManager.ACCENT : LayoutManager.PANEL);
++        g.setCornerRadius(dp(7));
++        t.setBackground(g);
++        t.setTextColor(on ? Color.WHITE : LayoutManager.TEXT);
++    }
++
++    private TextView btn(String s, boolean on, View.OnClickListener l) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setGravity(Gravity.CENTER);
++        t.setSingleLine(true);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
++        t.setTypeface(Typeface.DEFAULT_BOLD);
++        t.setPadding(dp(10), dp(8), dp(10), dp(8));
++        styleToggle(t, on);
++        t.setClickable(true);
++        t.setOnClickListener(l);
++        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
++        p.setMargins(dp(2), dp(2), dp(2), dp(2));
++        t.setLayoutParams(p);
++        return t;
++    }
++}
 diff -ruN a/ReactionSlots.java b/ReactionSlots.java
 --- a/ReactionSlots.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ReactionSlots.java	2026-10-24 10:59:33.256649695 +0000
@@ -4724,6 +5539,338 @@ diff -ruN a/ReactionTable.java b/ReactionTable.java
      public void removeRow(int row) {
          if (rows <= 1 || row < 0 || row >= rows) return;
          byte[] n = new byte[(rows - 1) * STRIDE];
+diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
+--- a/ReactionTimelineView.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReactionTimelineView.java	2026-10-24 11:07:57.621373072 +0000
+@@ -0,0 +1,328 @@
++package com.zue.attackeditor;
++
++import android.content.Context;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.Path;
++import android.graphics.Rect;
++import android.graphics.RectF;
++import android.view.MotionEvent;
++import android.view.ScaleGestureDetector;
++import android.view.View;
++
++/**
++ * Timeline de uma reacao de dano: o que {@link ReactionTrace} mostra que o jogo faz, tick a tick. Faixas: PASSOS (uma caixa por linha da tabela,
++ * com a miniatura do ANO do oponente), VELOCIDADE (curva de x e y em px/tick), VALORES (velocidade/aceleracao da tabela no cenario atual),
++ * VOZ e FLUXO (proxima reacao e parede). O ponteiro fica no centro; arrastar rola (e leva a previa junto); pinca faz zoom; tocar num passo o seleciona.
++ */
++final class ReactionTimelineView extends View {
++    interface Listener {
++        /** Tocou num passo da tabela editada. */
++        void onSelectRow(int row);
++        /** Arrastou o ponteiro para o tick (estado depois de {@code tick} ticks). */
++        void onScrub(int tick);
++    }
++
++    private static final float RULER_DP = 16, PASSOS_DP = 56, VEL_DP = 48, VAL_DP = 22, VOZ_DP = 18, FLUXO_DP = 22;
++    private static final int C_OWN = 0xFF3A6EA5, C_OWN_SEL = 0xFF4C8DFF, C_OTHER = 0xFF3A4150, C_VX = 0xFFFF8A66, C_VY = 0xFF3DDC84, C_VOICE = 0xFFB07CFF, C_FLOW = 0xFFFFB454;
++
++    private final float d;
++    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final RectF rf = new RectF();
++    private final Rect sr = new Rect();
++    private final Path path = new Path();
++    private final ScaleGestureDetector scaler;
++    private Listener listener;
++
++    private ReactionTrace trace;
++    private ReactionTable table;
++    private boolean charSrc, air;
++    private int type;
++    private Dac opDac;
++    private SpriteCache opSprites;
++    private int sel = -1;
++    private float playTick;
++    private float ppt;
++
++    private float downX, downTick;
++    private boolean moved, scaling;
++
++    ReactionTimelineView(Context c) {
++        super(c);
++        d = c.getResources().getDisplayMetrics().density;
++        ppt = 5f * d;
++        t.setTextSize(9f * d);
++        scaler = new ScaleGestureDetector(c, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
++            @Override public boolean onScale(ScaleGestureDetector g) {
++                ppt = Math.max(1.2f * d, Math.min(16f * d, ppt * g.getScaleFactor()));
++                invalidate();
++                return true;
++            }
++        });
++    }
++
++    void setListener(Listener l) { listener = l; }
++
++    void setOpponent(Dac dac, SpriteCache sprites) { opDac = dac; opSprites = sprites; }
++
++    /** {@code table}: a tabela mostrada (type/charSrc a identificam); {@code air}: cenario que o trace simulou. */
++    void setData(ReactionTrace tr, ReactionTable table, boolean charSrc, int type, boolean air) {
++        this.trace = tr;
++        this.table = table;
++        this.charSrc = charSrc;
++        this.type = type;
++        this.air = air;
++        requestLayout();
++        invalidate();
++    }
++
++    void setSelected(int row) { if (row != sel) { sel = row; invalidate(); } }
++
++    /** Ponteiro em ticks (pode ser fracionario durante o play). */
++    void setPointer(float tick) {
++        float mx = Math.max(0, trace == null ? 0 : trace.ticks.size());
++        playTick = Math.max(0f, Math.min(mx, tick));
++        invalidate();
++    }
++
++    int pointerTick() { return Math.round(playTick); }
++
++    /** Trecho (da tabela editada) que processa o tick {@code tick}, ou null. */
++    ReactionTrace.Seg segAt(int tick) {
++        if (trace == null) return null;
++        for (ReactionTrace.Seg s : trace.segments) if (tick >= s.start && tick < s.end) return s;
++        return null;
++    }
++
++    boolean isOwn(ReactionTrace.Seg s) { return s != null && s.charSrc == charSrc && s.type == type; }
++
++    @Override protected void onMeasure(int ws, int hs) {
++        float h = (RULER_DP + PASSOS_DP + VEL_DP + VAL_DP + VOZ_DP + FLUXO_DP) * d;
++        setMeasuredDimension(MeasureSpec.getSize(ws), Math.round(h));
++    }
++
++    private float gutter() { return 52f * d; }
++    private float contentW() { return Math.max(1f, getWidth() - gutter()); }
++    private float xOf(float tick) { return gutter() + contentW() / 2f + (tick - playTick) * ppt; }
++    private float tickAt(float x) { return playTick + (x - gutter() - contentW() / 2f) / ppt; }
++
++    private float laneTop(int lane) {
++        float y = RULER_DP;
++        float[] hs = {PASSOS_DP, VEL_DP, VAL_DP, VOZ_DP, FLUXO_DP};
++        for (int i = 0; i < lane; i++) y += hs[i];
++        return y * d;
++    }
++    private float laneH(int lane) { return new float[]{PASSOS_DP, VEL_DP, VAL_DP, VOZ_DP, FLUXO_DP}[lane] * d; }
++
++    private static String tok(int v) { return v == -1 ? "=" : v == -2 ? "½" : String.valueOf(v); }
++
++    @Override protected void onDraw(Canvas c) {
++        float W = getWidth(), H = getHeight(), g = gutter();
++        c.drawColor(0xFF14161B);
++        if (trace == null || table == null) {
++            t.setColor(0xFF8A90A0);
++            c.drawText("sem reacao", 8 * d, H / 2f, t);
++            return;
++        }
++        String[] names = {"PASSOS", "VELOC.", "VALORES", "VOZ", "FLUXO"};
++        // fundo das faixas e nomes
++        for (int i = 0; i < names.length; i++) {
++            p.setColor(i % 2 == 0 ? 0xFF181B21 : 0xFF1B1F27);
++            c.drawRect(0, laneTop(i), W, laneTop(i) + laneH(i), p);
++            t.setColor(0xFF8A90A0);
++            t.setTextSize(8f * d);
++            c.drawText(names[i], 4 * d, laneTop(i) + laneH(i) / 2f + 3 * d, t);
++        }
++        t.setTextSize(9f * d);
++        ruler(c);
++        c.save();
++        c.clipRect(g, 0, W, H);
++        int total = trace.ticks.size();
++        // trechos
++        for (ReactionTrace.Seg s : trace.segments) {
++            float x0 = xOf(s.start), x1 = xOf(s.end);
++            if (x1 < g || x0 > W) continue;
++            boolean own = isOwn(s);
++            segmentBox(c, s, own, x0, x1);
++        }
++        velocity(c, total);
++        // pontas da trilha
++        p.setColor(0x55FFFFFF);
++        p.setStrokeWidth(1f * d);
++        c.drawLine(xOf(0), RULER_DP * d, xOf(0), H, p);
++        c.drawLine(xOf(total), RULER_DP * d, xOf(total), H, p);
++        c.restore();
++        // ponteiro
++        float px = g + contentW() / 2f;
++        p.setColor(0xFFFFFFFF);
++        p.setStrokeWidth(1.5f * d);
++        c.drawLine(px, 0, px, H, p);
++        path.reset();
++        path.moveTo(px - 5 * d, 0);
++        path.lineTo(px + 5 * d, 0);
++        path.lineTo(px, 6 * d);
++        path.close();
++        c.drawPath(path, p);
++    }
++
++    private void ruler(Canvas c) {
++        float g = gutter(), W = getWidth();
++        int[] steps = {1, 2, 5, 10, 30, 60, 120};
++        int step = 120;
++        for (int s : steps) if (s * ppt >= 26f * d) { step = s; break; }
++        int first = (int) Math.floor(tickAt(g) / step) * step;
++        t.setColor(0xFF8A90A0);
++        p.setColor(0x33FFFFFF);
++        p.setStrokeWidth(1f);
++        for (int k = Math.max(0, first); xOf(k) < W; k += step) {
++            float x = xOf(k);
++            if (x < g) continue;
++            c.drawLine(x, RULER_DP * d - 4 * d, x, getHeight(), p);
++            c.drawText(k % 60 == 0 && k > 0 ? (k / 60) + "s" : String.valueOf(k), x + 2 * d, 11 * d, t);
++        }
++    }
++
++    private void segmentBox(Canvas c, ReactionTrace.Seg s, boolean own, float x0, float x1) {
++        float top = laneTop(0), h = laneH(0);
++        boolean sel = own && s.row == this.sel;
++        p.setColor(own ? (sel ? C_OWN_SEL : C_OWN) : C_OTHER);
++        rf.set(x0 + 1, top + 2 * d, Math.max(x0 + 3 * d, x1 - 1), top + h - 2 * d);
++        c.drawRoundRect(rf, 4 * d, 4 * d, p);
++        c.save();
++        c.clipRect(rf);
++        float tx = rf.left + 3 * d, box = h - 8 * d;
++        t.setColor(0xFFFFFFFF);
++        if (own) {
++            int ano = table.s8(s.row, 2);
++            drawThumb(c, Math.abs(ano), tx, top + 4 * d, box, ano < 0);
++            if (rf.width() > box + 6 * d) tx += box + 3 * d;
++            if (rf.right - tx > 14 * d) {
++                t.setFakeBoldText(true);
++                c.drawText("passo " + (s.row + 1) + (ano < 0 ? " ⇄" : ""), tx, top + h / 2f - 3 * d, t);
++                t.setFakeBoldText(false);
++                t.setTextSize(8f * d);
++                int dur = table.u8(s.row, air ? 1 : 0);
++                c.drawText("ANO " + Math.abs(ano) + " · " + (dur == 255 ? "até pousar " : "") + s.length() + "t", tx, top + h / 2f + 9 * d, t);
++                t.setTextSize(9f * d);
++            }
++        } else if (rf.width() > 14 * d) {
++            t.setTextSize(8f * d);
++            c.drawText("→ " + (s.charSrc ? "pers. " : "jogo ") + s.type, tx, top + h / 2f + 3 * d, t);
++            t.setTextSize(9f * d);
++        }
++        c.restore();
++        if (!own) return;
++        // VALORES / VOZ / FLUXO deste passo
++        int b = air ? 7 : 3;
++        String vals = "v " + tok(table.s8(s.row, b)) + "," + tok(table.s8(s.row, b + 1)) + "  a " + tok(table.s8(s.row, b + 2)) + "," + tok(table.s8(s.row, b + 3));
++        lane(c, 2, x0, x1, vals, 0xFFE6E8EC);
++        int voice = table.s8(s.row, 13);
++        if (voice > 0) lane(c, 3, x0, x1, "♪ voz " + voice, C_VOICE);
++        int comp = table.u8(s.row, 11), wall = table.u8(s.row, 12);
++        String fl = "";
++        if (comp > 0) fl += "→ " + (comp >= 30 ? "pers. " + (comp - 30) : "jogo " + comp);
++        if (wall > 0) fl += (fl.isEmpty() ? "" : "  ") + "parede " + wall;
++        if (!fl.isEmpty()) lane(c, 4, x0, x1, fl, C_FLOW);
++    }
++
++    private void lane(Canvas c, int lane, float x0, float x1, String text, int color) {
++        float top = laneTop(lane), h = laneH(lane);
++        c.save();
++        c.clipRect(Math.max(x0, gutter()) , top, x1 - 1, top + h);
++        p.setColor(0x22FFFFFF);
++        c.drawRect(x0 + 1, top + 2 * d, x1 - 1, top + h - 2 * d, p);
++        t.setColor(color);
++        t.setTextSize(8f * d);
++        c.drawText(text, Math.max(x0, gutter()) + 3 * d, top + h / 2f + 3 * d, t);
++        t.setTextSize(9f * d);
++        c.restore();
++    }
++
++    private void drawThumb(Canvas c, int ano, float x, float y, float box, boolean flip) {
++        p.setColor(0x33000000);
++        c.drawRect(x, y, x + box, y + box, p);
++        if (opDac == null || opSprites == null) return;
++        Ano a = opDac.getAno(ano);
++        if (a == null || !a.present || a.mpts.length == 0 || a.mpts[0].image < 0) return;
++        SpriteCache.Sprite sp = null;
++        try { sp = opSprites.get(a.mpts[0].image); } catch (Exception ignored) { }
++        if (sp == null || sp.bitmap == null) return;
++        float sw = sp.src.width(), sh = sp.src.height();
++        float k = Math.min(box / Math.max(1f, sw), box / Math.max(1f, sh));
++        float dw = sw * k, dh = sh * k, cx = x + box / 2f, cy = y + box / 2f;
++        rf.set(cx - dw / 2f, cy - dh / 2f, cx + dw / 2f, cy + dh / 2f);
++        sr.set(sp.src);
++        c.save();
++        if (flip) c.scale(-1f, 1f, cx, cy);
++        c.drawBitmap(sp.bitmap, sr, rf, null);
++        c.restore();
++    }
++
++    private void velocity(Canvas c, int total) {
++        float top = laneTop(1), h = laneH(1), mid = top + h / 2f;
++        float max = 1f;
++        for (BattleSim.DamageTick k : trace.ticks) max = Math.max(max, Math.max(Math.abs(k.xs / 128f), Math.abs(k.ys / 128f)));
++        float amp = h / 2f - 4 * d;
++        p.setColor(0x44FFFFFF);
++        p.setStrokeWidth(1f);
++        c.drawLine(gutter(), mid, getWidth(), mid, p);
++        t.setColor(0xFF8A90A0);
++        t.setTextSize(7f * d);
++        c.drawText("±" + (Math.round(max * 10f) / 10f) + " px/t", 4 * d, top + h - 4 * d, t);
++        t.setTextSize(9f * d);
++        for (int line = 0; line < 2; line++) {
++            p.setColor(line == 0 ? C_VX : C_VY);
++            p.setStrokeWidth(1.6f * d);
++            float px = 0, py = 0;
++            boolean first = true;
++            for (int i = 0; i < total; i++) {
++                BattleSim.DamageTick k = trace.ticks.get(i);
++                float v = (line == 0 ? k.xs : k.ys) / 128f;
++                float x0 = xOf(i), x1 = xOf(i + 1), y = mid - v / max * amp;
++                if (x1 < gutter() || x0 > getWidth()) { px = x1; py = y; first = false; continue; }
++                if (!first && py != y) c.drawLine(x0, py, x0, y, p);
++                c.drawLine(x0, y, x1, y, p);
++                px = x1;
++                py = y;
++                first = false;
++            }
++        }
++        p.setStrokeWidth(1f);
++        t.setColor(C_VX);
++        c.drawText("x", 4 * d, top + 10 * d, t);
++        t.setColor(C_VY);
++        c.drawText("y", 12 * d, top + 10 * d, t);
++    }
++
++    @Override public boolean onTouchEvent(MotionEvent e) {
++        scaler.onTouchEvent(e);
++        if (scaler.isInProgress() || e.getPointerCount() > 1) { scaling = true; return true; }
++        switch (e.getActionMasked()) {
++            case MotionEvent.ACTION_DOWN:
++                downX = e.getX();
++                downTick = playTick;
++                moved = false;
++                scaling = false;
++                getParent().requestDisallowInterceptTouchEvent(true);
++                return true;
++            case MotionEvent.ACTION_MOVE:
++                if (scaling) return true;
++                if (Math.abs(e.getX() - downX) > 6 * d) moved = true;
++                if (moved) {
++                    setPointer(downTick - (e.getX() - downX) / ppt);
++                    if (listener != null) listener.onScrub(pointerTick());
++                }
++                return true;
++            case MotionEvent.ACTION_UP:
++                if (!moved && !scaling && trace != null) {
++                    int tk = (int) Math.floor(tickAt(e.getX()));
++                    ReactionTrace.Seg s = segAt(tk);
++                    if (isOwn(s) && listener != null) listener.onSelectRow(s.row);
++                }
++                return true;
++            default:
++                return true;
++        }
++    }
++}
 diff -ruN a/ReactionTrace.java b/ReactionTrace.java
 --- a/ReactionTrace.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ReactionTrace.java	2026-10-24 11:04:31.459366771 +0000
@@ -5562,7 +6709,7 @@ diff -ruN a/ThumbView.java b/ThumbView.java
 +}
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-24 11:01:01.733446272 +0000
++++ b/TimelineTools.java	2026-10-24 11:10:29.823917351 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -6829,6 +7976,18 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private static final String[] GROUPS = {"normal (efeito 0, som 3, empurra)", "som alternativo (efeito 0, som 4, empurra)",
              "forte (efeito 1, som 6, empurra)", "leve (meio hitstop, sem empurrar)", "sem efeito, som nem hitstop"};
  
+@@ -1274,9 +1634,9 @@
+         r1.addView(btn("ESCOLHER", true, new View.OnClickListener() { public void onClick(View v) { pickReaction(pat, value); } }));
+         col.addView(r1);
+         LinearLayout r2 = new LinearLayout(c);
+-        r2.addView(btn(op.fromChar ? "EDITAR PASSOS" : "VER PASSOS", false, new View.OnClickListener() { public void onClick(View v) {
++        r2.addView(btn(op.fromChar ? "EDITAR REAÇÃO" : "VER REAÇÃO", false, new View.OnClickListener() { public void onClick(View v) {
+             if (!op.valid) return;
+-            new ReactionEditor(c, view, op.index, new Runnable() { public void run() { onChanged.run(); } }).show();
++            new ReactionScreen(c, view, op.index, new Runnable() { public void run() { onChanged.run(); } }).show();
+         } }));
+         r2.addView(btn("efeito/som", false, new View.OnClickListener() { public void onClick(View v) {
+             new android.app.AlertDialog.Builder(c).setTitle("Efeito, som e empurrao").setItems(GROUPS, new android.content.DialogInterface.OnClickListener() {
 @@ -1315,7 +1675,8 @@
          LinearLayout row = null;
          int n = 0;
