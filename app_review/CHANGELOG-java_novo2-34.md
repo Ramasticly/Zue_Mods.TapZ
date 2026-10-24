@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 796 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 811 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -167,6 +167,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Pasta já existe:** o app pergunta — **UNIR** (copia só o que falta e aplica por cima, o que já estava salvo continua), **DELETAR** (apaga a pasta, só dentro de `TBRE/Chars`, e copia de novo) ou **OUTRO NOME** (campo com `charNN_2`).
 - Copiar roda em segundo plano com barra de progresso (`BusyDialog`). Código: `Saver.copyChar/separateDir/freeName/isSeparateCopy/deleteTree/saveInto`; testes em `SaverCopyTest`.
 
+### 3.1r Editor de reações: duração arrastável e faixas SPEED / VOZ / EFEITOS / SEQ
+- **Arrastar a duração do passo**: a borda direita do bloco do passo tem uma barra amarela; arrastar muda a duração do **cenário atual** (coluna `DUR_C` no chão, `DUR_A` no ar) em ticks, com linha-guia e o valor na tela, e grava ao soltar (uma só entrada de desfazer). Passos "até pousar" (255) ficam travados. Mínimo 1, máximo 254 (`ReactionEdit`, testado em `ReactionEditTest`).
+- **Faixas** como na timeline principal: **PASSOS**, **SPEED** (curva x/y e valores `v`/`a`), **VOZ**, **EFEITOS** (parede) e **SEQ** (próxima reação). Tocar num item abre a aba dele; tocar numa célula vazia (＋) abre para adicionar.
+- **Abas**: ANIMAÇÃO | TEMPO | SPEED | VOZ | EFEITOS | SEQ | TOTAL (a antiga FLUXO se dividiu em VOZ, EFEITOS e SEQ).
+- Gestos e desenho só compilados e revisados (não executados num aparelho).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -210,6 +216,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionSlotsTest (novo)** | 20 |
 | **ReactionTraceTest (novo)** | 18 |
 | **SaverCopyTest (novo)** | 17 |
+| **ReactionEditTest (novo)** | 15 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
