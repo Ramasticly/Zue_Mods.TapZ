@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 979 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 999 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -219,13 +219,28 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Documento** (`AiHelp`, 77 KB, **em inglês**, com a instrução de **responder no idioma do usuário** e o aviso de que o arquivo não está necessariamente nesse idioma): 0 instruções à IA · 1 o app · 2 arquivos e pastas (Runtime, `TBRE/Chars`, `TBRE/Backups`; os `.txt` mandam sobre os binários) · 3 formatos exatos de `000.dac.txt`, `000.bin.txt` (`$GOLPE_n`, `$HDAT_14+t` / `$REACAO_DANO_t`) e `000.cnv.txt` · 4 o que pedir ao usuário e como ele obtém · 5 dicionário (flags dos hits, `$OPT`, `WACTFLAG`, reações, ATK_FLAGS, sons, sprites) · 6 mecânica (tempo, speed/accel, hit, sequências, pouso, projéteis, efeitos) · 7 limites · 8 receitas · 9 checklist de validação · 10 como testar · 11 telas e botões · 12 **contrato de saída** (blocos completos, alvo na 1ª linha, onde colar, como testar) · 13 salvar e backups · 14 FAQ · Anexo A: a ajuda do app inteira, literal (PT).
 - **Gerado, não digitado**: os exemplos de ANO / golpe / reação / CNV passam pelo **leitor e pelo escritor do próprio app**; a tabela do HDAT 4 vem de `DacText.MOVE_KEYS`; os grupos de reação de `Opt1`; os limites de `GameRules`; o anexo de `HelpText`. O texto fixo fica em `AiHelpDoc` (gerado de `aihelp_src/*.md`).
 - AJUDA: nova seção “Ajuda de IA (TBRHelp.md)” (e tags de busca: ia, chatgpt, gemini, claude, markdown…).
-- Testes: `AiHelpTest` (31: determinismo, tamanho, instruções de idioma, seções 0–14 + anexo, exemplo de ANO relido pelo parser e reescrito igual, exemplo de golpe relido, todos os campos do HDAT 4, limites iguais ao `GameRules`, grupos de `Opt1`, anexo literal). Escrita em Download e intent só compilados e revisados.
+- Testes: `AiHelpTest` (46, ver 3.1zb: determinismo, tamanho, instruções de idioma, seções 0–14 + anexo, exemplo de ANO relido pelo parser e reescrito igual, exemplo de golpe relido, todos os campos do HDAT 4, limites iguais ao `GameRules`, grupos de `Opt1`, anexo literal). Escrita em Download e intent só compilados e revisados.
 
 ### 3.1z Idioma da interface (PT / EN / ES) — infraestrutura
 - Botão **PT → EN → ES** ao lado do AJUDA (barra de título): troca **na hora**, grava a escolha no aparelho (`SharedPreferences "lang"`) e retraduz a tela aberta no lugar (nada é recriado, as edições ficam). O código e os dados internos continuam em português: arquivos, chaves, textos gravados e o **TBRHelp.md não mudam**.
 - `I18n` (puro): `tr(texto)` resolve 1) texto exato do catálogo, 2) **modelo com `{0}`** (ex.: `Salvando em {0}`), 3) **fragmentos** por palavra inteira (maior primeiro), com cache; PT é custo zero. Termos neutros (DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END) ficam iguais nas 3 colunas. Catálogo em `I18nCatalog*` (triplas PT/EN/ES).
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
+
+### 3.1za Idioma: catálogo da interface (1 295 entradas PT/EN/ES)
+- Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
+- Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
+- **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
+
+### 3.1zb TBRHelp.md — seção 15 “Engine internals” (respostas às 97 perguntas da IA)
+- Nova seção 15 (≈ 78 KB, 13 subseções) com as respostas, **cada uma com rótulo de confiança**: `[CODE jogo:N]` (lido no `TCBManajer.java`), `[DOC]`, `[INFERRED]`, `[UNKNOWN]`. Cobre: fluxo do ataque, arquivos e tabelas (HDAT 3/4/5/6/13/14+), caixas e colisão (md 935), dano e fórmula, reações/COMP/paredes, física, projéteis e sub-projéteis, ANO/MPT/links/sprites, efeitos, som e câmera, flags (hit 0–125, `ATK_FLAGS`, `wOptFlag`), MDs e variáveis, exemplos frame a frame com **10 testes de validação**, e o que **não dá para reproduzir só com os dados**.
+- **Nomes das perguntas × nomes reais**: vários não existem no jogo (`playerattack`, `damageend`, `Commonnormal`, `hitFlag`…); a tabela da seção diz o nome real (`PlayerAttack[]`, `AttackEnd`, `CommonNormal`, `CheckOptFlag`, `DamageChange`, `_ActReqMain`…).
+- A tabela do HDAT 4 ganhou a coluna **byte offset** (o jogo guarda os 24 campos em ordem diferente da dos `$GOLPE_n`). Bits do WACTFLAG completados: 1 = repetir, 16/32 = espelhar X/Y.
+- Pergunta do GOLPE_9 (Kamehameha, ANO 49/50/51): o papel de um ANO é dado só por **qual campo do `$GOLPE_n` aponta para ele**; a seção explica como mudar só dano, reação, velocidade, nº de acertos e animação de impacto.
+- Testes: `AiHelpTest` 31 → 46 (seção 15 e subseções, rótulos, tabela de nomes, citações `jogo:N` dentro do arquivo do jogo quando ele está ao lado, nomes de métodos existem no código, offsets do HDAT 4).
+
+### 3.1zc Correção: projétil ABAIXO / ACIMA estava invertido nos textos
+- No jogo (jogo:31664-31672) `PROJETIL_ANIM_ABAIXO` vale quando o **atacante** está ≥ 51 px mais baixo que o oponente e `PROJETIL_ANIM_ACIMA` quando está ≥ 37 px mais alto. A tela de ramificação (“oponente bem abaixo/acima”), a AJUDA e o TBRHelp.md diziam o contrário. Agora: “atacante bem abaixo/acima do oponente” (PT/EN/ES). O simulador (`BattleSim`) já estava certo.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -273,8 +288,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionEditTest (novo)** | 35 |
 | **HelpSearchTest (novo)** | 48 |
 | **ReactionLayoutTest (novo)** | 23 |
-| **AiHelpTest (novo)** | 31 |
+| **AiHelpTest (novo)** | 46 |
 | **I18nTest (novo)** | 28 |
+| **I18nCoverageTest (novo)** | 5 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
