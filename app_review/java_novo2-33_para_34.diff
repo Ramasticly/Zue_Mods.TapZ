@@ -2111,6 +2111,36 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
+diff -ruN a/CharAssets.java b/CharAssets.java
+--- a/CharAssets.java	2026-10-20 14:58:43.000000000 +0000
++++ b/CharAssets.java	2026-10-24 00:05:26.068971137 +0000
+@@ -130,6 +130,26 @@
+                 dac.setAno(i, na);
+             } catch (Exception ex) { /* bloco que nao le: fica o binario */ }
+         }
++        // ANOs que o .txt tem alem do binario (ex.: golpe transplantado de outro personagem): entram no fim da tabela
++        int maxIdx = -1;
++        java.util.regex.Matcher mm = java.util.regex.Pattern.compile("\\$ANO_(\\d+)\\s*:").matcher(text);
++        while (mm.find()) {
++            int ls = text.lastIndexOf('\n', mm.start()) + 1;
++            if (text.substring(ls, mm.start()).contains("//")) continue;
++            try { maxIdx = Math.max(maxIdx, Integer.parseInt(mm.group(1))); } catch (NumberFormatException ignored) { }
++        }
++        int old0 = dac.size();
++        if (maxIdx >= old0 && maxIdx <= 0x0FFF) {
++            dac.growTo(maxIdx + 1);
++            for (int i = old0; i <= maxIdx; i++) {
++                int[] b = Saver.findBlock(text, "ANO_" + i);
++                if (b == null) continue;
++                try {
++                    Ano na = DacText.parseAno(text.substring(b[0], b[2] + 1), i, dac.getAno(i));
++                    if (na.mpts.length > 0 || na.links.length > 0) dac.setAno(i, na);
++                } catch (Exception ex) { /* bloco que nao le: o ANO fica ausente */ }
++            }
++        }
+     }
+ 
+     private static final String[] FR_KEYS = {"DUR_C", "DUR_A", "ANO", "XSPEED", "YSPEED", "XACCEL", "YACCEL", "XSPEED_A", "YSPEED_A", "XACCEL_A", "YACCEL_A", "COMP", "WALL", "VOZ"};
 diff -ruN a/CharData.java b/CharData.java
 --- a/CharData.java	2026-10-20 14:58:43.000000000 +0000
 +++ b/CharData.java	2026-10-22 07:55:53.651685766 +0000
@@ -2266,6 +2296,34 @@ diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 +        }
 +    }
 +}
+diff -ruN a/Dac.java b/Dac.java
+--- a/Dac.java	2026-10-20 10:46:55.000000000 +0000
++++ b/Dac.java	2026-10-24 00:05:26.068462742 +0000
+@@ -10,7 +10,7 @@
+  * Uma ANO quebrada nao derruba o arquivo inteiro: ela vira "ausente" e entra em getWarnings().
+  */
+ public final class Dac {
+-    private final Ano[] anos;
++    private Ano[] anos;
+     private final List<String> warnings;
+ 
+     private Dac(Ano[] anos, List<String> warnings) {
+@@ -104,6 +104,15 @@
+ 
+     public int size() { return anos.length; }
+ 
++    /** Aumenta a tabela para {@code n} ANOs (as novas ficam ausentes ate serem trocadas): ANOs que o .dac.txt tem alem do binario. */
++    public void growTo(int n) {
++        if (n <= anos.length) return;
++        Ano[] g = new Ano[n];
++        System.arraycopy(anos, 0, g, 0, anos.length);
++        for (int i = anos.length; i < n; i++) g[i] = missing(i);
++        anos = g;
++    }
++
+     /** Copia rasa (so a tabela de ANOs) com a ANO {@code index} trocada: serve para previas sem mexer no DAC real. */
+     public Dac copyWith(int index, Ano a) {
+         Ano[] c = anos.clone();
 diff -ruN a/DacText.java b/DacText.java
 --- a/DacText.java	2026-10-13 10:43:29.000000000 +0000
 +++ b/DacText.java	2026-10-22 07:55:53.652520198 +0000
@@ -2759,8 +2817,8 @@ diff -ruN a/GameTables.java b/GameTables.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 00:00:42.027173802 +0000
-@@ -0,0 +1,156 @@
++++ b/HelpText.java	2026-10-24 00:07:33.192951037 +0000
+@@ -0,0 +1,160 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2798,6 +2856,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        s.add(new Section(ToolbarOrder.SAVE, "SALVAR",
 +                "Grava as edições em .txt: o golpe atual (HDAT 4 + os ANOs dele), só o ANO atual, todos os golpes, todos os ANOs ou tudo. "
 +                + "Dá para salvar numa pasta separada (não mexe no original) ou sobrescrever os .txt do Runtime. "
++                + "Em \"Salvar golpe atual\" há ainda \"Salvar este golpe em outro personagem\": escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele, com cópia dos .txt dele em salvos/transplante_…: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot livre. Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. "
 +                + "Ao salvar, o app confere os limites do jogo (hitboxes por frame, links, tempo...) e avisa o que faria o jogo fechar."));
 +        s.add(new Section(ToolbarOrder.CHAR, "CHAR",
 +                "Escolhe o ATACANTE e o OPONENTE (cada um com os próprios dados e sprites). POS ajusta a distância entre eles e a altura de cada um "
@@ -2887,6 +2946,9 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "Ex.: accel 50 por 5 ticks, partindo do repouso, anda 0, 50, 100, 150 e 200 = 500 px e termina com velocidade 250. "
 +                + "A accel só vale no frame em que está escrita; a velocidade que ela acumulou só passa para o frame seguinte se ele tiver Manter velocidade, senão volta a 0. "
 +                + "Para continuar acelerando (ou frear) no frame seguinte, escreva a accel de novo nele. Accel sozinha, sem speed e sem velocidade recebida, é uma aceleração a partir do repouso (queda, arrancada) e não equivale a uma speed."));
++        s.add(new Section(null, "Tela do projétil",
++                "Tocar num hit de projétil (flag 0) abre, de cima para baixo: início e duração; RAMIFICAÇÃO DO PROJÉTIL (a árvore com ao acertar, chão, abaixo, acima, global e sub-projétil); ANO do projétil (− N +, toque no número para a grade); "
++                + "posição e velocidade; perseguição (e repetições); e a sequência SEQ_PROJETIL. A mesma tela abre no modo ANO e edita o golpe do HDAT 4 que é dono do ANO."));
 +        s.add(new Section(null, "Limite de 8 projéteis",
 +                "O jogo só mantém 8 projéteis vivos ao mesmo tempo (BulletNum < 8), contando os sub-projéteis. Um hit de projétil (flag 0) que acontece com 8 já na tela "
 +                + "não cria nada, sem aviso: se um projétil \"não sai\" num golpe que lança vários, confira se os anteriores já sumiram. "
@@ -3023,7 +3085,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-23 15:43:08.835287053 +0000
++++ b/LayoutManager.java	2026-10-24 00:07:33.192092127 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3377,7 +3439,177 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -1045,22 +1234,49 @@
+@@ -896,11 +1085,17 @@
+ 
+     private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
+         final File dir = d.attacker.dir;
+-        String[] items = {"Salvar em pasta separada\n" + new File(dir, Saver.DIR).getPath() + "/",
+-                "Salvar no Runtime (sobrescreve os .txt)\n" + dir.getPath() + "/"};
++        String[] items = which == 0
++                ? new String[]{"Salvar em pasta separada\n" + new File(dir, Saver.DIR).getPath() + "/",
++                        "Salvar no Runtime (sobrescreve os .txt)\n" + dir.getPath() + "/",
++                        "Salvar este golpe em outro personagem\n(grava direto no Runtime do personagem escolhido)"}
++                : new String[]{"Salvar em pasta separada\n" + new File(dir, Saver.DIR).getPath() + "/",
++                        "Salvar no Runtime (sobrescreve os .txt)\n" + dir.getPath() + "/"};
+         new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Salvar onde?")
+                 .setItems(items, new android.content.DialogInterface.OnClickListener() {
+-                    @Override public void onClick(android.content.DialogInterface dlg, int where) { doSave(a, view, d, which, where == 1); }
++                    @Override public void onClick(android.content.DialogInterface dlg, int where) {
++                        if (where == 2) startTransplant(a, view, d); else doSave(a, view, d, which, where == 1);
++                    }
+                 }).setNegativeButton("VOLTAR", null).show();
+     }
+ 
+@@ -951,6 +1146,148 @@
+         }
+     }
+ 
++    // ---- salvar este golpe em outro personagem ----
++
++    /** Escolhe o personagem de destino (as pastas charNN de assets, menos o atual), depois o golpe a substituir, e grava direto no Runtime dele. */
++    private void startTransplant(final Activity a, final AttackView view, final AttackData d) {
++        if (beforeSave != null) beforeSave.run();
++        final CharData cd = d.attacker.data;
++        CharData.Move m = d.move;
++        int idx = d.moveIndex;
++        if (m.generic) {
++            CharData.Move own = cd.ownerOf(d.moveIndex);
++            if (own == null || own.generic) { android.widget.Toast.makeText(a, "este ANO nao pertence a nenhum golpe: nao ha golpe para levar", android.widget.Toast.LENGTH_LONG).show(); return; }
++            m = own;
++            idx = java.util.Arrays.asList(cd.moves).indexOf(own);
++        }
++        final CharData.Move move = m;
++        final int srcIdx = idx;
++        File root = d.attacker.dir.getParentFile();
++        File[] fs = root == null ? null : root.listFiles();
++        final java.util.ArrayList<File> chars = new java.util.ArrayList<File>();
++        if (fs != null) for (File f : fs) if (f.isDirectory() && f.getName().matches("char\\d{2}") && !f.equals(d.attacker.dir)) chars.add(f);
++        java.util.Collections.sort(chars);
++        if (chars.isEmpty()) { android.widget.Toast.makeText(a, "Nenhum outro personagem em " + (root == null ? "assets" : root.getPath()), android.widget.Toast.LENGTH_LONG).show(); return; }
++        String[] names = new String[chars.size()];
++        for (int i = 0; i < names.length; i++) names[i] = chars.get(i).getName();
++        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Levar o GOLPE_" + String.format(java.util.Locale.US, "%02d", srcIdx) + " para qual personagem?")
++                .setItems(names, new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int which) { openTransplantTarget(a, view, d, move, srcIdx, chars.get(which)); }
++                }).setNegativeButton("VOLTAR", null).show();
++    }
++
++    private void openTransplantTarget(final Activity a, final AttackView view, final AttackData d, final CharData.Move move, final int srcIdx, final File dir) {
++        final BusyDialog bd = BusyDialog.show(a, "Abrindo " + dir.getName());
++        bd.set(dir.getName(), 0, 0);
++        new Thread(new Runnable() { @Override public void run() {
++            CharAssets t = null;
++            String err = null;
++            try { t = CharAssets.loadChar(dir); } catch (Exception e) { err = e.getMessage(); }
++            final CharAssets tgt = t;
++            final String error = err;
++            bd.dismiss();
++            a.runOnUiThread(new Runnable() { @Override public void run() {
++                if (tgt == null) { android.widget.Toast.makeText(a, "Erro ao abrir " + dir.getName() + ": " + error, android.widget.Toast.LENGTH_LONG).show(); return; }
++                pickTransplantMove(a, view, d, move, srcIdx, tgt);
++            } });
++        } }).start();
++    }
++
++    private void pickTransplantMove(final Activity a, final AttackView view, final AttackData d, final CharData.Move move, final int srcIdx, final CharAssets tgt) {
++        final java.util.ArrayList<Integer> slots = new java.util.ArrayList<Integer>();
++        java.util.ArrayList<String> labels = new java.util.ArrayList<String>();
++        for (int i = 0; i < tgt.data.moves.length; i++) {
++            if (!MoveTransplant.canReplace(srcIdx, i)) continue;
++            slots.add(Integer.valueOf(i));
++            labels.add(String.format(java.util.Locale.US, "GOLPE_%02d  (ANIM_INICIAL %d)", i, tgt.data.moves[i].animInicial));
++        }
++        if (slots.isEmpty()) { tgt.release(); android.widget.Toast.makeText(a, "Nenhum golpe do destino pode ser substituído por este", android.widget.Toast.LENGTH_LONG).show(); return; }
++        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Qual golpe de " + tgt.dir.getName() + " substituir?")
++                .setItems(labels.toArray(new String[0]), new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int which) { confirmTransplant(a, d, move, srcIdx, tgt, slots.get(which).intValue()); }
++                })
++                .setNegativeButton("CANCELAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int w) { tgt.release(); }
++                })
++                .setOnCancelListener(new android.content.DialogInterface.OnCancelListener() {
++                    @Override public void onCancel(android.content.DialogInterface dlg) { tgt.release(); }
++                }).show();
++    }
++
++    private void confirmTransplant(final Activity a, final AttackData d, final CharData.Move move, final int srcIdx, final CharAssets tgt, final int dstIdx) {
++        int nAnos = MoveTransplant.anosToCopy(d.attacker.dac, move).size();
++        String msg = "Vai substituir o GOLPE_" + String.format(java.util.Locale.US, "%02d", dstIdx) + " de " + tgt.dir.getName() + " pelo GOLPE_" + String.format(java.util.Locale.US, "%02d", srcIdx)
++                + " de " + d.attacker.dir.getName() + ", gravando direto no Runtime de " + tgt.dir.getName() + ".\n\n"
++                + "• HDAT 4: o golpe do destino é trocado pelo golpe daqui (com os ANOs renumerados).\n"
++                + "• " + nAnos + " ANO(s) entram no fim do DAC do destino (a partir do ANO " + tgt.dac.size() + ").\n"
++                + "• As sprites usadas entram no fim do CNV do destino (e nas folhas dele).\n"
++                + "• As reações do personagem que o golpe usa vão para um slot livre do destino.\n"
++                + "• Sons do personagem (id 80 ou mais) e hitbox flags 20 e 41-125 NÃO vão junto.\n\n"
++                + "Uma cópia dos .txt do destino fica em " + tgt.dir.getName() + "/" + Saver.DIR + "/transplante_.... O que está aqui na memória (mesmo sem salvar) é o que vai.";
++        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Salvar em outro personagem").setMessage(msg)
++                .setPositiveButton("SALVAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int w) { runTransplant(a, d, move, srcIdx, tgt, dstIdx); }
++                })
++                .setNegativeButton("CANCELAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface dlg, int w) { tgt.release(); }
++                })
++                .setOnCancelListener(new android.content.DialogInterface.OnCancelListener() {
++                    @Override public void onCancel(android.content.DialogInterface dlg) { tgt.release(); }
++                }).show();
++    }
++
++    private void runTransplant(final Activity a, final AttackData d, final CharData.Move move, final int srcIdx, final CharAssets tgt, final int dstIdx) {
++        final BusyDialog bd = BusyDialog.show(a, "Salvando em " + tgt.dir.getName());
++        bd.set("Montando o golpe...", 0, 0);
++        new Thread(new Runnable() { @Override public void run() {
++            String out;
++            try {
++                final SpriteLib sl = d.attacker.lib(), dl = tgt.lib();
++                MoveTransplant.Sprites spr = new MoveTransplant.Sprites() {
++                    @Override public int add(int image) throws java.io.IOException {
++                        android.graphics.Bitmap b = sl.cut(image);
++                        return b == null ? -1 : dl.add(b);
++                    }
++                };
++                MoveTransplant.Plan p = MoveTransplant.build(d.attacker.dac, d.attacker.data, move, tgt.dac, tgt.data, spr);
++                java.util.ArrayList<String> warns = new java.util.ArrayList<String>(p.warnings);
++                bd.set("Gravando...", 0, 0);
++                File bk = MoveTransplant.write(tgt.dir, p, dstIdx, warns, new MoveTransplant.Commit() {
++                    @Override public void run() throws java.io.IOException { dl.commit(); }
++                });
++                StringBuilder sb = new StringBuilder("GOLPE_" + String.format(java.util.Locale.US, "%02d", dstIdx) + " de " + tgt.dir.getName() + " substituído pelo GOLPE_"
++                        + String.format(java.util.Locale.US, "%02d", srcIdx) + ".\n\n");
++                sb.append("• ").append(p.anos.size()).append(" ANO(s) novos: ").append(p.firstAno()).append(" a ").append(p.firstAno() + p.anos.size() - 1).append('\n');
++                sb.append("• ").append(p.sprites).append(" sprite(s) novas no CNV e nas folhas\n");
++                if (!p.reactionMap.isEmpty()) {
++                    sb.append("• reações do personagem: ");
++                    boolean first = true;
++                    for (java.util.Map.Entry<Integer, Integer> e : p.reactionMap.entrySet()) { sb.append(first ? "" : ", ").append(e.getKey()).append(" → ").append(e.getValue()); first = false; }
++                    sb.append('\n');
++                }
++                sb.append("• cópia dos .txt anteriores: ").append(bk.getPath()).append('\n');
++                if (!warns.isEmpty()) { sb.append("\nAvisos:\n"); for (String w : warns) sb.append("• ").append(w).append('\n'); }
++                sb.append("\nRecarregue o personagem ").append(tgt.dir.getName()).append(" (troque de personagem e volte) para ver o golpe novo na tela.");
++                out = sb.toString();
++            } catch (Exception e) {
++                out = "Erro ao salvar em " + tgt.dir.getName() + ": " + e.getMessage() + "\n\nOs .txt do destino só são gravados no final; se o erro veio depois do backup, a cópia dos .txt anteriores está em " + tgt.dir.getName() + "/" + Saver.DIR + "/transplante_....";
++            } finally {
++                tgt.release();
++            }
++            final String text = out;
++            bd.dismiss();
++            a.runOnUiThread(new Runnable() { @Override public void run() {
++                TextView tv = text(a, text, 13, TEXT);
++                tv.setPadding(dp(16), dp(8), dp(16), dp(8));
++                android.widget.ScrollView sv = new android.widget.ScrollView(a);
++                sv.addView(tv);
++                new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Salvar em outro personagem").setView(sv).setPositiveButton("OK", null).show();
++            } });
++        } }).start();
++    }
++
+     /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
+     static final class ExtSeekBar extends SeekBar {
+         private int anoEnd = Integer.MAX_VALUE;
+@@ -1045,22 +1382,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3437,7 +3669,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1451,7 @@
+@@ -1235,7 +1599,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -3877,6 +4109,263 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          } catch (Exception e) {
              ui.setError("Erro no golpe: " + e.getMessage());
          }
+diff -ruN a/MoveTransplant.java b/MoveTransplant.java
+--- a/MoveTransplant.java	1970-01-01 00:00:00.000000000 +0000
++++ b/MoveTransplant.java	2026-10-24 00:05:26.067767623 +0000
+@@ -0,0 +1,253 @@
++package com.zue.attackeditor;
++
++import java.io.File;
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.TreeMap;
++import java.util.TreeSet;
++
++/**
++ * "Salvar este golpe em outro personagem": leva o golpe (HDAT 4) e tudo o que ele alcanca para outra pasta de personagem.
++ * Os ANOs entram no fim do DAC do destino (renumerados), as imagens viram sprites novas no fim do CNV do destino e as tabelas de
++ * reacao do personagem que o golpe usa vao para um slot livre (ou igual) do destino. O golpe do destino e substituido no HDAT 4.
++ * Java puro, menos {@link Sprites} (quem corta/cola a imagem e a tela).
++ */
++final class MoveTransplant {
++    private MoveTransplant() { }
++
++    /** Maior ANO que um link guarda (12 bits). */
++    static final int MAX_ANO = 0x0FFF;
++
++    /** Poe a imagem {@code srcImage} da origem no CNV do destino e devolve o indice novo; -1 se a imagem nao tem desenho. */
++    interface Sprites { int add(int srcImage) throws IOException; }
++
++    static final class Plan {
++        /** ANO da origem -> ANO novo no destino. */
++        final TreeMap<Integer, Integer> anoMap = new TreeMap<Integer, Integer>();
++        /** ANOs novos, prontos para entrar no fim do DAC do destino. */
++        final List<Ano> anos = new ArrayList<Ano>();
++        /** Golpe com os ANOs renumerados (vai para o HDAT 4 do destino). */
++        CharData.Move move;
++        /** Tipo de reacao na origem -> tipo no destino (so os que mudaram de lugar ou foram achados iguais). */
++        final TreeMap<Integer, Integer> reactionMap = new TreeMap<Integer, Integer>();
++        /** Slot do destino -> tabela da origem que precisa ser gravada nele. */
++        final TreeMap<Integer, ReactionTable> reactionWrites = new TreeMap<Integer, ReactionTable>();
++        final List<String> warnings = new ArrayList<String>();
++        int sprites;
++        int firstAno() { return anos.isEmpty() ? -1 : anos.get(0).index; }
++    }
++
++    // ---- o que copiar ----
++
++    /**
++     * ANOs que o golpe usa: os campos do HDAT 4 (+ ANO+1/+2 do tiro triplo e ANO+1 do agarrao) e os links deles. Nao entram os ANOs
++     * "implicitos" (hitbox flag 71-125 aponta para o ANO 201+..., cutscene da flag 20): esses sao do personagem e ficam os do destino.
++     */
++    static TreeSet<Integer> anosToCopy(Dac dac, CharData.Move m) {
++        TreeSet<Integer> out = new TreeSet<Integer>();
++        ArrayList<Integer> todo = new ArrayList<Integer>();
++        for (int r : anoRefs(m)) if (r > 0) todo.add(Integer.valueOf(r));
++        if ((m.flags & 4) != 0 && m.projNormal > 0) { todo.add(Integer.valueOf(m.projNormal + 1)); todo.add(Integer.valueOf(m.projNormal + 2)); }
++        if ((m.flags & (8 | 128)) != 0 && m.animInicial > 0) todo.add(Integer.valueOf(m.animInicial + 1));
++        while (!todo.isEmpty()) {
++            int i = todo.remove(todo.size() - 1).intValue();
++            if (i < 0 || i >= dac.size() || out.contains(Integer.valueOf(i))) continue;
++            Ano a = dac.getAno(i);
++            if (a == null || !a.present) continue;
++            out.add(Integer.valueOf(i));
++            for (int k = 0; k < a.links.length; k++) todo.add(Integer.valueOf(a.links[k].getAno()));
++        }
++        return out;
++    }
++
++    private static int[] anoRefs(CharData.Move m) {
++        return new int[]{m.animInicial, m.projNormal, m.projAbaixo, m.projAcima, m.projGlobal, m.projAoAcertar, m.projChao,
++                m.subId, m.subAoAcertar, m.subChao, m.animAoAcertar, m.animSeqChao, m.animEndChao, m.animSeqAr, m.animEndAr,
++                m.pousoErrar, m.pousoAcertar, m.oponenteAgarrado};
++    }
++
++    /** Quais golpes do destino o golpe {@code src} pode substituir: 0, 3 e 6 so substituem o proprio numero; os demais, qualquer um menos 0, 3 e 6. */
++    static boolean canReplace(int src, int dst) {
++        boolean sp = isSpecial(src), dp = isSpecial(dst);
++        return sp || dp ? src == dst : true;
++    }
++
++    static boolean isSpecial(int move) { return move == 0 || move == 3 || move == 6; }
++
++    // ---- plano ----
++
++    /**
++     * Monta o plano: renumera os ANOs (o primeiro vai para o fim do DAC do destino), manda as imagens para {@code spr}, escolhe os slots
++     * de reacao do destino e devolve o golpe novo. Nao escreve nada.
++     */
++    static Plan build(Dac srcDac, CharData srcData, CharData.Move m, Dac dstDac, CharData dstData, Sprites spr) throws IOException {
++        Plan p = new Plan();
++        TreeSet<Integer> set = anosToCopy(srcDac, m);
++        int base = dstDac.size();
++        if (base + set.size() - 1 > MAX_ANO)
++            throw new IOException("o DAC do destino ficaria com " + (base + set.size()) + " ANOs (maximo " + (MAX_ANO + 1) + ")");
++        int k = 0;
++        for (Integer s : set) p.anoMap.put(s, Integer.valueOf(base + k++));
++
++        // reacoes do personagem que o golpe usa
++        planReactions(srcDac, srcData, set, dstDac, dstData, p);
++
++        TreeMap<Integer, Integer> imgMap = new TreeMap<Integer, Integer>();
++        int soundFrames = 0, charFlagFrames = 0, missingImages = 0, droppedLinks = 0;
++        for (Integer s : set) {
++            Ano a = srcDac.getAno(s.intValue());
++            ArrayList<Ano.Link> links = new ArrayList<Ano.Link>();
++            for (int i = 0; i < a.links.length; i++) {
++                Integer to = p.anoMap.get(Integer.valueOf(a.links[i].getAno()));
++                if (to == null) { droppedLinks++; continue; }
++                links.add(new Ano.Link(a.links[i].baseX, a.links[i].baseY, (a.links[i].flags & ~0x0FFF) | to.intValue()));
++            }
++            Ano.Mpt[] mp = new Ano.Mpt[a.mpts.length];
++            for (int q = 0; q < mp.length; q++) {
++                Ano.Mpt c = a.mpts[q].copy();
++                if (c.image >= 0) {
++                    Integer ni = imgMap.get(Integer.valueOf(c.image));
++                    if (ni == null) {
++                        int added = spr.add(c.image);
++                        if (added >= 0) p.sprites++;
++                        ni = Integer.valueOf(added);
++                        imgMap.put(Integer.valueOf(c.image), ni);
++                    }
++                    if (ni.intValue() < 0) missingImages++;
++                    c.image = ni.intValue();
++                }
++                if ((c.flags & 0x40) != 0 && c.hits.length > 0) {
++                    int v = c.optData[1];
++                    int idx = v % 50;
++                    if (v >= 0 && idx >= 30 && idx < 30 + CharData.REACTION_COUNT) {
++                        Integer nt = p.reactionMap.get(Integer.valueOf(idx - 30));
++                        if (nt != null) c.optData[1] = (v / 50) * 50 + 30 + nt.intValue();
++                    }
++                }
++                if ((c.flags & 8) != 0 && c.se >= 80) soundFrames++;
++                for (int h = 0; h < c.hits.length; h++) {
++                    int f = c.hits[h].flag;
++                    if (f == 20 || (f >= 41 && f <= 125)) { charFlagFrames++; break; }
++                }
++                c.normalize();
++                mp[q] = c;
++            }
++            p.anos.add(new Ano(p.anoMap.get(s).intValue(), true, a.flags, a.priority, links.toArray(new Ano.Link[0]), mp));
++        }
++
++        CharData.Move nm = m.copy();
++        nm.generic = false;
++        nm.animInicial = mapRef(p, m.animInicial); nm.projNormal = mapRef(p, m.projNormal); nm.projAbaixo = mapRef(p, m.projAbaixo);
++        nm.projAcima = mapRef(p, m.projAcima); nm.projGlobal = mapRef(p, m.projGlobal); nm.projAoAcertar = mapRef(p, m.projAoAcertar);
++        nm.projChao = mapRef(p, m.projChao); nm.subId = mapRef(p, m.subId); nm.subAoAcertar = mapRef(p, m.subAoAcertar);
++        nm.subChao = mapRef(p, m.subChao); nm.animAoAcertar = mapRef(p, m.animAoAcertar); nm.animSeqChao = mapRef(p, m.animSeqChao);
++        nm.animEndChao = mapRef(p, m.animEndChao); nm.animSeqAr = mapRef(p, m.animSeqAr); nm.animEndAr = mapRef(p, m.animEndAr);
++        nm.pousoErrar = mapRef(p, m.pousoErrar); nm.pousoAcertar = mapRef(p, m.pousoAcertar); nm.oponenteAgarrado = mapRef(p, m.oponenteAgarrado);
++        p.move = nm;
++
++        if (droppedLinks > 0) p.warnings.add(droppedLinks + " link(s) apontavam para ANO inexistente na origem e foram removidos.");
++        if (missingImages > 0) p.warnings.add(missingImages + " frame(s) usavam imagem sem desenho na origem: ficaram sem imagem.");
++        if (soundFrames > 0) p.warnings.add(soundFrames + " frame(s) tocam sons do personagem de origem (id 80 ou mais); os sons não foram copiados, então no destino tocam outro som ou nenhum.");
++        if (charFlagFrames > 0) p.warnings.add(charFlagFrames + " frame(s) usam hitbox flags de animação do personagem (20 cutscene, 41-125 auras/charf): elas apontam para os dados do destino, não da origem.");
++        return p;
++    }
++
++    private static int mapRef(Plan p, int v) {
++        if (v <= 0) return v;
++        Integer to = p.anoMap.get(Integer.valueOf(v));
++        if (to == null) { p.warnings.add("O golpe apontava para o ANO " + v + ", que não existe na origem: o campo ficou 0."); return 0; }
++        return to.intValue();
++    }
++
++    private static boolean present(ReactionTable t) { return t != null && t.rows > 0; }
++
++    static boolean sameTable(ReactionTable a, ReactionTable b) {
++        if (a == null || b == null || a.rows != b.rows) return false;
++        for (int r = 0; r < a.rows; r++) for (int c = 0; c < ReactionTable.STRIDE; c++) if (a.u8(r, c) != b.u8(r, c)) return false;
++        return true;
++    }
++
++    /** Escolhe, para cada tabela de reacao que o golpe usa, o slot do destino: igual > livre (nenhum ANO do destino usa) > o mesmo numero (sobrescreve, com aviso). */
++    private static void planReactions(Dac srcDac, CharData srcData, TreeSet<Integer> set, Dac dstDac, CharData dstData, Plan p) {
++        TreeSet<Integer> needed = Saver.reactionsUsed(srcDac, set);
++        if (needed.isEmpty()) return;
++        TreeSet<Integer> dstAnos = new TreeSet<Integer>();
++        for (int i = 0; i < dstDac.size(); i++) { Ano a = dstDac.getAno(i); if (a != null && a.present) dstAnos.add(Integer.valueOf(i)); }
++        TreeSet<Integer> dstUsed = Saver.reactionsUsed(dstDac, dstAnos);
++        TreeSet<Integer> taken = new TreeSet<Integer>();
++        for (Integer tObj : needed) {
++            int t = tObj.intValue();
++            ReactionTable st = srcData.reaction(t);
++            if (!present(st)) { p.warnings.add("A reação do personagem " + t + " usada pelo golpe não existe na origem; ficou como estava."); continue; }
++            int pick = -1;
++            boolean identical = false;
++            if (present(dstData.reaction(t)) && sameTable(st, dstData.reaction(t)) && !taken.contains(Integer.valueOf(t))) { pick = t; identical = true; }
++            for (int s = 0; pick < 0 && s < CharData.REACTION_COUNT; s++)
++                if (present(dstData.reaction(s)) && sameTable(st, dstData.reaction(s)) && !taken.contains(Integer.valueOf(s))) { pick = s; identical = true; }
++            for (int s = 0; pick < 0 && s < CharData.REACTION_COUNT; s++) {
++                int slot = (t + s) % CharData.REACTION_COUNT;
++                if (present(dstData.reaction(slot)) && !dstUsed.contains(Integer.valueOf(slot)) && !taken.contains(Integer.valueOf(slot))) pick = slot;
++            }
++            if (pick < 0 && present(dstData.reaction(t)) && !taken.contains(Integer.valueOf(t))) {
++                pick = t;
++                p.warnings.add("Sem slot livre de reação no destino: a reação " + t + " do destino foi sobrescrita (outros golpes dele podem usá-la).");
++            }
++            if (pick < 0) { p.warnings.add("Sem slot de reação no destino para a reação " + t + " do golpe: ela continua apontando para o número original."); continue; }
++            taken.add(Integer.valueOf(pick));
++            p.reactionMap.put(tObj, Integer.valueOf(pick));
++            if (!identical) p.reactionWrites.put(Integer.valueOf(pick), st);
++        }
++    }
++
++    // ---- texto ----
++
++    /** Poe os ANOs no fim do DAC_ACT_ { ... } do destino (antes da ultima chave). */
++    static String appendAnos(String dacText, List<Ano> anos) throws IOException {
++        int end = dacText.lastIndexOf('}');
++        if (end < 0) throw new IOException("000.dac.txt sem a chave final do DAC_ACT_");
++        StringBuilder sb = new StringBuilder(dacText.substring(0, end));
++        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') sb.append('\n');
++        for (Ano a : anos) sb.append(Saver.indent(DacText.ano(a, -1))).append('\n');
++        return sb.append(dacText.substring(end)).toString();
++    }
++
++    /** O 000.bin.txt do destino com o golpe {@code dstMove} trocado e as tabelas de reacao gravadas. */
++    static String patchBin(String binText, Plan p, int dstMove, List<String> warnings) throws IOException {
++        boolean[] f = new boolean[1];
++        String t = Saver.patchMove(binText, p.move, dstMove, f);
++        if (!f[0]) throw new IOException("bloco $GOLPE_" + dstMove + " não achado no 000.bin.txt do destino");
++        for (java.util.Map.Entry<Integer, ReactionTable> e : p.reactionWrites.entrySet()) {
++            t = Saver.patchReaction(t, e.getValue(), e.getKey().intValue(), f);
++            if (!f[0]) warnings.add("Bloco $REACAO_DANO_" + e.getKey() + " não achado no 000.bin.txt do destino: a reação não foi gravada.");
++        }
++        return t;
++    }
++
++    // ---- gravacao ----
++
++    /**
++     * Grava no Runtime do destino (000.dac.txt e 000.bin.txt; o CNV e as folhas sao gravados pelo {@code commit}, entre o backup e os .txt). Faz cópia dos dois .txt em
++     * salvos/transplante_AAAAMMDD_HHMMSS/ antes de mexer. Devolve a pasta do backup.
++     */
++    interface Commit { void run() throws IOException; }
++
++    /** {@code commit} grava as folhas e o CNV do destino (depois do backup e antes dos .txt, para o DAC nunca apontar para sprite que nao existe). */
++    static File write(File dir, Plan p, int dstMove, List<String> warnings, Commit commit) throws IOException {
++        File fd = new File(dir, "000.dac.txt"), fb = new File(dir, "000.bin.txt");
++        if (!fd.isFile()) throw new IOException("000.dac.txt não encontrado em " + dir.getPath());
++        if (!fb.isFile()) throw new IOException("000.bin.txt não encontrado em " + dir.getPath());
++        String dt = appendAnos(Saver.readText(fd), p.anos);
++        String bt = patchBin(Saver.readText(fb), p, dstMove, warnings);
++        File bk = new File(Saver.dirOf(dir), "transplante_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date()));
++        bk.mkdirs();
++        Saver.write(new File(bk, fd.getName()), Saver.readText(fd));
++        Saver.write(new File(bk, fb.getName()), Saver.readText(fb));
++        File fc = new File(dir, "000.cnv.txt");
++        if (fc.isFile()) Saver.write(new File(bk, fc.getName()), Saver.readText(fc));
++        if (commit != null) commit.run();
++        Saver.write(fd, dt);
++        Saver.write(fb, bt);
++        return bk;
++    }
++}
 diff -ruN a/ObjModel.java b/ObjModel.java
 --- a/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
 +++ b/ObjModel.java	2026-10-23 16:36:24.712174459 +0000
@@ -4276,7 +4765,7 @@ diff -ruN a/ReorderBar.java b/ReorderBar.java
 +}
 diff -ruN a/Saver.java b/Saver.java
 --- a/Saver.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/Saver.java	2026-10-21 20:45:22.766088156 +0000
++++ b/Saver.java	2026-10-24 00:05:07.746404997 +0000
 @@ -23,12 +23,15 @@
      // ---- quais ANOs um golpe usa ----
  
@@ -4306,6 +4795,15 @@ diff -ruN a/Saver.java b/Saver.java
                  }
              }
          }
+@@ -62,7 +69,7 @@
+         return sb.append("}\n").toString();
+     }
+ 
+-    private static String indent(String s) {
++    static String indent(String s) {
+         StringBuilder sb = new StringBuilder();
+         String[] ls = s.split("\n", -1);
+         for (int i = 0; i < ls.length; i++) { sb.append("   ").append(ls[i]); if (i < ls.length - 1) sb.append('\n'); }
 @@ -222,7 +229,7 @@
          java.util.TreeSet<Integer> rs = new java.util.TreeSet<Integer>();
          if (moves != null) for (Integer mi : moves) {
@@ -7463,6 +7961,154 @@ diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
 +        check("efeito de hit mostra o link 1 e nao o link do link (2)", fs.contains(Integer.valueOf(0)) + ":" + fs.contains(Integer.valueOf(1)) + ":" + fs.contains(Integer.valueOf(2)), "true:true:false");
 +
 +        System.out.println("LinkHierarchyTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
+--- a/test/MoveTransplantTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/MoveTransplantTest.java	2026-10-24 00:06:29.916920593 +0000
+@@ -0,0 +1,144 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/** "Salvar este golpe em outro personagem": ANOs renumerados no fim do DAC, imagens novas, reacoes em slot livre, texto do destino. */
++public class MoveTransplantTest {
++    static A[] anos(int n) {
++        A[] a = new A[n];
++        for (int i = 0; i < n; i++) a[i] = new A().mpt(new M().time(5).img(1));
++        return a;
++    }
++
++    static void link(Dac d, int idx, int... targets) {
++        Ano old = d.getAno(idx);
++        Ano.Link[] ls = new Ano.Link[targets.length];
++        for (int i = 0; i < targets.length; i++) ls[i] = new Ano.Link(3, -4, 0x4000 | targets[i]);
++        d.setAno(idx, new Ano(idx, true, old.flags | 2, old.priority, ls, old.mpts));
++    }
++
++    public static void main(String[] args) throws Exception {
++        // ---- regra dos slots
++        check("0 so substitui o 0", MoveTransplant.canReplace(0, 0) + ":" + MoveTransplant.canReplace(0, 1) + ":" + MoveTransplant.canReplace(0, 3), "true:false:false");
++        check("3 so o 3 e 6 so o 6", MoveTransplant.canReplace(3, 3) + ":" + MoveTransplant.canReplace(3, 6) + ":" + MoveTransplant.canReplace(6, 6) + ":" + MoveTransplant.canReplace(6, 2), "true:false:true:false");
++        check("os demais so em nao especiais", MoveTransplant.canReplace(2, 5) + ":" + MoveTransplant.canReplace(2, 0) + ":" + MoveTransplant.canReplace(2, 3) + ":" + MoveTransplant.canReplace(2, 6) + ":" + MoveTransplant.canReplace(7, 7), "true:false:false:false:true");
++
++        // ---- origem: ANO 10 (golpe) com link 13 -> 14, projetil 20 (+1/+2 por ATK 4), SEQ 11, SEQ_PROJETIL 12; ANO 25 nao usado
++        A[] sa = anos(30);
++        sa[10] = new A().mpt(new M().time(5).img(3).hit(2, 10, -30, 20, 20).opt1(32)).mpt(new M().time(5).img(3)).mpt(new M().time(5).img(7)).mpt(new M().time(5).img(-1));
++        sa[11] = new A().mpt(new M().time(5).img(7).hit(2, 5, -30, 20, 20).opt1(31));
++        sa[20] = new A().mpt(new M().time(5).img(9).hit(72, 0, 0, 4, 4)).mpt(new M().time(5).img(5000));
++        sa[21] = new A().mpt(new M().time(5).img(9));
++        sa[22] = new A().mpt(new M().time(5).img(9));
++        sa[25] = new A().mpt(new M().time(5).img(8));
++        Dac sd = dac(sa);
++        link(sd, 10, 13);
++        link(sd, 13, 14);
++        byte[][] sreact = new byte[3][];
++        sreact[1] = react(new int[]{10, 11, 12}, new int[]{20, 21, 22});
++        sreact[2] = react(new int[]{77, 1, 2});
++        CharData src = chr(move(new int[]{0, 4}, new int[]{2, 10}, new int[]{4, 20}, new int[]{10, 11}, new int[]{32, 12}), sreact);
++        CharData.Move m = src.moves[0];
++
++        java.util.TreeSet<Integer> set = MoveTransplant.anosToCopy(sd, m);
++        check("ANOs: golpe, SEQ, SEQ_PROJETIL, projetil +1/+2 e links (inclusive o link do link); o ANO 25 e a aura 72 nao", set.toString(), "[10, 11, 12, 13, 14, 20, 21, 22]");
++
++        // ---- destino: DAC de 8 ANOs; reacao 1 igual a da origem, 5 presente e sem uso, 2 ausente
++        Dac dd = dac(anos(8));
++        byte[][] dreact = new byte[6][];
++        dreact[1] = sreact[1];
++        dreact[5] = react(new int[]{1, 2, 3});
++        CharData dst = chr(move(new int[]{0, 4}, new int[]{2, 3}), dreact);
++
++        final List<Integer> asked = new ArrayList<Integer>();
++        MoveTransplant.Sprites spr = new MoveTransplant.Sprites() {
++            int next = 100;
++            public int add(int image) { asked.add(Integer.valueOf(image)); return image == 5000 ? -1 : next++; }
++        };
++        MoveTransplant.Plan p = MoveTransplant.build(sd, src, m, dd, dst, spr);
++        check("ANOs novos vao para o fim do DAC do destino (8..15)", p.anoMap.toString(), "{10=8, 11=9, 12=10, 13=11, 14=12, 20=13, 21=14, 22=15}");
++        check("golpe renumerado", p.move.animInicial + ":" + p.move.projNormal + ":" + p.move.animSeqChao + ":" + p.move.animAoAcertar + ":" + p.move.animSeqAr, "8:13:9:10:0");
++        check("campos que nao sao ANO ficam", p.move.flags, m.flags);
++        check("o golpe original nao muda", m.animInicial + ":" + m.projNormal, "10:20");
++        check("cada imagem distinta pede um sprite uma vez so (3, 7, 1, 9, 5000; -1 nao pede)", asked.toString(), "[3, 7, 1, 9, 5000]");
++        check("sprites realmente adicionados (a de 5000 nao tem desenho)", p.sprites, 4);
++        Ano n8 = p.anos.get(0);
++        check("ANO 10 virou 8 com as imagens novas (3 repete a mesma)", n8.index + ":" + n8.mpts[0].image + ":" + n8.mpts[1].image + ":" + n8.mpts[2].image + ":" + n8.mpts[3].image, "8:100:100:101:-1");
++        check("link remapeado mantendo os bits e a posicao", n8.links[0].getAno() + ":" + n8.links[0].syncXY() + ":" + n8.links[0].baseX + ":" + n8.links[0].baseY, "11:true:3:-4");
++        check("link do link tambem", p.anos.get(4).links.length == 1 && p.anos.get(4).index == 12 || p.anoMap.get(Integer.valueOf(13)).intValue() == 11, true);
++        check("imagem sem desenho vira -1", p.anos.get(5).mpts[1].image, -1);
++        check("projetil +1/+2 vizinhos continuam consecutivos", p.anoMap.get(Integer.valueOf(21)).intValue() - p.anoMap.get(Integer.valueOf(20)).intValue()
++                + p.anoMap.get(Integer.valueOf(22)).intValue() - p.anoMap.get(Integer.valueOf(21)).intValue(), 2);
++        check("reacao 1 igual no destino: fica no 1; reacao 2 vai para o slot livre 5", p.reactionMap.toString(), "{1=1, 2=5}");
++        check("so a reacao nao igual e gravada, no slot 5", p.reactionWrites.size() == 1 && p.reactionWrites.containsKey(Integer.valueOf(5)), true);
++        check("OPT 1 da hitbox remapeado (32 -> 35; 31 fica 31)", p.anos.get(0).mpts[0].optData[1] + ":" + p.anos.get(1).mpts[0].optData[1], "35:31");
++        boolean warnAura = false;
++        for (String w : p.warnings) if (w.contains("flags de animação")) warnAura = true;
++        check("aviso de hitbox flag de animacao do personagem (72)", warnAura, true);
++
++        // ---- textos do destino
++        String dacT = MoveTransplant.appendAnos(Saver.dacText(dd, null), p.anos);
++        check("ANOs novos no fim do .dac.txt", Saver.findBlock(dacT, "ANO_8") != null && Saver.findBlock(dacT, "ANO_15") != null && Saver.findBlock(dacT, "ANO_16") == null, true);
++        check("os originais continuam", Saver.findBlock(dacT, "ANO_0") != null && Saver.findBlock(dacT, "ANO_7") != null, true);
++        int[] b8 = Saver.findBlock(dacT, "ANO_8");
++        Ano back = DacText.parseAno(dacT.substring(b8[0], b8[2] + 1), 8, null);
++        check("o bloco novo le de volta igual", back.mpts.length + ":" + back.mpts[2].image + ":" + back.links[0].getAno(), "4:101:11");
++
++        StringBuilder bin = new StringBuilder("BIN_CNV_ {\n");
++        bin.append(DacText.move(dst.moves[0], 0)).append("\n");
++        bin.append(Saver.reactionText(dst.reaction(5), 5));
++        bin.append("}\n");
++        List<String> warns = new ArrayList<String>();
++        String bt = MoveTransplant.patchBin(bin.toString(), p, 0, warns);
++        int[] gb = Saver.findBlock(bt, "GOLPE_0");
++        check("golpe do destino trocado no HDAT 4", gb != null && bt.substring(gb[0], gb[2] + 1).replaceAll("\\s", "").contains("$ANIM_INICIAL:8,"), true);
++        check("tabela de reacao gravada no slot 5", bt.contains("$DUR_C: 77"), true);
++        check("sem bloco de reacao ausente nao ha aviso", warns.isEmpty(), true);
++        // golpe inexistente no destino
++        boolean threw = false;
++        try { MoveTransplant.patchBin(bin.toString(), p, 9, warns); } catch (java.io.IOException e) { threw = true; }
++        check("golpe sem bloco no .bin.txt do destino: erro", threw, true);
++
++        // ---- reacoes sem slot livre: sobrescreve o mesmo numero com aviso
++        byte[][] full = new byte[20][];
++        for (int i = 0; i < 20; i++) full[i] = react(new int[]{i + 1, 0, 0});
++        full[1] = sreact[1];
++        Dac dfull = dac(anos(8));
++        // todos os slots usados por ANOs do destino
++        A[] ua = anos(20);
++        for (int i = 0; i < 20; i++) ua[i] = new A().mpt(new M().time(5).hit(2, 0, 0, 4, 4).opt1(30 + i));
++        Dac dUsed = dac(ua);
++        CharData dstFull = chr(move(new int[]{0, 4}, new int[]{2, 3}), full);
++        MoveTransplant.Plan q = MoveTransplant.build(sd, src, m, dUsed, dstFull, spr);
++        check("sem slot livre: reacao 2 sobrescreve o slot 2 com aviso", q.reactionMap.get(Integer.valueOf(2)).intValue() == 2 && q.reactionWrites.containsKey(Integer.valueOf(2)), true);
++        boolean warnOver = false;
++        for (String w : q.warnings) if (w.contains("sobrescrita")) warnOver = true;
++        check("aviso de sobrescrita", warnOver, true);
++
++        // ---- limite de ANOs do destino
++        Dac huge = dac(anos(4));
++        boolean over = false;
++        try { MoveTransplant.build(sd, src, m, new FakeSizeDac(4090).dac, dst, spr); } catch (java.io.IOException e) { over = true; }
++        check("destino sem espaco (4095 e o maximo do link): erro", over, true);
++
++        // ---- Dac cresce
++        Dac g = dac(anos(3));
++        g.growTo(6);
++        check("Dac.growTo", g.size() + ":" + g.getAno(5).present + ":" + g.getAno(2).present, "6:false:true");
++
++        System.out.println("MoveTransplantTest fails=" + BattleTest.fails);
++    }
++
++    /** Dac com {@code n} ANOs (so para o teste do limite). */
++    static final class FakeSizeDac {
++        final Dac dac;
++        FakeSizeDac(int n) throws Exception {
++            Dac d = dac(anos(1));
++            d.growTo(n);
++            this.dac = d;
++        }
 +    }
 +}
 diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
