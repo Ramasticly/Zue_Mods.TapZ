@@ -187,8 +187,8 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-24 22:16:49.342781049 +0000
-@@ -0,0 +1,828 @@
++++ b/AiHelpDoc.java	2026-10-24 23:27:08.408192868 +0000
+@@ -0,0 +1,844 @@
 +package com.zue.attackeditor;
 +
 +/** Texto fixo do TBRHelp.md (gerado a partir de aihelp_src/*.md); os {{MARCADORES}} sao preenchidos por {@link AiHelp}. Nao editar a mao. */
@@ -215,12 +215,17 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "- \"How do I test it? What does this warning mean?\"\n" +
 +        "- \"What does button X do? What are the limits? Which file do I send you?\"\n" +
 +        "\n" +
++        "**Two modes — decide which one the user is in, every time.**\n" +
++        "\n" +
++        "- **Mode A — the user has a question about the app or \"how do I…?\"** (what a button does, where something is, how to test, what a warning means, how to change a number). Teach **only through the app's own functions**: numbered taps with the exact button names, what the user should see after each tap. **Never** teach editing the binaries (`000.dac`, `000.bin`, `000.cnv`) and **never** send the user to the `▲ DADOS / EDITAR` panel (the text tabs and the pencil `✎`) or ask the user to paste text anywhere. If the app has no function for what the user wants, say so honestly instead of inventing a workaround.\n" +
++        "- **Mode B — the user asks you to generate or change an attack** (new move, projectile, combo, animation, reaction). Ask first for the character's `000.dac.txt`, `000.bin.txt` and `000.cnv.txt` (section 4). Return the modified **`.txt` content** following the output contract (section 12). The user puts the `.txt` in the character folder and taps the reload button `↻` in the title bar to load it without restarting the app. Never produce or describe binary files, and never tell the user to paste into `▲ DADOS / EDITAR`.\n" +
++        "\n" +
 +        "**How to behave.**\n" +
 +        "\n" +
 +        "1. Be concrete. Give numbered, short, tap-by-tap steps that use the **exact button names of the app** (they are in capitals in this file, e.g. `SALVAR`, `DIVIDIR`). Say what the user should see after each step.\n" +
-+        "2. **Never invent** fields, flags, files or buttons. If something is not in this file, say you are not sure and ask the user to send the relevant text (see section 4) or a screenshot. The sections marked *(unknown)* are known gaps: copy values from an existing, working frame/move instead of guessing.\n" +
-+        "3. If the request needs data you do not have (the character's files), **ask for them first** (section 4). Do not produce a whole move blind.\n" +
-+        "4. When you produce data for the app, follow the **output contract** (section 12) exactly: complete blocks, in fenced code blocks, each preceded by a one-line instruction saying where to paste it and how to test it.\n" +
++        "2. **Never invent** fields, flags, files or buttons. If something is not in this file, say you are not sure and ask the user for a screenshot or (Mode B) the relevant `.txt` (see section 4). The sections marked *(unknown)* are known gaps: copy values from an existing, working frame/move instead of guessing.\n" +
++        "3. If the request needs data you do not have (the character's `.txt` files), **ask for them first** (section 4). Do not produce a whole move blind.\n" +
++        "4. In Mode B, follow the **output contract** (section 12) exactly: complete `.txt` content in fenced code blocks, each preceded by a one-line instruction saying which file it belongs to, where to put the file and how to test it (`↻`).\n" +
 +        "5. Before you answer with data, run the **validation checklist** (section 9). Stay inside the limits; the game **crashes** (closes) when some limits are exceeded.\n" +
 +        "6. Prefer the smallest change that achieves the goal. Prefer copying an existing similar move/ANO/frame and editing numbers over creating from zero.\n" +
 +        "7. Remind the user to **keep a backup**: the app makes backups in `Tap Battle/TBRE/Backups/` when it transplants a move, and the recommended save mode (separate folder) never touches the original character folder.\n" +
@@ -233,7 +238,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "*Attack Editor* loads a character's files from the phone, **simulates a whole fight in a preview** (attacker, opponent, projectiles, effects, camera, cutscenes) the same way the game does, and lets the user edit animations, moves, projectiles and hit reactions with a **timeline** (like a video editor) and edit menus. The user then saves, and the game reads the saved text files.\n" +
 +        "\n" +
-+        "Screen (portrait), top to bottom: title bar (`Attack Editor by Zue Mods`, button `AJUDA`); the **top menu** (14 buttons, section 11); `MODO: GOLPES | ANO` and the move/animation selector; a status/warning line; the **preview** (square); the **timeline** with its tool row (`DIVIDIR`, `DUPLICAR`, `EXCLUIR`, `DESFAZER`, tabs `＋` and `#`); a collapsed `▲ DADOS / EDITAR` panel; and the fixed transport bar (`INICIO`, `-1`, play/pause, `+1`, speed). Tapping an item on the timeline opens an **edit drawer** (bottom sheet) over the screen; drag its handle to resize, `Y` saves the height as default, `T` puts the timeline above the menu.\n" +
++        "Screen (portrait), top to bottom: title bar (`Attack Editor by Zue Mods`, buttons `↻` reload folders, `PT/EN/ES` language, `AJUDA`); the **top menu** (14 buttons, section 11); `MODO: GOLPES | ANO` and the move/animation selector; a status/warning line; the **preview** (square); the **timeline** with its tool row (`DIVIDIR`, `DUPLICAR`, `EXCLUIR`, `DESFAZER`, tabs `＋` and `#`); a collapsed `▲ DADOS / EDITAR` panel (do not teach it); and the fixed transport bar (`INICIO`, `-1`, play/pause, `+1`, speed). Tapping an item on the timeline opens an **edit drawer** (bottom sheet) over the screen; drag its handle to resize, `Y` saves the height as default, `T` puts the timeline above the menu.\n" +
 +        "\n" +
 +        "Two modes: **GOLPES** (moves: a move is one row of HDAT 4 with its ANOs, projectiles, sequence and reactions) and **ANO** (play/edit one single animation, ignoring the move around it).\n" +
 +        "\n" +
@@ -322,11 +327,11 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "## 4. What to ask the user for (and how they get it)\n" +
 +        "\n" +
-+        "Ask only for what you need, one step at a time, in the user's language.\n" +
++        "Ask only for what you need, one step at a time, in the user's language. **Mode A** (questions about the app) usually needs nothing but the user's description or a screenshot. **Mode B** (generate/change an attack) needs the three `.txt` files below.\n" +
 +        "\n" +
 +        "| You need | Ask the user to send | How the user gets it |\n" +
 +        "|---|---|---|\n" +
-+        "| Understand/edit an existing move or animation | The **text of that ANO / move / frame** | In the editor open `▲ DADOS / EDITAR`, choose the tab (`GOLPE`, `ANO`, `FRAME`, in ANO mode also `LINKS`), tap the pencil `✎` (it opens the text editor with the current text), select all and copy. |\n" +
++        "| Understand an existing move or animation (Mode A) | A **screenshot** of the timeline / the drawer page, the move and ANO numbers, and the warning text | Screenshot of the app; the move/ANO numbers are in the selector. Do not ask for the `▲ DADOS / EDITAR` text. |\n" +
 +        "| Create a move or many ANOs consistent with the character | `000.dac.txt`, `000.bin.txt`, `000.cnv.txt` of the character | Use `SALVAR` → save **all** to the **separate folder**; then open `Tap Battle/TBRE/Chars/charNN/` with any file manager and share the three `.txt` files. (They also exist in `Tap Battle/assets/charNN/`.) The `.dac.txt` can be large; ask for the specific ANOs if the chat limit is a problem. |\n" +
 +        "| Know which sprites exist / their cuts | `000.cnv.txt` and the `NNN.png` sheets (or a screenshot of the `SPRITES` list) | Same folder. |\n" +
 +        "| Know the exact problem | The **warning text** shown over the preview (tap it to expand) and a description of what the preview shows | The warning line under the menu; tap to expand all of them. |\n" +
@@ -382,6 +387,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "A **reaction table** is a list of **steps** (rows of 14 bytes). The defender plays them in order; ground values are used while the defender is on the ground and air values while in the air (air columns are used when the defender's height is above the floor):\n" +
 +        "\n" +
++        "",
 +        "| Col | Key | Meaning |\n" +
 +        "|---|---|---|\n" +
 +        "| 0 | `DUR_C` | ticks of this step on the ground (0..255) |\n" +
@@ -413,7 +419,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 64 | PROJ_FLOOR | the projectile spawns under the opponent, stuck to the floor (turns off 32) |\n" +
 +        "| 128 | GRAB_HIT | grab only while the opponent is in this move's hurt reaction (moves 0..12 only; if the move has a sequence the sequence takes over and the grab does not happen) |\n" +
 +        "\n" +
-+        "",
 +        "Move indexes: moves **0, 3 and 6** are special slots; when transplanting a move to another character, 0/3/6 can only replace 0/3/6 and the others only the non-special ones. Grabs only work in moves 0..12. Move text fields are 16-bit: **ANO numbers above 255 are normal** (up to 32767).\n" +
 +        "\n" +
 +        "### 5.6 Sounds\n" +
@@ -467,17 +472,19 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "## 8. Recipes (what to tell the user, step by step)\n" +
 +        "\n" +
++        "Recipes A, C (steps 2 and 4), E, F and G are **Mode A**: tell the user which app functions to use. Recipe B and the data parts of C/D are **Mode B**: you produce `.txt` content (section 12) and the user reloads with `↻`. In neither mode teach binary editing or the `▲ DADOS / EDITAR` panel.\n" +
++        "\n" +
 +        "**A. Change speed/range/timing of an existing attack**\n" +
 +        "1. User selects the character (`CHAR`) and the move in the selector (`MODO: GOLPES`).\n" +
 +        "2. User taps the sprite on the timeline whose frame to edit → drawer grid → `Tempo` (ticks) or `Movimento` (speed/accel; `MANTER VELOCIDADE` = WACTFLAG 64).\n" +
-+        "3. Or: you give the new `$MPT_i` text; user pastes it into `▲ DADOS / EDITAR` → tab `FRAME` (the frame under the timeline pointer) → pencil `✎` → paste → apply.\n" +
++        "3. Several frames at once: `Copiar` page of the drawer (apply this frame's properties to the next N / all frames / this sprite in the ANO).\n" +
 +        "4. Test (section 10), then `SALVAR`.\n" +
 +        "\n" +
 +        "**B. New attack by copying a similar one (recommended)**\n" +
-+        "1. Ask for the text of the base move (`GOLPE` tab) and of all its ANOs (`ANO` tab, one per ANO; or the `.dac.txt`).\n" +
++        "1. Ask for the character's `000.dac.txt`, `000.bin.txt` and `000.cnv.txt` and which move is the base.\n" +
 +        "2. Decide new ANO numbers: first free numbers after the highest existing ANO (ask the user for the highest, or the `.dac.txt`); remember effect/aura ANOs 201–255 are reserved by flags 71–125.\n" +
 +        "3. Write the new `$ANO_n` blocks (complete, with all frames) and the edited `$GOLPE_i` (point `ANIM_INICIAL`, projectile fields, SEQ/END, landing to the new ANOs).\n" +
-+        "4. Deliver per section 12. User pastes the `$GOLPE_i` into the `GOLPE` tab of the move and each ANO into the `ANO` tab (for existing ANOs), or places new `$ANO_n` blocks inside `DAC_ACT_ { }` of `000.dac.txt` and the `$GOLPE_i` block in `000.bin.txt` (ask the user to make a copy of the file first), then re-selects the character in `CHAR`.\n" +
++        "4. Deliver per section 12: the new `$ANO_n` blocks go inside `DAC_ACT_ { }` of `000.dac.txt` and the `$GOLPE_i` block replaces the one in `000.bin.txt`. The user keeps a copy of the original `.txt` first (`SALVAR` → separate folder is a full backup), puts the new files in the character folder and taps `↻`.\n" +
 +        "5. Test; fix warnings; `SALVAR`.\n" +
 +        "\n" +
 +        "**C. Add a projectile**\n" +
@@ -521,6 +528,9 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "## 11. Screens and buttons (what each control does)\n" +
 +        "\n" +
++        "### 11.0 Title bar\n" +
++        "`↻` reloads the folders the app reads (asks for confirmation; unsaved edits are lost; keeps the same character, opponent and move when the folders still exist) — use it after the user adds, deletes or replaces a character folder or a `.txt` file. `PT` / `EN` / `ES` switches the app language instantly. `AJUDA` opens the in-app help (chapters, search, and the button that creates this file).\n" +
++        "\n" +
 +        "### 11.1 Top menu (14 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
 +        "- `SALVAR` — save (section 13).\n" +
 +        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size.\n" +
@@ -540,18 +550,21 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "### 11.3 Edit drawer pages\n" +
 +        "Sprite grid → `Imagem` (sprite picker, position, zoom, rotation, alpha, \"move links together\"), `Tempo` (ticks), `Som` (sound id list with preview), `Movimento` (speed/accel per axis, `MANTER VELOCIDADE`, total pixels, remove speed), `Efeitos` (flip X/Y, interpolation), `Copiar` (apply this frame's properties to other frames: next N, previous N, all, this sprite in ANO / in all ANOs). Hitbox/hurtbox menu: type switch, start frame & duration, preview, x/y/w/h, and (hitbox) `DANO`, `REAÇÃO` (◀ ▶, `ESCOLHER`, `EDITAR REAÇÃO`), transition (SEQ/END, `MUDAR ANO DESTINO`, `BLOQUEAR SEQUÊNCIA`). Projectile screen: start & duration, branching tree, projectile ANO, position/speed, homing, sequence.\n" +
 +        "\n" +
++        "",
 +        "### 11.4 Reaction editor\n" +
-+        "`EDITAR REAÇÃO` (character) / `VER REAÇÃO` (game, read-only). Same layout as the main screen: header (`CHÃO | AR` scenario), square preview, time bar, buttons `DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER`, timeline (PASSOS clips + lanes SPEED blocks, VOZ, EFEITOS, SEQ, CURVA; tabs `＋` and `#`), transport, drawer with a page grid (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL). Drag a step's right edge = duration; drag a SPEED block's right edge = how many steps keep that speed. `DIVIDIR` splits a step at the pointer (the defender's animation restarts in the 2nd half). `DADOS / EDITAR`: collapsed panel with text tabs and a pencil to edit/paste text.\n" +
++        "`EDITAR REAÇÃO` (character) / `VER REAÇÃO` (game, read-only). Same layout as the main screen: header (`CHÃO | AR` scenario), square preview, time bar, buttons `DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER`, timeline (PASSOS clips + lanes SPEED blocks, VOZ, EFEITOS, SEQ, CURVA; tabs `＋` and `#`), transport, drawer with a page grid (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL). Drag a step's right edge = duration; drag a SPEED block's right edge = how many steps keep that speed. `DIVIDIR` splits a step at the pointer (the defender's animation restarts in the 2nd half). The collapsed `▲ DADOS / EDITAR` panel (text tabs and a pencil) exists, but it is **not** a way to teach: do not instruct the user to use it; teach the timeline and drawer functions instead.\n" +
 +        "\n" +
 +        "### 11.5 Importing what you cannot generate\n" +
 +        "- Images: `SPRITES` → add/replace → pick the file; then set the frame's `Imagem`.\n" +
 +        "- Sounds: put the `.wav` in `Tap Battle/assets/charNN/` (ids are in file-name order, from 80) or use the frame's `Som` page.\n" +
 +        "\n" +
-+        "## 12. OUTPUT CONTRACT — how you must deliver data to the user\n" +
++        "## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)\n" +
++        "\n" +
++        "Use this only when the user asked you to **generate or change an attack**. Deliver **`.txt` content** — never binary, and never \"paste into `▲ DADOS / EDITAR`\". For questions about the app (Mode A) do not use this contract: answer with app steps.\n" +
 +        "\n" +
 +        "For **each** deliverable use this exact pattern:\n" +
 +        "\n" +
-+        "1. One line telling **what it is and where to paste it**, with the app's button names. Example: *\"Move 2 (`$GOLPE_2`) → open the move, tap `▲ DADOS / EDITAR`, tab `GOLPE`, tap the pencil `✎`, select all, paste, confirm.\"*\n" +
++        "1. One line telling **what it is and which file it goes into**. Example: *\"Move 2 (`$GOLPE_2`) → replaces the `$GOLPE_2` block in `000.bin.txt`.\"* When the change is big, return the **whole file** instead of blocks.\n" +
 +        "2. A fenced code block containing **only the data**, whole block, never truncated and never with `...` or \"same as before\". First line inside the block is a comment naming the target:\n" +
 +        "   ````\n" +
 +        "   // TARGET: 000.dac.txt — add inside DAC_ACT_ { }  (new ANO)\n" +
@@ -560,7 +573,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "   },\n" +
 +        "   ````\n" +
 +        "   (Comments with `//` are allowed by the parser.)\n" +
-+        "3. After all blocks: a short **\"How to test\"** list (what to select, what to look for in the preview, which warning must NOT appear) and a reminder to `DESFAZER` if it looks wrong and to `SALVAR` (separate-folder mode) when happy.\n" +
++        "3. After all blocks: **where to put the files** (the character folder `Tap Battle/assets/charNN/`; first keep a copy of the original `.txt`, e.g. with `SALVAR` → separate folder), then tap **`↻`** in the title bar to reload the folders (confirm the dialog), then a short **\"How to test\"** list (what to select, what to look for in the preview, which warning must NOT appear) and a reminder to `SALVAR` (separate-folder mode) when happy.\n" +
 +        "\n" +
 +        "Rules:\n" +
 +        "- One block per ANO (`$ANO_n`), one per move (`$GOLPE_i`), one per reaction slot (`$HDAT_14+t` block incl. `$info` and `$REACAO_DANO_t`), one per `$SPR_n` set. Don't mix kinds in one block.\n" +
@@ -577,7 +590,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "What: the current move (HDAT 4 + its ANOs), only the current ANO, all moves, all ANOs, or everything. For the current move there is also **\"Salvar em outro personagem (Runtime)\"** (transplant, recipe G).\n" +
 +        "\n" +
-+        "",
 +        "Where:\n" +
 +        "1. **Salvar em pasta separada (Tap Battle/TBRE/Chars/)** — *recommended*. Copies the whole character (DAC, BIN, CNV, sheets, sounds) to `TBRE/Chars/charNN/` and applies the save there, ready to use; the original is not touched. If the folder already exists the app asks: replace (merge the two), delete the existing one, or save with another name.\n" +
 +        "2. **Salvar no Runtime (Tap Battle/assets/charNN/)** — overwrites the `.txt` files of the character itself (the binaries stay intact).\n" +
@@ -585,7 +597,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "Backups/safety copies go to `Tap Battle/TBRE/Backups/` (e.g. `AAAAMMDD_HHMMSS_charNN_transplante/`).\n" +
 +        "\n" +
-+        "To test in the actual game: the game reads the character folder under `assets/charNN/`. How a \"separate folder\" copy reaches the game depends on the user's setup — ask how they run the game, and never advise overwriting the only copy of the original. After saving, reload in the editor with `CHAR` to confirm that the saved result loads.\n" +
++        "To test in the actual game: the game reads the character folder under `assets/charNN/`. How a \"separate folder\" copy reaches the game depends on the user's setup — ask how they run the game, and never advise overwriting the only copy of the original. After saving or replacing `.txt` files by hand, tap `↻` in the title bar (reloads the folders without restarting the app) and select the character in `CHAR` to confirm that the result loads.\n" +
 +        "\n" +
 +        "The save step also checks the game limits (boxes per frame, links, time…) and warns about anything that would close the game.\n" +
 +        "\n" +
@@ -603,6 +615,8 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Where do I save?** Section 13: recommended `Salvar em pasta separada` → `Tap Battle/TBRE/Chars/charNN/`.\n" +
 +        "\n" +
++        "**I added/deleted a character folder or replaced a `.txt` and the app does not show it.** Tap `↻` in the title bar (confirm). It rereads the character folders, effects, scenes and sounds and keeps the same character/move if they still exist. Unsaved edits are lost, so `SALVAR` first.\n" +
++        "\n" +
 +        "**How do I undo?** `DESFAZER`/`↶`. Saved files keep what was saved; backups are in `Tap Battle/TBRE/Backups/`.\n" +
 +        "\n" +
 +        "**Can you make me a sprite/sound?** No. Tell me what is needed (size, frames, names); the user imports them (11.5).\n" +
@@ -616,6 +630,8 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "## 15. Engine internals — answers to the questions an AI asked about the combat system\n" +
 +        "\n" +
 +        "This section answers, in one place, the detailed questions a modding AI asked about how *Tap Battle* really executes attacks (flow, files, collision, damage, reactions, physics, projectiles, animation, effects, flags, internal methods, examples, validation). It was written by reading the game source (`TCBManajer.java`, 33 318 lines; \"jogo:N\" = line N) and by comparing it with the app's simulator (`BattleSim`). **Where the in-app help (section 5/6/Appendix A) and this section differ, this section (confirmed in the code) wins.**\n" +
++        "\n" +
++        "**Scope guard.** This section is background so that *you* understand what the user describes and can write correct `.txt` content in Mode B. It is **not** material to teach: never turn it into instructions to edit the binaries (`000.dac/.bin/.cnv`) or to use `▲ DADOS / EDITAR`. When the user asks how to do something in the app, answer with the app's functions (Mode A).\n" +
 +        "\n" +
 +        "**Confidence tags used on every claim.** **[CODE]** verified in the game code (line given when useful). **[DOC]** stated by the app's documentation but not re-verified here. **[INFERRED]** deduced from data or usage. **[UNKNOWN]** could not be determined from the code (tell the user instead of guessing).\n" +
 +        "\n" +
@@ -675,6 +691,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Per-tick order [CODE].** `Run` iterates the task list in ascending priority (ties in creation order): pads (12657/12660) → input md 946 (13056+p) → macro/CPU md 947/951 (13184+) → projectiles md 970/971 (13312+p) → **fighters (13569+p)** → hit effects md 965 (13598) → shadows/auras (13696+) → **hit detect md 935 (13728)** → **cutscene md 996 (13729)** → camera md 19 (13745) → HUD (13808+). So within a tick: input → projectiles → fighters (new patterns load, hit boxes become armed) → hit detect (reads those boxes) → camera. A reaction chosen by `DamageChange` in md 935 starts running on the defender's **next** tick. A task created during the pass with a lower priority than the running one first runs on the next tick (a projectile spawned by a fighter advances one tick later). With `bTaskSkip` (pause) only priorities `0x10xx` run; with `iTaskSleep != 0` or `bActionStop` all `0x3xxx` tasks (12288–16383: fighters, projectiles, hit detect, camera) are skipped (hit-stop of the whole scene, cutscene freezes).\n" +
 +        "\n" +
++        "",
 +        "**Ending, interrupting, handing over [CODE].**\n" +
 +        "- *Normal end*: md 883 (jogo:21950) when `wActFlag & 4 == 0` and the ANO finished (`wActFlag & 2`) → md 864 (`AttackEnd`). Repeat-fire: if `HDAT4[30] > 0` and SpecialType is 0/3/6 and the ANO is not 42, it plays ANO 42 and md 882; repeat while `SpecialBulletNumber < HDAT4[30]`, `wOptFlag & 512` and `JoyTrig & 16640` swap ANO 40/41 (jogo:22012-22028). Airborne when the ANO ends: ANO 89 and md 886. Landing (`Y > ground && iYSpeed > 0`): plays the HDAT 4 landing ANO if non-zero, else `AttackEnd` + ANO 13 + md 893; SE 12 (jogo:21958-21995).\n" +
 +        "- *SEQ/END chaining (md 882, jogo:21868-21946)*: the alternate hit ANO is `DamageHitActNo[opp]` when `PlayerState & 8388608` (hit flag 38), else `HDAT4[byte 32]`, else `DamageHitActNo[opp]`. Only if the opponent is in md 876/877: `wFlag & 4096` (set by a projectile hit of the same SpecialType, jogo:24560) switches to the alternate ANO; `wFlag & 1` arms `_work[10] = 1`; if the current ANO equals the hit ANO and `_work[10] == 1` then: `ano == SEQ && END != 0` → `_SetAct(END)`; else `SEQ != 0 && ano != SEQ && ano != END` → `_SetAct(SEQ)` (and, when `END != 0`, `_work[10] = 0` re-arms). The pair is ground (bytes 10/12) when `PlayerYPos == 15728640`, else air (bytes 14/16).\n" +
@@ -685,7 +702,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Undocumented blockers [CODE].** md 946 does nothing unless `bGameStart && iBackXOffset == 0 && iEventStatus == 0`; `CmdCheck` returns 0 when `iTimer == 0` and (AI branch) while `DamageMove[p] != 0`; `CommonNormal` ignores everything if `Life[opp] <= 0`; specials need Synchro (`var6 = 0`, or 100 when the current ANO is 40–88; ultimates 100/200, halved by `SynchroPowerUp`; `+100` with `iBackMode`); rage (code 4) needs `!AngryOn && Angry >= 100`; charge refused when `Synchro >= SynchroMax`; normals need `PlayerAttack[p] == 0`; chains need `CancelTime > 0`, no hit flag 27, target not SpecialType 9–12. Data errors that silently abort a move: ANIM_INICIAL absent from the DAC (ends after one tick: `_ActReq` sets `wActFlag |= 2` when `apt == 0`), ANIM_INICIAL = a looping idle ANO (never ends) **[INFERRED]**, HDAT 4 row ≥ rows, **more than 10 boxes in a frame (ArrayIndexOutOfBounds)**, OPT1 class ≥ 5, a character reaction type without a matching HDAT 14+ table, object pool exhaustion (1200 `ObjReq`, 1170 TCB: `_SetAct` returns silently). **[UNKNOWN]**: the trigger of md 898, 909, 921; the meaning of `wOptFlag` 256; whether `tcb.skip` is ever set.\n" +
 +        "\n" +
-+        "",
 +        "**State that persists vs. is temporary [CODE].**\n" +
 +        "- *Persistent across attacks (reset in battle set-up md 718, jogo:5452-5600)*: `Life/PlayerLife`, `Synchro/SynchroMax/SynchroPowerUp/SynchroTamePer`, `Angry/AngryOn`, `AttackMul/DeffenceMul/GuardHardness`, `PlayerType`, `AirType` (= HDAT3[6] ≠ 0), `PlayerYLimit` (HDAT3[4]), `PlayerXPos/YPos` (16.16; ground = 15728640), `PlayerAir`, `ComboCount`, `iTimer`, `iBackMode`, `PlayerState` bits 4…131072 (always set), `ChrGameData[]`, `pGameData`.\n" +
 +        "- *Per frame (in `objExec`/`ObjReq`)*: `ano`, `pat`, `time`, `x`, `y`, `hit[50]`, `iHitNum`, `wActFlag`, `wObjFlag`, `wOptFlag`, `OptData[4]`, `iXSpeed/iYSpeed/iXAccel/iYAccel`, `lnk[13]`; and `TCB.iHitCount/iHitFlag/iHitStop/wFlag`; `PlayerKey/JoyTrig/Joy/KeyBuf/CPU*`.\n" +
@@ -765,6 +781,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "Source of truth: the game class `TCBManajer` (file `TCBManajer.java`, \"jogo:NNNN\" = line). Tags: **[CODE]** read in the game code, **[INFERRED]** deduced, **[UNKNOWN]** not determinable from the code. The game is strictly **1 vs 1**: \"several targets\" does not exist.\n" +
 +        "\n" +
++        "",
 +        "**Call chain [CODE].** The hit-resolution task is md 935 (`case 935:` jogo:23194), run every tick. Damage and reaction are read from the attacker's `ObjReq` at hit time: `OptData[0]` = damage, `OptData[1]` = OPT1 (loaded per animation pattern in `_ActReqMain`, jogo:31993-32014; a pattern with no `$OPT` block gets `wOptFlag = 0` and `OptData[0..3] = 0`, so a hitbox frame without `$OPT` deals **0 damage with OPT1 = 0** — group 0, reaction 0 — and still counts as a hit). `DamageChange(gw, atk, tgt, bApply, bBody, atkAno, dmgByte, opt1, optFlag)` (jogo:3466) is called for projectiles and grab follow-up objects at jogo:23424 and for body hits at jogo:23464. If both players hit each other in the same tick, OPT1 is **forced to 0 for both** (jogo:23457-23459: a trade always uses reaction 0 / effect-sound group 0). The body-hit loop runs victim 0 first then victim 1; if player 1's hit KOs player 0, player 0's own hit is skipped by the early-out \"attacker life ≤ 0\" at jogo:3478-3480, so **index 1 wins a double KO**.\n" +
 +        "\n" +
 +        "**`$OPT` bytes [CODE].** `d0` = base damage 0..255 (jogo:3496; also the heal amount of hit flag 34 at jogo:2313 and the self-damage amount of flag 32 at jogo:23261). `d1` = OPT1 = `group*50+index` (jogo:3518-3519). `d2` ≠ 0 turns on the per-pattern tween of rotation/alpha/zoom/offset (`_Hokan`, jogo:32108; visual only). `d3` is written and **never read**. OPT1 values **250..255 index `HitEffectActNo[5]` out of range → the game crashes** (jogo:3529); the editor limit is 249.\n" +
@@ -779,7 +796,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Attack/defense stats [CODE].** `AttackMul[p] = GetAttack + GetCardAttack` (jogo:5513-5515); `GetAttack` (jogo:27721) = `charHDAT3[0][12]` + sum of `charHDAT7[i][1]` for i up to `min(Level+AddLevel, 98)`; `GetDeffence` (jogo:28191) = `[0][14]` + sum of `[i][3]`. Values are percentages [INFERRED from `/100`]. **No term depends on distance, the defender's state/position or the move's index** — only `AttackMul`, `DeffenceMul`, rage, combo count, animation 92 and flag 28.\n" +
 +        "\n" +
-+        "",
 +        "**Hit flags that change damage [CODE].** 26 = skip the guard check (unblockable). 27 = blocks the cancel logic while `CancelTime > 0`. 28 = raw damage (above). 32 = self-damage frame: when `iHitCount != 0`, both alive and `PlayerState & 1048576` (jogo:23260-23263) → `SelfDamage(p, OptData[0], OptData[1])` (jogo:30833), which sets `Life = 1` if `Life <= d` (it **cannot kill**) and ignores attack/defense. 33 = sets a state bit nobody reads (no effect). 34 = heal: `LIFE_ADD(p, OptData[0])` (capped at max life; needs `iTimer != 0` and the opponent alive). 37 = no combo count and no score (damage still uses combo scaling). 38 = chain uses `DamageHitActNo` instead of the HDAT 4 lookup. These bits live in `PlayerState[player]` and are **cleared every tick and re-applied from the current pattern** (`PlayerTail`, jogo:29884), so they only matter in frames that carry the hit flag.\n" +
 +        "\n" +
 +        "**Guard [CODE].** Defender states allowed to guard: not in md 876/877, ANO not in {6,7,8,9,82,83}, ANO ≤ 19 or in {25,80,81}, `iTimer != 0`, attacker has no flag 26 (jogo:3562-3585). Humans guard by holding a direction away from the attacker; CPUs use probabilities; **height (high/low) is ignored**. On guard: no reaction table, `DamageMove = GuardHitBack` (13, groups < 3), `GuardCancelTime = PlayerHitStop + 5`, chip damage only if the attacker's ANO ≥ 40: `max(D2/5, 1)` scaled by `GuardHardness` (never written → 0) then `max(.., 2)` when `D2 != 0`; no combo increment; hit effect Ano 2 with SE 8.\n" +
@@ -836,6 +852,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Screen and walls [CODE].** Camera task md 19: clamp `X ∈ [iBackXPos+hw, iBackXPos+31391744-hw]` when `iBackXOffset == 0`, no scroll target, not md 911..915 and not `ScreenEdgeOff` (jogo:15537-15562; `ScreenEdgeOff` is set by cutscene kinds 7/8/9). World-edge test uses `iBaseXPos == 0` or `62849024`. Grounded players are kept apart by `(w0+w1)/2` (`ATK_FLAGS` bit 16 \"GHOST\" disables that separation near the floor). Corner push-back: a player pushed into the edge while the opponent is attacking pushes the opponent back by 80 % of the penetration (jogo:15159-15171).\n" +
 +        "\n" +
++        "",
 +        "**Bounce, ricochet, continuous fall [CODE].** There is **no automatic velocity reflection**. A bounce is a new reaction row with its own speeds: gamedata type 12 on a WALL 2/3 landing, the `comp` types, type 13 at the end of a table, type 2 / duration 255 timeouts.\n" +
 +        "\n" +
 +        "**Facing [CODE].** `wObjFlag & 16` = facing left (set for player 1 at start; bit 32 flips Y). It sets the movement sign of animation scripts, the hitbox mirror (`(wActFlag & 48) ^ (wObjFlag & 48)`, jogo:2058-2096) and projectile/effect spawn sides. `DamageChange` turns the defender toward the attacker (unless it is within half-width of the matching screen edge and facing the wall); `StartPlayerAttack` turns the attacker toward the opponent (jogo:31625-31634). A negative reaction ANO flips again.\n" +
@@ -848,7 +865,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Creation [CODE].** A projectile appears when the attacker's current pattern contains a hit-box entry of **type 0** and `BulletAction[p][0] != 0 && BulletNum < 8` (`PlayerTail`, jogo:29808-29878). `BulletAction[p][0]` was chosen at `StartPlayerAttack` (jogo:31664-31672) from HDAT 4: byte 4 (`PROJETIL_ANIM_NORMAL`) when `PlayerYPos[att] < PlayerYPos[opp] + 3342336` and `> PlayerYPos[opp] - 2424832`, byte 34 (`PROJETIL_ANIM_ABAIXO`) when the attacker is ≥ 51 px lower, byte 36 (`PROJETIL_ANIM_ACIMA`) when ≥ 37 px higher. `BulletAction[p][1]` = byte 6 (`PROJETIL_ANIM_AO_ACERTAR`). The spawned task md 970 (prio 13312+p) does `_SetAct(p+3, ano)` and `_SetObj(153+4p)` (jogo:24534-24535): **the projectile's animation is an ordinary ANO of the same character DAC** (`ChrGameData[p+3]`). **Count**: 1 per type-0 entry; **3 projectiles** (ANO, ANO+1, ANO+2) when `SpecialKind & 4`. **Position**: attacker `PlayerXPos ± (hit.x << 16)` (mirrored by facing), `Y + (hit.y << 16)`; `SpecialKind & 32` → at the opponent's X/Y; `& 64` → opponent's X on the ground. After spawning, the hit entry's type is set to −1 (spawns once per pattern). Limits: `BulletNum < 8` per player, and at most 16 registered hit-capable objects per owner (`iTCBReqNum < 16`).\n" +
 +        "\n" +
-+        "",
 +        "**Loop md 971 [CODE]** (jogo:24545-24698). World-absolute position in `_work[2]/[3]`; each tick `obj.x = _work[2] - iBackXPos - iBackXOffset`, `_ActReq` (the ANO script moves it with `$MOVE` speed/accel — **the projectile's speed, direction and trajectory are the ANO's `$XSPEED/$YSPEED/$XACCEL/$YACCEL`**, mirrored by the owner's facing stored in `_work[6]`), then back to `_work`. Death when its ANO ends (`wActFlag & 2`, jogo:24549) or on contact rules below. `Y` is clamped to the ground: touching it switches to the floor ANO (`_work[13]` = byte 40 `PROJETIL_COLISAO_CHAO`) or dies (jogo:24575-24598). It runs `CheckOptFlag` unless frozen, so a projectile ANO can carry hit-flag actions (shake, dust, sub-projectile spawn…), but those land on the **owner's** `PlayerState`.\n" +
 +        "\n" +
 +        "**Hit handling [CODE].** Collision is a normal attack-box vs hurtbox test (`tcbReqHit[]`, jogo:23383-23428); skipped if either player's `wObjFlag & 8` or a counter/clash already happened this tick. On a hit: `DamageChange` with the **owner's** `AttackMul`/flags and the projectile's current `OptData[0]` (damage) and `OptData[1]` (reaction); target hit-stop = full, projectile hit-stop = half, owner not frozen; `HitTarget[tgt] = 1`; `DamageHitSpecialType[tgt] = _work[11]`. If the projectile's SpecialType equals the owner's current one: `CancelTime = 20` and `wFlag |= 4096` on the owner (jogo:24560-24566), which makes the **attacker** switch to the alternate hit ANO (`ANIM_AO_ACERTAR`, byte 32 — \"SEQ_PROJETIL\") and then arm SEQ/END. After a hit the projectile continues if `SpecialKind & 1` (the editor's \"does not explode on the enemy\"/GROUND_ONLY, jogo:24569), otherwise it switches to the hit ANO (`_work[12]`, byte 38 `PROJETIL_ANIM_ACERTAR_GLOBAL`, or byte 6) or dies. Because each *pattern* with a hit block hits once, **a projectile ANO with several hit-block patterns hits several times** (multi-hit \"beams\"); a pattern without a hit block cannot hit.\n" +
@@ -919,6 +935,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 71–125 | character's own effect/aura ANO 201 + n − 71, follows the owner while present |\n" +
 +        "| other | ignored **[CODE: no handler found]**; hit numbers 6–9, 18–19, 21–25, 29, 35–36 have no processing in `CheckOptFlag` |\n" +
 +        "\n" +
++        "",
 +        "**(c) `wOptFlag` bits (the `$OPT` `$FLAG` word) [CODE].** `256` survives the mask, **no reader found** [UNKNOWN] · `512` chain/cancel/repeat/grab window (read by md 882/883: advancing to `ano+1` on grab, repeat-fire, cancel timing) · `1024` `PlayerState |= 1` (hide background, suppress wall detection; blackout/super marker) · `2048` wall-impact effect (needs `DamageWall`) · `4096·t` (t 1..15) dust/smoke selector. After each pass `wOptFlag &= 1792` so 2048 and the dust bits fire once, 256/512/1024 persist for the pattern.\n" +
 +        "\n" +
 +        "**(d) `PlayerState` bits (internal) [CODE].** 1 = background/blackout, 2 = unguardable, 4…131072 = always-set per-slot gates, 262144 raw damage, 524288 no cancel, 1048576 self-damage, 2097152 unused, 4194304 no combo, 8388608 chain override, 16777216 hidden/KO hold, 33554432 cutscene alive.\n" +
@@ -933,7 +950,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**md → responsibility → main methods → main variables [CODE].**\n" +
 +        "\n" +
-+        "",
 +        "| md | Responsibility | Main methods | Main variables |\n" +
 +        "|---|---|---|---|\n" +
 +        "| 32/37/38 | pads | `GetGamePadKey`, `BTDataSet/BTSend/BTRev` | `Joy/JoyTrig`, `TouchesCommand`, `_commandButton` |\n" +
@@ -3736,6 +3752,36 @@ diff -ruN a/FlowDialog.java b/FlowDialog.java
          }
          view.editMove(new AttackView.MoveEdit() { public void apply(CharData.Move mv) {
              switch (s.field) {
+diff -ruN a/FolderReload.java b/FolderReload.java
+--- a/FolderReload.java	1970-01-01 00:00:00.000000000 +0000
++++ b/FolderReload.java	2026-10-24 23:28:12.522101707 +0000
+@@ -0,0 +1,26 @@
++package com.zue.attackeditor;
++
++import java.util.List;
++
++/** Escolhas da recarga das pastas (botao ↻): qual item da lista nova corresponde ao que estava selecionado. Java puro. */
++final class FolderReload {
++    private FolderReload() { }
++
++    /** Indice de {@code previous} na lista nova; se a pasta sumiu (ou nao havia selecao) o primeiro; lista vazia = -1. */
++    static int resolve(List<String> names, String previous) {
++        if (names == null || names.isEmpty()) return -1;
++        int i = previous == null ? -1 : names.indexOf(previous);
++        return i >= 0 ? i : 0;
++    }
++
++    /** A pasta anterior ainda existe na lista nova? */
++    static boolean kept(List<String> names, String previous) {
++        return names != null && previous != null && names.contains(previous);
++    }
++
++    /** Indice de golpe/ANO limitado ao tamanho novo (-1 se nao ha nada). */
++    static int clamp(int index, int size) {
++        if (size <= 0) return -1;
++        return index < 0 ? 0 : Math.min(index, size - 1);
++    }
++}
 diff -ruN a/FrameTools.java b/FrameTools.java
 --- a/FrameTools.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/FrameTools.java	2026-10-24 21:48:20.043535889 +0000
@@ -4472,7 +4518,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 22:25:19.985832560 +0000
++++ b/HelpText.java	2026-10-24 23:26:56.207917351 +0000
 @@ -0,0 +1,623 @@
 +package com.zue.attackeditor;
 +
@@ -4546,6 +4592,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +            t("Faixas da timeline", "timeline faixas faixa sprite hitbox speed som estilo");
 +            t("＋ e #", "adicionar mais novo criar numero");
 +            t("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER", "dividir duplicar excluir apagar remover desfazer undo cortar");
++            t("Recarregar pastas (↻)", "recarregar reload atualizar pastas personagem apagar adicionar nova pasta reiniciar refresh");
 +            t("Ajuda de IA (TBRHelp.md)", "ia ai inteligencia artificial chatgpt gemini claude arquivo markdown md download compartilhar ajuda perguntas tbrhelp prompt");
 +            t("Altura da gaveta: Y e T", "altura gaveta alca y t timeline tamanho");
 +            t("Onde salvar", "salvar pasta separada runtime backup caminho tap battle tbre chars");
@@ -4651,10 +4698,12 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "4) Ajuste: as mudanças aparecem na preview na hora. 5) APLICAR mantém o que você fez e fecha a gaveta; ✕ fecha primeiro a página aberta e, se a gaveta já está na grade, descarta o que não foi aplicado (a mensagem avisa). "
 +                + "6) DESFAZER volta a última edição. 7) SALVAR grava (veja o capítulo Salvar e backups).");
 +        inicio.add("Barra de título",
-+                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube), o botão de idioma (PT / EN / ES) e o botão AJUDA, à direita, que abre esta tela.");
++                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube) e, à direita, três botões: ↻ (recarrega as pastas), o de idioma (PT / EN / ES) e o AJUDA, que abre esta tela.");
 +        inicio.add("Idioma da interface",
 +                "O botão PT / EN / ES (ao lado do AJUDA e também no topo desta tela) troca o idioma do app na hora: PT é o português, EN o inglês e ES o espanhol latino. Traduz botões, menus, avisos, esta ajuda e a busca (dá para buscar em qualquer um dos três). Nada se perde: as telas abertas são retraduzidas no lugar e a escolha fica salva no aparelho. "
 +                + "Termos sem idioma (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END e os nomes dos campos) não mudam, e os arquivos e os dados do golpe também não. O TBRHelp.md é o mesmo em qualquer idioma; só a mensagem que acompanha o arquivo no compartilhar muda. Textos que o app monta na hora e ainda não têm tradução aparecem em português.");
++        inicio.add("Recarregar pastas (↻)",
++                "O botão ↻ (na barra de título, ao lado do idioma e do AJUDA) faz o app reler as pastas que ele usa, sem reiniciar: os personagens (charNN), os efeitos, as cenas (bobj) e os sons. Use quando você apagar, adicionar ou renomear uma pasta de personagem, ou trocar os .txt de um personagem. Antes de recarregar, o app avisa que as edições não salvas serão perdidas (SALVAR primeiro, se precisar). Depois de recarregar, o app volta ao mesmo personagem, oponente e golpe/ANO se eles ainda existirem; se a pasta do personagem sumiu, abre o primeiro da lista.");
 +        inicio.add("MODO: GOLPES / ANO",
 +                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. "
 +                + "Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO.");
@@ -4662,10 +4711,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), PAUSAR/TOCAR reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
 +                + "O jogo roda a 60 ticks por segundo.");
 +        inicio.add("Ajuda de IA (TBRHelp.md)",
-+                "O botão Ajuda de IA (no topo desta tela) cria o arquivo TBRHelp.md na pasta Download do aparelho e abre o compartilhar do Android. O arquivo é um manual escrito para IAs (em inglês, com a instrução de responder no seu idioma): "
-+                + "explica o app, os arquivos (DAC, BIN, CNV e seus .txt), os formatos, os limites do jogo, receitas de ataque, como testar e salvar, e o formato em que a IA deve entregar o resultado. "
-+                + "Como usar: toque em Ajuda de IA, escolha o app de IA (ChatGPT, Gemini, Claude…) para enviar o arquivo e depois pergunte, por exemplo, \"como faço um golpe novo?\". Quando a IA pedir arquivos, mande o 000.dac.txt, 000.bin.txt e 000.cnv.txt do personagem "
-+                + "(SALVAR > pasta separada > Tap Battle/TBRE/Chars/charNN/). O que a IA devolver cola no painel DADOS / EDITAR (lápis) ou nos .txt, e depois é só testar. Precisa do acesso a todos os arquivos, o mesmo que o app já usa.");
++                "O botão Ajuda de IA (no topo desta tela) cria o arquivo TBRHelp.md na pasta Download do aparelho e abre o compartilhar do Android. O arquivo é um manual escrito para IAs (em inglês, com a instrução de responder no seu idioma): explica o app, os arquivos (DAC, BIN, CNV e seus .txt), os formatos, os limites do jogo, receitas de ataque, como testar e salvar, e o formato em que a IA deve entregar o resultado. Como usar: toque em Ajuda de IA, escolha o app de IA (ChatGPT, Gemini, Claude…) para enviar o arquivo e depois pergunte. Se for uma dúvida sobre o app (“como faço…?”), a IA ensina pelas funções do app, passo a passo. Se você pedir para ela criar ou alterar um ataque, ela vai pedir o 000.dac.txt, 000.bin.txt e 000.cnv.txt do personagem (SALVAR > pasta separada > Tap Battle/TBRE/Chars/charNN/) e devolver os .txt modificados. Coloque os .txt na pasta do personagem (guarde antes uma cópia dos originais), toque em ↻ para recarregar as pastas e teste. Precisa do acesso a todos os arquivos, o mesmo que o app já usa.");
 +        inicio.add("Termos que aparecem em todo lugar",
 +                "ANO: uma animação (lista de frames). MPT / frame / sprite: um quadro da animação (imagem, tempo, posição, velocidade, caixas...). Tick: 1/60 s. HDAT 4: a tabela de golpes (um golpe = campos como ANIM_INICIAL, projéteis, SEQ). "
 +                + "Hit / box: hitbox (flag 2, ataque), hurtbox (flag 1, corpo) e as demais flags de ação. Link: animação ligada a outra, que nasce junto e segue o pai. OPT: bloco opcional do frame (dano, reação...). "
@@ -5363,7 +5409,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-24 22:24:02.511760048 +0000
++++ b/I18nCatalog.java	2026-10-24 23:28:27.085421942 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -5377,7 +5423,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-24 22:24:02.506826488 +0000
++++ b/I18nCatalog0.java	2026-10-24 23:28:27.082218420 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -5650,7 +5696,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-24 22:24:02.507668390 +0000
++++ b/I18nCatalog1.java	2026-10-24 23:28:27.082943316 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -5923,7 +5969,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-24 22:24:02.508498794 +0000
++++ b/I18nCatalog2.java	2026-10-24 23:28:27.083615227 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6196,7 +6242,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-24 22:24:02.509281385 +0000
++++ b/I18nCatalog3.java	2026-10-24 23:28:27.084220525 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6469,7 +6515,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-24 22:24:02.511258802 +0000
++++ b/I18nCatalog4.java	2026-10-24 23:28:27.084955029 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6742,8 +6788,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-24 22:24:02.511465571 +0000
-@@ -0,0 +1,11 @@
++++ b/I18nCatalog5.java	2026-10-24 23:28:27.085203846 +0000
+@@ -0,0 +1,16 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -6753,6 +6799,11 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +    static final String[][] E = {
 +        {"{0} criado em Download/. Não achei app para compartilhar: {1}", "{0} created in Download/. I could not find an app to share with: {1}", "{0} creado en Download/. No encontré una app para compartir: {1}"},
 +        {"Não foi possível criar o {0} em Download/: {1}\n\nConfira se o app tem \"Acesso a todos os arquivos\" (Configurações do Android > Apps > Attack Editor > Permissões).", "Could not create {0} in Download/: {1}\n\nCheck that the app has \"All files access\" (Android Settings > Apps > Attack Editor > Permissions).", "No se pudo crear {0} en Download/: {1}\n\nRevisa que la app tenga \"Acceso a todos los archivos\" (Ajustes de Android > Apps > Attack Editor > Permisos)."},
++        {"Recarregar as pastas?", "Reload the folders?", "¿Recargar las carpetas?"},
++        {"Relê os personagens, efeitos, cenas e sons de assets, sem reiniciar o app. Edições não salvas serão perdidas.", "Rereads the characters, effects, scenes and sounds from assets, without restarting the app. Unsaved edits will be lost.", "Vuelve a leer los personajes, efectos, escenas y sonidos de assets, sin reiniciar la app. Las ediciones no guardadas se perderán."},
++        {"RECARREGAR", "RELOAD", "RECARGAR"},
++        {"A pasta {0} não existe mais; abrindo {1}", "The folder {0} no longer exists; opening {1}", "La carpeta {0} ya no existe; abriendo {1}"},
++        {"Pastas recarregadas: {0} personagens", "Folders reloaded: {0} characters", "Carpetas recargadas: {0} personajes"},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -6802,7 +6853,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-24 22:25:24.457474840 +0000
++++ b/I18nHelpCatalog.java	2026-10-24 23:27:08.369493793 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6816,7 +6867,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-24 22:25:24.456392336 +0000
++++ b/I18nHelpCatalog0.java	2026-10-24 23:27:08.367750322 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -6901,7 +6952,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-24 22:25:24.456562577 +0000
++++ b/I18nHelpCatalog1.java	2026-10-24 23:27:08.367995117 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -6986,7 +7037,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-24 22:25:24.456693299 +0000
++++ b/I18nHelpCatalog2.java	2026-10-24 23:27:08.368197551 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7001,15 +7052,24 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +        {"Barra de título",
 +         "Title bar",
 +         "Barra de título"},
-+        {"No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube), o botão de idioma (PT / EN / ES) e o botão AJUDA, à direita, que abre esta tela.",
-+         "At the top: \"Attack Editor by Zue Mods\" (tapping Zue Mods opens the YouTube channel), the language button (PT / EN / ES) and the HELP button, on the right, which opens this screen.",
-+         "Arriba: \"Attack Editor by Zue Mods\" (tocar Zue Mods abre el canal de YouTube), el botón de idioma (PT / EN / ES) y el botón AYUDA, a la derecha, que abre esta pantalla."},
++        {"No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube) e, à direita, três botões: ↻ (recarrega as pastas), o de idioma (PT / EN / ES) e o AJUDA, que abre esta tela.",
++         "At the top: \"Attack Editor by Zue Mods\" (tapping Zue Mods opens the YouTube channel) and, on the right, three buttons: ↻ (reloads the folders), the language one (PT / EN / ES) and HELP, which opens this screen.",
++         "Arriba: \"Attack Editor by Zue Mods\" (tocar Zue Mods abre el canal de YouTube) y, a la derecha, tres botones: ↻ (recarga las carpetas), el de idioma (PT / EN / ES) y AYUDA, que abre esta pantalla."},
 +        {"Idioma da interface",
 +         "Interface language",
 +         "Idioma de la interfaz"},
 +        {"O botão PT / EN / ES (ao lado do AJUDA e também no topo desta tela) troca o idioma do app na hora: PT é o português, EN o inglês e ES o espanhol latino. Traduz botões, menus, avisos, esta ajuda e a busca (dá para buscar em qualquer um dos três). Nada se perde: as telas abertas são retraduzidas no lugar e a escolha fica salva no aparelho. Termos sem idioma (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END e os nomes dos campos) não mudam, e os arquivos e os dados do golpe também não. O TBRHelp.md é o mesmo em qualquer idioma; só a mensagem que acompanha o arquivo no compartilhar muda. Textos que o app monta na hora e ainda não têm tradução aparecem em português.",
 +         "The PT / EN / ES button (next to HELP and also at the top of this screen) switches the app language instantly: PT is Portuguese, EN is English and ES is Latin American Spanish. It translates buttons, menus, warnings, this help and the search (you can search in any of the three). Nothing is lost: open screens are retranslated in place and the choice is saved on the device. Language-neutral terms (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END and the field names) do not change, and neither do the files and the move data. The TBRHelp.md is the same in any language; only the message that goes with the file when sharing changes. Texts the app builds on the fly that do not have a translation yet appear in Portuguese.",
 +         "El botón PT / EN / ES (junto a AYUDA y también arriba en esta pantalla) cambia el idioma de la app al instante: PT es portugués, EN inglés y ES español latino. Traduce botones, menús, avisos, esta ayuda y la búsqueda (se puede buscar en cualquiera de los tres). No se pierde nada: las pantallas abiertas se retraducen en su lugar y la elección queda guardada en el dispositivo. Los términos sin idioma (DAC, BIN, CNV, ANO, MPT, HDAT, OPT, SEQ, END y los nombres de los campos) no cambian, ni tampoco los archivos y los datos del golpe. El TBRHelp.md es el mismo en cualquier idioma; solo cambia el mensaje que acompaña al archivo al compartir. Los textos que la app arma al momento y todavía no tienen traducción aparecen en portugués."},
++        {"Recarregar pastas (↻)",
++         "Reload folders (↻)",
++         "Recargar carpetas (↻)"},
++        {"O botão ↻ (na barra de título, ao lado do idioma e do AJUDA) faz o app reler as pastas que ele usa, sem reiniciar: os personagens (charNN), os efeitos, as cenas (bobj) e os sons. Use quando você apagar, adicionar ou renomear uma pasta de personagem, ou trocar os .txt de um personagem. Antes de recarregar, o app avisa que as edições não salvas serão perdidas (SALVAR primeiro, se precisar). Depois de recarregar, o app volta ao mesmo personagem, oponente e golpe/ANO se eles ainda existirem; se a pasta do personagem sumiu, abre o primeiro da lista.",
++         "The ↻ button (in the title bar, next to the language and HELP buttons) makes the app reread the folders it uses, without restarting: the characters (charNN), the effects, the scenes (bobj) and the sounds. Use it when you delete, add or rename a character folder, or replace a character's .txt files. Before reloading, the app warns that unsaved edits will be lost (SAVE first if you need to). After reloading, the app goes back to the same character, opponent and move/ANO if they still exist; if the character folder is gone, it opens the first one in the list.",
++         "El botón ↻ (en la barra de título, junto al de idioma y AYUDA) hace que la app vuelva a leer las carpetas que usa, sin reiniciar: los personajes (charNN), los efectos, las escenas (bobj) y los sonidos. Úsalo cuando borres, agregues o renombres una carpeta de personaje, o cambies los .txt de un personaje. Antes de recargar, la app avisa que las ediciones no guardadas se perderán (GUARDAR primero, si lo necesitas). Después de recargar, la app vuelve al mismo personaje, oponente y golpe/ANO si todavía existen; si la carpeta del personaje desapareció, abre el primero de la lista."},
++        {"recarregar reload atualizar pastas personagem apagar adicionar nova pasta reiniciar refresh",
++         "reload refresh update folders character delete add new folder restart",
++         "recargar actualizar carpetas personaje borrar agregar nueva carpeta reiniciar"},
 +        {"MODO: GOLPES / ANO",
 +         "MODE: MOVES / ANO",
 +         "MODO: GOLPES / ANO"},
@@ -7025,9 +7085,9 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +        {"Ajuda de IA (TBRHelp.md)",
 +         "AI Help (TBRHelp.md)",
 +         "Ayuda de IA (TBRHelp.md)"},
-+        {"O botão Ajuda de IA (no topo desta tela) cria o arquivo TBRHelp.md na pasta Download do aparelho e abre o compartilhar do Android. O arquivo é um manual escrito para IAs (em inglês, com a instrução de responder no seu idioma): explica o app, os arquivos (DAC, BIN, CNV e seus .txt), os formatos, os limites do jogo, receitas de ataque, como testar e salvar, e o formato em que a IA deve entregar o resultado. Como usar: toque em Ajuda de IA, escolha o app de IA (ChatGPT, Gemini, Claude…) para enviar o arquivo e depois pergunte, por exemplo, \"como faço um golpe novo?\". Quando a IA pedir arquivos, mande o 000.dac.txt, 000.bin.txt e 000.cnv.txt do personagem (SALVAR > pasta separada > Tap Battle/TBRE/Chars/charNN/). O que a IA devolver cola no painel DADOS / EDITAR (lápis) ou nos .txt, e depois é só testar. Precisa do acesso a todos os arquivos, o mesmo que o app já usa.",
-+         "The AI Help button (at the top of this screen) creates the TBRHelp.md file in the device's Download folder and opens Android's share sheet. The file is a manual written for AIs (in English, with the instruction to answer in your language): it explains the app, the files (DAC, BIN, CNV and their .txt), the formats, the game limits, attack recipes, how to test and save, and the format in which the AI must deliver the result. How to use: tap AI Help, choose the AI app (ChatGPT, Gemini, Claude…) to send the file and then ask, for example, \"how do I make a new move?\". When the AI asks for files, send the character's 000.dac.txt, 000.bin.txt and 000.cnv.txt (SAVE > separate folder > Tap Battle/TBRE/Chars/charNN/). Paste what the AI returns into the DATA / EDIT panel (pencil) or into the .txt files, and then just test it. It needs access to all files, the same one the app already uses.",
-+         "El botón Ayuda de IA (arriba en esta pantalla) crea el archivo TBRHelp.md en la carpeta Download del dispositivo y abre el menú de compartir de Android. El archivo es un manual escrito para IAs (en inglés, con la instrucción de responder en tu idioma): explica la app, los archivos (DAC, BIN, CNV y sus .txt), los formatos, los límites del juego, recetas de ataques, cómo probar y guardar, y el formato en el que la IA debe entregar el resultado. Cómo usarlo: toca Ayuda de IA, elige la app de IA (ChatGPT, Gemini, Claude…) para enviar el archivo y después pregunta, por ejemplo, \"¿cómo hago un golpe nuevo?\". Cuando la IA pida archivos, envía el 000.dac.txt, 000.bin.txt y 000.cnv.txt del personaje (GUARDAR > carpeta separada > Tap Battle/TBRE/Chars/charNN/). Lo que la IA devuelva se pega en el panel DATOS / EDITAR (lápiz) o en los .txt, y luego solo hay que probar. Necesita el acceso a todos los archivos, el mismo que la app ya usa."},
++        {"O botão Ajuda de IA (no topo desta tela) cria o arquivo TBRHelp.md na pasta Download do aparelho e abre o compartilhar do Android. O arquivo é um manual escrito para IAs (em inglês, com a instrução de responder no seu idioma): explica o app, os arquivos (DAC, BIN, CNV e seus .txt), os formatos, os limites do jogo, receitas de ataque, como testar e salvar, e o formato em que a IA deve entregar o resultado. Como usar: toque em Ajuda de IA, escolha o app de IA (ChatGPT, Gemini, Claude…) para enviar o arquivo e depois pergunte. Se for uma dúvida sobre o app (“como faço…?”), a IA ensina pelas funções do app, passo a passo. Se você pedir para ela criar ou alterar um ataque, ela vai pedir o 000.dac.txt, 000.bin.txt e 000.cnv.txt do personagem (SALVAR > pasta separada > Tap Battle/TBRE/Chars/charNN/) e devolver os .txt modificados. Coloque os .txt na pasta do personagem (guarde antes uma cópia dos originais), toque em ↻ para recarregar as pastas e teste. Precisa do acesso a todos os arquivos, o mesmo que o app já usa.",
++         "The AI Help button (at the top of this screen) creates the TBRHelp.md file in the device's Download folder and opens Android's share sheet. The file is a manual written for AIs (in English, with the instruction to answer in your language): it explains the app, the files (DAC, BIN, CNV and their .txt), the formats, the game limits, attack recipes, how to test and save, and the format in which the AI must deliver the result. How to use: tap AI Help, choose the AI app (ChatGPT, Gemini, Claude…) to send the file and then ask. If it is a question about the app (\"how do I…?\"), the AI teaches it step by step with the app's functions. If you ask it to create or change an attack, it will ask for the character's 000.dac.txt, 000.bin.txt and 000.cnv.txt (SAVE > separate folder > Tap Battle/TBRE/Chars/charNN/) and return the modified .txt files. Put the .txt files in the character's folder (keep a copy of the originals first), tap ↻ to reload the folders and test. It needs access to all files, the same one the app already uses.",
++         "El botón Ayuda de IA (arriba en esta pantalla) crea el archivo TBRHelp.md en la carpeta Download del dispositivo y abre el menú de compartir de Android. El archivo es un manual escrito para IAs (en inglés, con la instrucción de responder en tu idioma): explica la app, los archivos (DAC, BIN, CNV y sus .txt), los formatos, los límites del juego, recetas de ataques, cómo probar y guardar, y el formato en el que la IA debe entregar el resultado. Cómo usarlo: toca Ayuda de IA, elige la app de IA (ChatGPT, Gemini, Claude…) para enviar el archivo y después pregunta. Si es una duda sobre la app (\"¿cómo hago…?\"), la IA lo enseña paso a paso con las funciones de la app. Si le pides que cree o cambie un ataque, te pedirá el 000.dac.txt, 000.bin.txt y 000.cnv.txt del personaje (GUARDAR > carpeta separada > Tap Battle/TBRE/Chars/charNN/) y devolverá los .txt modificados. Pon los .txt en la carpeta del personaje (guarda antes una copia de los originales), toca ↻ para recargar las carpetas y prueba. Necesita el acceso a todos los archivos, el mismo que la app ya usa."},
 +        {"ia ai inteligencia artificial chatgpt gemini claude arquivo markdown md download compartilhar ajuda perguntas tbrhelp prompt",
 +         "ai artificial intelligence chatgpt gemini claude file markdown md download share help questions tbrhelp prompt",
 +         "ia ai inteligencia artificial chatgpt gemini claude archivo markdown md download compartir ayuda preguntas tbrhelp prompt"},
@@ -7058,6 +7118,19 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +        {"A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE, ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. Tocar no nome da faixa de sprites abre ou recolhe o resumo.",
 +         "The timeline shows, per frame: SPRITES (the images), and below them the lanes of hitbox (red), hurtbox (green), projectile, effect, special action, SOUND (blue), SPEED, STYLE (flip/transform), linked animations (links) and transitions (SEQ/END). Only lanes in use appear: with no sound, speed or style in the ANO, the lane disappears. Equal items in different frames share the same lane; equal items in the same frame (two equal hitboxes, two transitions) go in different lanes. Tapping the name of the sprites lane opens or collapses the summary.",
 +         "La timeline muestra, por frame: SPRITES (las imágenes), y debajo las pistas de hitbox (roja), hurtbox (verde), proyectil, efecto, acción especial, SONIDO (azul), VELOCIDAD, ESTILO (espejar/transformar), animaciones ligadas (links) y transiciones (SEQ/END). Solo aparecen las pistas en uso: sin sonido, velocidad o estilo en el ANO, la pista desaparece. Elementos iguales en frames distintos comparten la misma pista; elementos iguales en el mismo frame (dos hitboxes iguales, dos transiciones) van en pistas distintas. Tocar el nombre de la pista de sprites abre o contrae el resumen."},
++    };
++}
+diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
+--- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog3.java	2026-10-24 23:27:08.368410194 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 3 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog3 {
++    private I18nHelpCatalog3() { }
++
++    static final String[][] E = {
 +        {"timeline faixas faixa sprite hitbox speed som estilo",
 +         "timeline lanes lane sprite hitbox speed sound style",
 +         "timeline pistas pista sprite hitbox speed sonido estilo"},
@@ -7067,19 +7140,6 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +        {"O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO).",
 +         "The ＋ adds at the pointer a sprite, hitbox, hurtbox, projectile, effect, sound, speed, linked animation or a special action (shake the stage, cutscene, camera zoom, teleport to the opponent, pull the opponent, heal life...). The # chooses what the timeline shows (turns each category on and off; SHOW ALL).",
 +         "El ＋ agrega en el puntero un sprite, hitbox, hurtbox, proyectil, efecto, sonido, velocidad, animación ligada o una acción especial (temblor de escenario, cutscene, zoom de cámara, teletransportar hasta el oponente, jalar al oponente, curar vida...). El # elige lo que la timeline muestra (activa y desactiva cada categoría; MOSTRAR TODO)."},
-+    };
-+}
-diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
---- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-24 22:25:24.456801940 +0000
-@@ -0,0 +1,81 @@
-+package com.zue.attackeditor;
-+
-+/** Textos da AJUDA em EN/ES, bloco 3 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
-+final class I18nHelpCatalog3 {
-+    private I18nHelpCatalog3() { }
-+
-+    static final String[][] E = {
 +        {"adicionar mais novo criar numero",
 +         "add more new create number",
 +         "agregar mas nuevo crear numero"},
@@ -7143,6 +7203,19 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"Som",
 +         "Sound",
 +         "Sonido"},
++    };
++}
+diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
+--- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog4.java	2026-10-24 23:27:08.368577041 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 4 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog4 {
++    private I18nHelpCatalog4() { }
++
++    static final String[][] E = {
 +        {"O som do frame no estilo da lista de sons (tocar/pausar, trocar, cortar...). − e + andam só pelos ids que existem: 0 até o último som comum do jogo, e depois os áudios do personagem a partir do 80. ESCOLHER abre a lista; REMOVER ÁUDIO tira o som do frame.",
 +         "The frame's sound, in the style of the sound list (play/pause, swap, trim...). − and + only walk through ids that exist: 0 up to the game's last common sound, and then the character's audios starting at 80. CHOOSE opens the list; REMOVE AUDIO takes the sound off the frame.",
 +         "El sonido del frame, al estilo de la lista de sonidos (reproducir/pausar, cambiar, cortar...). − y + solo recorren los ids que existen: de 0 hasta el último sonido común del juego, y después los audios del personaje a partir del 80. ELEGIR abre la lista; QUITAR AUDIO saca el sonido del frame."},
@@ -7152,19 +7225,6 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"Movimento",
 +         "Movement",
 +         "Movimiento"},
-+    };
-+}
-diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
---- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-24 22:25:24.456910134 +0000
-@@ -0,0 +1,81 @@
-+package com.zue.attackeditor;
-+
-+/** Textos da AJUDA em EN/ES, bloco 4 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
-+final class I18nHelpCatalog4 {
-+    private I18nHelpCatalog4() { }
-+
-+    static final String[][] E = {
 +        {"Velocidade x/y do frame (veja o capítulo Speed e aceleração). Num frame que recebe velocidade do anterior os campos ficam zerados e somam à recebida, que aparece em amarelo com o botão Remover. A aceleração só aparece quando o frame já tem speed. Frame inicial e duração do trecho de movimento, MANTER VELOCIDADE (passa a velocidade deste frame ao próximo), o total de pixels percorridos e REMOVER SPEED.",
 +         "The frame's x/y speed (see the Speed and acceleration chapter). In a frame that receives speed from the previous one the fields are zeroed and add to the received one, which shows in yellow with the Remove button. Acceleration only appears when the frame already has speed. Start frame and duration of the movement stretch, KEEP SPEED (passes this frame's speed on to the next), the total pixels covered and REMOVE SPEED.",
 +         "La velocidad x/y del frame (mira el capítulo Speed y aceleración). En un frame que recibe velocidad del anterior los campos quedan en cero y se suman a la recibida, que aparece en amarillo con el botón Quitar. La aceleración solo aparece cuando el frame ya tiene speed. Frame inicial y duración del tramo de movimiento, MANTENER VELOCIDAD (pasa la velocidad de este frame al siguiente), el total de píxeles recorridos y QUITAR SPEED."},
@@ -7228,6 +7288,19 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +        {"GOLPE SET, os campos do HDAT 4 e o painel DADOS / EDITAR.",
 +         "MOVE SET, the HDAT 4 fields and the DATA / EDIT panel.",
 +         "GOLPE SET, los campos del HDAT 4 y el panel DATOS / EDITAR."},
++    };
++}
+diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
+--- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog5.java	2026-10-24 23:27:08.368731104 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 5 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog5 {
++    private I18nHelpCatalog5() { }
++
++    static final String[][] E = {
 +        {"O que é um golpe",
 +         "What a move is",
 +         "Qué es un golpe"},
@@ -7237,19 +7310,6 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +        {"GOLPE SET (ATK_FLAGS)",
 +         "MOVE SET (ATK_FLAGS)",
 +         "GOLPE SET (ATK_FLAGS)"},
-+    };
-+}
-diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
---- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-24 22:25:24.457037556 +0000
-@@ -0,0 +1,81 @@
-+package com.zue.attackeditor;
-+
-+/** Textos da AJUDA em EN/ES, bloco 5 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
-+final class I18nHelpCatalog5 {
-+    private I18nHelpCatalog5() { }
-+
-+    static final String[][] E = {
 +        {"As opções do golpe: agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, lançar 3 projéteis (usa o ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente (o oponente entra na reação do byte 13 do HDAT 3) e atravessar o oponente. Só vale para o ANO inicial de um golpe e define como o golpe é executado, não como ele é desenhado.",
 +         "The move options: grab (at the end of the initial ANO or only during the hit), projectile born on the opponent or under them, throw 3 projectiles (uses the ANO, ANO+1 and ANO+2), projectile that only explodes on the floor, hitbox that destroys the opponent's (the opponent enters the reaction of byte 13 of the HDAT 3) and passing through the opponent. It only applies to the initial ANO of a move and defines how the move is executed, not how it is drawn.",
 +         "Las opciones del golpe: agarre (al final del ANO inicial o solo durante el hit), proyectil que nace en el oponente o debajo de él, lanzar 3 proyectiles (usa el ANO, ANO+1 y ANO+2), proyectil que solo explota en el suelo, hitbox que destruye las del oponente (el oponente entra en la reacción del byte 13 del HDAT 3) y atravesar al oponente. Solo vale para el ANO inicial de un golpe y define cómo se ejecuta el golpe, no cómo se dibuja."},
@@ -7313,6 +7373,19 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +        {"SEQ, END, SEQ_PROJETIL, bloquear sequência (flag 38), pouso e queda, TRANSIÇÃO travada e VER FLUXO.",
 +         "SEQ, END, SEQ_PROJETIL, block sequence (flag 38), landing and fall, locked TRANSITION and VIEW FLOW.",
 +         "SEQ, END, SEQ_PROJETIL, bloquear secuencia (flag 38), aterrizaje y caída, TRANSICIÓN bloqueada y VER FLUJO."},
++    };
++}
+diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
+--- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog6.java	2026-10-24 23:27:08.368973497 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 6 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog6 {
++    private I18nHelpCatalog6() { }
++
++    static final String[][] E = {
 +        {"SEQ e END",
 +         "SEQ and END",
 +         "SEQ y END"},
@@ -7322,19 +7395,6 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +        {"SEQ_PROJETIL (ANIM_AO_ACERTAR)",
 +         "SEQ_PROJETIL (ANIM_AO_ACERTAR)",
 +         "SEQ_PROJETIL (ANIM_AO_ACERTAR)"},
-+    };
-+}
-diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
---- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-24 22:25:24.457176081 +0000
-@@ -0,0 +1,81 @@
-+package com.zue.attackeditor;
-+
-+/** Textos da AJUDA em EN/ES, bloco 6 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
-+final class I18nHelpCatalog6 {
-+    private I18nHelpCatalog6() { }
-+
-+    static final String[][] E = {
 +        {"Quando o primeiro acerto de cada projétil conecta, o atacante troca para este ANO (vale para o golpe todo). A SEQ vem logo depois, a não ser que o primeiro frame deste ANO tenha uma hitbox flag 38. Fica no fim da tela do projétil e aceita qualquer ANO do DAC.",
 +         "When the first hit of each projectile connects, the attacker switches to this ANO (applies to the whole move). The SEQ comes right after, unless the first frame of this ANO has a flag 38 hitbox. It sits at the end of the projectile screen and accepts any ANO in the DAC.",
 +         "Cuando el primer acierto de cada proyectil conecta, el atacante cambia a este ANO (vale para todo el golpe). La SEQ viene justo después, a menos que el primer frame de este ANO tenga una hitbox flag 38. Está al final de la pantalla del proyectil y acepta cualquier ANO del DAC."},
@@ -7398,6 +7458,19 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +        {"Barra de ferramentas da reação",
 +         "Reaction toolbar",
 +         "Barra de herramientas de la reacción"},
++    };
++}
+diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
+--- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog7.java	2026-10-24 23:27:08.369194039 +0000
+@@ -0,0 +1,81 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 7 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog7 {
++    private I18nHelpCatalog7() { }
++
++    static final String[][] E = {
 +        {"A aba ＋ (colada na borda da timeline) cria no passo selecionado: passo novo (depois dele), speed, voz, efeito de parede ou próxima reação (SEQ); também move o passo (◀ ▶) e mostra o total (Σ). DIVIDIR parte o passo onde está o ponteiro em dois: a duração é repartida, o 2º passo mantém a velocidade (com aceleração, já parte da velocidade em que o 1º terminou) e a voz fica só no 1º. ATENÇÃO: cada passo reinicia a animação do oponente, então o ANO recomeça no 2º passo. DUPLICAR copia o passo; EXCLUIR apaga o item selecionado (o passo, o bloco SPEED, a voz, a parede ou a SEQ); DESFAZER volta a última edição. Em reação do jogo só vale olhar.",
 +         "The ＋ tab (stuck to the edge of the timeline) creates on the selected step: a new step (after it), speed, voice, wall effect or next reaction (SEQ); it also moves the step (◀ ▶) and shows the total (Σ). SPLIT cuts the step where the pointer is into two: the duration is shared out, the 2nd step keeps the speed (with acceleration, it already starts at the speed where the 1st ended) and the voice stays only on the 1st. WARNING: each step restarts the opponent's animation, so the ANO starts over on the 2nd step. DUPLICATE copies the step; DELETE erases the selected item (the step, the SPEED block, the voice, the wall or the SEQ); UNDO reverts the last edit. On a game reaction you can only look.",
 +         "La pestaña ＋ (pegada al borde de la timeline) crea en el paso seleccionado: paso nuevo (después de él), speed, voz, efecto de pared o siguiente reacción (SEQ); también mueve el paso (◀ ▶) y muestra el total (Σ). DIVIDIR parte el paso donde está el puntero en dos: la duración se reparte, el 2.º paso mantiene la velocidad (con aceleración, ya parte de la velocidad en que terminó el 1.º) y la voz queda solo en el 1.º. ATENCIÓN: cada paso reinicia la animación del oponente, así que el ANO vuelve a empezar en el 2.º paso. DUPLICAR copia el paso; ELIMINAR borra el elemento seleccionado (el paso, el bloque SPEED, la voz, la pared o la SEQ); DESHACER revierte la última edición. En una reacción del juego solo se puede mirar."},
@@ -7407,19 +7480,6 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +        {"Parede e próxima reação",
 +         "Wall and next reaction",
 +         "Pared y siguiente reacción"},
-+    };
-+}
-diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
---- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-24 22:25:24.457290102 +0000
-@@ -0,0 +1,81 @@
-+package com.zue.attackeditor;
-+
-+/** Textos da AJUDA em EN/ES, bloco 7 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
-+final class I18nHelpCatalog7 {
-+    private I18nHelpCatalog7() { }
-+
-+    static final String[][] E = {
 +        {"EFEITOS (parede): com 2 ou 3, se o oponente encosta na parede durante o passo a reação recomeça na reação indicada em SEQ; com 0 a parede não muda nada. SEQ (próxima reação): depois dos passos entra a reação indicada (1 a 29 do jogo, 30 a 49 do personagem); 0 = nenhuma, e o oponente se levanta ou cai conforme a altura.",
 +         "EFFECTS (wall): with 2 or 3, if the opponent touches the wall during the step the reaction restarts at the reaction given in SEQ; with 0 the wall changes nothing. SEQ (next reaction): after the steps the given reaction enters (1 to 29 from the game, 30 to 49 from the character); 0 = none, and the opponent gets up or falls depending on the height.",
 +         "EFECTOS (pared): con 2 o 3, si el oponente toca la pared durante el paso la reacción vuelve a empezar en la reacción indicada en SEQ; con 0 la pared no cambia nada. SEQ (siguiente reacción): después de los pasos entra la reacción indicada (1 a 29 del juego, 30 a 49 del personaje); 0 = ninguna, y el oponente se levanta o cae según la altura."},
@@ -7483,6 +7543,19 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +        {"Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs).",
 +         "The frame's sounds (SE) use ids: from 0 up to the game's last common sound, and from 80 on the character's audios (NNN.wav files in its folder). The sound list lets you play, swap, trim (audios longer than 20 s suggest trimming), adjust the volume and remove (the sound becomes silence and the uses are taken out of the ANOs).",
 +         "Los sonidos del frame (SE) usan ids: de 0 hasta el último sonido común del juego, y a partir del 80 los audios del personaje (archivos NNN.wav de su carpeta). La lista de sonidos permite reproducir, cambiar, cortar (audios de más de 20 s sugieren cortar), ajustar el volumen y quitar (el sonido pasa a silencio y los usos se retiran de los ANOs)."},
++    };
++}
+diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
+--- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nHelpCatalog8.java	2026-10-24 23:27:08.369349303 +0000
+@@ -0,0 +1,69 @@
++package com.zue.attackeditor;
++
++/** Textos da AJUDA em EN/ES, bloco 8 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
++final class I18nHelpCatalog8 {
++    private I18nHelpCatalog8() { }
++
++    static final String[][] E = {
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
@@ -7492,19 +7565,6 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
-+    };
-+}
-diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
---- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-24 22:25:24.457388473 +0000
-@@ -0,0 +1,60 @@
-+package com.zue.attackeditor;
-+
-+/** Textos da AJUDA em EN/ES, bloco 8 (gerado de i18n_src/h00*.py; nao editar a mao). So busca exata, nao entra nos fragmentos. */
-+final class I18nHelpCatalog8 {
-+    private I18nHelpCatalog8() { }
-+
-+    static final String[][] E = {
 +        {"Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.",
 +         "Separate folder, Runtime, saving to another character and where the safety copies go.",
 +         "Carpeta separada, Runtime, guardar en otro personaje y dónde quedan las copias de seguridad."},
@@ -7782,7 +7842,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 22:22:36.503098210 +0000
++++ b/LayoutManager.java	2026-10-24 23:28:12.541727960 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -7878,7 +7938,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.sq.setText(letter);
          t.sq.setGravity(Gravity.CENTER);
          t.sq.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-@@ -262,6 +279,34 @@
+@@ -262,6 +279,41 @@
          r.setPadding(pad, pad, pad, pad);
          applyInsets(r, pad);
  
@@ -7897,6 +7957,13 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +        titleBar.addView(tZue);
 +        View titleGap = new View(a);
 +        titleBar.addView(titleGap, new LinearLayout.LayoutParams(0, 1, 1f));
++        // ↻: recarrega as pastas que o app le (personagens, efeitos, cenas, sons) sem reiniciar
++        final TextView bReload = button(a, "\u21BB", false);
++        if (bReload instanceof I18nTextView) ((I18nTextView) bReload).noTranslate();
++        bReload.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
++        bReload.setPadding(dp(12), dp(5), dp(12), dp(5));
++        bReload.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { if (onReload != null) onReload.run(); } });
++        titleBar.addView(bReload, lp(-2, -2, 0, 0, 6, 0));
 +        // idioma: PT -> EN -> ES; troca na hora e retraduz a tela (nada e recriado, as edicoes ficam)
 +        final TextView bLang = button(a, I18n.code(), false);
 +        bLang.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -7913,7 +7980,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          // ---- topo: estado, titulo do golpe, aviso e espaco reservado para opcoes futuras
          backBar = button(a, "", true);
          backBar.setVisibility(View.GONE);
-@@ -296,41 +341,57 @@
+@@ -296,41 +348,57 @@
          final TextView bSpr = button(a, "SPRITES", false);
          final TextView bLinks = button(a, "LINKS", false);
          lockBtnRef = bLock;
@@ -7985,7 +8052,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          TextView wr = text(a, "", 12, WARN);
          wr.setSingleLine(true);
          wr.setEllipsize(android.text.TextUtils.TruncateAt.END);
-@@ -338,9 +399,10 @@
+@@ -338,9 +406,10 @@
          wr.setClickable(true);
          wr.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              warnExpanded = !warnExpanded;
@@ -7998,7 +8065,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
  
  
          // ---- preview no centro
-@@ -383,7 +445,7 @@
+@@ -383,7 +452,7 @@
          });
          final android.widget.FrameLayout tlBox = new android.widget.FrameLayout(a);
          tlBox.addView(tl, new android.widget.FrameLayout.LayoutParams(-1, -2));
@@ -8007,7 +8074,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          plus.setText("\uFF0B");
          plus.setGravity(Gravity.CENTER);
          plus.setTextColor(Color.WHITE);
-@@ -399,7 +461,7 @@
+@@ -399,7 +468,7 @@
          plp2.setMargins(0, dp(4), 0, 0);
          tlBox.addView(plus, plp2);
          tlBox.setMinimumHeight(dp(104));
@@ -8016,7 +8083,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          filt.setText("#");
          filt.setGravity(Gravity.CENTER);
          filt.setTextColor(Color.WHITE);
-@@ -452,6 +514,7 @@
+@@ -452,6 +521,7 @@
          }
          panel.addView(tabRow, lp(-1, -2, 0, 0, 0, 3));
          final TextView fi = mono(a, "", 11, TEXT);
@@ -8024,7 +8091,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          fi.setBackgroundColor(0xFF161A21);
          fi.setPadding(dp(8), dp(6), dp(8), dp(6));
          fi.setLines(8);                       // altura fixa: o texto rola, a preview nao muda de tamanho
-@@ -460,7 +523,7 @@
+@@ -460,7 +530,7 @@
          fi.setMovementMethod(new android.text.method.ScrollingMovementMethod());
          android.widget.FrameLayout box = new android.widget.FrameLayout(a);
          box.addView(fi, new android.widget.FrameLayout.LayoutParams(-1, -2));
@@ -8033,7 +8100,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          pencil.setText("\u270E");
          pencil.setGravity(Gravity.CENTER);
          pencil.setTextColor(Color.WHITE);
-@@ -506,23 +569,103 @@
+@@ -506,23 +576,103 @@
          toolsRef[0] = tools;
          hsRef[0] = hs;
          // gaveta entre a area que rola e a barra de controle (que continua na base)
@@ -8140,7 +8207,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -531,11 +674,11 @@
+@@ -531,11 +681,11 @@
                  tl.clearSelection();
                  if (!tools.sheetOpen()) return;
                  int n = tools.discardSession();
@@ -8155,7 +8222,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { pick.on(which); }
                  }).show();
              }
-@@ -546,7 +689,7 @@
+@@ -546,7 +696,7 @@
          bDup.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { ops.duplicateSelected(); } });
          bDel.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { ops.deleteSelected(); } });
          bUndo.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
@@ -8164,7 +8231,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          } });
          timelineRef = tl;
          sc.addView(bottom, lp(-1, -2, 0, 6, 0, 0));
-@@ -596,6 +739,8 @@
+@@ -596,6 +746,8 @@
              }
          });
          bSave.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSaveMenu(a, view); } });
@@ -8173,7 +8240,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bLinks.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              LinkScreen.show(a, view, new Runnable() { @Override public void run() { if (timelineRef != null) timelineRef.invalidate(); } });
          } });
-@@ -657,7 +802,7 @@
+@@ -657,7 +809,7 @@
                  tbox.setPadding(dp(16), dp(8), dp(16), dp(8));
                  for (int k = 0; k < ids.length; k++) {
                      final int id = ids[k];
@@ -8182,7 +8249,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      cb.setText(names[k]);
                      cb.setTextColor(TEXT);
                      cb.setChecked(checked[k]);
-@@ -666,7 +811,7 @@
+@@ -666,7 +818,7 @@
                      });
                      tbox.addView(cb);
                  }
@@ -8191,7 +8258,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbBox.setText("Box dos sprites (amarela, bordas de todas as sprites)");
                  cbBox.setTextColor(0xFFFFE04C);
                  cbBox.setChecked(spriteBoxesOn[0]);
-@@ -681,7 +826,7 @@
+@@ -681,7 +833,7 @@
                  tbox.addView(bGs, lp(-1, -2, 0, 12, 0, 0));
                  android.widget.ScrollView tsv = new android.widget.ScrollView(a);
                  tsv.addView(tbox);
@@ -8200,7 +8267,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                          .setView(tsv).setPositiveButton("OK", null).show();
              }
          });
-@@ -715,7 +860,7 @@
+@@ -715,7 +867,7 @@
              final String[] nm = {"Âncora dos sprites (amarelo)", "Âncora das hurtboxes (azul)", "Âncora das hitboxes (vermelho)", "Âncora dos efeitos/animações (cinza) e globais (roxo)", "Âncora dos projéteis (laranja)"};
              for (int k = 0; k < nm.length; k++) {
                  final int kk = k;
@@ -8209,7 +8276,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  if (k == 3) {
                      android.text.SpannableString sp = new android.text.SpannableString(nm[k]);
                      int g = nm[k].indexOf("cinza"), pu = nm[k].indexOf("roxo");
-@@ -729,7 +874,7 @@
+@@ -729,7 +881,7 @@
                  });
                  ob.addView(cb);
              }
@@ -8218,7 +8285,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              cl.setText("Links (linhas e pontos entre objetos)"); cl.setTextColor(0xFF7CFFB2); cl.setChecked(on[2]);
              cl.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                  @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { on[2] = v; applyObj.run(); }
-@@ -759,17 +904,17 @@
+@@ -759,17 +911,17 @@
                  ap.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) {
                      int w, h;
                      try { w = Integer.parseInt(ew.getText().toString().trim()); h = Integer.parseInt(eh.getText().toString().trim()); }
@@ -8239,7 +8306,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      .setView(osv).setPositiveButton("OK", null).show();
          } };
          bChar.setOnClickListener(new View.OnClickListener() {
-@@ -788,7 +933,7 @@
+@@ -788,7 +940,7 @@
                  objRow.setGravity(Gravity.CENTER_VERTICAL);
                  TextView bObj = button(a, "CHAR OBJ  (box branca + âncoras)", false);
                  bObj.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); showObjOptions.run(); } });
@@ -8248,7 +8315,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbObj.setChecked(objOn[0]);
                  cbObj.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                      @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { objOn[0] = v; applyObj.run(); }
-@@ -799,7 +944,7 @@
+@@ -799,7 +951,7 @@
                  box.addView(bA, lp(-1, -2, 0, 0, 0, 8));
                  box.addView(bO, lp(-1, -2, 0, 0, 0, 8));
                  box.addView(bP, lp(-1, -2, 0, 0, 0, 0));
@@ -8257,7 +8324,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                          .setTitle("Personagens").setView(box).setNegativeButton("FECHAR", null).create();
                  dlg[0].show();
              }
-@@ -856,7 +1001,9 @@
+@@ -856,7 +1008,9 @@
              }
          });
  
@@ -8268,7 +8335,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -877,18 +1024,44 @@
+@@ -877,18 +1031,44 @@
      /** SPRITES: lista de sprites do personagem atacante atual. */
      private void showSpritePacks(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
@@ -8316,7 +8383,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setItems(items, new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { askWhere(a, view, d, which); }
                  }).setNegativeButton("FECHAR", null).show();
-@@ -896,20 +1069,25 @@
+@@ -896,20 +1076,28 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -8342,13 +8409,16 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      public Runnable beforeSave;
  
 -    private void doSave(Activity a, AttackView view, AttackData d, int which, boolean runtime) {
++    /** Botao ↻ da barra de titulo: recarregar as pastas (a MainActivity confirma e refaz a leitura). */
++    public Runnable onReload;
++
 +    private void doSave(final Activity a, AttackView view, final AttackData d, final int which, boolean runtime) {
          if (beforeSave != null) beforeSave.run();
 -        String msg;
          try {
              File dir = d.attacker.dir;
              Dac dac = d.attacker.dac;
-@@ -918,39 +1096,240 @@
+@@ -918,39 +1106,240 @@
              int idx = d.moveIndex;
              if ((which == 0) && m.generic) {
                  CharData.Move own = cd.ownerOf(d.moveIndex);
@@ -8612,7 +8682,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -980,12 +1359,12 @@
+@@ -980,12 +1369,12 @@
      private void openPicker(Activity a, String title, final Spinner sp) {
          android.widget.SpinnerAdapter ad = sp.getAdapter();
          if (ad == null || ad.getCount() == 0) {
@@ -8627,7 +8697,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title)
                  .setSingleChoiceItems(items, sp.getSelectedItemPosition(), new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface d, int which) {
-@@ -1019,7 +1398,7 @@
+@@ -1019,7 +1408,7 @@
              row.addView(b, lpw(1f, k == 0 ? 0 : 3, 0, k == 3 ? 0 : 3, 0));
          }
          box.addView(row, lp(-1, -2, 0, 0, 0, 0));
@@ -8636,7 +8706,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title).setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1045,22 +1424,49 @@
+@@ -1045,22 +1434,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -8696,7 +8766,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1121,7 +1527,7 @@
+@@ -1121,7 +1537,7 @@
                  c.drawLine(pad(), y, w - pad(), y, p);
                  p.setColor(0xFFB8C2D6);
                  p.setTextAlign(android.graphics.Paint.Align.LEFT);
@@ -8705,7 +8775,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
              // grade vertical: distancias predefinidas ao redor do personagem parado
              float ref = drag == 0 ? ox : drag == 1 ? ax : ax;
-@@ -1135,7 +1541,7 @@
+@@ -1135,7 +1551,7 @@
                      if (sg > 0 || ref - px < 0) {
                          p.setColor(0xFFFFC857);
                          p.setTextAlign(android.graphics.Paint.Align.CENTER);
@@ -8714,7 +8784,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      }
                  }
              }
-@@ -1145,9 +1551,9 @@
+@@ -1145,9 +1561,9 @@
              p.setTextAlign(android.graphics.Paint.Align.CENTER);
              p.setTextSize(11f * den);
              p.setTextSize(10.5f * den);
@@ -8726,7 +8796,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      w / 2f, gy() + 31f * den, p);
          }
  
-@@ -1235,12 +1641,12 @@
+@@ -1235,12 +1651,12 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -8741,7 +8811,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("Posicao").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1253,7 +1659,7 @@
+@@ -1253,7 +1669,7 @@
          final AttackView view = attackView;
          final AttackData d = view == null ? null : view.attackData();
          if (d == null || d.move == null || d.move.generic) {
@@ -8750,7 +8820,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              return;
          }
          final CharData.Move mv = d.move;
-@@ -1294,21 +1700,21 @@
+@@ -1294,21 +1710,21 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -8776,7 +8846,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cb.setText(label);
          cb.setTextColor(TEXT);
          box.addView(cb, lp(-1, -2, 0, 4, 0, 0));
-@@ -1350,7 +1756,7 @@
+@@ -1350,7 +1766,7 @@
          LinearLayout box = new LinearLayout(a);
          box.setOrientation(LinearLayout.VERTICAL);
          box.setPadding(dp(16), dp(8), dp(16), dp(8));
@@ -8785,7 +8855,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cp.setText("Mostrar projeteis");
          cp.setTextColor(TEXT);
          cp.setChecked(view.isGhostProj());
-@@ -1358,7 +1764,7 @@
+@@ -1358,7 +1774,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostProj(on); }
          });
          box.addView(cp);
@@ -8794,7 +8864,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          ce.setText("Mostrar efeitos (os mesmos do HIDE-EFF, menos projeteis)");
          ce.setTextColor(TEXT);
          ce.setChecked(view.isGhostFx());
-@@ -1366,7 +1772,7 @@
+@@ -1366,7 +1782,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostFx(on); }
          });
          box.addView(ce);
@@ -8803,7 +8873,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cc.setText("Aplicar tambem ao Frame atual");
          cc.setTextColor(TEXT);
          cc.setChecked(view.isGhostCurrent());
-@@ -1389,7 +1795,7 @@
+@@ -1389,7 +1805,7 @@
              @Override public void onStopTrackingTouch(SeekBar s2) { }
          });
          box.addView(gs);
@@ -8812,7 +8882,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1528,7 +1934,7 @@
+@@ -1528,7 +1944,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -8821,7 +8891,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1544,7 +1950,7 @@
+@@ -1544,7 +1960,7 @@
          et.setText(attackView.editText(tab));
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(et);
@@ -8830,7 +8900,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +1965,7 @@
+@@ -1559,7 +1975,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -8839,7 +8909,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +1973,9 @@
+@@ -1567,9 +1983,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -8851,7 +8921,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2006,7 @@
+@@ -1600,7 +2016,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -8860,7 +8930,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2020,7 @@
+@@ -1614,7 +2030,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -8869,7 +8939,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1662,7 +2068,7 @@
+@@ -1662,7 +2078,7 @@
              LinearLayout box = new LinearLayout(c);
              box.setOrientation(LinearLayout.VERTICAL);
              box.setBackgroundColor(PANEL);
@@ -8878,7 +8948,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              top.setText("\u25A6  ABRIR LISTA (com pr\u00E9vias)");
              top.setTextColor(0xFF4C8DFF);
              top.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-@@ -1766,12 +2172,13 @@
+@@ -1766,12 +2182,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -9261,7 +9331,7 @@ diff -ruN a/LinkScreen.java b/LinkScreen.java
      }
 diff -ruN a/MainActivity.java b/MainActivity.java
 --- a/MainActivity.java	2026-10-20 11:18:53.000000000 +0000
-+++ b/MainActivity.java	2026-10-24 21:49:06.892031517 +0000
++++ b/MainActivity.java	2026-10-24 23:28:12.542282381 +0000
 @@ -32,6 +32,8 @@
      private CharAssets opponent;
      private CharAssets effects;
@@ -9301,17 +9371,84 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          sound.release();
          super.onDestroy();
      }
-@@ -206,12 +210,31 @@
+@@ -125,6 +129,7 @@
+             }
+         });
+         ui.beforeSave = new Runnable() { @Override public void run() { dropPlaceholder(); } };
++        ui.onReload = new Runnable() { @Override public void run() { confirmReload(); } };
+         ui.setAttackHeader(new Runnable() {
+             @Override public void run() {
+                 if (!anoMode || attacker == null) return;
+@@ -206,9 +211,85 @@
          } catch (Exception e) {
              notes.add("effect: " + e.getMessage());
          }
 +        loadBobj();
          if (!characters.isEmpty()) {
-             loadOpponent(0);
-             loadCharacter(0);
-         }
-     }
- 
+-            loadOpponent(0);
+-            loadCharacter(0);
++            int oi = FolderReload.resolve(names, restoreOpp), ci = FolderReload.resolve(names, restoreChar);
++            loadOpponent(oi);
++            loadCharacter(ci);
++            ui.characterSpinner.setSelection(ci);
++            ui.opponentSpinner.setSelection(oi);
++            if (FolderReload.kept(names, restoreChar) && restoreAttack >= 0) {
++                int ai = FolderReload.clamp(restoreAttack, listSize());
++                if (ai >= 0) { ui.attackSpinner.setSelection(ai); loadAttack(ai); }
++            }
++        }
++    }
++
++    // ---- ↻ recarregar as pastas ----
++    private String restoreChar, restoreOpp;
++    private int restoreAttack = -1;
++
++    private void confirmReload() {
++        new I18nBuilder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Recarregar as pastas?")
++                .setMessage("Relê os personagens, efeitos, cenas e sons de assets, sem reiniciar o app. Edições não salvas serão perdidas.")
++                .setNegativeButton("CANCELAR", null)
++                .setPositiveButton("RECARREGAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface d, int w) { reloadFolders(); }
++                }).show();
++    }
++
++    /** Solta tudo que foi lido do disco e le de novo, voltando ao mesmo personagem, oponente e golpe/ANO se eles ainda existirem. */
++    private void reloadFolders() {
++        String keepChar = attacker == null ? null : attacker.dir.getName();
++        String keepOpp = opponent == null ? null : opponent.dir.getName();
++        boolean keepAno = inSub ? retAnoMode : anoMode;
++        int keepAttack = inSub ? retAttack : loadedAttack;
++        dropPlaceholder();
++        inSub = false;
++        forceProjectile = false;
++        ui.setBackBar(null);
++        ui.closeSheet();
++        ui.attackView.setData(null);
++        if (attacker != null) attacker.release();
++        if (opponent != null && opponent != attacker) opponent.release();
++        if (effects != null) effects.release();
++        if (charf != null) charf.release();
++        if (bobj != null) bobj.release();
++        attacker = null; opponent = null; effects = null; charf = null; bobj = null;
++        sound.release();
++        sound = new SoundPlayer(ROOT);
++        ui.attackView.setSoundPlayer(sound);
++        notes.clear();
++        anoMode = keepAno;
++        ui.setListModeChecked(anoMode);
++        restoreChar = keepChar; restoreOpp = keepOpp; restoreAttack = keepAttack;
++        try {
++            loadCharacters();
++        } finally {
++            restoreChar = null; restoreOpp = null; restoreAttack = -1;
++        }
++        String now = attacker == null ? "" : attacker.dir.getName();
++        if (keepChar != null && attacker != null && !keepChar.equals(now))
++            I18nUi.toast(this, "A pasta " + keepChar + " não existe mais; abrindo " + now, android.widget.Toast.LENGTH_LONG).show();
++        I18nUi.toast(this, "Pastas recarregadas: " + characters.size() + " personagens", android.widget.Toast.LENGTH_SHORT).show();
++    }
++
 +    /** Primeira pasta bobjNN de assets (o jogo carrega uma por fase: GetResName2 = "bobj" + numero com 2 digitos). */
 +    private void loadBobj() {
 +        if (bobj != null) { bobj.release(); bobj = null; }
@@ -9327,13 +9464,10 @@ diff -ruN a/MainActivity.java b/MainActivity.java
 +            } catch (Exception e) {
 +                notes.add(f.getName() + ": " + e.getMessage());
 +            }
-+        }
-+    }
-+
-     /** charfNN com o mesmo numero do charNN do atacante (hitbox flags 41-70). */
-     private void loadCharf(CharAssets a) {
-         if (charf != null) { charf.release(); charf = null; }
-@@ -232,7 +255,7 @@
+         }
+     }
+ 
+@@ -232,7 +313,7 @@
      private void reportLoose(CharAssets a) {
          if (a == null) return;
          if (a.importedLoose > 0) {
@@ -9342,7 +9476,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
              a.importedLoose = 0;
          }
          if (a.importError != null) {
-@@ -267,7 +290,7 @@
+@@ -267,7 +348,7 @@
              String warn = a.dac.getWarnings().isEmpty() ? "" : "  |  avisos DAC: " + a.dac.getWarnings().size();
              ui.status.setText(a.dir.getName() + "  |  ANO=" + a.dac.size() + "  CNV=" + a.cnv.size()
                      + "  golpes=" + mv.length + "  wav=" + a.wavCount + warn);
@@ -9351,7 +9485,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
  
              if (listSize() > 0) loadAttack(0);
              else ui.attackView.setData(null);
-@@ -371,8 +394,14 @@
+@@ -371,8 +452,14 @@
              if (anoMode && attacker.data.ownerOf(i) == null && attacker.anoKinds()[i] == CharAssets.KIND_PROJECTILE)
                  warns.add("flag 0 sem projetil: nenhum golpe do HDAT 4 usa o ANO " + i);
              if (effects == null) warns.add("sem effect: golpes nao mostram efeito de hit");
@@ -9366,7 +9500,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
              if (charf == null) warns.add("sem " + charfNote + " (hitbox flags 41-70 sem animacao)");
              loadedAttack = i;
              ui.attackView.setData(data);
-@@ -381,7 +410,7 @@
+@@ -381,7 +468,7 @@
                      anoMode ? "ANO " + i : String.format(Locale.US, "GOLPE_%02d", i), m.animInicial, ano.mpts.length, ano.links.length, m.projNormal, m.projAbaixo, m.projAcima));
              if (placeholder != null && attacker.dac.getAno(placeholderIdx) == placeholder)
                  warns.add(0, "ANO " + placeholderIdx + " vazia: frame provisório sem imagem. Se sair sem editar, ela volta a ficar vazia");
@@ -16037,8 +16171,8 @@ diff -ruN a/TrimDialog.java b/TrimDialog.java
          t.setTextColor(color);
 diff -ruN a/test/AiHelpTest.java b/test/AiHelpTest.java
 --- a/test/AiHelpTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/AiHelpTest.java	2026-10-24 22:16:53.717498277 +0000
-@@ -0,0 +1,171 @@
++++ b/test/AiHelpTest.java	2026-10-24 23:27:17.993081988 +0000
+@@ -0,0 +1,182 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -16131,6 +16265,17 @@ diff -ruN a/test/AiHelpTest.java b/test/AiHelpTest.java
 +        }
 +        check("anexo A tem todas as secoes da ajuda do app " + gone, appendix, true);
 +        check("botoes do menu superior citados", doc.contains("`SALVAR`") && doc.contains("`FR-PREVIEW`") && doc.contains("`HIDE-EFF`") && doc.contains("`TRANSIÇÃO`"), true);
++
++        // dois modos: duvida do app = so funcoes do app; gerar ataque = pedir os .txt; nada de binario nem DADOS/EDITAR
++        int appendixAt = doc.indexOf("\n## Appendix A");
++        String body = doc.substring(0, appendixAt);
++        check("secao 0 define Mode A (so funcoes do app) e Mode B (pedir os .txt)", doc.contains("**Mode A") && doc.contains("**Mode B") && doc.contains("**only through the app's own functions**") && doc.contains("Ask first for the character's `000.dac.txt`, `000.bin.txt` and `000.cnv.txt`"), true);
++        check("proibe ensinar a editar binario e usar DADOS / EDITAR", doc.contains("**Never** teach editing the binaries") && doc.contains("**never** send the user to the `▲ DADOS / EDITAR` panel") && doc.contains("never tell the user to paste into `▲ DADOS / EDITAR`"), true);
++        String bodyNoManual = body.replace(doc.substring(doc.indexOf("### 11.4 Reaction editor"), doc.indexOf("### 11.5")), "");
++        check("nenhuma instrucao de colar/lapis no DADOS / EDITAR fora das proibicoes", !bodyNoManual.contains("pencil `✎`, select all") && !bodyNoManual.contains("pastes it into `▲ DADOS") && !bodyNoManual.contains("tab `GOLPE`, tap the pencil") && !bodyNoManual.contains("into the `GOLPE` tab") && !bodyNoManual.contains("tab `FRAME` (the frame"), true);
++        check("contrato de saida e Mode B: entrega .txt e manda tocar em ↻", doc.contains("(Mode B only)") && doc.contains("which file it goes into") && doc.contains("tap **`↻`** in the title bar"), true);
++        check("↻ descrito na barra de titulo, no FAQ e em salvar", doc.contains("### 11.0 Title bar") && doc.contains("`↻` reloads the folders") && doc.contains("tap `↻` in the title bar"), true);
++        check("pedido do usuario ao gerar: 000.dac.txt, 000.bin.txt, 000.cnv.txt continuam na secao 4", doc.contains("| Create a move or many ANOs consistent with the character | `000.dac.txt`, `000.bin.txt`, `000.cnv.txt`"), true);
 +
 +        // secao 15: regras internas do motor, com rotulos de confianca
 +        check("secao 15 existe e esta no indice", secs.contains("15. Engine internals — answers to the questions an AI asked about the combat system") && doc.contains("- 15. Engine internals"), true);
@@ -17484,8 +17629,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-24 22:24:02.606334134 +0000
-@@ -0,0 +1,476 @@
++++ b/test/I18nIgnored.java	2026-10-24 23:28:27.189914565 +0000
+@@ -0,0 +1,480 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -17540,8 +17685,10 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " hold=",
 +        " life=",
 +        " map=",
++        " não existe mais; abrindo ",
 +        " passo ",
 +        " pat=",
++        " personagens",
 +        " px, y ",
 +        " px/t",
 +        " px/tick)",
@@ -17662,6 +17809,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        ":{$FLAG: ",
 +        ":{$info:{$COL: ",
 +        ":{$src:",
++        "A pasta ",
 +        "ALPH",
 +        "ALPHA",
 +        "ANIM_AO_ACERTAR",
@@ -17765,6 +17913,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "PROJETIL_ANIM_AO_ACERTAR",
 +        "PROJETIL_ANIM_NORMAL",
 +        "PROJETIL_COLISAO_CHAO",
++        "Pastas recarregadas: ",
 +        "Pictures",
 +        "RAZ",
 +        "REACAO_DANO_",
@@ -18922,6 +19071,50 @@ diff -ruN a/test/ReactionTraceTest.java b/test/ReactionTraceTest.java
 +        check("remover o passo 0", t.rows + ":" + t.u8(0, 2) + t.u8(1, 2) + t.u8(2, 2), "3:223");
 +
 +        System.out.println("ReactionTraceTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/ReloadTest.java b/test/ReloadTest.java
+--- a/test/ReloadTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ReloadTest.java	2026-10-24 23:28:27.042988139 +0000
+@@ -0,0 +1,40 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++
++/** Botao ↻: escolha do item selecionado depois de recarregar as pastas, e textos do dialogo nos tres idiomas. */
++public class ReloadTest {
++    public static void main(String[] args) {
++        List<String> a = Arrays.asList("char00", "char01", "char02");
++        check("pasta continua: mantem o indice", FolderReload.resolve(a, "char01"), 1);
++        check("pasta continua: kept", FolderReload.kept(a, "char01"), true);
++        List<String> b = Arrays.asList("char00", "char02");
++        check("pasta apagada: volta ao primeiro", FolderReload.resolve(b, "char01"), 0);
++        check("pasta apagada: kept = false", FolderReload.kept(b, "char01"), false);
++        List<String> c = Arrays.asList("char00", "char01", "char02", "char03");
++        check("pasta nova no meio muda o indice mas mantem o nome", FolderReload.resolve(Arrays.asList("char00", "char005x", "char01"), "char01"), 2);
++        check("pasta nova no fim nao muda nada", FolderReload.resolve(c, "char02"), 2);
++        check("sem selecao anterior: primeiro", FolderReload.resolve(a, null), 0);
++        check("lista vazia: -1", FolderReload.resolve(new ArrayList<String>(), "char00"), -1);
++        check("lista nula: -1", FolderReload.resolve(null, "char00"), -1);
++        check("kept sem selecao anterior", FolderReload.kept(a, null), false);
++        check("clamp dentro", FolderReload.clamp(3, 10), 3);
++        check("clamp acima do tamanho novo", FolderReload.clamp(12, 10), 9);
++        check("clamp negativo", FolderReload.clamp(-1, 10), 0);
++        check("clamp sem itens", FolderReload.clamp(2, 0), -1);
++
++        int old = I18n.lang();
++        check("dialogo EN", I18n.trTo("Recarregar as pastas?", I18n.EN) + "|" + I18n.trTo("RECARREGAR", I18n.EN), "Reload the folders?|RELOAD");
++        check("dialogo ES", I18n.trTo("Recarregar as pastas?", I18n.ES) + "|" + I18n.trTo("RECARREGAR", I18n.ES), "¿Recargar las carpetas?|RECARGAR");
++        check("toast com numero EN", I18n.trTo("Pastas recarregadas: 5 personagens", I18n.EN), "Folders reloaded: 5 characters");
++        check("toast com numero ES", I18n.trTo("Pastas recarregadas: 5 personagens", I18n.ES), "Carpetas recargadas: 5 personajes");
++        check("pasta sumiu EN", I18n.trTo("A pasta char01 não existe mais; abrindo char00", I18n.EN), "The folder char01 no longer exists; opening char00");
++        check("pasta sumiu ES", I18n.trTo("A pasta char01 não existe mais; abrindo char00", I18n.ES), "La carpeta char01 ya no existe; abriendo char00");
++        I18n.set(old);
++        System.out.println("ReloadTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/SaverCopyTest.java b/test/SaverCopyTest.java

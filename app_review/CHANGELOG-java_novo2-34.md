@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1024 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1050 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -227,7 +227,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
 
-### 3.1za Idioma: catálogo da interface (1 302 entradas PT/EN/ES)
+### 3.1za Idioma: catálogo da interface (1 307 entradas PT/EN/ES)
 - Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
 - Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
 - **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
@@ -248,6 +248,18 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Busca multilíngue**: os termos de cada seção em PT + EN + ES entram juntos no índice, e os grupos de sinônimos ganharam palavras em EN/ES (digitar `velocity`, `velocidad` ou `velocidade` acha Movimento; `backup`/`respaldo`/`backup` acha SALVAR; `landing`/`aterrizaje` acha POUSO). O trecho mostrado vem do texto no idioma atual (se só bateu em outro idioma, mostra o começo do texto).
 - **Compartilhamento**: a mensagem que acompanha o `TBRHelp.md` (`AiHelp.shareMessage()`), o título do seletor e os avisos/toasts de erro passam por modelos `{0}` do catálogo e saem em PT/EN/ES; o arquivo e o nome dele não mudam.
 - Testes: `HelpI18nTest` (25): todo texto tem EN e ES, números e identificadores (`$KEYS`, `SEQ_PROJETIL`, ANO, DAC…) iguais nas três línguas, buscas em EN/ES, trecho da busca em EN, mensagem e título de compartilhamento nos 3 idiomas e `TBRHelp.md` idêntico em PT/EN/ES. Troca de idioma e tela de ajuda só compiladas e revisadas (não rodadas num aparelho).
+
+### 3.1ze TBRHelp.md: dois modos (dúvida do app × gerar ataque) — sem binário e sem DADOS / EDITAR
+- Seção 0 do MD agora define **Modo A** (dúvida/“como faço…?”: a IA ensina **só pelas funções do app**, toque a toque com os nomes exatos dos botões) e **Modo B** (“gere/altere um ataque”: a IA **pede os `000.dac.txt`, `000.bin.txt` e `000.cnv.txt`** e devolve `.txt`). Regras “Never”: nunca ensinar a editar `000.dac/.bin/.cnv` (binários) e nunca mandar o usuário ao painel `▲ DADOS / EDITAR` (abas, lápis ✎, colar texto).
+- Ajustados: seções 3/4 (sem pedir o texto do DADOS/EDITAR), 8 (receitas sem colar no painel), 11 (painel descrito como existente, “não ensine”), **12 (contrato de saída só para o Modo B: entrega `.txt`, onde pôr os arquivos, tocar em ↻)**, 13, 14 (FAQ do ↻), 1/2 (barra de título) e 15 (aviso de escopo).
+- AJUDA do app: “Ajuda de IA (TBRHelp.md)” com o novo fluxo, “Barra de título” e nova seção **Recarregar pastas (↻)** (PT/EN/ES).
+- Testes: `AiHelpTest` 46 → 52 (modos A/B, proibições, nenhuma instrução de colar no DADOS/EDITAR fora das proibições, contrato do Modo B com ↻, ↻ no manual/FAQ/salvar).
+
+### 3.1zf Botão ↻ — recarregar as pastas que o app lê
+- Novo botão **↻** na barra de título, antes do de idioma e do AJUDA. Pede confirmação (“Edições não salvas serão perdidas”; o app não detecta edição pendente, então o aviso é sempre mostrado) e então **relê** `assets`: pastas `charNN`, effect, `bobj*`, charf, gamedata (já era relido a cada golpe) e recria o `SoundPlayer` (sons). Libera os `CharAssets` antigos (nenhum cache estático precisou ser limpo).
+- Volta ao **mesmo personagem, oponente, modo e golpe/ANO** pelo nome da pasta (`FolderReload`, Java puro); se a pasta sumiu abre a primeira da lista e avisa; o índice de golpe/ANO é limitado ao tamanho novo. Sai do sub-editor de ANO/projétil e fecha a gaveta.
+- `FilePicker`, `Saver`, listas de transplante/importação de reação e sons comuns já liam as pastas na hora (não precisam do ↻).
+- Testes: `ReloadTest` (20): manter/trocar/limpar a seleção, pasta nova/apagada, lista vazia, `clamp`, e o diálogo/toasts nos 3 idiomas. O botão e o diálogo só foram compilados e revisados.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -295,10 +307,11 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionEditTest (novo)** | 35 |
 | **HelpSearchTest (novo)** | 48 |
 | **ReactionLayoutTest (novo)** | 23 |
-| **AiHelpTest (novo)** | 46 |
+| **AiHelpTest (novo)** | 52 |
 | **I18nTest (novo)** | 28 |
 | **I18nCoverageTest (novo)** | 5 |
 | **HelpI18nTest (novo)** | 25 |
+| **ReloadTest (novo)** | 20 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
