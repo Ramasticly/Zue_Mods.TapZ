@@ -2860,10 +2860,202 @@ diff -ruN a/GameTables.java b/GameTables.java
 +        return s;
 +    }
 +}
+diff -ruN a/HelpScreen.java b/HelpScreen.java
+--- a/HelpScreen.java	1970-01-01 00:00:00.000000000 +0000
++++ b/HelpScreen.java	2026-10-24 17:25:30.814413096 +0000
+@@ -0,0 +1,188 @@
++package com.zue.attackeditor;
++
++import android.app.Dialog;
++import android.content.Context;
++import android.graphics.Color;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.text.Editable;
++import android.text.TextWatcher;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.view.Window;
++import android.widget.EditText;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++
++/**
++ * Tela cheia da ajuda: lista de capitulos (titulo + resumo), cada um abre o texto dele; a busca por palavra mostra as secoes de qualquer capitulo.
++ * O botao voltar do aparelho volta da secao para a lista antes de fechar.
++ */
++final class HelpScreen {
++    private final Context c;
++    private final float d;
++    private final Runnable resetToolbar;
++    private Dialog dlg;
++    private LinearLayout body;
++    private ScrollView sv;
++    private EditText search;
++    private TextView backBtn, titleView;
++    private HelpText.Chapter open;
++
++    HelpScreen(Context c, Runnable resetToolbar) {
++        this.c = c;
++        this.resetToolbar = resetToolbar;
++        this.d = c.getResources().getDisplayMetrics().density;
++    }
++
++    private int dp(int v) { return Math.round(v * d); }
++
++    void show() {
++        dlg = new Dialog(c, android.R.style.Theme_DeviceDefault_NoActionBar) {
++            @Override public void onBackPressed() {
++                if (open != null || search.getText().length() > 0) { search.setText(""); open = null; render(); } else super.onBackPressed();
++            }
++        };
++        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE);
++        LinearLayout root = new LinearLayout(c);
++        root.setOrientation(LinearLayout.VERTICAL);
++        root.setBackgroundColor(LayoutManager.BG);
++        root.setPadding(dp(10), dp(26), dp(10), dp(8));
++
++        LinearLayout head = new LinearLayout(c);
++        head.setGravity(Gravity.CENTER_VERTICAL);
++        backBtn = btn("◀", false, new View.OnClickListener() { public void onClick(View v) { search.setText(""); open = null; render(); } });
++        head.addView(backBtn);
++        titleView = new TextView(c);
++        titleView.setTextColor(LayoutManager.TEXT);
++        titleView.setTypeface(Typeface.DEFAULT_BOLD);
++        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
++        titleView.setPadding(dp(6), 0, 0, 0);
++        head.addView(titleView, new LinearLayout.LayoutParams(0, -2, 1f));
++        head.addView(btn("FECHAR", true, new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }));
++        root.addView(head);
++
++        search = new EditText(c);
++        search.setHint("Buscar na ajuda (ex.: speed, SEQ, reação, bit 64)");
++        search.setHintTextColor(LayoutManager.DIM);
++        search.setTextColor(LayoutManager.TEXT);
++        search.setSingleLine(true);
++        search.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
++        search.addTextChangedListener(new TextWatcher() {
++            @Override public void beforeTextChanged(CharSequence s, int a, int b, int n) { }
++            @Override public void onTextChanged(CharSequence s, int a, int b, int n) { }
++            @Override public void afterTextChanged(Editable e) { if (e.length() > 0) open = null; render(); }
++        });
++        root.addView(search, new LinearLayout.LayoutParams(-1, -2));
++
++        sv = new ScrollView(c);
++        body = new LinearLayout(c);
++        body.setOrientation(LinearLayout.VERTICAL);
++        body.setPadding(dp(2), dp(4), dp(2), dp(24));
++        sv.addView(body);
++        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++        dlg.setContentView(root);
++        dlg.show();
++        render();
++    }
++
++    private void render() {
++        body.removeAllViews();
++        String q = search.getText().toString();
++        if (q.trim().length() > 0) { renderSearch(q); sv.scrollTo(0, 0); return; }
++        if (open != null) { renderChapter(open); sv.scrollTo(0, 0); return; }
++        titleView.setText("Ajuda");
++        backBtn.setVisibility(View.GONE);
++        TextView intro = text("Toque num capítulo para ler. Use a busca para achar uma palavra em qualquer capítulo.", LayoutManager.DIM, 12, false);
++        intro.setPadding(dp(4), dp(8), dp(4), dp(8));
++        body.addView(intro);
++        for (final HelpText.Chapter ch : HelpText.chapters()) {
++            LinearLayout card = new LinearLayout(c);
++            card.setOrientation(LinearLayout.VERTICAL);
++            card.setPadding(dp(12), dp(10), dp(12), dp(10));
++            GradientDrawable g = new GradientDrawable();
++            g.setColor(LayoutManager.PANEL);
++            g.setCornerRadius(dp(10));
++            card.setBackground(g);
++            card.addView(text(ch.title, LayoutManager.TEXT, 15, true));
++            card.addView(text(ch.summary, LayoutManager.DIM, 12, false));
++            card.setClickable(true);
++            card.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { open = ch; render(); } });
++            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++            lp.setMargins(0, dp(3), 0, dp(3));
++            body.addView(card, lp);
++        }
++    }
++
++    private void renderChapter(HelpText.Chapter ch) {
++        titleView.setText(ch.title);
++        backBtn.setVisibility(View.VISIBLE);
++        TextView sum = text(ch.summary, LayoutManager.DIM, 12, false);
++        sum.setPadding(dp(4), dp(6), dp(4), dp(8));
++        body.addView(sum);
++        if (HelpText.CH_MENU.equals(ch.id) && resetToolbar != null) {
++            body.addView(btn("RESTAURAR ORDEM DOS BOTÕES", false, new View.OnClickListener() { public void onClick(View v) {
++                resetToolbar.run();
++                android.widget.Toast.makeText(c, "Ordem padrao restaurada", android.widget.Toast.LENGTH_SHORT).show();
++            } }));
++        }
++        for (HelpText.Section s : ch.sections) section(s, null);
++    }
++
++    private void renderSearch(String q) {
++        titleView.setText("Busca");
++        backBtn.setVisibility(View.VISIBLE);
++        java.util.List<HelpText.Hit> hits = HelpText.search(q);
++        TextView n = text(hits.isEmpty() ? "Nada encontrado para \"" + q.trim() + "\"." : hits.size() + (hits.size() == 1 ? " resultado" : " resultados"), LayoutManager.DIM, 12, false);
++        n.setPadding(dp(4), dp(6), dp(4), dp(6));
++        body.addView(n);
++        for (HelpText.Hit h : hits) section(h.section, h.chapter.title);
++    }
++
++    private void section(HelpText.Section s, String chapterTitle) {
++        LinearLayout box = new LinearLayout(c);
++        box.setOrientation(LinearLayout.VERTICAL);
++        box.setPadding(dp(8), dp(8), dp(8), dp(8));
++        if (chapterTitle != null) box.addView(text(chapterTitle, LayoutManager.ACCENT, 11, true));
++        box.addView(text(s.title, LayoutManager.TEXT, 15, true));
++        TextView b = text(s.body, 0xFFC4C9D4, 13, false);
++        b.setLineSpacing(0f, 1.15f);
++        box.addView(b);
++        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
++        lp.setMargins(0, dp(4), 0, dp(2));
++        body.addView(box, lp);
++    }
++
++    private TextView text(String s, int color, int sp, boolean bold) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setTextColor(color);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
++        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
++        t.setPadding(dp(2), dp(2), dp(2), dp(2));
++        return t;
++    }
++
++    private TextView btn(String s, boolean on, View.OnClickListener l) {
++        TextView t = new TextView(c);
++        t.setText(s);
++        t.setGravity(Gravity.CENTER);
++        t.setSingleLine(true);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++        t.setTypeface(Typeface.DEFAULT_BOLD);
++        t.setTextColor(on ? Color.WHITE : LayoutManager.TEXT);
++        t.setPadding(dp(12), dp(8), dp(12), dp(8));
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(on ? LayoutManager.ACCENT : LayoutManager.PANEL);
++        g.setCornerRadius(dp(7));
++        t.setBackground(g);
++        t.setClickable(true);
++        t.setOnClickListener(l);
++        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
++        p.setMargins(dp(2), dp(4), dp(2), dp(4));
++        t.setLayoutParams(p);
++        return t;
++    }
++}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 17:22:32.286887613 +0000
-@@ -0,0 +1,173 @@
++++ b/HelpText.java	2026-10-24 17:25:30.810483924 +0000
+@@ -0,0 +1,368 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -2949,79 +3141,239 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        return s;
 +    }
 +
-+    /** Resto da tela (nao e botao do menu superior). */
-+    static List<Section> screen() {
-+        List<Section> s = new ArrayList<Section>();
-+        s.add(new Section(null, "Barra de título",
-+                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube) e o botão AJUDA, à direita, que abre este texto e tem o botão RESTAURAR ORDEM "
-+                + "para devolver os botões do menu superior à ordem padrão."));
-+        s.add(new Section(null, "MODO: GOLPES / ANO",
-+                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, "
-+                + "sem o golpe em volta. Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO."));
-+        s.add(new Section(null, "Barra de tempo e transporte",
-+                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), "
-+                + "PAUSAR/PLAY reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
-+                + "A preview roda a batalha inteira: atacante, oponente, projéteis, efeitos, câmera, zoom, tremor e cutscenes, como o jogo."));
-+        s.add(new Section(null, "DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
-+                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto "
-+                + "selecionado, separa o objeto na divisa de frames mais próxima; DUPLICAR copia o sprite ou o objeto para o frame seguinte; "
-+                + "EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição."));
-+        s.add(new Section(null, "Timeline  ＋  e  #",
-+                "A timeline mostra, por frame, os sprites, hitboxes, hurtboxes, projéteis, efeitos, sons e velocidades do ANO. Toque num item para editar nas ferramentas abaixo. "
-+                + "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial "
-+                + "(tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). "
-+                + "O # escolhe o que a timeline mostra. Só aparecem faixas com uso (sem som, velocidade ou estilo no ANO, a faixa some). "
-+                + "Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes."));
-+        s.add(new Section(null, "Menu da sprite (gaveta)",
-+                "Tocar numa sprite da timeline abre uma grade de botões: Imagem, Tempo, Som, Movimento, Efeitos e Copiar. Cada um abre uma página dentro da gaveta (a prévia continua visível; ◀ volta à grade). "
-+                + "IMAGEM: thumb, − N + (segure; tocar no número abre a grade de sprites), posição, zoom (unir X e Y), rotação, alpha, \"mover links junto\", \"Editar posição do Link\" e Remover imagem. "
-+                + "TEMPO: ticks do frame (0 = frame travado, sem TIME), duração em segundos e Remover Frame. "
-+                + "SOM: o som do frame no estilo da lista de sons, − e + só pelos ids que existem, Escolher e Remover Áudio. "
-+                + "MOVIMENTO: velocidade x/y; num frame que recebe a velocidade do anterior os campos ficam zerados e somam à recebida (aparece em amarelo, com Remover); aceleração só aparece com speed; frame inicial e duração do trecho, Manter velocidade (passa a velocidade deste frame ao próximo), total de pixels e Remover speed. "
-+                + "EFEITOS: Flip X/Y e Interpolação. COPIAR: aplica as coisas do frame em outros frames. "
-+                + "Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele. Os itens de caixas (hitbox/hurtbox), efeitos de hit e links da timeline continuam com as ferramentas de antes."));
-+        s.add(new Section(null, "Menu de Hitbox / Hurtbox",
++    // ---- capitulos ----
++
++    /** Um capitulo da tela de ajuda: titulo, resumo de uma linha e as secoes (texto) dele. */
++    static final class Chapter {
++        final String id, title, summary;
++        final List<Section> sections = new ArrayList<Section>();
++
++        Chapter(String id, String title, String summary) {
++            this.id = id;
++            this.title = title;
++            this.summary = summary;
++        }
++
++        Chapter add(String title, String body) {
++            sections.add(new Section(null, title, body));
++            return this;
++        }
++    }
++
++    /** id do capitulo do menu superior (as secoes dele sao as de {@link #toolbar()}). */
++    static final String CH_MENU = "menu";
++
++    private static List<Chapter> chapters;
++
++    static synchronized List<Chapter> chapters() {
++        if (chapters != null) return chapters;
++        List<Chapter> c = new ArrayList<Chapter>();
++
++        Chapter inicio = new Chapter("inicio", "Primeiros passos", "Como o editor funciona, o fluxo de edição e os termos que aparecem em todo lugar.");
++        inicio.add("Como o editor funciona",
++                "O app lê os arquivos do jogo (a pasta assets: DAC com as animações, BIN com os dados dos golpes, CNV com os recortes das sprites) e simula a luta inteira na preview: atacante, oponente, projéteis, efeitos, câmera, zoom, tremor e cutscenes, "
++                + "do mesmo jeito que o jogo faz. Em cima fica o menu superior; no meio, a preview; embaixo, a timeline do ANO atual e a barra de tempo. Tocar em qualquer item da timeline abre o menu de edição daquele item numa gaveta por cima da tela, e a preview atualiza ao vivo enquanto você mexe.");
++        inicio.add("Fluxo básico de edição",
++                "1) Escolha o personagem (CHAR) e o golpe (ou o ANO, no modo ANO). 2) Toque em TOCAR ou arraste a barra de tempo para ver o golpe. 3) Toque num item da timeline (sprite, hitbox, projétil, som, velocidade...) para abrir o menu dele. "
++                + "4) Ajuste: as mudanças aparecem na preview na hora. 5) APLICAR mantém o que você fez e fecha a gaveta; ✕ fecha primeiro a página aberta e, se a gaveta já está na grade, descarta o que não foi aplicado (a mensagem avisa). "
++                + "6) DESFAZER volta a última edição. 7) SALVAR grava (veja o capítulo Salvar e backups).");
++        inicio.add("Barra de título",
++                "No topo: \"Attack Editor by Zue Mods\" (tocar em Zue Mods abre o canal no YouTube) e o botão AJUDA, à direita, que abre esta tela.");
++        inicio.add("MODO: GOLPES / ANO",
++                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. "
++                + "Ao tocar no seletor ao lado, escolhe-se o golpe ou o ANO. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO.");
++        inicio.add("Barra de tempo e transporte",
++                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), PAUSAR/TOCAR reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
++                + "O jogo roda a 60 ticks por segundo.");
++        inicio.add("Termos que aparecem em todo lugar",
++                "ANO: uma animação (lista de frames). MPT / frame / sprite: um quadro da animação (imagem, tempo, posição, velocidade, caixas...). Tick: 1/60 s. HDAT 4: a tabela de golpes (um golpe = campos como ANIM_INICIAL, projéteis, SEQ). "
++                + "Hit / box: hitbox (flag 2, ataque), hurtbox (flag 1, corpo) e as demais flags de ação. Link: animação ligada a outra, que nasce junto e segue o pai. OPT: bloco opcional do frame (dano, reação...). "
++                + "Oponente / defensor: quem recebe o golpe. CNV: tabela que recorta cada sprite de uma folha PNG.");
++        c.add(inicio);
++
++        Chapter menu = new Chapter(CH_MENU, "Menu superior", "Os 14 botões da fileira de cima, o que cada um faz e como reordená-los.");
++        menu.sections.add(new Section(null, "Ordem dos botões", REORDER_TIP));
++        menu.sections.addAll(toolbar());
++        c.add(menu);
++
++        Chapter tl = new Chapter("timeline", "Timeline e ferramentas", "As faixas, o ＋ e o #, DIVIDIR/DUPLICAR/EXCLUIR, arrastar duração e a altura da gaveta (Y e T).");
++        tl.add("Faixas da timeline",
++                "A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE, ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). "
++                + "Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. "
++                + "Tocar no nome da faixa de sprites abre ou recolhe o resumo.");
++        tl.add("＋ e #",
++                "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). "
++                + "O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO).");
++        tl.add("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
++                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto na divisa de frames mais próxima; "
++                + "DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição.");
++        tl.add("Arrastar, ponteiro e zoom",
++                "O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, "
++                + "puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar.");
++        tl.add("Altura da gaveta: Y e T",
++                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; isso vale só para aquela abertura. "
++                + "Y (na borda, à direita) grava a altura atual como a nova altura padrão. T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela, o menu superior some e a timeline mostra de 6 a 2 faixas conforme o menu sobe; "
++                + "tocar em T de novo volta ao normal. O modo T só vale com a gaveta aberta e nunca fica salvo: o app sempre abre com ele desligado.");
++        c.add(tl);
++
++        Chapter sp = new Chapter("sprite", "Menus de edição da sprite", "A grade Imagem, Tempo, Som, Movimento, Efeitos e Copiar, página por página.");
++        sp.add("Menu da sprite (gaveta)",
++                "Tocar numa sprite da timeline abre uma grade de botões: Imagem, Tempo, Som, Movimento, Efeitos e Copiar. Cada um abre uma página dentro da gaveta (a preview continua visível; ◀ volta à grade). "
++                + "Tocar num item de velocidade, som ou estilo da timeline abre direto a página dele.");
++        sp.add("Imagem",
++                "Thumb da sprite e − N + (segure para percorrer; tocar no número abre a grade de sprites). Depois posição (x e y do centro), zoom (com a caixa \"unir X e Y\"), rotação e alpha. "
++                + "\"Mover links junto\" soma o mesmo deslocamento no bx/by de todos os links do ANO; \"Editar posição do Link\" abre uma tela com a animação principal de base para ajustar sprite, tempo e posição do link. REMOVER IMAGEM deixa o frame sem imagem.");
++        sp.add("Tempo",
++                "Ticks do frame (60 ticks = 1 s) e a duração em segundos. Tempo 0 é o mesmo que desativar o campo TIME: o frame fica travado e nunca avança sozinho. REMOVER FRAME apaga o frame (o ANO precisa de ao menos um).");
++        sp.add("Som",
++                "O som do frame no estilo da lista de sons (tocar/pausar, trocar, cortar...). − e + andam só pelos ids que existem: 0 até o último som comum do jogo, e depois os áudios do personagem a partir do 80. ESCOLHER abre a lista; REMOVER ÁUDIO tira o som do frame.");
++        sp.add("Movimento",
++                "Velocidade x/y do frame (veja o capítulo Speed e aceleração). Num frame que recebe velocidade do anterior os campos ficam zerados e somam à recebida, que aparece em amarelo com o botão Remover. A aceleração só aparece quando o frame já tem speed. "
++                + "Frame inicial e duração do trecho de movimento, MANTER VELOCIDADE (passa a velocidade deste frame ao próximo), o total de pixels percorridos e REMOVER SPEED.");
++        sp.add("Efeitos",
++                "Liga e desliga Flip X e Flip Y e a Interpolação (o frame atual suaviza até chegar no próximo).");
++        sp.add("Copiar",
++                "Aplica as coisas deste frame em outros frames. Primeiro escolha os frames atingidos: próximos N, N anteriores, todos do ANO, esta sprite no ANO ou esta sprite em todos os ANOs (o app diz quantos frames vai atingir); depois marque o que copiar (imagem, tempo, som, velocidade, estilo, caixas...) e aplique.");
++        c.add(sp);
++
++        Chapter bx = new Chapter("box", "Menus de box", "Hitbox e hurtbox: início, duração, prévia, coordenadas, dano, reação e transição.");
++        bx.add("Hitbox / Hurtbox",
 +                "Tocar numa box da timeline abre, de cima para baixo: o interruptor Hurtbox | Hitbox; FRAME DE INÍCIO (move a box inteira mantendo a duração; se cair em cima de outra box igual ela ganha uma faixa própria) e DURAÇÃO; "
-+                + "a prévia parada do frame atual mostrando só a box que você edita (hurtbox sem a hitbox e vice-versa); x, y, largura e altura; remover a box. Ao mover o ponteiro, o menu só muda se o novo frame tem esta box; se não tem, fica como está. Só para hitbox: DANO e REAÇÃO (com prévia e botões para trocar; são do sprite sob o ponteiro e acompanham a hitbox quando você muda o frame de início ou a duração) "
-+                + "e TRANSIÇÃO: a transição atual (SEQ/END), mudar o ANO destino e, se o golpe tem SEQ, bloquear a sequência neste hit. "
-+                + "Na timeline, a faixa da hitbox é vermelha e a de som é azul."));
-+        s.add(new Section(null, "Speed x Accel (velocidade e aceleração)",
++                + "a prévia parada do frame atual, mostrando só a box que você edita (hurtbox sem a hitbox e vice-versa); x, y, largura e altura; e remover a box. "
++                + "Ao mover o ponteiro, o menu só muda se o novo frame tem esta box; se não tem, fica como está.");
++        bx.add("Dano e reação",
++                "Só na hitbox: DANO e REAÇÃO (com prévia e botões ◀ ▶ para trocar, ESCOLHER na grade, EDITAR REAÇÃO). São do sprite (frame) sob o ponteiro, não da box em si, e acompanham a hitbox quando você muda o frame de início ou a duração (cada frame leva o seu par). "
++                + "Veja o capítulo Reações.");
++        bx.add("Transição no menu da hitbox",
++                "Também só na hitbox: a transição atual do ANO (SEQ ou END), MUDAR ANO DESTINO e, se o golpe tem SEQ, BLOQUEAR SEQUÊNCIA neste hit (flag 38). Veja o capítulo Sequências e transições.");
++        c.add(bx);
++
++        Chapter mv = new Chapter("golpe", "Golpe e HDAT 4", "GOLPE SET, os campos do HDAT 4 e o painel DADOS / EDITAR.");
++        mv.add("O que é um golpe",
++                "Cada golpe é uma linha da tabela HDAT 4: ANIM_INICIAL (o ANO que começa o golpe), os ANOs de projétil (normal, abaixo, acima, global, ao acertar, chão, sub-projétil), a sequência (SEQ e END de chão e de ar, SEQ_PROJETIL), pouso ao errar e ao acertar, o oponente agarrado, perseguição e repetições, mais as opções do GOLPE SET. "
++                + "Todos os campos de ANO aceitam números de 16 bits, então ANOs acima de 255 são normais.");
++        mv.add("GOLPE SET (ATK_FLAGS)",
++                "As opções do golpe: agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, lançar 3 projéteis (usa o ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente (o oponente entra na reação do byte 13 do HDAT 3) e atravessar o oponente. "
++                + "Só vale para o ANO inicial de um golpe e define como o golpe é executado, não como ele é desenhado.");
++        mv.add("DADOS / EDITAR",
++                "Painel recolhido com os dados em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. O lápis abre o editor em texto para mudar o valor direto.");
++        c.add(mv);
++
++        Chapter pj = new Chapter("projetil", "Projéteis e ramificação", "A tela do projétil, a árvore de ramificação, tiro triplo, perseguição e o limite de 8.");
++        pj.add("Tela do projétil",
++                "Tocar num hit de projétil (flag 0) abre, de cima para baixo: INÍCIO E DURAÇÃO; RAMIFICAÇÃO DO PROJÉTIL; ANO do projétil (− N +; tocar no número abre a grade de animações; ✎ EDITAR ANIMAÇÃO); POSIÇÃO E VELOCIDADE (x, y e a velocidade inicial do projétil); "
++                + "PERSEGUIÇÃO (liga/desliga, velocidade de giro e repetições) e SEQUÊNCIA (SEQ_PROJETIL). A mesma tela abre no modo ANO e edita o golpe do HDAT 4 que é dono do ANO.");
++        pj.add("Ramificação do projétil",
++                "A árvore mostra o caminho completo do projétil: ANIM_INICIAL → projétil (+ANO+1/+2 com 3 projéteis) → reações (ao acertar, chão, abaixo, acima, global) → sub-projétil. É onde você escolhe cada uma dessas animações. "
++                + "O projétil escolhido pela altura do atacante em relação ao oponente: NORMAL perto da altura, ABAIXO ou ACIMA quando a diferença é grande (POS ajusta a altura).");
++        pj.add("Posição e velocidade",
++                "O projétil principal nasce em x do atacante + x do hit; se cair atrás do atacante, o jogo o lança a 480 px à frente (por isso o x mínimo é 0). Com as flags de nascer no oponente (32/64) o x/y do hit é ignorado. "
++                + "Se o projétil ficar abaixo do chão o jogo o puxa para o chão a cada tick. A velocidade que a tela mostra é a velocidade horizontal inicial do primeiro sprite do ANO do projétil.");
++        pj.add("Perseguição e repetições",
++                "Persegue o oponente: o projétil vira na direção dele com a velocidade de giro indicada. Repetições (MAX_REPETICOES) fazem o projétil se repetir e usam a mesma janela 512 do frame que o agarrão, então o agarrão fica indisponível.");
++        pj.add("Limite de 8 projéteis",
++                "O jogo só mantém 8 projéteis vivos ao mesmo tempo (BulletNum < 8), contando os sub-projéteis. Um hit de projétil (flag 0) que acontece com 8 já na tela não cria nada, sem aviso: se um projétil \"não sai\" num golpe que lança vários, confira se os anteriores já sumiram. "
++                + "O editor também não avisa isso na tela; os outros motivos de projétil que não nasce (ANO vazio, campo do HDAT 4 vazio, golpe que errou, transição travada...) continuam avisando.");
++        c.add(pj);
++
++        Chapter sq = new Chapter("sequencia", "Sequências e transições", "SEQ, END, SEQ_PROJETIL, bloquear sequência (flag 38), pouso e queda, TRANSIÇÃO travada e VER FLUXO.");
++        sq.add("SEQ e END",
++                "SEQ (ANIM_SEQ_CHAO / ANIM_SEQ_AR) é o ANO para onde o golpe vai quando um hit conecta no ANO onde ela está definida; chão e ar são definidos separadamente (o jogo escolhe pela posição do atacante). "
++                + "END (ANIM_END_CHAO / ANIM_END_AR) só existe dentro do ANO de destino da SEQ: dispara num novo hit enquanto o atacante está nessa ANO. A ANO de END não tem transição própria. "
++                + "No menu da hitbox: + TRANSIÇÃO / MUDAR ANO DESTINO. Se você define só chão ou só ar, o app pergunta se usa a mesma no outro. A transição não pode apontar para a própria ANO.");
++        sq.add("SEQ_PROJETIL (ANIM_AO_ACERTAR)",
++                "Quando o primeiro acerto de cada projétil conecta, o atacante troca para este ANO (vale para o golpe todo). A SEQ vem logo depois, a não ser que o primeiro frame deste ANO tenha uma hitbox flag 38. Fica no fim da tela do projétil e aceita qualquer ANO do DAC.");
++        sq.add("Bloquear sequência (flag 38)",
++                "Uma hitbox com a flag 38 no hit impede a SEQ de disparar quando ele conecta. O menu da hitbox oferece BLOQUEAR SEQUÊNCIA só quando o golpe tem SEQ.");
++        sq.add("Pouso e queda",
++                "O pouso troca de ANO quando o atacante toca o chão: POUSO_ERRAR e POUSO_ACERTAR do HDAT 4. O botão POUSO do menu superior liga/desliga isso na preview; com ele desligado a velocidade só zera no chão e o golpe segue no mesmo ANO.");
++        sq.add("TRANSIÇÃO travada e VER FLUXO",
++                "O botão TRANSIÇÃO (só em golpes com sequência) trava as trocas de ANO a partir do frame atual, para editar um ANO sem a simulação sair dele; com a trava, a SEQ não é vista. VER FLUXO mostra o caminho completo do golpe (ANIM_INICIAL → SEQ → END → pouso...) e deixa editar cada passo.");
++        c.add(sq);
++
++        Chapter rc = new Chapter("reacao", "Reações", "O que é uma reação (OPT 1), grupos, tabelas do jogo e do personagem, slots vazios e o editor estilo timeline.");
++        rc.add("O que é uma reação",
++                "Quando um hit acerta, o OPT 1 do frame diz como o oponente reage. O valor é GRUPO × 50 + NÚMERO: o número 0 a 29 é uma reação do jogo (tabela fixa da game data) e 30 a 49 é uma reação do personagem (20 slots, HDAT 14 a 33, editáveis). "
++                + "O grupo (0 a 4) escolhe o efeito, o som e o empurrão: 0 normal (efeito 0, som 3, empurra); 1 som alternativo (efeito 0, som 4, empurra); 2 forte (efeito 1, som 6, empurra); 3 leve (meio hitstop, sem empurrar); 4 sem efeito, som nem hitstop.");
++        rc.add("Cada reação é uma lista de passos",
++                "Um passo é uma linha da tabela: a animação do oponente (ANO; negativo = espelhado), a duração no chão e no ar (ticks), velocidade e aceleração no chão e no ar, a próxima reação (COMP), o efeito de parede e a voz. "
++                + "Os passos tocam em ordem; o jogo usa os valores de chão enquanto o oponente está no chão e os de ar quando está no ar. Velocidade −1 mantém a do passo anterior e −2 reduz pela metade; 255 na duração do ar significa \"até pousar\" (limite de 255 ticks).");
++        rc.add("Escolher reação e slots vazios",
++                "A tela \"Escolher reação\" mostra a prévia de cada reação do jogo e do personagem. Os slots do personagem vazios aparecem como \"＋ vazio\": tocar oferece copiar de uma reação do personagem, copiar da game data, importar de outro personagem (lê o 000.bin dele, com miniaturas dos ANOs) ou criar em branco. "
++                + "A reação nova entra no slot (dá para desfazer) e o hit passa a usá-la. Ao salvar, o bloco do slot é criado no 000.bin.txt se faltar (precisa existir o $HDAT_14+n no arquivo; se não existir o app avisa).");
++        rc.add("Editor de reações",
++                "EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela no estilo da timeline: no topo a prévia do oponente recebendo a reação (TOCAR, −1, +1, ⏮), no meio a timeline e embaixo as abas do passo selecionado. "
++                + "CHÃO | AR escolhe o cenário simulado (oponente no chão, ou a 60 px do chão). Faixas: PASSOS (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra amarela da borda direita para mudar a duração do cenário atual), "
++                + "SPEED (curva de x e y em px/tick e os valores v/a; = mantém, ½ metade), VOZ (♪), EFEITOS (parede) e SEQ (próxima reação). Tocar num item abre a aba dele; tocar numa célula vazia (＋) abre para adicionar. "
++                + "Abas: ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ e TOTAL (deslocamento). ＋ PASSO, DUPLICAR, ◀ ▶, ✕ REMOVER e DESFAZER editam os passos. Tudo vem da simulação do jogo, a mesma da prévia.");
++        rc.add("Parede e próxima reação",
++                "EFEITOS (parede): com 2 ou 3, se o oponente encosta na parede durante o passo a reação recomeça na reação indicada em SEQ; com 0 a parede não muda nada. SEQ (próxima reação): depois dos passos entra a reação indicada (1 a 29 do jogo, 30 a 49 do personagem); 0 = nenhuma, e o oponente se levanta ou cai conforme a altura.");
++        c.add(rc);
++
++        Chapter sa = new Chapter("speed", "Speed e aceleração", "A diferença entre speed e accel, Manter velocidade (bit 64) e a velocidade recebida.");
++        sa.add("Speed x Accel (velocidade e aceleração)",
 +                "SPEED é uma velocidade constante: o objeto anda essa quantidade de pixels a cada tick, sempre igual. Ex.: speed 50 por 5 ticks = 250 px. "
 +                + "ACCEL é uma velocidade de aceleração: a cada tick ela soma o valor dela na velocidade atual (o objeto anda com a velocidade que tem e só depois soma). "
 +                + "Ex.: accel 50 por 5 ticks, partindo do repouso, anda 0, 50, 100, 150 e 200 = 500 px e termina com velocidade 250. "
 +                + "A accel só vale no frame em que está escrita; a velocidade que ela acumulou só passa para o frame seguinte se ele tiver Manter velocidade, senão volta a 0. "
-+                + "Para continuar acelerando (ou frear) no frame seguinte, escreva a accel de novo nele. Accel sozinha, sem speed e sem velocidade recebida, é uma aceleração a partir do repouso (queda, arrancada) e não equivale a uma speed."));
-+        s.add(new Section(null, "Tela do projétil",
-+                "Tocar num hit de projétil (flag 0) abre, de cima para baixo: início e duração; RAMIFICAÇÃO DO PROJÉTIL (a árvore com ao acertar, chão, abaixo, acima, global e sub-projétil); ANO do projétil (− N +, toque no número para a grade); "
-+                + "posição e velocidade; perseguição (e repetições); e a sequência SEQ_PROJETIL. A mesma tela abre no modo ANO e edita o golpe do HDAT 4 que é dono do ANO."));
-+        s.add(new Section(null, "Editor de reações",
-+                "No menu da hitbox, EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela no estilo da timeline: no topo a prévia do oponente recebendo a reação "
-+                + "(TOCAR, −1, +1, ⏮), no meio a timeline e embaixo as abas do passo selecionado. CHÃO | AR escolhe o cenário simulado: o jogo usa a duração e a velocidade de chão enquanto o oponente está no chão e as de ar quando está no ar. "
-+                + "Faixas: PASSOS (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra amarela da borda direita para mudar a duração do cenário atual), "
-+                + "SPEED (curva de x e y em px/tick e os valores v/a do passo; = mantém, ½ metade), VOZ (♪), EFEITOS (parede) e SEQ (próxima reação). Tocar num item abre a aba dele; tocar numa célula vazia (＋) abre para adicionar. "
-+                + "Arraste a timeline para mover o ponteiro (a prévia acompanha) e belisque para dar zoom. "
-+                + "Abas: ANIMAÇÃO (ANO do oponente e espelhar), TEMPO (duração de chão e de ar; 255 no ar = até pousar), SPEED (velocidade e aceleração; = mantém e ½; copiar para o outro cenário), VOZ, EFEITOS (parede), SEQ (próxima reação) e TOTAL (deslocamento). "
-+                + "＋ PASSO, DUPLICAR, ◀ ▶ (mover), ✕ REMOVER e DESFAZER editam os passos. Tudo vem da simulação do jogo, a mesma da prévia."));
-+        s.add(new Section(null, "Slots de reação do personagem",
-+                "O personagem tem 20 slots de reação (HDAT 14 a 33, que no hit valem de 30 a 49). Na tela \"Escolher reação\" os slots vazios aparecem como \"＋ vazio\". "
-+                + "Tocar num deles oferece: copiar de uma reação do personagem, copiar da game data (as reações globais 0 a 29), importar de outro personagem (lê o 000.bin dele, com miniaturas dos ANOs) ou criar em branco (1 passo). "
-+                + "A reação nova é criada no slot (dá para desfazer) e o hit passa a usá-la; depois é só ajustar nos passos. Ao salvar, o bloco do slot é criado no 000.bin.txt se faltar "
-+                + "(precisa existir o $HDAT_14+n no arquivo; se não existir o app avisa). Ao salvar o golpe em outro personagem, as reações usadas preferem um slot vazio do destino."));
-+        s.add(new Section(null, "Limite de 8 projéteis",
-+                "O jogo só mantém 8 projéteis vivos ao mesmo tempo (BulletNum < 8), contando os sub-projéteis. Um hit de projétil (flag 0) que acontece com 8 já na tela "
-+                + "não cria nada, sem aviso: se um projétil \"não sai\" num golpe que lança vários, confira se os anteriores já sumiram. "
-+                + "O editor também não avisa isso na tela; os outros motivos de projétil que não nasce (ANO vazio, campo do HDAT 4 vazio, golpe que errou, transição travada...) continuam avisando."));
-+        s.add(new Section(null, "Altura da gaveta: Y e T",
-+                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; "
-+                + "isso vale só para aquela abertura. Y (na borda, à direita) grava a altura atual como a nova altura padrão. "
-+                + "T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela e o menu superior some para liberar espaço; tocar em T de novo volta ao modo normal. O modo T só vale com a gaveta aberta: ao fechar a gaveta o menu superior, a rolagem e a timeline voltam ao lugar. "
-+                + "Cada modo guarda a própria altura padrão (o Y salva só a altura); o modo T nunca fica salvo: o app sempre abre com ele desligado."));
-+        s.add(new Section(null, "DADOS / EDITAR",
-+                "Painel recolhido com os dados do DAC em texto: abas GOLPE (HDAT 4), ANO e FRAME no modo golpes, e ANO, FRAME e LINKS no modo ANO. "
-+                + "O lápis abre o editor em texto para mudar o valor direto."));
-+        s.add(new Section(null, "Avisos na tela",
-+                "A barra de aviso fica amarela quando o editor vê algo que o jogo trata diferente (limites estourados, animação que cai antes do fim, "
-+                + "projétil que não nasce) e vermelha quando o jogo fecharia ou erraria. Toque no aviso para ler inteiro; alguns têm um botão que leva direto ao ajuste (POS)."));
++                + "Para continuar acelerando (ou frear) no frame seguinte, escreva a accel de novo nele. Accel sozinha, sem speed e sem velocidade recebida, é uma aceleração a partir do repouso (queda, arrancada) e não equivale a uma speed.");
++        sa.add("Manter velocidade (bit 64) e velocidade recebida",
++                "Ao carregar um frame, o jogo zera a velocidade, a não ser que o frame tenha o bit 64 (Manter velocidade): aí ele começa com a velocidade em que o frame anterior terminou (a speed dele mais a accel × ticks). "
++                + "Essa velocidade recebida conta como speed, não como accel; se o frame tem speed própria, ela substitui a recebida; a accel nunca é herdada. É por isso que um salto é escrito em vários frames: o primeiro com speed e accel, e os seguintes com Manter velocidade e a accel de novo (ex.: YSPEED −16 e YACCEL 1; depois só YACCEL 0,8, e só YACCEL 1).");
++        sa.add("Detalhes que pegam",
++                "Um frame sem TIME (tempo 0) não avança nem soma accel. Links e frames sincronizados com o pai (flags 0x2000/0x8000) não andam sozinhos: seguem a posição do pai. "
++                + "No editor, o total de pixels do menu Movimento já considera a velocidade recebida e a aceleração.");
++        c.add(sa);
++
++        Chapter lk = new Chapter("links", "Links e animações por flag", "Animações ligadas (links), o limite de 1 nível e as animações disparadas por flag.");
++        lk.add("Links (animações ligadas)",
++                "Um link é outro ANO que nasce junto com o ANO e segue o pai (efeitos, partes do corpo, auras). O jogo aceita no máximo 13 por ANO e só 1 nível: link de link não nasce, e hitboxes, flags e animações dentro de um link não valem (o link mostra só as sprites dele). "
++                + "O botão LINKS lista os links do ANO atual; com a preview num ANO que tem links, a lista rola para o primeiro e a seta ▶ vai para o próximo.");
++        lk.add("Animações por flag",
++                "Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. "
++                + "O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora.");
++        lk.add("Sincronia do link",
++                "Cada link tem posição base (bx, by) e flags: sincronizar MPT (acompanha o frame do pai), sincronizar XY (acompanha a posição do pai) e \"não copiar a posição ao nascer\". O menu Imagem tem \"mover links junto\" e \"Editar posição do Link\".");
++        c.add(lk);
++
++        Chapter sn = new Chapter("sons", "Sons, sprites e CNV", "Ids de som, a lista de sprites e como as imagens são recortadas.");
++        sn.add("Sons",
++                "Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs).");
++        sn.add("Sprites e CNV",
++                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). "
++                + "As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber.");
++        c.add(sn);
++
++        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
++        sv.add("O que o SALVAR grava",
++                "Os binários originais (000.dac / 000.bin / 000.cnv) nunca são tocados: o app grava nos .txt legíveis (000.dac.txt, 000.bin.txt, 000.cnv.txt). Dá para salvar o golpe atual (HDAT 4 + ANOs + as reações que ele usa), só o ANO atual, todos os golpes, todos os ANOs ou tudo. Ao salvar o app confere os limites do jogo e avisa o que faria o jogo fechar.");
++        sv.add("Onde salvar",
++                "Pasta separada (Tap Battle/TBRE/Chars/charNN/): copia o personagem inteiro (DAC, BIN, CNV, folhas, sons) e aplica a mesma gravação do Runtime na cópia, pronta para usar; o original não muda. Se a pasta já existe o app pergunta se une (mantém o que já está lá e aplica por cima), deleta e copia de novo ou usa outro nome. "
++                + "Runtime (Tap Battle/assets/charNN/): sobrescreve os .txt do próprio personagem. Salvar em outro personagem (Runtime) só aparece em \"Salvar golpe atual\".");
++        sv.add("Salvar em outro personagem",
++                "Escolhe o personagem (pastas char de assets), depois o golpe a substituir (os golpes 0, 3 e 6 só substituem o 0, 3 e 6; os demais, qualquer um fora esses três) e grava direto no Runtime dele: o golpe do HDAT 4 é trocado, os ANOs entram no fim do DAC (renumerados), as sprites usadas entram no fim do CNV e das folhas, e as reações do personagem usadas vão para um slot (preferem um vazio). "
++                + "Sons do personagem (id 80+) e hitbox flags 20 e 41-125 não vão junto. Recarregue o personagem destino depois.");
++        sv.add("Backups",
++                "As cópias de segurança ficam em Tap Battle/TBRE/Backups/AAAAMMDD_HHMMSS_charNN_transplante/ (os três .txt do destino como estavam antes de salvar em outro personagem).");
++        c.add(sv);
++
++        Chapter av = new Chapter("avisos", "Avisos e limites", "Os avisos da tela, as cores, o que fecha o jogo e os limites do jogo.");
++        av.add("Avisos na tela",
++                "Os avisos sobre a preview têm cor: vermelho quando o jogo fecharia ou erraria, âmbar quando o editor vê algo que o jogo trata diferente. Mostram o primeiro e \"(+N)\"; tocar expande e lista todos. OCULTAR esconde aquele aviso; alguns têm um botão que leva ao ajuste (POS, DESATIVAR). "
++                + "Avisos: transição travada com sequência, pouso antecipado, projétil que não nasce (ANO vazio, campo do HDAT 4 vazio, golpe que errou...), e as regras do jogo abaixo. A barra de aviso acima da preview junta os avisos de carga (DAC, gamedata, effect, charf, sprites).");
++        av.add("Limites do jogo",
++                "Por ANO: no máximo 255 frames, 13 links e tempo de 255 ticks por frame (campo de 1 byte). Por frame: no máximo 10 caixas (hitboxes, hurtboxes e flags de ação; o jogo guarda 50 números, 5 por caixa). OPT 1 de reação com hitbox precisa apontar para um grupo que exista. "
++                + "Interpolação (rotação/alpha/zoom) lê o frame seguinte e pode dar valores errados se o seguinte tem mais caixas. Imagem que não existe no CNV deixa o frame sem desenho. Os campos do HDAT 4 aceitam números de 16 bits; as tabelas de reação usam 1 byte por campo (ANO −127 a 127, voz 0 a 127).");
++        c.add(av);
++
++        chapters = c;
++        return c;
++    }
++
++    /** Resto da tela (tudo que nao e botao do menu superior), na ordem dos capitulos. */
++    static List<Section> screen() {
++        List<Section> s = new ArrayList<Section>();
++        for (Chapter ch : chapters()) if (!CH_MENU.equals(ch.id)) s.addAll(ch.sections);
 +        return s;
 +    }
 +
@@ -3035,6 +3387,41 @@ diff -ruN a/HelpText.java b/HelpText.java
 +    static Section forButton(String id) {
 +        for (Section s : toolbar()) if (s.button != null && s.button.equals(id)) return s;
 +        return null;
++    }
++
++    // ---- busca ----
++
++    static final class Hit {
++        final Chapter chapter;
++        final Section section;
++
++        Hit(Chapter chapter, Section section) {
++            this.chapter = chapter;
++            this.section = section;
++        }
++    }
++
++    /** Minusculas e sem acentos, para a busca. */
++    static String norm(String s) {
++        String n = java.text.Normalizer.normalize(s == null ? "" : s, java.text.Normalizer.Form.NFD);
++        return n.replaceAll("\\p{InCombiningDiacriticalMarks}+", "").toLowerCase(java.util.Locale.ROOT);
++    }
++
++    /** Secoes cujo titulo ou texto tem todas as palavras de {@code query} (sem diferenca de acento ou caixa), na ordem dos capitulos. Busca vazia = nada. */
++    static List<Hit> search(String query) {
++        List<Hit> out = new ArrayList<Hit>();
++        String q = norm(query).trim();
++        if (q.isEmpty()) return out;
++        String[] words = q.split("\\s+");
++        for (Chapter ch : chapters()) {
++            for (Section sec : ch.sections) {
++                String text = norm(ch.title + " " + sec.title + " " + sec.body);
++                boolean all = true;
++                for (String w : words) if (!text.contains(w)) { all = false; break; }
++                if (all) out.add(new Hit(ch, sec));
++            }
++        }
++        return out;
 +    }
 +}
 diff -ruN a/IconView.java b/IconView.java
@@ -3143,7 +3530,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-24 17:18:44.400385478 +0000
++++ b/LayoutManager.java	2026-10-24 17:25:30.828351559 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -3440,7 +3827,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -884,6 +1023,56 @@
+@@ -884,6 +1023,32 @@
      }
  
      /** Menu flutuante SALVAR: escolhe o que salvar e depois onde (pasta separada ou Runtime = .txt de origem). */
@@ -3467,37 +3854,13 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +
 +    /** AJUDA: o que cada botao do menu e da tela faz. */
 +    private void showHelp(final Activity a) {
-+        LinearLayout box = new LinearLayout(a);
-+        box.setOrientation(LinearLayout.VERTICAL);
-+        box.setPadding(dp(16), dp(8), dp(16), dp(8));
-+        box.addView(text(a, HelpText.REORDER_TIP, 12, WARN), lp(-1, -2, 0, 0, 0, 10));
-+        box.addView(text(a, "Menu superior", 14, ACCENT), lp(-1, -2, 0, 4, 0, 2));
-+        for (HelpText.Section s : HelpText.toolbar()) addHelp(a, box, s);
-+        box.addView(text(a, "Resto da tela", 14, ACCENT), lp(-1, -2, 0, 14, 0, 2));
-+        for (HelpText.Section s : HelpText.screen()) addHelp(a, box, s);
-+        android.widget.ScrollView sv = new android.widget.ScrollView(a);
-+        sv.addView(box);
-+        new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Ajuda")
-+                .setView(sv).setPositiveButton("FECHAR", null)
-+                .setNeutralButton("RESTAURAR ORDEM", new android.content.DialogInterface.OnClickListener() {
-+                    @Override public void onClick(android.content.DialogInterface dlg, int which) {
-+                        toolbar.reset();
-+                        android.widget.Toast.makeText(a, "Ordem padrao restaurada", android.widget.Toast.LENGTH_SHORT).show();
-+                    }
-+                }).show();
-+    }
-+
-+    private void addHelp(Activity a, LinearLayout box, HelpText.Section s) {
-+        TextView t = text(a, s.title, 13, TEXT);
-+        t.setTypeface(Typeface.DEFAULT_BOLD);
-+        box.addView(t, lp(-1, -2, 0, 8, 0, 0));
-+        box.addView(text(a, s.body, 12, DIM), lp(-1, -2, 0, 0, 0, 2));
++        new HelpScreen(a, new Runnable() { @Override public void run() { toolbar.reset(); } }).show();
 +    }
 +
      private void showSaveMenu(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
          if (d == null) { android.widget.Toast.makeText(a, "nada carregado", android.widget.Toast.LENGTH_SHORT).show(); return; }
-@@ -896,20 +1085,25 @@
+@@ -896,20 +1061,25 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -3528,7 +3891,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          try {
              File dir = d.attacker.dir;
              Dac dac = d.attacker.dac;
-@@ -923,34 +1117,235 @@
+@@ -923,34 +1093,235 @@
                  idx = java.util.Arrays.asList(cd.moves).indexOf(own);
              }
              Ano cur = view.currentAno();
@@ -3785,7 +4148,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -1045,22 +1440,49 @@
+@@ -1045,22 +1416,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -3845,7 +4208,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1235,7 +1657,7 @@
+@@ -1235,7 +1633,7 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -3854,7 +4217,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String note = "Arraste o atacante (azul) e o oponente (vermelho). As linhas sao as posicoes do jogo e o personagem gruda nelas."
                  + (PosPresets.fromGame(gd) ? " LONGE = medio + (medio - perto): o jogo so guarda perto e medio."
                  : " gamedata (HDAT 2) nao carregado: usando 60/120 px como perto/medio.");
-@@ -1294,14 +1716,14 @@
+@@ -1294,14 +1692,14 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -11034,8 +11397,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 --- a/test/ToolbarTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ToolbarTest.java	2026-10-23 11:03:57.390502225 +0000
-@@ -0,0 +1,91 @@
++++ b/test/ToolbarTest.java	2026-10-24 17:25:48.633249988 +0000
+@@ -0,0 +1,122 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -11123,6 +11486,37 @@ diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 +        for (HelpText.Section sec : HelpText.screen()) if (sec.title.startsWith("Speed x Accel")) sa = sec;
 +        check("ajuda: secao Speed x Accel existe", sa != null, true);
 +        check("ajuda: Speed x Accel explica constante, soma a cada tick e exemplo", sa != null && sa.body.contains("constante") && sa.body.contains("a cada tick") && sa.body.contains("500 px") && sa.body.contains("250 px"), true);
++
++        // ---- AJUDA em capitulos
++        java.util.List<HelpText.Chapter> chs = HelpText.chapters();
++        java.util.Set<String> chIds = new HashSet<String>();
++        boolean chOk = true;
++        for (HelpText.Chapter ch : chs) {
++            chIds.add(ch.id);
++            chOk &= ch.title.length() > 3 && ch.summary.length() > 20 && !ch.sections.isEmpty();
++            for (HelpText.Section sec : ch.sections) chOk &= sec.title.length() > 2 && sec.body.length() > 40;
++        }
++        check("ajuda: 14 capitulos com id unico, titulo, resumo e secoes com texto", chs.size() + ":" + chIds.size() + ":" + chOk, "14:14:true");
++        check("ajuda: capitulos pedidos existem (ramificacao, sequencias, reacoes, speed, menus de edicao)",
++                chIds.containsAll(Arrays.asList("inicio", "menu", "timeline", "sprite", "box", "golpe", "projetil", "sequencia", "reacao", "speed", "links", "sons", "salvar", "avisos")), true);
++        HelpText.Chapter menuCh = null;
++        for (HelpText.Chapter ch : chs) if (ch.id.equals(HelpText.CH_MENU)) menuCh = ch;
++        check("ajuda: o capitulo do menu superior tem a dica de ordem e os 14 botoes", menuCh != null && menuCh.sections.size() == 15, true);
++        check("ajuda: all() = menu + resto", HelpText.all().size(), HelpText.toolbar().size() + HelpText.screen().size());
++        check("ajuda: busca vazia nao acha nada", HelpText.search("  ").size(), 0);
++        check("ajuda: busca sem acento acha reacao", HelpText.search("reacao").size() > 3 && HelpText.search("REAÇÃO").size() == HelpText.search("reacao").size(), true);
++        boolean spd = false, seq = false, ram = false;
++        for (HelpText.Hit h : HelpText.search("bit 64")) spd |= h.chapter.id.equals("speed");
++        for (HelpText.Hit h : HelpText.search("SEQ_PROJETIL")) seq |= h.chapter.id.equals("sequencia");
++        for (HelpText.Hit h : HelpText.search("ramificacao")) ram |= h.chapter.id.equals("projetil");
++        check("ajuda: busca acha speed (bit 64), sequencia (SEQ_PROJETIL) e ramificacao nos capitulos certos", spd && seq && ram, true);
++        check("ajuda: varias palavras exigem todas", HelpText.search("speed accel").size() > 0 && HelpText.search("speed palavraqueNaoExiste").size() == 0, true);
++        boolean lim = false;
++        for (HelpText.Hit h : HelpText.search("limites do jogo")) lim |= h.section.body.contains("10 caixas") && !h.section.body.contains("50 caixas");
++        check("ajuda: limite de caixas por frame e 10 (o array guarda 50 numeros)", lim, true);
++        boolean tabs = false;
++        for (HelpText.Hit h : HelpText.search("editor de reacoes")) tabs |= h.section.body.contains("EFEITOS") && h.section.body.contains("SEQ") && h.section.body.contains("ARRASTE");
++        check("ajuda: editor de reacoes descreve as faixas novas e arrastar a duracao", tabs, true);
 +
 +        System.out.println("ToolbarTest fails=" + BattleTest.fails);
 +    }

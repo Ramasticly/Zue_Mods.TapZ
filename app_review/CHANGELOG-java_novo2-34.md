@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 811 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 821 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -173,6 +173,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Abas**: ANIMAÇÃO | TEMPO | SPEED | VOZ | EFEITOS | SEQ | TOTAL (a antiga FLUXO se dividiu em VOZ, EFEITOS e SEQ).
 - Gestos e desenho só compilados e revisados (não executados num aparelho).
 
+### 3.1s AJUDA em capítulos (tela cheia)
+- O botão **AJUDA** abre uma **tela cheia** (`HelpScreen`) com a lista de **14 capítulos** (título + resumo): Primeiros passos · Menu superior (os 14 botões, dica de ordem e RESTAURAR ORDEM) · Timeline e ferramentas · Menus de edição da sprite · Menus de box · Golpe e HDAT 4 · Projéteis e ramificação · Sequências e transições · Reações · Speed e aceleração · Links e animações por flag · Sons, sprites e CNV · Salvar e backups · Avisos e limites. Tocar abre o capítulo (texto maior e subtítulos); a **busca** no topo acha seções de qualquer capítulo por palavra (sem diferenciar acento ou caixa; várias palavras = todas); o botão voltar do aparelho volta da seção para a lista.
+- `HelpText.chapters()/search()` (puro, testado em `ToolbarTest`); `toolbar()`, `screen()`, `all()` e `forButton()` continuam, derivados dos capítulos.
+- Correção de texto: o limite de caixas por frame é **10** (o jogo guarda 50 números, 5 por caixa), e não 50 caixas.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -210,7 +215,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpawnDiagTest (novo)** | 50 |
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 36 |
-| **ToolbarTest (novo)** | 65 |
+| **ToolbarTest (novo)** | 75 |
 | **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 37 |
 | **ReactionSlotsTest (novo)** | 20 |
