@@ -3141,8 +3141,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 18:28:09.925781141 +0000
-@@ -0,0 +1,586 @@
++++ b/HelpText.java	2026-10-24 18:38:39.263490593 +0000
+@@ -0,0 +1,593 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -3211,6 +3211,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +            t("TRANSIÇÃO travada e VER FLUXO", "transicao travada fluxo sequencia seq ver fluxo");
 +            t("Escolher reação e slots vazios", "reacao slot vazio slots escolher importar copiar personagem game data 14 33");
 +            t("Editor de reações", "reacao reacoes editor timeline passo passos speed velocidade voz efeitos parede seq dividir knockback empurrao hitstun duracao ano oponente");
++            t("Barra de ferramentas da reação", "dividir duplicar excluir apagar mais adicionar reacao passo speed voz parede seq total desfazer ferramentas cortar");
 +            t("Faixas da timeline", "timeline faixas faixa sprite hitbox speed som estilo");
 +            t("＋ e #", "adicionar mais novo criar numero");
 +            t("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER", "dividir duplicar excluir apagar remover desfazer undo cortar");
@@ -3439,13 +3440,19 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "Um passo é uma linha da tabela: a animação do oponente (ANO; negativo = espelhado), a duração no chão e no ar (ticks), velocidade e aceleração no chão e no ar, a próxima reação (COMP), o efeito de parede e a voz. "
 +                + "Os passos tocam em ordem; o jogo usa os valores de chão enquanto o oponente está no chão e os de ar quando está no ar. Velocidade −1 mantém a do passo anterior e −2 reduz pela metade; 255 na duração do ar significa \"até pousar\" (limite de 255 ticks).");
 +        rc.add("Escolher reação e slots vazios",
-+                "A tela \"Escolher reação\" mostra a prévia de cada reação do jogo e do personagem. Os slots do personagem vazios aparecem como \"＋ vazio\": tocar oferece copiar de uma reação do personagem, copiar da game data, importar de outro personagem (lê o 000.bin dele, com miniaturas dos ANOs) ou criar em branco. "
++                "A tela \"Escolher reação\" mostra a prévia de cada reação do jogo e do personagem. Os slots do personagem vazios aparecem como \"＋ vazio\": tocar oferece copiar de uma reação do personagem, copiar da game data, importar de outro personagem (lê o 000.bin dele) ou criar em branco. Em todas as listas a reação toca em laço como ficaria no slot (⏸ PAUSAR / ▶ TOCAR, ou toque na prévia) e USAR escolhe. "
 +                + "A reação nova entra no slot (dá para desfazer) e o hit passa a usá-la. Ao salvar, o bloco do slot é criado no 000.bin.txt se faltar (precisa existir o $HDAT_14+n no arquivo; se não existir o app avisa).");
 +        rc.add("Editor de reações",
-+                "EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela no estilo da timeline: no topo a prévia do oponente recebendo a reação (TOCAR, −1, +1, ⏮), no meio a timeline e embaixo as abas do passo selecionado. "
-+                + "CHÃO | AR escolhe o cenário simulado (oponente no chão, ou a 60 px do chão). Faixas: PASSOS (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra amarela da borda direita para mudar a duração do cenário atual), "
-+                + "SPEED (curva de x e y em px/tick e os valores v/a; = mantém, ½ metade), VOZ (♪), EFEITOS (parede) e SEQ (próxima reação). Tocar num item abre a aba dele; tocar numa célula vazia (＋) abre para adicionar. "
-+                + "Abas: ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ e TOTAL (deslocamento). ＋ PASSO, DUPLICAR, ◀ ▶, ✕ REMOVER e DESFAZER editam os passos. Tudo vem da simulação do jogo, a mesma da prévia.");
++                "EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela no estilo da timeline do ANO: no topo a prévia do oponente recebendo a reação (TOCAR, −1, +1, ⏮), no meio a timeline e embaixo a barra de ferramentas. "
++                + "A edição é na própria timeline; os menus só aparecem quando você toca num item. CHÃO | AR escolhe o cenário simulado (oponente no chão, ou a 60 px do chão). "
++                + "Faixas: PASSOS (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra amarela da borda direita para mudar a duração do cenário atual); "
++                + "SPEED em blocos, como no ANO (um bloco por velocidade própria, cobrindo os passos seguintes que a mantêm com −1; ARRASTE a borda direita do bloco para estender ou encurtar; embaixo, a curva de x e y em px/tick); "
++                + "VOZ (♪), EFEITOS (parede) e SEQ (próxima reação). Tocar num item abre a gaveta com os campos dele (✕ fecha); tocar numa célula vazia (＋) abre para adicionar. "
++                + "Digitar no campo vale na hora, e segurar − ou + muda continuamente. Tudo vem da simulação do jogo, a mesma da prévia.");
++        rc.add("Barra de ferramentas da reação",
++                "＋ cria no passo selecionado: passo novo (depois dele), speed, voz, efeito de parede ou próxima reação (SEQ). DIVIDIR parte o passo onde está o ponteiro em dois: a duração é repartida, o 2º passo mantém a velocidade (com aceleração, já parte da velocidade em que o 1º terminou) "
++                + "e a voz fica só no 1º. ATENÇÃO: cada passo reinicia a animação do oponente, então o ANO recomeça no 2º passo. DUPLICAR copia o passo; EXCLUIR apaga o item selecionado (o passo, o bloco SPEED, a voz, a parede ou a SEQ); "
++                + "◀ ▶ trocam o passo de lugar; Σ TOTAL mostra o deslocamento total e por passo; DESFAZER (no topo) volta a última edição. Em reação do jogo só vale olhar.");
 +        rc.add("Parede e próxima reação",
 +                "EFEITOS (parede): com 2 ou 3, se o oponente encosta na parede durante o passo a reação recomeça na reação indicada em SEQ; com 0 a parede não muda nada. SEQ (próxima reação): depois dos passos entra a reação indicada (1 a 29 do jogo, 30 a 49 do personagem); 0 = nenhuma, e o oponente se levanta ou cai conforme a altura.");
 +        c.add(rc);
@@ -5371,8 +5378,8 @@ diff -ruN a/QuickNotice.java b/QuickNotice.java
      QuickNotice left(String label, Runnable run) { left.add(new Action(label, true, run)); return this; }
 diff -ruN a/ReactionEdit.java b/ReactionEdit.java
 --- a/ReactionEdit.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/ReactionEdit.java	2026-10-24 17:20:26.718005866 +0000
-@@ -0,0 +1,33 @@
++++ b/ReactionEdit.java	2026-10-24 18:36:25.986719129 +0000
+@@ -0,0 +1,79 @@
 +package com.zue.attackeditor;
 +
 +/** Regras puras das edicoes da timeline de reacoes (arrastar a duracao de um passo). */
@@ -5404,6 +5411,52 @@ diff -ruN a/ReactionEdit.java b/ReactionEdit.java
 +        if (!canResize(t, row, air)) return null;
 +        int v = Math.max(MIN_DUR, Math.min(MAX_DUR, ticks));
 +        return new int[]{durColumn(air), v};
++    }
++
++    /**
++     * DIVIDIR: parte o passo {@code row} em dois, a {@code k} ticks do inicio (no cenario atual). O 1o passo dura {@code k}, o 2o o resto (o 255 "ate pousar" fica no 2o);
++     * a duracao do outro cenario e repartida na mesma proporcao. O 2o passo mantem (-1) a velocidade e a voz toca so no 1o; o ANO recomeca no 2o
++     * (cada passo reinicia a animacao do oponente). Devolve false se {@code k} nao cabe no passo.
++     */
++    static boolean split(ReactionTable t, int row, boolean air, int k) {
++        if (t == null || row < 0 || row >= t.rows) return false;
++        int dc = durColumn(air), oc = durColumn(!air);
++        int d = t.u8(row, dc), o = t.u8(row, oc);
++        if (k < MIN_DUR || (d == OPEN ? k > MAX_DUR : k >= d)) return false;
++        int oa = o, ob = o;
++        if (o != OPEN) {
++            double ratio = d == OPEN ? 0.5 : k / (double) d;
++            oa = Math.max(MIN_DUR, Math.min(MAX_DUR, (int) Math.round(o * ratio)));
++            ob = Math.max(MIN_DUR, Math.min(MAX_DUR, o - oa));
++        }
++        t.duplicateRow(row);
++        t.set(row, dc, k);
++        t.set(row + 1, dc, d == OPEN ? OPEN : d - k);
++        t.set(row, oc, oa);
++        t.set(row + 1, oc, ob);
++        for (int c : new int[]{3, 4, 7, 8}) t.set(row + 1, c, -1);
++        t.set(row + 1, 13, 0);
++        return true;
++    }
++
++    /** Velocidade da simulacao (x/128 px por tick) em unidades da tabela (1 = 0,1 px por tick), presa a -128..127. */
++    static int carryUnits(int fixed) { return Math.max(-128, Math.min(127, Math.round(fixed * 10f / 128f))); }
++
++    /**
++     * {@link #split} que preserva o movimento: com aceleracao no passo, o -1 do 2o passo manteria so a velocidade de partida (a aceleracao recomeca),
++     * entao o 2o passo recebe a velocidade em que o 1o terminou ({@code endOfFirst}: o estado do tick {@code k-1} da simulacao, mais a aceleracao daquele tick). Sem aceleracao, igual a {@link #split}.
++     */
++    static boolean splitKeepingMotion(ReactionTable t, int row, boolean air, int k, BattleSim.DamageTick endOfFirst) {
++        if (t == null || row < 0 || row >= t.rows) return false;
++        int b = air ? 7 : 3;
++        boolean accel = t.s8(row, b + 2) != 0 || t.s8(row, b + 3) != 0;
++        if (!split(t, row, air, k)) return false;
++        if (accel && endOfFirst != null) {
++            // a velocidade mostrada no tick k-1 ainda nao inclui a aceleracao desse tick: o 2o passo ja parte com ela somada
++            t.set(row + 1, b, Math.max(-128, Math.min(127, carryUnits(endOfFirst.xs) + Math.max(-127, t.s8(row, b + 2)))));
++            t.set(row + 1, b + 1, Math.max(-128, Math.min(127, carryUnits(endOfFirst.ys) + Math.max(-127, t.s8(row, b + 3)))));
++        }
++        return true;
 +    }
 +}
 diff -ruN a/ReactionEditor.java b/ReactionEditor.java
@@ -5792,10 +5845,106 @@ diff -ruN a/ReactionPreview.java b/ReactionPreview.java
 -        postInvalidateOnAnimation();
      }
  }
+diff -ruN a/ReactionRuns.java b/ReactionRuns.java
+--- a/ReactionRuns.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReactionRuns.java	2026-10-24 18:35:17.971057799 +0000
+@@ -0,0 +1,92 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Faixa SPEED da timeline de reacoes em "corridas", como no ANO: um passo com velocidade propria (x ou y diferente de -1) abre uma corrida
++ * e os passos seguintes que mantem (-1) x e y fazem parte dela. A corrida vai ate o proximo passo com velocidade propria (ou ao fim da tabela).
++ * Linhas antes da primeira velocidade propria (todas -1) nao pertencem a corrida alguma. Java puro.
++ */
++final class ReactionRuns {
++    private ReactionRuns() { }
++
++    /** Coluna da velocidade x do cenario (a y e a seguinte): chao 3, ar 7. */
++    static int col(boolean air) { return air ? 7 : 3; }
++
++    /** O passo so mantem (-1) a velocidade x e y do anterior? */
++    static boolean keeps(ReactionTable t, int row, boolean air) {
++        int c = col(air);
++        return t.s8(row, c) == -1 && t.s8(row, c + 1) == -1;
++    }
++
++    /** Corridas do cenario: {primeiro passo, fim exclusivo}, em ordem. */
++    static List<int[]> runs(ReactionTable t, boolean air) {
++        List<int[]> out = new ArrayList<int[]>();
++        if (t == null) return out;
++        int start = -1;
++        for (int r = 0; r < t.rows; r++) {
++            if (!keeps(t, r, air)) {
++                if (start >= 0) out.add(new int[]{start, r});
++                start = r;
++            }
++        }
++        if (start >= 0) out.add(new int[]{start, t.rows});
++        return out;
++    }
++
++    /** Indice (em {@link #runs}) da corrida que contem o passo, ou -1. */
++    static int runOf(ReactionTable t, boolean air, int row) {
++        List<int[]> rs = runs(t, air);
++        for (int i = 0; i < rs.size(); i++) if (row >= rs.get(i)[0] && row < rs.get(i)[1]) return i;
++        return -1;
++    }
++
++    private static void setSpeed(ReactionTable t, int row, boolean air, int x, int y) {
++        t.set(row, col(air), x);
++        t.set(row, col(air) + 1, y);
++    }
++
++    /**
++     * Arrasta o fim (borda direita) da corrida {@code run} para o passo {@code newEnd} (exclusivo): a fronteira com a proxima corrida anda junto
++     * (os passos que trocam de lado passam a manter ou a receber a velocidade da proxima; nada e apagado). Sem proxima corrida, encurtar abre uma
++     * corrida nova de velocidade 0 (parado) onde o fim ficou; estender alem da tabela nao existe. Devolve true se mudou algo.
++     */
++    static boolean setRunEnd(ReactionTable t, boolean air, int run, int newEnd) {
++        List<int[]> rs = runs(t, air);
++        if (run < 0 || run >= rs.size()) return false;
++        int[] r = rs.get(run);
++        newEnd = Math.max(r[0] + 1, newEnd);
++        if (run == rs.size() - 1) {
++            if (newEnd >= r[1]) return false;
++            setSpeed(t, newEnd, air, 0, 0);
++            return true;
++        }
++        int[] n = rs.get(run + 1);
++        newEnd = Math.min(n[1] - 1, newEnd);
++        int e = r[1];
++        if (newEnd == e) return false;
++        int c = col(air);
++        int sx = t.s8(e, c), sy = t.s8(e, c + 1);
++        for (int row = Math.min(e, newEnd); row < n[1]; row++) {
++            if (row == newEnd) setSpeed(t, row, air, sx, sy);
++            else setSpeed(t, row, air, -1, -1);
++        }
++        return true;
++    }
++
++    /** Tira a velocidade propria do inicio da corrida (x e y = -1): ela passa a seguir a anterior (ou o repouso, se for a primeira). */
++    static boolean removeRun(ReactionTable t, boolean air, int run) {
++        List<int[]> rs = runs(t, air);
++        if (run < 0 || run >= rs.size()) return false;
++        setSpeed(t, rs.get(run)[0], air, -1, -1);
++        return true;
++    }
++
++    /** O passo so mantinha a velocidade: passa a ter velocidade propria 0,0 (corrida nova). Devolve false se ja tinha. */
++    static boolean startRun(ReactionTable t, boolean air, int row) {
++        if (t == null || row < 0 || row >= t.rows || !keeps(t, row, air)) return false;
++        setSpeed(t, row, air, 0, 0);
++        return true;
++    }
++}
 diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 --- a/ReactionScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/ReactionScreen.java	2026-10-24 18:31:41.506677693 +0000
-@@ -0,0 +1,608 @@
++++ b/ReactionScreen.java	2026-10-24 18:38:13.637561034 +0000
+@@ -0,0 +1,741 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -5814,13 +5963,14 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +import android.widget.TextView;
 +
 +/**
-+ * Editor de reacao estilo timeline: previa da reacao (com play e ponteiro), timeline dos passos (ANO do oponente, duracao, velocidade...) e abas de edicao.
++ * Editor de reacao estilo timeline: previa da reacao (com play e ponteiro), timeline dos passos (ANO do oponente, duracao, velocidade...) e barra de ferramentas.
++ * A edicao e na propria timeline (arrastar a borda de um passo ou de um bloco SPEED, DIVIDIR, DUPLICAR, EXCLUIR...); a gaveta de baixo so abre ao tocar num item.
 + * Os dados vem de {@link ReactionTrace} (a simulacao real). Cenario CHAO | AR escolhe qual duracao/velocidade a timeline simula e mostra.
 + * Reacoes do personagem sao editaveis (desfazer pelo editor principal); as do jogo, so leitura.
 + */
 +final class ReactionScreen {
-+    private static final String[] PAGES = {"ANIMAÇÃO", "TEMPO", "SPEED", "VOZ", "EFEITOS", "SEQ", "TOTAL"};
-+    private static final int P_ANIM = 0, P_TIME = 1, P_SPEED = 2, P_VOICE = 3, P_EFFECTS = 4, P_SEQ = 5, P_TOTAL = 6;
++    private static final String[] PAGES = {"PASSO", "SPEED", "VOZ", "EFEITOS", "SEQ", "TOTAL"};
++    private static final int P_STEP = 0, P_SPEED = 1, P_VOICE = 2, P_EFFECTS = 3, P_SEQ = 4, P_TOTAL = 5;
 +    private static final int C_BLUE = 0xFF4C8DFF, C_AMBER = 0xFFFFB454;
 +
 +    private final Context c;
@@ -5834,9 +5984,10 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +    private Dialog dlg;
 +    private ReactionPreview preview;
 +    private ReactionTimelineView tl;
-+    private LinearLayout pageBox, tabs;
-+    private TextView tickLabel, playBtn, btnGround, btnAir, title;
-+    private final java.util.ArrayList<TextView> tabViews = new java.util.ArrayList<TextView>();
++    private LinearLayout pageBox, drawer;
++    private TextView tickLabel, playBtn, btnGround, btnAir, title, drawerTitle, hint;
++    private boolean drawerOpen;
++    private int selLane = ReactionTimelineView.LANE_PASSOS;
 +    private ReactionTrace trace;
 +    private boolean air;
 +    private int sel, page;
@@ -5914,7 +6065,7 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        tl = new ReactionTimelineView(c);
 +        tl.setOpponent(view.opponentDac(), view.opponentSprites());
 +        tl.setListener(new ReactionTimelineView.Listener() {
-+            @Override public void onSelectRow(int row) { selectRow(row); }
++            @Override public void onSelectRow(int row) { selLane = ReactionTimelineView.LANE_PASSOS; tl.setSelectedLane(selLane); sel = row; tl.setSelected(row); openDrawer(P_STEP); }
 +            @Override public void onScrub(int tick) { preview.seek(tick); followRow(tick); updateLabel(); stopPlayUi(); }
 +            @Override public void onResize(int row, int ticks) {
 +                int[] r = ReactionEdit.resize(table(), row, air, ticks);
@@ -5923,45 +6074,77 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +                setCell(r[0], r[1]);
 +            }
 +            @Override public void onOpenLane(int lane, int row) {
++                ReactionTable t = table();
++                if (lane == ReactionTimelineView.LANE_SPEED && t != null) {
++                    int run = ReactionRuns.runOf(t, air, row);
++                    if (run >= 0) row = ReactionRuns.runs(t, air).get(run)[0];
++                }
++                selLane = lane;
++                tl.setSelectedLane(lane);
 +                sel = row;
 +                tl.setSelected(row);
-+                page = lane == ReactionTimelineView.LANE_SPEED ? P_SPEED : lane == ReactionTimelineView.LANE_VOZ ? P_VOICE : lane == ReactionTimelineView.LANE_EFEITOS ? P_EFFECTS : P_SEQ;
-+                updateTabs();
-+                buildPage();
++                openDrawer(lane == ReactionTimelineView.LANE_SPEED ? P_SPEED : lane == ReactionTimelineView.LANE_VOZ ? P_VOICE : lane == ReactionTimelineView.LANE_EFEITOS ? P_EFFECTS : P_SEQ);
++            }
++            @Override public void onResizeRun(final int run, final int newEnd) {
++                final ReactionTable t = table();
++                if (t == null || !editable) return;
++                java.util.List<int[]> rs = ReactionRuns.runs(t, air);
++                if (run < 0 || run >= rs.size()) return;
++                selLane = ReactionTimelineView.LANE_SPEED;
++                tl.setSelectedLane(selLane);
++                sel = rs.get(run)[0];
++                view.editReaction(type, new Runnable() { public void run() { ReactionRuns.setRunEnd(t, air, run, newEnd); } });
++                refresh();
 +            }
 +        });
 +        root.addView(tl, new LinearLayout.LayoutParams(-1, -2));
 +
-+        // abas + pagina
-+        HorizontalScrollView hs = new HorizontalScrollView(c);
-+        hs.setHorizontalScrollBarEnabled(false);
-+        tabs = new LinearLayout(c);
-+        for (int i = 0; i < PAGES.length; i++) {
-+            final int pi = i;
-+            TextView tv = btn(PAGES[i], i == 0, new View.OnClickListener() { public void onClick(View v) { page = pi; updateTabs(); buildPage(); } });
-+            tabViews.add(tv);
-+            tabs.addView(tv);
++        // barra de ferramentas (como a da timeline do ANO)
++        if (editable) {
++            HorizontalScrollView hs = new HorizontalScrollView(c);
++            hs.setHorizontalScrollBarEnabled(false);
++            LinearLayout bar = new LinearLayout(c);
++            bar.setGravity(Gravity.CENTER_VERTICAL);
++            final TextView plus = btn("＋", true, null);
++            plus.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { addMenu(plus); } });
++            bar.addView(plus);
++            bar.addView(btn("DIVIDIR", false, new View.OnClickListener() { public void onClick(View v) { splitAtPointer(); } }));
++            bar.addView(btn("DUPLICAR", false, new View.OnClickListener() { public void onClick(View v) { dupRow(); } }));
++            bar.addView(btn("EXCLUIR", false, new View.OnClickListener() { public void onClick(View v) { deleteSelected(); } }));
++            bar.addView(btn("◀", false, new View.OnClickListener() { public void onClick(View v) { moveRow(-1); } }));
++            bar.addView(btn("▶", false, new View.OnClickListener() { public void onClick(View v) { moveRow(1); } }));
++            bar.addView(btn("Σ TOTAL", false, new View.OnClickListener() { public void onClick(View v) { openDrawer(P_TOTAL); } }));
++            hs.addView(bar);
++            root.addView(hs, new LinearLayout.LayoutParams(-1, -2));
++        } else {
++            LinearLayout bar = new LinearLayout(c);
++            bar.setGravity(Gravity.CENTER_VERTICAL);
++            bar.addView(btn("Σ TOTAL", false, new View.OnClickListener() { public void onClick(View v) { openDrawer(P_TOTAL); } }));
++            root.addView(bar);
 +        }
-+        hs.addView(tabs);
-+        root.addView(hs, new LinearLayout.LayoutParams(-1, -2));
++
++        // dica (gaveta fechada) e gaveta (so abre ao tocar num item)
++        hint = text(editable
++                ? "Toque num item da timeline para editar. Arraste a borda direita (amarela) de um passo para mudar a duração e a de um bloco SPEED para estender ou encurtar a velocidade. DIVIDIR parte o passo onde está o ponteiro."
++                : "Reação do jogo (só leitura). Toque num item da timeline para ver os valores; o ponteiro mostra o estado do oponente tick a tick.", LayoutManager.DIM, 11, false);
++        hint.setPadding(dp(8), dp(10), dp(8), dp(4));
++        root.addView(hint, new LinearLayout.LayoutParams(-1, 0, 1f));
++        drawer = new LinearLayout(c);
++        drawer.setOrientation(LinearLayout.VERTICAL);
++        drawer.setVisibility(View.GONE);
++        LinearLayout dh = new LinearLayout(c);
++        dh.setGravity(Gravity.CENTER_VERTICAL);
++        drawerTitle = text("", LayoutManager.ACCENT, 12, true);
++        dh.addView(drawerTitle, new LinearLayout.LayoutParams(0, -2, 1f));
++        dh.addView(btn("✕", false, new View.OnClickListener() { public void onClick(View v) { closeDrawer(); } }));
++        drawer.addView(dh);
 +        ScrollView sv = new ScrollView(c);
 +        pageBox = new LinearLayout(c);
 +        pageBox.setOrientation(LinearLayout.VERTICAL);
 +        pageBox.setPadding(dp(4), dp(2), dp(4), dp(16));
 +        sv.addView(pageBox);
-+        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
-+
-+        // barra de passos
-+        if (editable) {
-+            LinearLayout bar = new LinearLayout(c);
-+            bar.setGravity(Gravity.CENTER);
-+            bar.addView(btn("＋ PASSO", true, new View.OnClickListener() { public void onClick(View v) { addRow(); } }));
-+            bar.addView(btn("DUPLICAR", false, new View.OnClickListener() { public void onClick(View v) { dupRow(); } }));
-+            bar.addView(btn("◀", false, new View.OnClickListener() { public void onClick(View v) { moveRow(-1); } }));
-+            bar.addView(btn("▶", false, new View.OnClickListener() { public void onClick(View v) { moveRow(1); } }));
-+            bar.addView(btn("✕ REMOVER", false, new View.OnClickListener() { public void onClick(View v) { delRow(); } }));
-+            root.addView(bar);
-+        }
++        drawer.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++        root.addView(drawer, new LinearLayout.LayoutParams(-1, 0, 1f));
 +        dlg.setContentView(root);
 +        dlg.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
 +            @Override public void onDismiss(android.content.DialogInterface i) { preview.pause(); pageBox.removeCallbacks(lightRun); view.flushReactionEdit(); onChanged.run(); }
@@ -6053,23 +6236,33 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        buildPage();
 +    }
 +
-+    // ---- abas ----
++    // ---- gaveta ----
 +
-+    private void updateTabs() {
-+        for (int i = 0; i < tabViews.size(); i++) styleToggle(tabViews.get(i), i == page);
++    private void openDrawer(int pg) {
++        page = pg;
++        drawerOpen = true;
++        drawer.setVisibility(View.VISIBLE);
++        hint.setVisibility(View.GONE);
++        buildPage();
++    }
++
++    private void closeDrawer() {
++        drawerOpen = false;
++        drawer.setVisibility(View.GONE);
++        hint.setVisibility(View.VISIBLE);
++        updaters.clear();
++        pageBox.removeAllViews();
 +    }
 +
 +    private void buildPage() {
++        if (!drawerOpen) return;
 +        pageBox.removeAllViews();
 +        updaters.clear();
 +        ReactionTable t = table();
 +        if (t == null || sel < 0 || sel >= t.rows) return;
-+        TextView h = text("Passo " + (sel + 1) + " de " + t.rows + (editable ? "" : "  ·  só leitura") + "  ·  cenário " + (air ? "AR" : "CHÃO"), LayoutManager.TEXT, 12, true);
-+        h.setPadding(dp(4), dp(8), 0, dp(4));
-+        pageBox.addView(h);
++        drawerTitle.setText(PAGES[page] + (page == P_TOTAL ? "" : "  ·  passo " + (sel + 1) + " de " + t.rows) + (editable ? "" : "  ·  só leitura") + "  ·  " + (air ? "AR" : "CHÃO"));
 +        switch (page) {
-+            case P_ANIM: pageAnimation(t); break;
-+            case P_TIME: pageTime(t); break;
++            case P_STEP: pageAnimation(t); pageTime(t); break;
 +            case P_SPEED: pageMove(t); break;
 +            case P_VOICE: pageVoice(t); break;
 +            case P_EFFECTS: pageEffects(t); break;
@@ -6169,6 +6362,17 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +            onChanged.run();
 +            refresh();
 +        } }));
++        final TextView block = text("", LayoutManager.DIM, 10, false);
++        pageBox.addView(block);
++        upd(new Runnable() { public void run() {
++            ReactionTable tt = table();
++            int run = tt == null ? -1 : ReactionRuns.runOf(tt, air, sel);
++            if (run < 0) block.setText("Este passo ainda não tem velocidade própria (parte do repouso). Preencher um valor cria o bloco.");
++            else {
++                int[] r = ReactionRuns.runs(tt, air).get(run);
++                block.setText("Bloco SPEED: passos " + (r[0] + 1) + " a " + r[1] + (r[1] - r[0] > 1 ? " (os seguintes mantêm esta velocidade; arraste a borda do bloco na timeline para mudar até onde vai)" : "") + ".");
++            }
++        } });
 +        pageBox.addView(text("Unidades do jogo: 1 = 0,1 px por tick (a velocidade x só vale para o lado: o oponente virado anda para trás). −1 mantém o valor do passo anterior e −2 reduz pela metade. "
 +                + "A aceleração soma na velocidade a cada tick, e quando a soma cruza o zero a velocidade para (atrito).", LayoutManager.DIM, 10, false));
 +    }
@@ -6322,6 +6526,84 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        updateLabel();
 +        runUpdaters();
 +        onChanged.run();
++    }
++
++    // ---- barra de ferramentas ----
++
++    /** ＋: cria no passo selecionado (passo novo, ou abre a gaveta da faixa para preencher voz, parede, SEQ e speed). */
++    private void addMenu(View anchor) {
++        android.widget.PopupMenu m = new android.widget.PopupMenu(c, anchor);
++        m.getMenu().add(0, 0, 0, "Passo novo (depois do selecionado)");
++        m.getMenu().add(0, 1, 1, "Speed neste passo");
++        m.getMenu().add(0, 2, 2, "Voz neste passo");
++        m.getMenu().add(0, 3, 3, "Efeito de parede neste passo");
++        m.getMenu().add(0, 4, 4, "Próxima reação (SEQ) neste passo");
++        m.setOnMenuItemClickListener(new android.widget.PopupMenu.OnMenuItemClickListener() {
++            @Override public boolean onMenuItemClick(android.view.MenuItem it) {
++                int id = it.getItemId();
++                if (id == 0) { addRow(); return true; }
++                final ReactionTable t = table();
++                if (t == null || sel < 0 || sel >= t.rows) return true;
++                if (id == 1) {
++                    selLane = ReactionTimelineView.LANE_SPEED;
++                    if (ReactionRuns.keeps(t, sel, air)) {
++                        view.editReaction(type, new Runnable() { public void run() { ReactionRuns.startRun(t, air, sel); } });
++                        refresh();
++                    }
++                }
++                else selLane = id == 2 ? ReactionTimelineView.LANE_VOZ : id == 3 ? ReactionTimelineView.LANE_EFEITOS : ReactionTimelineView.LANE_SEQ;
++                tl.setSelectedLane(selLane);
++                openDrawer(id == 1 ? P_SPEED : id == 2 ? P_VOICE : id == 3 ? P_EFFECTS : P_SEQ);
++                return true;
++            }
++        });
++        m.show();
++    }
++
++    /** DIVIDIR: parte o passo onde esta o ponteiro em dois (o 2o mantem a velocidade; o ANO do oponente recomeca nele). */
++    private void splitAtPointer() {
++        final ReactionTable t = table();
++        ReactionTrace.Seg sg = tl.segAt(tl.pointerTick());
++        if (t == null || trace == null || !tl.isOwn(sg)) {
++            android.widget.Toast.makeText(c, "Ponha o ponteiro dentro de um passo desta reação", android.widget.Toast.LENGTH_SHORT).show();
++            return;
++        }
++        final int row = sg.row, k = tl.pointerTick() - sg.start;
++        final BattleSim.DamageTick endOfFirst = k >= 1 && sg.start + k - 1 < trace.ticks.size() ? trace.ticks.get(sg.start + k - 1) : null;
++        final boolean[] ok = {false};
++        // confere antes (a tabela so muda se couber): em uma copia
++        ReactionTable probe = t.copy();
++        if (!ReactionEdit.splitKeepingMotion(probe, row, air, k, endOfFirst)) {
++            android.widget.Toast.makeText(c, "Ponha o ponteiro depois do 1º tick e antes do fim do passo para dividir", android.widget.Toast.LENGTH_SHORT).show();
++            return;
++        }
++        view.editReaction(type, new Runnable() { public void run() { ok[0] = ReactionEdit.splitKeepingMotion(t, row, air, k, endOfFirst); } });
++        sel = row + 1;
++        selLane = ReactionTimelineView.LANE_PASSOS;
++        tl.setSelectedLane(selLane);
++        onChanged.run();
++        refresh();
++        android.widget.Toast.makeText(c, "Passo dividido em " + k + " + " + (t.u8(row + 1, ReactionEdit.durColumn(air)) == 255 ? "até pousar" : String.valueOf(t.u8(row + 1, ReactionEdit.durColumn(air)))) + " ticks (a animação do oponente recomeça no 2º passo)", android.widget.Toast.LENGTH_LONG).show();
++    }
++
++    /** EXCLUIR: o item selecionado (passo, bloco SPEED, voz, parede ou SEQ do passo). */
++    private void deleteSelected() {
++        final ReactionTable t = table();
++        if (t == null || sel < 0 || sel >= t.rows) return;
++        switch (selLane) {
++            case ReactionTimelineView.LANE_SPEED: {
++                final int run = ReactionRuns.runOf(t, air, sel);
++                if (run < 0) { android.widget.Toast.makeText(c, "Este passo não tem velocidade própria", android.widget.Toast.LENGTH_SHORT).show(); return; }
++                view.editReaction(type, new Runnable() { public void run() { ReactionRuns.removeRun(t, air, run); } });
++                onChanged.run();
++                refresh();
++                return;
++            }
++            case ReactionTimelineView.LANE_VOZ: setCell(13, 0); return;
++            case ReactionTimelineView.LANE_EFEITOS: setCell(12, 0); return;
++            case ReactionTimelineView.LANE_SEQ: setCell(11, 0); return;
++            default: delRow();
++        }
 +    }
 +
 +    private void addRow() {
@@ -6502,8 +6784,8 @@ diff -ruN a/ReactionTable.java b/ReactionTable.java
          byte[] n = new byte[(rows - 1) * STRIDE];
 diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 --- a/ReactionTimelineView.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/ReactionTimelineView.java	2026-10-24 17:21:13.339627986 +0000
-@@ -0,0 +1,432 @@
++++ b/ReactionTimelineView.java	2026-10-24 18:37:11.350441793 +0000
+@@ -0,0 +1,548 @@
 +package com.zue.attackeditor;
 +
 +import android.content.Context;
@@ -6519,7 +6801,8 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +/**
 + * Timeline de uma reacao de dano, no estilo da timeline do editor: o que {@link ReactionTrace} mostra que o jogo faz, tick a tick.
 + * Faixas: PASSOS (uma caixa por linha da tabela, com a miniatura do ANO do oponente; arraste a borda direita para mudar a duracao),
-+ * SPEED (curva de x e y em px/tick e os valores v/a do passo), VOZ, EFEITOS (parede) e SEQ (proxima reacao).
++ * SPEED (corridas, como no ANO: um bloco por velocidade propria, cobrindo os passos que a mantem; arraste a borda direita do bloco; embaixo, a curva de x e y em px/tick),
++ * VOZ, EFEITOS (parede) e SEQ (proxima reacao).
 + * O ponteiro fica no centro; arrastar rola (e leva a previa junto); pinca faz zoom; tocar num passo o seleciona e tocar num item das outras
 + * faixas abre a aba dele (tocar numa celula vazia abre para adicionar).
 + */
@@ -6535,12 +6818,15 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +        void onResize(int row, int ticks);
 +        /** Tocou num item (ou celula vazia) de uma faixa que nao e a dos passos. */
 +        void onOpenLane(int lane, int row);
++        /** Soltou a borda direita de um bloco SPEED: o bloco {@code run} (ver {@link ReactionRuns#runs}) passa a terminar no passo {@code newEnd} (exclusivo). */
++        void onResizeRun(int run, int newEnd);
 +    }
 +
 +    private static final float RULER_DP = 16;
-+    private static final float[] LANE_DP = {56, 52, 20, 20, 20};
++    private static final float[] LANE_DP = {56, 62, 20, 20, 20};
 +    private static final String[] LANE_NAMES = {"PASSOS", "SPEED", "VOZ", "EFEITOS", "SEQ"};
-+    private static final int C_OWN = 0xFF3A6EA5, C_OWN_SEL = 0xFF4C8DFF, C_OTHER = 0xFF3A4150, C_VX = 0xFFFF8A66, C_VY = 0xFF3DDC84, C_VOICE = 0xFFB07CFF, C_WALL = 0xFFFF5D8F, C_SEQ = 0xFFFFB454;
++    private static final int C_OWN = 0xFF3A6EA5, C_OWN_SEL = 0xFF4C8DFF, C_OTHER = 0xFF3A4150, C_VX = 0xFFFF8A66, C_VY = 0xFF3DDC84, C_VOICE = 0xFFB07CFF, C_WALL = 0xFFFF5D8F, C_SEQ = 0xFFFFB454, C_SPEED = 0xFF2F8F83, C_SPEED_SEL = 0xFF3FBFAE;
++    private static final float BAND_DP = 17;
 +    private static final float HANDLE_DP = 16;
 +
 +    private final float d;
@@ -6562,11 +6848,13 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +    private float playTick;
 +    private float ppt;
 +
-+    private static final int M_NONE = 0, M_SCRUB = 1, M_RESIZE = 2;
++    private static final int M_NONE = 0, M_SCRUB = 1, M_RESIZE = 2, M_RUN = 3;
 +    private int mode;
 +    private float downX, downY, downTick;
 +    private boolean moved, scaling;
 +    private int resizeRow, resizeBase, resizeDur;
++    private int runIdx, runBase, runTarget;
++    private int selLane = LANE_PASSOS;
 +
 +    ReactionTimelineView(Context c) {
 +        super(c);
@@ -6599,6 +6887,9 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +    }
 +
 +    void setSelected(int row) { if (row != sel) { sel = row; invalidate(); } }
++
++    /** Faixa do item selecionado (o passo selecionado fica destacado nessa faixa). */
++    void setSelectedLane(int lane) { if (lane != selLane) { selLane = lane; invalidate(); } }
 +
 +    /** Ponteiro em ticks (pode ser fracionario durante o play). */
 +    void setPointer(float tick) {
@@ -6669,6 +6960,7 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +            if (x1 < g || x0 > W) continue;
 +            segmentBox(c, s, isOwn(s), x0, x1);
 +        }
++        runs(c);
 +        velocity(c, total);
 +        p.setColor(0x55FFFFFF);
 +        p.setStrokeWidth(1f * d);
@@ -6688,6 +6980,19 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +                t.setFakeBoldText(false);
 +            }
 +        }
++        if (mode == M_RUN) {
++            ReactionTrace.Seg s = segOfRow(runTarget - 1);
++            if (s != null) {
++                float gx = xOf(s.end);
++                p.setColor(0xFFFFD84C);
++                p.setStrokeWidth(2f * d);
++                c.drawLine(gx, laneTop(LANE_SPEED), gx, laneTop(LANE_SPEED) + laneH(LANE_SPEED), p);
++                t.setColor(0xFFFFD84C);
++                t.setFakeBoldText(true);
++                c.drawText("até o passo " + runTarget, Math.min(gx + 3 * d, W - 70 * d), laneTop(LANE_SPEED) + laneH(LANE_SPEED) - 3 * d, t);
++                t.setFakeBoldText(false);
++            }
++        }
 +        c.restore();
 +        float px = g + contentW() / 2f;
 +        p.setColor(0xFFFFFFFF);
@@ -6699,6 +7004,20 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +        path.lineTo(px, 6 * d);
 +        path.close();
 +        c.drawPath(path, p);
++    }
++
++    /** Fronteira entre passos (indice do passo seguinte, exclusivo) mais perto de x, da fronteira do inicio da corrida + 1 em diante. */
++    private int nearestBoundary(float x) {
++        java.util.List<int[]> rs = ReactionRuns.runs(table, air);
++        int lo = runIdx < rs.size() ? rs.get(runIdx)[0] + 1 : 1, best = lo;
++        float bd = Float.MAX_VALUE;
++        for (int k = lo; k <= table.rows; k++) {
++            ReactionTrace.Seg sg = segOfRow(k - 1);
++            if (sg == null) continue;
++            float dx = Math.abs(xOf(sg.end) - x);
++            if (dx < bd) { bd = dx; best = k; }
++        }
++        return best;
 +    }
 +
 +    private ReactionTrace.Seg segOfRow(int row) {
@@ -6760,30 +7079,72 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +            float hx = rf.right - 3 * d;
 +            c.drawRoundRect(hx - 1.5f * d, rf.centerY() - 8 * d, hx + 1.5f * d, rf.centerY() + 8 * d, 2 * d, 2 * d, p);
 +        }
-+        int b = air ? 7 : 3;
-+        speedLane(c, s, x0, x1, "v " + tok(table.s8(s.row, b)) + "," + tok(table.s8(s.row, b + 1)) + "  a " + tok(table.s8(s.row, b + 2)) + "," + tok(table.s8(s.row, b + 3)));
++        if (ReactionRuns.runOf(table, air, s.row) < 0) chip(c, LANE_SPEED, x0, x1, null, C_SPEED, false, true);      // antes da 1a velocidade propria: celula vazia (＋)
 +        int voice = table.s8(s.row, 13);
-+        chip(c, LANE_VOZ, x0, x1, voice > 0 ? "♪ " + voice : null, C_VOICE);
++        chip(c, LANE_VOZ, x0, x1, voice > 0 ? "♪ " + voice : null, C_VOICE, selLane == LANE_VOZ && s.row == this.sel, false);
 +        int wall = table.u8(s.row, 12);
-+        chip(c, LANE_EFEITOS, x0, x1, wall > 0 ? "parede " + wall : null, C_WALL);
++        chip(c, LANE_EFEITOS, x0, x1, wall > 0 ? "parede " + wall : null, C_WALL, selLane == LANE_EFEITOS && s.row == this.sel, false);
 +        int comp = table.u8(s.row, 11);
-+        chip(c, LANE_SEQ, x0, x1, comp > 0 ? "→ " + (comp >= 30 ? "pers. " + (comp - 30) : "jogo " + comp) : null, C_SEQ);
++        chip(c, LANE_SEQ, x0, x1, comp > 0 ? "→ " + (comp >= 30 ? "pers. " + (comp - 30) : "jogo " + comp) : null, C_SEQ, selLane == LANE_SEQ && s.row == this.sel, false);
 +    }
 +
-+    private void speedLane(Canvas c, ReactionTrace.Seg s, float x0, float x1, String text) {
-+        float top = laneTop(LANE_SPEED);
-+        c.save();
-+        c.clipRect(Math.max(x0, gutter()), top, x1 - 1, top + laneH(LANE_SPEED));
-+        t.setColor(0xFFE6E8EC);
-+        t.setTextSize(7.5f * d);
-+        c.drawText(text, Math.max(x0, gutter()) + 3 * d, top + 9 * d, t);
-+        t.setTextSize(9f * d);
-+        c.restore();
++    private float runX0(int[] r) {
++        ReactionTrace.Seg s = segOfRow(r[0]);
++        return s == null ? Float.NaN : xOf(s.start);
++    }
++
++    private float runX1(int[] r) {
++        ReactionTrace.Seg s = segOfRow(r[1] - 1);
++        return s == null ? Float.NaN : xOf(s.end);
++    }
++
++    /** Blocos SPEED: um por corrida (passo com velocidade propria + os que a mantem), com o valor do inicio e a alca da borda direita. */
++    private void runs(Canvas c) {
++        java.util.List<int[]> rs = ReactionRuns.runs(table, air);
++        int b = air ? 7 : 3;
++        int selRun = selLane == LANE_SPEED ? ReactionRuns.runOf(table, air, sel) : -2;
++        float top = laneTop(LANE_SPEED) + 2 * d, bh = BAND_DP * d;
++        for (int i = 0; i < rs.size(); i++) {
++            int[] r = rs.get(i);
++            float x0 = runX0(r), x1 = runX1(r);
++            if (Float.isNaN(x0) || Float.isNaN(x1)) continue;
++            if (mode == M_RUN && i == runIdx) {              // arrastando: o bloco acompanha o alvo
++                ReactionTrace.Seg e = segOfRow(runTarget - 1);
++                if (e != null) x1 = xOf(e.end);
++            }
++            if (x1 < gutter() || x0 > getWidth()) continue;
++            p.setColor(i == selRun ? C_SPEED_SEL : C_SPEED);
++            rf.set(x0 + 1, top, Math.max(x0 + 4 * d, x1 - 1), top + bh);
++            c.drawRoundRect(rf, 3 * d, 3 * d, p);
++            if (i == selRun) {
++                p.setStyle(Paint.Style.STROKE);
++                p.setColor(0xFFFFFFFF);
++                p.setStrokeWidth(1.5f * d);
++                c.drawRoundRect(rf, 3 * d, 3 * d, p);
++                p.setStyle(Paint.Style.FILL);
++            }
++            c.save();
++            c.clipRect(Math.max(rf.left, gutter()), rf.top, rf.right, rf.bottom);
++            t.setColor(0xFFFFFFFF);
++            t.setTextSize(8f * d);
++            t.setFakeBoldText(true);
++            String txt = "v " + tok(table.s8(r[0], b)) + "," + tok(table.s8(r[0], b + 1));
++            if (table.s8(r[0], b + 2) != 0 || table.s8(r[0], b + 3) != 0) txt += "  a " + tok(table.s8(r[0], b + 2)) + "," + tok(table.s8(r[0], b + 3));
++            c.drawText(txt, Math.max(rf.left, gutter()) + 3 * d, rf.centerY() + 3 * d, t);
++            t.setFakeBoldText(false);
++            t.setTextSize(9f * d);
++            c.restore();
++            if (editable) {
++                p.setColor(0xFFFFD84C);
++                float hx = rf.right - 3 * d;
++                c.drawRoundRect(hx - 1.5f * d, rf.centerY() - 6 * d, hx + 1.5f * d, rf.centerY() + 6 * d, 2 * d, 2 * d, p);
++            }
++        }
 +    }
 +
 +    /** Item (ou celula vazia tracejada) de uma faixa de um passo. */
-+    private void chip(Canvas c, int lane, float x0, float x1, String text, int color) {
-+        float top = laneTop(lane), h = laneH(lane);
++    private void chip(Canvas c, int lane, float x0, float x1, String text, int color, boolean selected, boolean band) {
++        float top = laneTop(lane), h = band ? (BAND_DP + 4) * d : laneH(lane);
 +        float l = Math.max(x0 + 1, gutter()), r = x1 - 1;
 +        if (r <= l) return;
 +        c.save();
@@ -6802,6 +7163,13 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +            p.setAlpha(190);
 +            c.drawRoundRect(l, top + 2 * d, r, top + h - 2 * d, 3 * d, 3 * d, p);
 +            p.setAlpha(255);
++            if (selected) {
++                p.setStyle(Paint.Style.STROKE);
++                p.setColor(0xFFFFFFFF);
++                p.setStrokeWidth(1.5f * d);
++                c.drawRoundRect(l, top + 2 * d, r, top + h - 2 * d, 3 * d, 3 * d, p);
++                p.setStyle(Paint.Style.FILL);
++            }
 +            t.setColor(0xFF10131A);
 +            t.setTextSize(8f * d);
 +            t.setFakeBoldText(true);
@@ -6833,10 +7201,11 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +    }
 +
 +    private void velocity(Canvas c, int total) {
-+        float top = laneTop(LANE_SPEED), h = laneH(LANE_SPEED), mid = top + 12 * d + (h - 12 * d) / 2f;
++        float band = (BAND_DP + 4) * d;
++        float top = laneTop(LANE_SPEED) + band, h = laneH(LANE_SPEED) - band, mid = top + h / 2f;
 +        float max = 1f;
 +        for (BattleSim.DamageTick k : trace.ticks) max = Math.max(max, Math.max(Math.abs(k.xs / 128f), Math.abs(k.ys / 128f)));
-+        float amp = (h - 12 * d) / 2f - 3 * d;
++        float amp = h / 2f - 3 * d;
 +        p.setColor(0x44FFFFFF);
 +        p.setStrokeWidth(1f);
 +        c.drawLine(gutter(), mid, getWidth(), mid, p);
@@ -6862,9 +7231,9 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +        }
 +        p.setStrokeWidth(1f);
 +        t.setColor(C_VX);
-+        c.drawText("x", 4 * d, top + 10 * d, t);
++        c.drawText("x", 4 * d, laneTop(LANE_SPEED) + 11 * d, t);
 +        t.setColor(C_VY);
-+        c.drawText("y", 12 * d, top + 10 * d, t);
++        c.drawText("y", 12 * d, laneTop(LANE_SPEED) + 11 * d, t);
 +    }
 +
 +    @Override public boolean onTouchEvent(MotionEvent e) {
@@ -6893,6 +7262,21 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +                        }
 +                    }
 +                }
++                // alca do bloco SPEED: borda direita de uma corrida
++                if (mode == M_SCRUB && editable && trace != null && laneAt(downY) == LANE_SPEED && downY < laneTop(LANE_SPEED) + (BAND_DP + 4) * d) {
++                    java.util.List<int[]> rs = ReactionRuns.runs(table, air);
++                    for (int i = 0; i < rs.size(); i++) {
++                        float ex = runX1(rs.get(i));
++                        if (Float.isNaN(ex) || ex <= gutter()) continue;
++                        if (downX >= ex - HANDLE_DP * d && downX <= ex + 8 * d) {
++                            mode = M_RUN;
++                            runIdx = i;
++                            runBase = rs.get(i)[1];
++                            runTarget = runBase;
++                            break;
++                        }
++                    }
++                }
 +                return true;
 +            }
 +            case MotionEvent.ACTION_MOVE:
@@ -6900,6 +7284,9 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +                if (Math.abs(e.getX() - downX) > 6 * d) moved = true;
 +                if (mode == M_RESIZE) {
 +                    resizeDur = ReactionEdit.dragged(resizeBase, e.getX() - downX, ppt);
++                    invalidate();
++                } else if (mode == M_RUN) {
++                    runTarget = nearestBoundary(e.getX());
 +                    invalidate();
 +                } else if (moved) {
 +                    setPointer(downTick - (e.getX() - downX) / ppt);
@@ -6913,6 +7300,17 @@ diff -ruN a/ReactionTimelineView.java b/ReactionTimelineView.java
 +                    invalidate();
 +                    if (moved && nd != base && listener != null) listener.onResize(row, nd);
 +                    else if (listener != null) listener.onSelectRow(row);
++                    return true;
++                }
++                if (mode == M_RUN) {
++                    int run = runIdx, nt = runTarget, base = runBase;
++                    mode = M_NONE;
++                    invalidate();
++                    if (moved && nt != base && listener != null) listener.onResizeRun(run, nt);
++                    else if (listener != null) {
++                        java.util.List<int[]> rs = ReactionRuns.runs(table, air);
++                        listener.onOpenLane(LANE_SPEED, run < rs.size() ? rs.get(run)[0] : 0);
++                    }
 +                    return true;
 +                }
 +                mode = M_NONE;
@@ -10836,8 +11234,8 @@ diff -ruN a/test/GameRulesTest.java b/test/GameRulesTest.java
 +}
 diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
 --- a/test/HelpSearchTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/HelpSearchTest.java	2026-10-24 18:28:48.491411067 +0000
-@@ -0,0 +1,86 @@
++++ b/test/HelpSearchTest.java	2026-10-24 18:39:07.758756010 +0000
+@@ -0,0 +1,92 @@
 +package com.zue.attackeditor;
 +
 +import java.util.List;
@@ -10901,6 +11299,12 @@ diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
 +        for (HelpText.Hit h : HelpText.search("speed")) if (h.tab) tabNoSnippet &= h.snippet.isEmpty();
 +        check("abas nao trazem trecho", tabNoSnippet, true);
 +
++        check("dividir: a timeline do ANO vem primeiro e a barra da reacao logo depois (as duas sao abas)", first("dividir") + "|" + HelpText.search("dividir").get(1).section.title.contains("ferramentas"),
++                "DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER[aba]|true");
++        check("erro: divdir acha as mesmas abas", first("divdir").endsWith("[aba]") && HelpText.search("divdir").get(1).section.title.contains("ferramentas"), true);
++        boolean warn = false;
++        for (HelpText.Hit h : HelpText.search("dividir")) warn |= h.section.body.contains("reinicia a animação");
++        check("a ajuda avisa que o ANO recomeca ao dividir", warn, true);
 +        check("lixo nao acha nada", HelpText.search("xqzwkjv").size(), 0);
 +        check("palavra extra inexistente zera", HelpText.search("speed palavraqueNaoExiste").size(), 0);
 +        check("busca vazia", HelpText.search("   ").size(), 0);
@@ -11439,8 +11843,8 @@ diff -ruN a/test/ObjMoveTest.java b/test/ObjMoveTest.java
 +}
 diff -ruN a/test/ReactionEditTest.java b/test/ReactionEditTest.java
 --- a/test/ReactionEditTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ReactionEditTest.java	2026-10-24 17:22:05.483352603 +0000
-@@ -0,0 +1,34 @@
++++ b/test/ReactionEditTest.java	2026-10-24 18:35:33.043803740 +0000
+@@ -0,0 +1,82 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -11471,6 +11875,54 @@ diff -ruN a/test/ReactionEditTest.java b/test/ReactionEditTest.java
 +        check("resize para 0 vira 1", ReactionEdit.resize(t, 0, false, 0)[1], 1);
 +        t.set(0, g[0], g[1]);
 +        check("aplicar na tabela", t.u8(0, 0) + ":" + t.u8(0, 1), "12:9");
++
++
++        // ---- corridas da faixa SPEED
++        // velocidades (chao): p0 (10,0) | p1 (-1,-1) | p2 (-1,-1) | p3 (20,0) | p4 (-1,-1)
++        ReactionTable rt = new ReactionTable(react(
++                new int[]{4, 4, 1, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0}, new int[]{4, 4, 2, -1, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0},
++                new int[]{4, 4, 3, -1, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0}, new int[]{4, 4, 4, 20, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0},
++                new int[]{4, 4, 5, -1, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0}), 0);
++        java.util.List<int[]> rs = ReactionRuns.runs(rt, false);
++        check("corridas: 2 (passos 0-2 e 3-4)", rs.size() + ":" + rs.get(0)[0] + "-" + rs.get(0)[1] + ":" + rs.get(1)[0] + "-" + rs.get(1)[1], "2:0-3:3-5");
++        check("corrida do passo 2 = 0; do passo 4 = 1", ReactionRuns.runOf(rt, false, 2) + ":" + ReactionRuns.runOf(rt, false, 4), "0:1");
++        ReactionTable lead = new ReactionTable(react(new int[]{4, 4, 1, -1, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0}, new int[]{4, 4, 2, 5, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0}), 0);
++        check("passos iniciais que so mantem nao pertencem a corrida", ReactionRuns.runs(lead, false).size() + ":" + ReactionRuns.runOf(lead, false, 0), "1:-1");
++        check("metade (-2) conta como velocidade propria", ReactionRuns.keeps(new ReactionTable(react(new int[]{4, 4, 1, -2, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0}), 0), 0, false), false);
++
++        ReactionTable ext = rt.copy();
++        check("estender a corrida 0 ate o passo 4: a fronteira anda e a proxima mantem a velocidade 20", ReactionRuns.setRunEnd(ext, false, 0, 4)
++                && ext.s8(3, 3) == -1 && ext.s8(4, 3) == 20 && ReactionRuns.runs(ext, false).get(1)[0] == 4, true);
++        ReactionTable shr = rt.copy();
++        check("encurtar a corrida 0 para 2 passos: o passo 2 passa a ter a velocidade 20", ReactionRuns.setRunEnd(shr, false, 0, 2)
++                && shr.s8(2, 3) == 20 && shr.s8(3, 3) == -1 && ReactionRuns.runs(shr, false).size() == 2 && ReactionRuns.runs(shr, false).get(1)[0] == 2, true);
++        ReactionTable lim = rt.copy();
++        check("nao engole a proxima corrida (maximo: ate o ultimo passo dela)", ReactionRuns.setRunEnd(lim, false, 0, 99) && ReactionRuns.runs(lim, false).get(1)[0] == 4, true);
++        ReactionTable one = rt.copy();
++        ReactionRuns.setRunEnd(one, false, 0, 0);
++        check("nao encolhe abaixo de 1 passo", ReactionRuns.runs(one, false).get(0)[1], 1);
++        ReactionTable last = rt.copy();
++        check("encurtar a ultima corrida abre uma corrida parada (0,0)", ReactionRuns.setRunEnd(last, false, 1, 4) && last.s8(4, 3) == 0 && last.s8(4, 4) == 0 && ReactionRuns.runs(last, false).size() == 3, true);
++        check("a ultima corrida nao estende alem da tabela", ReactionRuns.setRunEnd(rt.copy(), false, 1, 9), false);
++        ReactionTable air = rt.copy();
++        ReactionRuns.setRunEnd(air, true, 0, 4);
++        check("o ar tem as proprias corridas (colunas 7 e 8) e nao mexe no chao", air.s8(4, 7) == 20 && air.s8(4, 3) == -1 && ReactionRuns.runs(air, false).get(1)[0] == 3, true);
++        ReactionTable rm = rt.copy();
++        check("tirar a velocidade da corrida 1: o passo 3 volta a manter e a corrida some", ReactionRuns.removeRun(rm, false, 1) && ReactionRuns.runs(rm, false).size() == 1 && ReactionRuns.runs(rm, false).get(0)[1] == 5, true);
++        ReactionTable st = rt.copy();
++        check("criar corrida no passo que so mantinha: velocidade 0,0", ReactionRuns.startRun(st, false, 1) && st.s8(1, 3) == 0 && ReactionRuns.runs(st, false).size() == 3, true);
++        check("criar corrida em passo que ja tem velocidade: nao faz nada", ReactionRuns.startRun(rt.copy(), false, 0), false);
++
++        // ---- DIVIDIR
++        ReactionTable sp = new ReactionTable(react(new int[]{8, 10, 7, 10, 0, 2, 0, 10, 0, 2, 0, 3, 2, 9}), 0);
++        check("dividir o passo de 8 ticks no 3: 3 + 5, a duracao do ar (10) na mesma proporcao", ReactionEdit.split(sp, 0, false, 3) && sp.rows == 2
++                && sp.u8(0, 0) == 3 && sp.u8(1, 0) == 5 && sp.u8(0, 1) + sp.u8(1, 1) == 10 && sp.u8(0, 1) == 4, true);
++        check("2o passo: mesmo ANO, velocidade mantem, aceleracao igual, voz so no 1o", sp.s8(1, 2) + ":" + sp.s8(1, 3) + ":" + sp.s8(1, 4) + ":" + sp.s8(1, 5) + ":" + sp.s8(1, 13) + ":" + sp.s8(0, 13), "7:-1:-1:2:0:9");
++        check("parede e proxima reacao ficam nos dois", sp.u8(0, 12) + ":" + sp.u8(1, 12) + ":" + sp.u8(0, 11) + ":" + sp.u8(1, 11), "2:2:3:3");
++        check("dividir fora do passo nao faz nada", !ReactionEdit.split(sp.copy(), 0, false, 0) && !ReactionEdit.split(sp.copy(), 0, false, 3) && !ReactionEdit.split(sp.copy(), 5, false, 1), true);
++        ReactionTable sa = new ReactionTable(react(new int[]{6, 255, 7, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0}), 0);
++        check("ar com 'ate pousar' (255): o 1o ganha k e o 2o continua ate pousar", ReactionEdit.split(sa, 0, true, 10) && sa.u8(0, 1) == 10 && sa.u8(1, 1) == 255 && sa.u8(0, 0) + sa.u8(1, 0) == 6, true);
++        check("dividir um passo de 1 tick nao existe", ReactionEdit.split(new ReactionTable(react(new int[]{1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 0), 0, false, 1), false);
 +
 +        System.out.println("ReactionEditTest fails=" + BattleTest.fails);
 +    }
@@ -11571,8 +12023,8 @@ diff -ruN a/test/ReactionSlotsTest.java b/test/ReactionSlotsTest.java
 +}
 diff -ruN a/test/ReactionTraceTest.java b/test/ReactionTraceTest.java
 --- a/test/ReactionTraceTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ReactionTraceTest.java	2026-10-24 18:32:55.318671012 +0000
-@@ -0,0 +1,90 @@
++++ b/test/ReactionTraceTest.java	2026-10-24 18:36:25.987029792 +0000
+@@ -0,0 +1,110 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -11644,6 +12096,26 @@ diff -ruN a/test/ReactionTraceTest.java b/test/ReactionTraceTest.java
 +        check("override num slot nao muda os outros (slot 0 intacto)", other.segments.get(0).length() + ":" + other.segments.size(), "4:2");
 +        os2.overrideCharReaction(5, null);
 +        check("override removido volta ao slot vazio", ReactionTrace.record(os2, 35, 300).segments.size(), 0);
++
++        // ---- DIVIDIR nao muda o movimento: 8 ticks com speed 10 e accel 2 == 3 + 5 ticks (2o passo mantem a velocidade)
++        byte[][] whole = new byte[1][];
++        whole[0] = react(new int[]{8, 8, 3, 10, 0, 2, 0, 10, 0, 2, 0, 0, 0, 0});
++        ReactionTrace w1 = ReactionTrace.record(sim(whole, 0), 30, 300);
++        ReactionTable wt = new ReactionTable(whole[0], 0);
++        check("dividir: o passo parte em 3 + 5 (a velocidade em que o 1o terminou passa ao 2o)", ReactionEdit.splitKeepingMotion(wt, 0, false, 3, w1.ticks.get(2)), true);
++        byte[][] halves = new byte[1][];
++        halves[0] = null;
++        BattleSim hs = sim(whole, 0);
++        hs.overrideCharReaction(0, wt);
++        ReactionTrace w2 = ReactionTrace.record(hs, 30, 300);
++        check("dividir: dois passos, 3 e 5 ticks", w2.segments.size() + ":" + w2.segments.get(0).length() + ":" + w2.segments.get(1).length(), "2:3:5");
++        boolean same = w1.ticks.size() == w2.ticks.size();
++        StringBuilder diff = new StringBuilder();
++        for (int i = 0; same && i < w1.ticks.size(); i++) {
++            BattleSim.DamageTick x = w1.ticks.get(i), y = w2.ticks.get(i);
++            if (Math.abs(x.x - y.x) > 1 || x.y != y.y || Math.abs(x.xs - y.xs) > 8) { same = false; diff.append(i).append(": ").append(x.x).append("/").append(y.x).append(" v ").append(x.xs).append("/").append(y.xs); }
++        }
++        check("dividir: posicao (+-1 px) e velocidade (+-8/128) tick a tick como no passo inteiro " + diff, same, true);
 +
 +        // ---- operacoes de passo da tabela
 +        ReactionTable t = new ReactionTable(react(new int[]{1, 1, 1}, new int[]{2, 2, 2}, new int[]{3, 3, 3}), 0);
@@ -11956,7 +12428,7 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/ToolbarTest.java b/test/ToolbarTest.java
 --- a/test/ToolbarTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/ToolbarTest.java	2026-10-24 17:25:48.633249988 +0000
++++ b/test/ToolbarTest.java	2026-10-24 18:38:39.264125812 +0000
 @@ -0,0 +1,122 @@
 +package com.zue.attackeditor;
 +

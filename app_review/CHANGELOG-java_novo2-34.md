@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 870 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 896 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -183,7 +183,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Correlação**: grupos de sinônimos (speed/velocidade/dash/mover/pixels…, accel/aceleração/gravidade…, hitbox/dano/alcance…, reação/knockback/empurrão…, sequência/combo/transição/cancel…, projétil/tiro/ramificação…, som/áudio/voz…, salvar/backup/pasta…) expandem a consulta (peso 70%).
 - **Abas com tags**: toda aba/menu (14 botões do menu superior, páginas Imagem/Tempo/Som/Movimento/Efeitos/Copiar, menus da hitbox, tela do projétil, Editor de reações, etc.) tem `tags` em `HelpText.Section`; a ordem das tags pesa (a primeira vale mais). Ex.: **Movimento** = speed, velocidade, dash, accel, aceleração, mover, pixels, pulo, gravidade…
 - **Resultado em duas faixas**: **ABAS E MENUS** primeiro (a melhor com contorno e “MELHOR RESULTADO”), depois **TEXTOS** dentro dos capítulos, cada um com o trecho que bateu (tocar abre o capítulo). Todas as palavras da consulta precisam bater (AND).
-- Testes: `HelpSearchTest` (44).
+- Testes: `HelpSearchTest` (47).
 
 ### 3.1u Editor de reações: campos que digitam e que seguram
 - **Causa**: toda edição chamava `refresh()` → `buildPage()` e recriava os campos; o botão − / + que estava sendo segurado saía da tela (o `Hold` para) e o campo digitado perdia o foco; o valor digitado só valia ao confirmar.
@@ -196,6 +196,15 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - `BattleSim.overrideCharReaction(slot, tabela)`: a simulação usa a tabela candidata como se estivesse no slot (sem tocar no personagem); `ReactionPreview.setOverride/setPaused` a usam na prévia.
 - As listas “copiar do personagem”, “copiar da game data” e **“importar de outro personagem”** (antes só miniaturas paradas) mostram a reação **em laço, de verdade**, com **⏸ PAUSAR / ▶ TOCAR** (também tocando na prévia) e o botão **USAR** (tocar na célula já não escolhe).
 - Testes: `ReactionTraceTest` (+5: slot vazio sem passos, candidata no slot 5, velocidade, outros slots intactos, override removido).
+
+### 3.1w Editor de reações = edição na timeline (menus só quando necessário)
+- **Sem abas fixas**: a tela tem prévia + transporte, **timeline grande** e **barra de ferramentas** (＋ · DIVIDIR · DUPLICAR · EXCLUIR · ◀ ▶ · Σ TOTAL; DESFAZER no topo). A **gaveta** de baixo só abre ao tocar num item (✕ fecha) e traz a página dele: PASSO (ANO, espelhar, durações), SPEED, VOZ, EFEITOS, SEQ ou TOTAL.
+- **SPEED em corridas, como no ANO** (`ReactionRuns`, puro): um bloco por passo com velocidade própria (x ou y ≠ −1) cobrindo os passos seguintes que mantêm (−1). **Arrastar a borda direita** do bloco move a fronteira com o bloco seguinte (nada é apagado: os passos que trocam de lado passam a manter ou a receber a velocidade do vizinho); encurtar o último bloco abre um bloco parado (0,0). Chão e ar têm corridas próprias (colunas 3/4 e 7/8). Tocar no bloco abre a página SPEED.
+- **DIVIDIR** (`ReactionEdit.split/splitKeepingMotion`): parte o passo no ponteiro em dois (duração dividida, “até pousar” fica no 2º; a duração do outro cenário na mesma proporção); o 2º passo mantém a velocidade e, **com aceleração**, parte da velocidade em que o 1º terminou; a voz fica só no 1º. **O ANO do oponente recomeça no 2º passo** (cada passo reinicia a animação): o aviso está no AJUDA e no aviso ao dividir.
+- **EXCLUIR** apaga o item selecionado: passo (≥ 2 passos), bloco SPEED (`removeRun`: o bloco passa a seguir o anterior), voz, parede ou SEQ. **＋** cria passo ou abre a gaveta de speed/voz/parede/SEQ no passo selecionado (`startRun` cria a velocidade 0,0 se o passo só mantinha).
+- Células vazias de VOZ/EFEITOS/SEQ continuam abrindo a gaveta para criar; o item selecionado de cada faixa ganha contorno branco.
+- Testes: `ReactionEditTest` (+20: corridas, estender/encurtar, limites, chão x ar, remover/criar, dividir) e `ReactionTraceTest` (+1: dividir mantém posição ±1 px e velocidade ±8/128 tick a tick). AJUDA: capítulo Reações com a barra de ferramentas e tags.
+- Só compilado e revisado: desenho dos blocos, alça de arrastar, toque, gaveta e barra não rodam sem aparelho.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -238,10 +247,10 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 37 |
 | **ReactionSlotsTest (novo)** | 20 |
-| **ReactionTraceTest (novo)** | 23 |
+| **ReactionTraceTest (novo)** | 26 |
 | **SaverCopyTest (novo)** | 17 |
-| **ReactionEditTest (novo)** | 15 |
-| **HelpSearchTest (novo)** | 44 |
+| **ReactionEditTest (novo)** | 35 |
+| **HelpSearchTest (novo)** | 47 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
