@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 951 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 979 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -221,6 +221,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - AJUDA: nova seção “Ajuda de IA (TBRHelp.md)” (e tags de busca: ia, chatgpt, gemini, claude, markdown…).
 - Testes: `AiHelpTest` (31: determinismo, tamanho, instruções de idioma, seções 0–14 + anexo, exemplo de ANO relido pelo parser e reescrito igual, exemplo de golpe relido, todos os campos do HDAT 4, limites iguais ao `GameRules`, grupos de `Opt1`, anexo literal). Escrita em Download e intent só compilados e revisados.
 
+### 3.1z Idioma da interface (PT / EN / ES) — infraestrutura
+- Botão **PT → EN → ES** ao lado do AJUDA (barra de título): troca **na hora**, grava a escolha no aparelho (`SharedPreferences "lang"`) e retraduz a tela aberta no lugar (nada é recriado, as edições ficam). O código e os dados internos continuam em português: arquivos, chaves, textos gravados e o **TBRHelp.md não mudam**.
+- `I18n` (puro): `tr(texto)` resolve 1) texto exato do catálogo, 2) **modelo com `{0}`** (ex.: `Salvando em {0}`), 3) **fragmentos** por palavra inteira (maior primeiro), com cache; PT é custo zero. Termos neutros (DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END) ficam iguais nas 3 colunas. Catálogo em `I18nCatalog*` (triplas PT/EN/ES).
+- Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
+- Testes: `I18nTest` (28). Só compilado e revisado na tela.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -268,6 +274,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HelpSearchTest (novo)** | 48 |
 | **ReactionLayoutTest (novo)** | 23 |
 | **AiHelpTest (novo)** | 31 |
+| **I18nTest (novo)** | 28 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
