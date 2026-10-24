@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1050 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1052 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -227,7 +227,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
 
-### 3.1za Idioma: catálogo da interface (1 307 entradas PT/EN/ES)
+### 3.1za Idioma: catálogo da interface (1 309 entradas PT/EN/ES)
 - Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
 - Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
 - **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
@@ -260,6 +260,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Volta ao **mesmo personagem, oponente, modo e golpe/ANO** pelo nome da pasta (`FolderReload`, Java puro); se a pasta sumiu abre a primeira da lista e avisa; o índice de golpe/ANO é limitado ao tamanho novo. Sai do sub-editor de ANO/projétil e fecha a gaveta.
 - `FilePicker`, `Saver`, listas de transplante/importação de reação e sons comuns já liam as pastas na hora (não precisam do ↻).
 - Testes: `ReloadTest` (20): manter/trocar/limpar a seleção, pasta nova/apagada, lista vazia, `clamp`, e o diálogo/toasts nos 3 idiomas. O botão e o diálogo só foram compilados e revisados.
+
+### 3.1zg Timeline: os rótulos do começo das faixas traduzem na hora
+- **Causa**: ao trocar o idioma só os `TextView`/`CheckBox` eram retraduzidos; as views desenhadas à mão (`TimelineView`, `ReactionTimelineView`, prévias) não eram repintadas e o gutter ficava em PT até algo redesenhar. `I18nUi.retranslate` agora chama `invalidate()` em toda view da árvore.
+- Os rótulos do gutter eram traduzidos **duas vezes** (em `clip` e de novo em `drawText`); agora uma vez só, medindo a largura do texto já traduzido (EN/ES são mais longos) — `TimelineView` e `ReactionTimelineView`.
+- Catálogo: faltavam `vel` (→ `spd`/`vel`), `acel` (→ `accel`/`acel`) e `+ estilo` (→ `+ style`/`+ estilo`) nas dicas e no resumo de movimento da faixa.
+- Teste novo `TimelineLabelsTest`: percorre os rótulos do gutter das duas timelines (nomes de objetos e ações, janelas 512, filtros `#`, PASSOS/SPEED/VOZ/EFEITOS/SEQ/CURVA, REAÇÃO/JOGO n, passo n, chips de parede/voz/SEQ, marcas de transição…) e exige EN e ES diferentes do PT (exceto cognatos/termos neutros listados) com os números preservados. Repintura na troca só compilada e revisada (não rodada num aparelho).
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -312,6 +318,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **I18nCoverageTest (novo)** | 5 |
 | **HelpI18nTest (novo)** | 25 |
 | **ReloadTest (novo)** | 20 |
+| **TimelineLabelsTest (novo)** | 2 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
