@@ -122,6 +122,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - `ObjModel.move/locate` (puro, testado em `ObjMoveTest`).
 - Não executado num aparelho (só compilado e revisado): layout do T/topGroup, prévia e steppers.
 
+### 3.1j Projétil: aviso do limite, tela do projétil e modo ANO
+- **Aviso do limite de 8 projéteis** saiu da tela (nasce e sub-projétil); fica só numa seção do AJUDA ("Limite de 8 projéteis"). Os outros diagnósticos de projétil continuam.
+- **Tela do projétil** (hit flag 0), na ordem: **início e duração** (Stepper: move/aumenta o hit), **ramificação do projétil** (árvore; é onde ficam ao acertar/chão/abaixo/acima/global/sub), **ANO do projétil** (− N +, segurar; tocar no número abre a grade de animações; prévia e ✎ editar), **posição e velocidade** (x, y, velocidade inicial), **perseguição** (liga/desliga, giro, repetições) e **sequência** (SEQ_PROJETIL).
+- **Modo ANO**: a mesma tela abre no modo ANO, editando o golpe real do HDAT 4 que é "dono" do ANO (`AttackView.moveOwner/editMoveOf`; a cópia genérica da tela acompanha e o desfazer volta os dois). Sem dono, avisa.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
