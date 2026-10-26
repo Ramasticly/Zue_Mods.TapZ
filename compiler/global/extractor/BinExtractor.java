@@ -6,8 +6,32 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Locale;
 
 public class BinExtractor {
+
+    /**
+     * HDATs que NÃO são extraídos no formato detalhado: vão direto em $RAW,
+     * com os bytes originais, sem passar por hdatGD/hdatChar/hdatBack nem
+     * pelo $TXT. Serve para desligar o extractor de um HDAT (ou de uma faixa)
+     * e ver se ele é a causa de um comportamento inesperado.
+     *
+     * Cada item é "pack:hdat". O pack é o nome sem ".pac" (vale só para ele)
+     * ou o tipo sem o número (vale para todos daquele tipo); o hdat é um
+     * número, uma faixa "a-b" ou "*" (todos):
+     *   "gamedata:175"    HDAT 175 do gamedata.pac
+     *   "gamedata:50-60"  HDATs 50 a 60 do gamedata.pac
+     *   "char:13"         HDAT 13 de todos os charNN.pac
+     *   "char05:13"       HDAT 13 só do char05.pac
+     *   "back:*"          todos os HDATs dos backNN.pac
+     * Item escrito errado é ignorado; os HDATs pulados ficam marcados com um
+     * comentário no .txt, então dá para conferir se pegou.
+     *
+     * Só vale na extração: um pack que já tem pasta precisa ser extraído de
+     * novo (no jogo, apagando a pasta dele em Tap Battle/assets/).
+     */
+    public static String[] SKIP_HDATS = {
+    };
 
     private static final String[] HEX_TABLE = new String[256];
 
@@ -70,7 +94,12 @@ public class BinExtractor {
                 if (size > 0) {
                     byte[] block = new byte[size];
                     System.arraycopy(data, start, block, 0, size);
-                    writeVerifiedBlock(w, block, pastaFixa, i, cols[i], rows[i], size);
+                    if (isSkipped(name, i)) {
+                        w.write("      // Desligado em BinExtractor.SKIP_HDATS — bytes originais, sem o extractor detalhado.\n");
+                        writeRaw(w, block, cols[i]);
+                    } else {
+                        writeVerifiedBlock(w, block, pastaFixa, i, cols[i], rows[i], size);
+                    }
                 } else {
                     w.write("      $RAW:null\n");
                 }
@@ -79,6 +108,34 @@ public class BinExtractor {
             w.write("}");
             w.flush();
         }
+    }
+
+    /** true se o HDAT {@code hdat} deste pack (nome em minúsculas, com ".pac") está em SKIP_HDATS. */
+    static boolean isSkipped(String pacName, int hdat) {
+        String[] list = SKIP_HDATS;
+        if (list == null || list.length == 0) return false;
+        String pack = pacName.endsWith(".pac") ? pacName.substring(0, pacName.length() - 4) : pacName;
+        String kind = pack.replaceAll("\\d+$", ""); // char05 → char, card001 → card
+        for (String item : list) {
+            if (item == null) continue;
+            String s = item.trim().toLowerCase(Locale.US);
+            int c = s.indexOf(':');
+            if (c < 0) continue;
+            String p = s.substring(0, c).trim();
+            if (p.endsWith(".pac")) p = p.substring(0, p.length() - 4);
+            if (!p.equals(pack) && !p.equals(kind)) continue;
+            String h = s.substring(c + 1).trim();
+            if (h.equals("*")) return true;
+            try {
+                int d = h.indexOf('-');
+                int a = Integer.parseInt((d < 0 ? h : h.substring(0, d)).trim());
+                int b = d < 0 ? a : Integer.parseInt(h.substring(d + 1).trim());
+                if (hdat >= a && hdat <= b) return true;
+            } catch (NumberFormatException e) {
+                // item escrito errado: ignora
+            }
+        }
+        return false;
     }
 
     /**
