@@ -1,6 +1,8 @@
 package com.zue.gd.util;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -234,33 +236,82 @@ public class BinExtractor {
         int ptr = 0;
         int len = data.length;
         for (int i = 0; i < ysize; i++) {
-            String txt = "";
+            byte[] chunk = new byte[0];
             if (ptr + 2 <= len) {
                 int strLen = ((data[ptr] & 0xFF) << 8) | (data[ptr + 1] & 0xFF);
                 ptr += 2;
                 if (strLen > 0) {
                     int available = Math.min(strLen, len - ptr);
-                    byte[] chunk = new byte[available];
+                    chunk = new byte[available];
                     System.arraycopy(data, ptr, chunk, 0, available);
-                    txt = decodeWithFallback(chunk);
                     ptr += available;
                 }
             }
-            String escapedTxt = txt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
-            w.write("         $T_" + i + ":\"" + escapedTxt + "\",\n");
+            w.write("         $T_" + i + ":" + quoteText(chunk) + ",\n");
         }
         w.write("      },\n");
     }
 
-    private static String decodeWithFallback(byte[] chunk) {
-        if (chunk == null || chunk.length == 0) return "";
+    /**
+     * Texto de um $T_N entre aspas, num formato que o BinBuilder volta
+     * EXATAMENTE aos mesmos bytes:
+     *   "..."      UTF-8 — o que o jogo lê (TCBManajer.gub() é sempre utf-8)
+     *   SJIS"..."  Shift_JIS, como nos textos japoneses originais do .pac.
+     *              Antes eles eram lidos em Shift_JIS e gravados de volta em
+     *              UTF-8, e o HDAT inteiro mudava. Tirando o SJIS da frente,
+     *              o texto passa a ser gravado em UTF-8.
+     *   \xHH       um byte cru: caracteres de controle e, se a string não é
+     *              nem UTF-8 nem Shift_JIS válido, a string inteira.
+     */
+    static String quoteText(byte[] chunk) {
+        String s = decodeExact(chunk, StandardCharsets.UTF_8);
+        if (s != null) return "\"" + escapeText(s) + "\"";
+        Charset sjis = shiftJis();
+        if (sjis != null && (s = decodeExact(chunk, sjis)) != null) return "SJIS\"" + escapeText(s) + "\"";
+        StringBuilder sb = new StringBuilder("\"");
+        for (byte b : chunk) sb.append("\\x").append(HEX_TABLE[b & 0xFF]);
+        return sb.append('"').toString();
+    }
+
+    // O "SJIS" do texto é o Shift_JIS do Windows (windows-31j/MS932), que também
+    // tem os caracteres NEC dos textos originais (ex.: ㈱ = 87 8A). No Android o
+    // "Shift_JIS" já é essa variante; no Java de PC não, por isso vem primeiro.
+    static Charset shiftJis() {
+        for (String name : new String[]{"windows-31j", "Shift_JIS"}) {
+            try {
+                return Charset.forName(name);
+            } catch (RuntimeException e) {
+                // tenta o próximo
+            }
+        }
+        return null; // sem Shift_JIS na plataforma: a string sai em \xHH
+    }
+
+    /** Decodifica só se a volta (encode) dá os mesmos bytes; senão null. */
+    private static String decodeExact(byte[] chunk, Charset cs) {
         try {
-            CharsetDecoder utf8Decoder = StandardCharsets.UTF_8.newDecoder()
+            CharsetDecoder dec = cs.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT);
-            return utf8Decoder.decode(java.nio.ByteBuffer.wrap(chunk)).toString();
-        } catch (Exception e) {
-            return new String(chunk, Charset.forName("Shift_JIS"));
+            String s = dec.decode(ByteBuffer.wrap(chunk)).toString();
+            return Arrays.equals(s.getBytes(cs), chunk) ? s : null;
+        } catch (CharacterCodingException e) {
+            return null;
         }
+    }
+
+    // Par do BinBuilder.encodeText: \\ \" \n \r, e \xHH para os outros controles.
+    private static String escapeText(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\') sb.append("\\\\");
+            else if (c == '"') sb.append("\\\"");
+            else if (c == '\n') sb.append("\\n");
+            else if (c == '\r') sb.append("\\r");
+            else if (c < 0x20 || c == 0x7F) sb.append("\\x").append(HEX_TABLE[c]);
+            else sb.append(c);
+        }
+        return sb.toString();
     }
 }

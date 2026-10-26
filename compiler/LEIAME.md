@@ -46,6 +46,21 @@ recompilado, devolve **exatamente** os mesmos bytes; senão grava `$RAW` com um
 comentário. Assim, extrair → compilar sem editar nada nunca muda o binário
 (o mesmo vale para DAC, texto do `text00` e o `.pac` reempacotado).
 
+## Textos (`$TXT` / `$T_N`)
+
+Cada string guarda a codificação original, para voltar aos mesmos bytes:
+
+| No `.txt` | Vira no binário |
+|---|---|
+| `$T_0:"texto"` | UTF-8 — é o que o jogo lê (`TCBManajer.gub()` é sempre `utf-8`) |
+| `$T_0:SJIS"テスト"` | Shift_JIS (do Windows), como os textos japoneses originais do `.pac` |
+| `\xHH` dentro das aspas | o byte `HH` cru (caracteres de controle, ou uma string que não é nem UTF-8 nem Shift_JIS) |
+
+Como o jogo lê UTF-8, um texto `SJIS"..."` aparece errado no jogo, igual ao
+`.pac` original. Para o jogo mostrar o texto certo, apague o `SJIS` da frente:
+ele passa a ser gravado em UTF-8. Textos extraídos antes dessa mudança (sem
+`SJIS`) continuam compilando em UTF-8, como antes.
+
 ## Desligar o extractor de um HDAT (`BinExtractor.SKIP_HDATS`)
 
 Para descobrir se um HDAT é a causa de um comportamento estranho, coloque-o em

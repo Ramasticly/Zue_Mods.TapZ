@@ -1,6 +1,7 @@
 package com.zue.gd.util;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -99,11 +100,18 @@ public class BinBuilder {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         if (block.contains("$TXT:")) {
-            // Captura apenas o conteúdo de $T_0: "texto"
-            Matcher m = Pattern.compile("\\$T_\\d+:\\s*" + QUOTED_TEXT).matcher(block);
+            // $T_N: "texto" (UTF-8) ou $T_N: SJIS"texto" (Shift_JIS) — ver BinExtractor.quoteText
+            Matcher m = Pattern.compile("\\$T_\\d+:\\s*(SJIS)?" + QUOTED_TEXT).matcher(block);
             int linhas = 0;
+            Charset sjis = null;
             while (m.find()) {
-                byte[] b = unescapeText(m.group(1)).getBytes(StandardCharsets.UTF_8);
+                Charset cs = StandardCharsets.UTF_8;
+                if (m.group(1) != null) {
+                    if (sjis == null) sjis = BinExtractor.shiftJis();
+                    if (sjis == null) throw new IOException("Shift_JIS não existe nesta plataforma ($T_ com SJIS\"\")");
+                    cs = sjis;
+                }
+                byte[] b = encodeText(m.group(2), cs);
                 writeShortBE(baos, b.length); // Tamanho Big Endian como no Extractor
                 baos.write(b);
                 linhas++;
@@ -183,6 +191,40 @@ public class BinBuilder {
             sb.append(c);
         }
         return sb.toString();
+    }
+
+    /**
+     * Desfaz o escape de um $T_N (como unescapeText) e codifica em cs; \xHH
+     * vira o byte HH cru, sem passar pelo charset (ver BinExtractor.quoteText).
+     */
+    static byte[] encodeText(String s, Charset cs) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(s.length() * 2);
+        StringBuilder pending = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                char n = s.charAt(i + 1);
+                if (n == 'x' && i + 3 < s.length() && isHex(s.charAt(i + 2)) && isHex(s.charAt(i + 3))) {
+                    byte[] e = pending.toString().getBytes(cs);
+                    out.write(e, 0, e.length);
+                    pending.setLength(0);
+                    out.write(Integer.parseInt(s.substring(i + 2, i + 4), 16));
+                    i += 3;
+                    continue;
+                }
+                if (n == 'n') { pending.append('\n'); i++; continue; }
+                if (n == 'r') { pending.append('\r'); i++; continue; }
+                if (n == '"' || n == '\\') { pending.append(n); i++; continue; }
+            }
+            pending.append(c);
+        }
+        byte[] e = pending.toString().getBytes(cs);
+        out.write(e, 0, e.length);
+        return out.toByteArray();
+    }
+
+    private static boolean isHex(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
     private static String getBalancedBlock(String text, String startMarker) {
