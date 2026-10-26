@@ -81,6 +81,7 @@ public final class PacExtractor {
             outDir = new File(pacPath, folderName);
         }
         if (!outDir.exists()) outDir.mkdirs();
+        HelpFolder.garantir(new File(pacPath)); // #HELP com a documentação dos HDATs
 
         byte[] src = readAllBytes(pacFile);
         if (src.length < 2) return;

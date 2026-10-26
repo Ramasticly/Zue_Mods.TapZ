@@ -36,6 +36,7 @@ public class RealPacBuilder {
     };
 
     public static void buildSingle(File packDir, File outRoot, ProgressCallback cb) {
+        if (HelpFolder.isHelp(packDir)) return; // documentação, não vira .pac
         try {
             String packName = packDir.getName();
             String pacFileName = packName.toLowerCase().endsWith(".pac") ? packName : packName + ".pac";

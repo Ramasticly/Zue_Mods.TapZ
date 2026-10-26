@@ -857,7 +857,8 @@ public final class hdatChar {
 
     private static void exHDAT34(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
         w.write("      $DISPUTA_DE_PODER:{\n");
-        w.write("         // A disputa inicia quando ambos estão na animação gatilho com ki >= 100%.\n\n");
+        w.write("         // A disputa começa quando este personagem está na animação gatilho e o oponente está\n");
+        w.write("         // a 240 px ou mais, parado/andando (ANO 0-12 ou 81) e com ki >= 100. Ver #HELP/binChar.md.\n\n");
 
         int anim = (data.length > 0) ? data[0] & 0xFF : 0;
         int cena = (data.length > 1) ? data[1] & 0xFF : 0;
@@ -865,7 +866,8 @@ public final class hdatChar {
         w.write(String.format("         $ANIM_GATILHO: %d,\n", anim));
         w.write("         // Animação que ativa a disputa (ex: pose de carregamento do especial).\n\n");
         w.write(String.format("         $TEM_CUTSCENE: %d,\n", cena));
-        w.write("         // 0 = resultado simples. 1+ = sequência cinemática ao terminar.\n");
+        w.write("         // 0 = mostra a imagem final (ANO 280 do vencedor) por 90 frames; diferente de 0 = pula a imagem.\n");
+        w.write("         // Vale também para o fim da cena do golpe Extreme.\n");
         w.write("      },\n");
     }
 

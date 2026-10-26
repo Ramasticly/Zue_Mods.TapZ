@@ -39,8 +39,16 @@ public final class hdatGD {
             case 9:   return HdatTabela.escrever(w, "$CONFIG_CENA", DOC_GD9, data, xsize, ysize, true, null);
             case 41:  return HdatTabela.escrever(w, "$BP_POR_ESTAGIO", DOC_GD41, data, xsize, ysize, false, null);
             case 42:  return HdatTabela.escrever(w, "$BP_CHEFE", DOC_GD42, data, xsize, ysize, false, null);
-            case 53:  return HdatTabela.escrever(w, "$PROB_RECOMPENSA", DOC_GD53, data, xsize, ysize, false, null);
-            case 54:  return HdatTabela.escrever(w, "$TRANSFORMACAO", DOC_GD54, data, xsize, ysize, false, null);
+            // No gamedata.pac original o 53 e o 54 têm 1 × 22: são os efeitos das
+            // formações 3 e 4 (HDAT 50, col 0). O sorteio de prêmio que também lê o
+            // 53 (modo 745) descarta o resultado, e a transformação que lê o 54
+            // (modo 990) nunca é chamada — então saem no formato de efeito.
+            case 53:
+                if (xsize == 1 && ysize == 22) return exHDAT51_134(w, data, xsize, ysize, hdat - 51);
+                return HdatTabela.escrever(w, "$PROB_RECOMPENSA", DOC_GD53, data, xsize, ysize, false, null);
+            case 54:
+                if (xsize == 1 && ysize == 22) return exHDAT51_134(w, data, xsize, ysize, hdat - 51);
+                return HdatTabela.escrever(w, "$TRANSFORMACAO", DOC_GD54, data, xsize, ysize, false, null);
             case 3:   exHDAT3(w, data, xsize, ysize);   return true;
             case 43:  exHDAT43(w, data, xsize, ysize);  return true;
             case 50:  exHDAT50(w, data, xsize, ysize);  return true;
@@ -66,8 +74,9 @@ public final class hdatGD {
             case 167: exHDAT167(w, data, xsize, ysize); return true;
             default:
                 if (hdat >= 10 && hdat <= 39)   { exHDATDanoGD(w, data, xsize, ysize, hdat - 10); return true; }
-                // 53 e 54 caem nos case acima: NÃO são efeitos de formação.
-                if (hdat >= 51 && hdat <= 134)  return exHDAT51_134(w, data, xsize, ysize, hdat - 51);
+                // 53 e 54 caem nos case acima. O 135 (1 × 17 no original) também é
+                // um slot de efeito: nenhuma formação aponta para ele, mas pode.
+                if (hdat >= 51 && hdat <= 135)  return exHDAT51_134(w, data, xsize, ysize, hdat - 51);
                 if (hdat >= 170 && hdat <= 250) return exHDATCartas(w, data, xsize, ysize, hdat - 170);
                 return false;
         }
@@ -149,7 +158,7 @@ public final class hdatGD {
     private static final String[] DOC_GD5 = {
         "Tabela de short por combo: coluna = ComboCount - 2 (combo 2..15 → 0..13). Usada em DamageChange.",
         "PONTOS_POR_COMBO: % aplicado aos pontos do golpe especial (char HDAT 5).",
-        "VALOR_POR_COMBO: substitui o valor do hit quando há dano (0 vira 1).",
+        "VALOR_POR_COMBO: % do dano do hit conforme o combo (escala de dano; resultado 0 vira 1).",
     };
     private static final String[] DOC_GD8 = {
         "Mapa de fonte do CREATE_STRING: coluna = código do caractere (texto do HDAT 7) → padrão do sprite da fonte.",
@@ -1240,15 +1249,16 @@ public final class hdatGD {
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       HDAT 51-134 — $EFEITO_FORMACAO_{N}
+       HDAT 51-135 — $EFEITO_FORMACAO_{N}
 
        O índice deste HDAT é a coluna 0 de uma linha do HDAT 50 ($TABELA_EFEITO):
        o jogo lê piGameData[Pos[efeito] + XSize * linha + 0], então só a coluna
        0 de cada linha importa. Linhas lidas (TCBManajer.GetCard*):
          3 ATK (GetCardAttack / ×1000 em GetCardAttackFm)   6 DEF (idem Defence)
          7 Synchro (×10)   8 estoque de Synchro (×100)   16 fúria   20 Rush Red
-       53 e 54 NÃO entram aqui (são $PROB_RECOMPENSA e $TRANSFORMACAO). Quais
-       outros índices são de fato efeitos depende dos valores do HDAT 50.
+       53 e 54 só entram aqui com 1 × 22 (senão: $PROB_RECOMPENSA e
+       $TRANSFORMACAO). Quais índices são de fato efeitos depende dos valores do
+       HDAT 50 (no original: 51-111; 112-135 são slots livres).
     ══════════════════════════════════════════════════════════════════ */
 
     private static final String[] NOMES_EFEITO = new String[32];
@@ -1346,11 +1356,22 @@ public final class hdatGD {
     }
 
     private static boolean exHDATCartas(BufferedWriter w, byte[] data, int xsize, int ysize, int cardId) throws IOException {
-        if (xsize <= 0 || ysize <= 0 || (ysize & 1) != 0 || data.length != xsize * ysize) return false; // → $RAW
+        // O gamedata.pac original guarda a carta como tabela de short: $COL 11 /
+        // $ROW 28 (616 bytes = 28 atributos, K = 0..54). A versão anterior só
+        // aceitava o mesmo bloco descrito como 11 × 56 bytes, e as cartas
+        // originais iam todas para $RAW. $ATRIBUTOS marca o formato de short
+        // para o build saber quantos K gravar.
+        if (xsize <= 0 || ysize <= 0) return false; // → $RAW
+        int linhasK;
+        boolean tabelaShort = data.length == 2 * xsize * ysize;
+        if (tabelaShort) linhasK = 2 * ysize;
+        else if ((ysize & 1) == 0 && data.length == xsize * ysize) linhasK = ysize;
+        else return false; // → $RAW
 
         w.write("      $CARTA_" + cardId + ":{\n");
         w.write("         // Um atributo por linha, um valor por nível (0-" + (xsize - 1) + "). ATQ/DEF_EXIBICAO em milésimos.\n");
-        for (int k = 0; k < ysize; k += 2) {
+        if (tabelaShort) w.write("         $ATRIBUTOS: " + ysize + ",\n");
+        for (int k = 0; k < linhasK; k += 2) {
             w.write("         $" + nomeAtributo(k) + ": [");
             for (int nivel = 0; nivel < xsize; nivel++) {
                 w.write(String.valueOf(readShortAtByteOffset(data, xsize * k + nivel * 2)));
@@ -1364,7 +1385,10 @@ public final class hdatGD {
 
     private static byte[] bdHDATCartas(String block, int xsize, int ysize, ErrorReporter reporter) {
         int niveis = xsize > 0 ? xsize : HDATCARTAS_NIVEIS_PADRAO;
-        int linhas = (ysize > 0 && (ysize & 1) == 0) ? ysize : HDATCARTAS_LINHAS_PADRAO;
+        int linhas;
+        Matcher mAtr = Pattern.compile("\\$ATRIBUTOS:\\s*(\\d+)").matcher(block);
+        if (mAtr.find()) linhas = 2 * Integer.parseInt(mAtr.group(1)); // tabela de short (formato do .pac original)
+        else linhas = (ysize > 0 && (ysize & 1) == 0) ? ysize : HDATCARTAS_LINHAS_PADRAO;
         byte[] data = new byte[niveis * linhas];
 
         // Só K par. Num texto do extractor antigo os $ATR_ ímpares (sobrepostos)

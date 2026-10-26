@@ -46,7 +46,7 @@ public class PacBuilderView {
                 List<String> sortedFolders = new ArrayList<String>();
                 if (subFiles != null) {
                     for (File f : subFiles) {
-                        if (f.isDirectory()) sortedFolders.add(f.getName());
+                        if (f.isDirectory() && !HelpFolder.isHelp(f)) sortedFolders.add(f.getName());
                     }
                 }
 

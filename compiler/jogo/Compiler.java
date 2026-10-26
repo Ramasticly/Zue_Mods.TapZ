@@ -47,6 +47,7 @@ public class Compiler extends GameData {
      * ~300 ms por pack — até ~9 s num SetLoad de 31 slots.
      */
     private static boolean prepareProjectFolder(String pacName) throws Exception {
+        HelpFolder.garantir(new File(MainPath)); // #HELP junto das pastas dos packs (uma vez por execução)
         File projectFolder = new File(MainPath, pacName);
         if (!projectFolder.isDirectory()) {
             if (!new File(MainPath, pacName + ".pac").isFile()) return false;

@@ -11,9 +11,31 @@ Um único pacote para o **jogo** e para o **app** (Tap Ult). Junta o antigo
 | `compiler/global/` | jogo **e** app | Java puro: extractors, builders, `hdatChar`/`hdatGD`/`hdatBack`, DAC, SPR, Extras (parser/builder/extractor), `errors/` |
 | `compiler/jogo/` | **só no jogo** | `Compiler.java` (estende `GameData`), `PacBuilderView`, `apk/` (export de Mod APK), runtime de Extras (`ExtrasReader`, `video/`, `webp/`, pacote `com.namcobandaigames.dragonballtap.apk`) |
 | `compiler/app/` | **só no app** | hoje vazio (ver `app/LEIAME.md`) — nenhuma classe é exclusiva do app |
+| `compiler/help/` | **em nenhum** (fonte) | `binChar.md`, `gamedata.md` (o que cada campo de cada HDAT faz) e o gerador `GerarHelpTexts.java` |
 
 - Projeto do jogo = `global/` + `jogo/`.
 - Projeto do app = `global/` + `app/`.
+
+## Pasta `#HELP`
+
+O Compiler cria uma pasta `#HELP` com `binChar.md` (HDATs do `charNN`) e
+`gamedata.md` (HDATs do `gamedata`): o que cada campo faz, o que muda no
+gameplay e quais campos o jogo não lê.
+
+| | Onde fica | Quando é criada |
+|---|---|---|
+| Jogo | `Tap Battle/assets/#HELP/`, junto das pastas dos packs | ao extrair um `.pac` e no primeiro load de pack de cada execução |
+| App | `<raiz>/SYSTEM/#HELP/` | ao extrair um `.pac` |
+
+O texto vai embutido no código (`global/help/HelpTexts.java`), então não
+precisa de nenhum arquivo extra no APK. Se o `.md` da pasta for diferente do
+embutido (versão antiga ou editado), ele é regravado. A `#HELP` nunca vira
+`.pac`: `PacBuilder.build`, `RealPacBuilder.buildSingle` e o "Gerar todas" a
+ignoram.
+
+Para mudar a ajuda: edite `compiler/help/*.md` e, na pasta `compiler/help`,
+rode `java GerarHelpTexts.java`. Isso regrava `global/help/HelpTexts.java`.
+Não copie `compiler/help/` para o projeto do jogo ou do app.
 
 O `global/` não importa nenhuma classe do jogo (`Logue`, `GameData`, `TCBManajer`…),
 então compila no app sem stubs. O `errors/` (que só vinha no appCompiler) fica

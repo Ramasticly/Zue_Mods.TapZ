@@ -81,6 +81,7 @@ public final class PacBuilder {
         if (!pacFolder.exists() || !pacFolder.isDirectory()) {
             throw new FileNotFoundException("Diretório não encontrado: " + folderPath);
         }
+        if (HelpFolder.isHelp(pacFolder)) return; // documentação, não é um pack
 
         // packName sem ".pac" para verificações internas
         String packName = pacFolder.getName().toLowerCase();

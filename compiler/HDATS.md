@@ -2,7 +2,8 @@
 
 Mapa de cada HDAT lido pelo `TCBManajer.java` (via `piGameData` / `piGameDataPos` /
 `piGameDataXSize` / `piGameDataYSize`), o que ele faz no jogo e como o Compiler
-o extrai. Levantado varrendo **todas** as 1.906 leituras do código, inclusive
+o extrai (o que cada **campo** faz está em `help/binChar.md` e `help/gamedata.md`,
+que o Compiler grava na pasta `#HELP`). Levantado varrendo **todas** as 1.906 leituras do código, inclusive
 as que usam índice de HDAT em variável.
 
 ## Convenções
@@ -42,7 +43,7 @@ as que usam índice de HDAT em variável.
 | 2 | Distâncias da IA (modo 685): linha 0 col 0 = `iRangeBulletGuard`; linha 1/2 col 0/1 = perto/médio no chão/ar | byte | `$DISTANCIAS_IA` **(novo)** |
 | 3 | Comportamento da CPU por `CPULevel` (linhas 1–4, 18, 19) | byte, 8 col | `$IA_COMPORTAMENTO` |
 | 4 | Progressão do arcade por estágio: linhas 0–2 `CPULevel`, 3–5 nível somado, 6–8 EXP extra (por dificuldade), 9–11 idem antes da missão inicial | byte, col = estágio | `$PROGRESSAO_ARCADE` **(novo)** |
-| 5 | Por combo (`ComboCount-2`, 0..13), `DamageChange`: linha 0 = % dos pontos do golpe especial; linha 1 = valor por hit | short, 14 × 2 | `$MULTIPLICADOR_COMBO` **(novo)** |
+| 5 | Por combo (`ComboCount-2`, 0..13), `DamageChange`: linha 0 = % dos pontos do golpe especial; linha 1 = % do dano do hit (escala de dano do combo) | short, 14 × 2 | `$MULTIPLICADOR_COMBO` |
 | 7 | Texto ASCII do `CREATE_STRING` | texto | `$TXT` |
 | 8 | Mapa de fonte do `CREATE_STRING`: código do caractere → padrão do sprite | byte | `$MAPA_FONTE` **(novo)** |
 | 9 | Configuração de cena (modo 808): col 0 → `LoadData[5]`, col 1 → cenário (-1 mantém, 0 = atual+1); outras colunas lidas em 808/809/816 | short | `$CONFIG_CENA` **(novo)** |
@@ -51,14 +52,14 @@ as que usam índice de HDAT em variável.
 | 42 | BP do chefe (modo 1, estágio múltiplo de 5): linha = estágio/5, ×10 | byte | `$BP_CHEFE` **(novo)** |
 | 43 | EXP para o próximo nível (linha = nível / 5) | byte | `$EXP_NEXT_LEVEL` |
 | 44 | Texto (sem leitura no código) | texto | `$TXT` |
-| 50 | Formações: col 0 = **HDAT do efeito** (0 = vazia), col 1 = tipo de requisito (0 = cartas específicas), cols 2–4 = mínimo de cartas de cada afinidade, cols 5–12 = cartas exigidas | byte, 15 col | `$FORMACAO` (`$CARD_ID` → `$TABELA_EFEITO`) |
-| 51–52, 55–135 | Efeito de formação (via HDAT 50): só a col 0; linhas 3 ATK, 6 DEF, 7 Synchro (×10), 8 estoque de Synchro (×100), 16 fúria, 20 Rush Red | byte, 1 × 22 | `$EFEITO_FORMACAO_N` **(corrigido)** |
-| 53 | Prêmio sorteado no fim da luta (modo 0): linha = prêmio, col = dificuldade×3 + categoria (combo ≥13 / ≥8 / perfect), soma 100 | byte, 9 col | `$PROB_RECOMPENSA` **(novo — antes tratado como efeito de formação)** |
-| 54 | Transformação (modo 990): linha = `PlayerType`, col 0 = novo `PlayerType` | byte | `$TRANSFORMACAO` **(novo — idem)** |
+| 50 | Formações: col 0 = **HDAT do efeito** (0 = vazia), col 1 = tipo de requisito (0 = por afinidade, outro = cartas específicas), cols 2–4 = mínimo de cartas de cada afinidade, cols 5–12 = cartas exigidas | byte, 15 col | `$FORMACAO` (`$CARD_ID` → `$TABELA_EFEITO`) |
+| 51–52, 55–135 | Efeito de formação (via HDAT 50): só a col 0; linhas 3 ATK, 6 DEF, 7 Synchro (×10), 8 estoque de Synchro (×100), 16 fúria, 20 Rush Red. No original as formações usam 51–111; 112–135 são slots livres | byte, 1 × 22 (o 135 tem 1 × 17) | `$EFEITO_FORMACAO_N` **(corrigido)** |
+| 53 | Efeito da formação 3 (HDAT 50 col 0 = 53). O modo 745 também o lê como sorteio de prêmio, mas descarta o resultado (`StageBonus[11]` nunca é lido) | byte, 1 × 22 | `$EFEITO_FORMACAO_2` (`$PROB_RECOMPENSA` se não for 1 × 22) |
+| 54 | Efeito da formação 4. A transformação do modo 990 que também o lê nunca acontece (o modo 988 nunca é chamado) | byte, 1 × 22 | `$EFEITO_FORMACAO_3` (`$TRANSFORMACAO` se não for 1 × 22) |
 | 136 | Loja de cartas: col 0/1 visibilidade, col 2 preço | byte | `$LOJA_CARTAS` |
 | 137, 138, 154 | Textos do idioma 0: nome / descrição da formação (linha = formação), textos de estágio | texto | `$TXT` |
-| 145 | Chars excluídos da CPU (col 0/1) | byte | `$PERSONAGENS_EXCLUIDOS_CPU` |
-| 146 | Resultado da disputa de ki (ícones/posições) | short | `$RESULTADO_DISPUTA_KI` |
+| 145 | Chars excluídos da CPU (col 0/1) — **sem efeito**: `CPUNoCheck` nunca é chamado | byte | `$PERSONAGENS_EXCLUIDOS_CPU` |
+| 146 | Sequência de ícones que o jogador toca para aceitar a disputa de poder iniciada pela CPU (4 padrões sorteados) | short | `$RESULTADO_DISPUTA_KI` |
 | 147 | Dificuldade da disputa por `CPULevel` (linhas 0, 3, 4, 5) | byte, 8 col | `$DIFICULDADE_DISPUTA` |
 | 148 | Padrões de bônus do push | byte | `$PADROES_BONUS_PUSH` |
 | 149 | Tiers de poder do deck (`GetCardAddAtack`, ×1000) | byte | `$TIERS_PODER_DECK` |
@@ -76,7 +77,7 @@ as que usam índice de HDAT em variável.
 | 165 | Tickets por partida (derrota/vitória) | byte | `$TICKETS_POR_PARTIDA` |
 | 166 | Flags de vida especial (linhas 0/1) | byte | `$FLAGS_VIDA_ESPECIAL` |
 | 167 | Modo debug | byte | `$MODO_DEBUG` |
-| 170–250 | Carta N = HDAT 170+N. Atributo K (par) × nível: 6 ATK, 12 DEF, 14 Synchro, 16 estoque, 32 fúria, 40 Rush Red, 44 afinidade, 48 custo, 50 ATK/1000, 52 DEF/1000 | short, 11 níveis × 28 atributos | `$CARTA_N` **(corrigido)** |
+| 170–250 | Carta N = HDAT 170+N. Atributo K (par) × nível: 6 ATK, 12 DEF, 14 Synchro, 16 estoque, 32 fúria, 40 Rush Red, 44 afinidade, 48 custo, 50 ATK/1000, 52 DEF/1000 | short, `$COL` 11 (níveis) × `$ROW` 28 (atributos) | `$CARTA_N` (com `$ATRIBUTOS: 28`) |
 | 271–279 | Textos dos idiomas 1–3 (`GameData_TextPage`) | texto | `$TXT` **(novo)** |
 
 **Sem nenhuma leitura no código:** 1, 6, 40, 45–49, 139–144, 151, 152, 159, 168, 169, 251–270
@@ -86,7 +87,7 @@ as que usam índice de HDAT em variável.
 
 | HDAT | Função (onde é lido) | Layout | Extractor |
 |---|---|---|---|
-| 0 | Decisão da CPU (Game7 modo 952): linha = situação×4 + `CPURand%4`, col = `CPULevel` (chão 0–7 / ar 8–15); linha 44 = pool | byte, 16 × 45 | `$COMPORTAMENTO_IA` (desligado no extractor; com a verificação pode ser ligado) |
+| 0 | Decisão da CPU (Game7 modo 952): linha = situação×4 + `CPURand%4`, col = `CPULevel` (chão 0–7 / ar 8–15); linha 44 = tempo de reação (rand(0..v−1) frames) | byte, 16 × 45 | `$COMPORTAMENTO_IA` (desligado no extractor; com a verificação pode ser ligado) |
 | 1 | Regeneração de ki (`DamageChange`): pares divisor/bônus | byte, 8 | `$REGENERACAO_KI` |
 | 2 | Textos do idioma 0 (`CharData_TextPage[0]`) | texto | `$TEXTOS_DO_PERSONAGEM` |
 | 3 | Status base: [0]/[1] velocidade (também recuo no empurrão), [3] largura (o jogo usa /2), [8] ki ×100, [9] afinidade, [11] HP, [12] ATK ×10, [14] DEF ×10, [17] custo | byte, 18 | `$STATUS_BASE_E_FISICA` |
