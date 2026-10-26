@@ -42,6 +42,7 @@ public final class hdatChar {
             case 4:  exHDAT4(w, data, xsize, ysize); return true;
             case 5:  exHDAT5(w, data, xsize, ysize); return true;
             // case 6:  exHDAT6(w, data, xsize, ysize); return true; // desativado no BinExtractor original — mantido comentado de propósito
+            case 7:  return HdatTabela.escrever(w, "$CRESCIMENTO_POR_NIVEL", DOC_HDAT7, data, xsize, ysize, false, null);
             case 13: exHDAT13(w, data, xsize, ysize); return true;
             case 34: exHDAT34(w, data, xsize, ysize); return true;
             case 35: exHDAT35(w, data, xsize, ysize); return true;
@@ -51,6 +52,10 @@ public final class hdatChar {
             case 39: exHDAT39(w, data, xsize, ysize); return true;
             case 40: exHDAT40(w, data, xsize, ysize); return true;
             case 41: exHDAT41(w, data, xsize, ysize); return true;
+            case 42: return HdatTabela.escrever(w, "$COMANDOS_TOUCH", DOC_HDAT42, data, xsize, ysize, true, null);
+            // 43-45: mesma estrutura do HDAT 2, nos outros idiomas
+            // (TCBManajer.CharData_TextPage = {2, 43, 44, 45}, índice = iLanguage).
+            case 43: case 44: case 45: exHDAT2(w, data, xsize, ysize); return true;
             default:
                 if (hdat >= 14 && hdat <= 33) { exHDATDano(w, data, xsize, ysize, hdat - 14); return true; }
                 return false;
@@ -86,8 +91,25 @@ public final class hdatChar {
         if (block.contains("$CENARIO_PADRAO"))           return bdHDAT39(block, reporter);
         if (block.contains("$PROGRESSAO_CAMPANHA"))      return bdHDAT40(block, xsize, ysize, reporter);
         if (block.contains("$PERSONAGENS_DESBLOQUEAVEIS")) return bdHDAT41(block, xsize, ysize, reporter);
+        if (block.contains("$CRESCIMENTO_POR_NIVEL"))    return HdatTabela.compilar(block, xsize, ysize, false, null, 7, reporter);
+        if (block.contains("$COMANDOS_TOUCH"))           return HdatTabela.compilar(block, xsize, ysize, true, null, 42, reporter);
         return null;
     }
+
+    /* ══════════════════════════════════════════════════════════════════
+       Tabelas simples (HdatTabela) — layout tirado das leituras do TCBManajer
+    ══════════════════════════════════════════════════════════════════ */
+
+    private static final String[] DOC_HDAT7 = {
+        "Crescimento por nível: linha = nível (0-98). Stat no nível N = base do HDAT 3 + soma das linhas 0..N.",
+        "Col 0 = HP (GetHP, base [11])   col 1 = ATK (GetAttack, base [12])   col 2 = KI/Synchro (GetSynchro, base [8] x 100)",
+        "Col 3 = DEF (GetDeffence, base [14])   col 21 = custo de cartas (GetCost, base [17]). Demais colunas não são lidas.",
+    };
+    private static final String[] DOC_HDAT42 = {
+        "Comandos de toque (Game8, modo 38). Tabela de short; linha = situação (distância/estado)",
+        "+ 20 quando Synchro >= 100. Col 0 = golpe disparado (0 = nenhum), col 1 = custo de Synchro (x 100).",
+        "A linha seguinte (N + 1) é a do comando de continuação.",
+    };
 
     /* ══════════════════════════════════════════════════════════════════
        HDAT 0 — $COMPORTAMENTO_IA

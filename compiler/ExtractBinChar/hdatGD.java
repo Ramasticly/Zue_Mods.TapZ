@@ -31,6 +31,16 @@ public final class hdatGD {
      */
     public static boolean processExtraction(BufferedWriter w, byte[] data, int hdat, int xsize, int ysize) throws IOException {
         switch (hdat) {
+            case 0:   return HdatTabela.escrever(w, "$BONUS_EXP_DESEMPENHO", DOC_GD0, data, xsize, ysize, true, null);
+            case 2:   return HdatTabela.escrever(w, "$DISTANCIAS_IA", DOC_GD2, data, xsize, ysize, false, NOMES_GD2);
+            case 4:   return HdatTabela.escrever(w, "$PROGRESSAO_ARCADE", DOC_GD4, data, xsize, ysize, false, NOMES_GD4);
+            case 5:   return HdatTabela.escrever(w, "$MULTIPLICADOR_COMBO", DOC_GD5, data, xsize, ysize, true, NOMES_GD5);
+            case 8:   return HdatTabela.escrever(w, "$MAPA_FONTE", DOC_GD8, data, xsize, ysize, false, null);
+            case 9:   return HdatTabela.escrever(w, "$CONFIG_CENA", DOC_GD9, data, xsize, ysize, true, null);
+            case 41:  return HdatTabela.escrever(w, "$BP_POR_ESTAGIO", DOC_GD41, data, xsize, ysize, false, null);
+            case 42:  return HdatTabela.escrever(w, "$BP_CHEFE", DOC_GD42, data, xsize, ysize, false, null);
+            case 53:  return HdatTabela.escrever(w, "$PROB_RECOMPENSA", DOC_GD53, data, xsize, ysize, false, null);
+            case 54:  return HdatTabela.escrever(w, "$TRANSFORMACAO", DOC_GD54, data, xsize, ysize, false, null);
             case 3:   exHDAT3(w, data, xsize, ysize);   return true;
             case 43:  exHDAT43(w, data, xsize, ysize);  return true;
             case 50:  exHDAT50(w, data, xsize, ysize);  return true;
@@ -56,8 +66,9 @@ public final class hdatGD {
             case 167: exHDAT167(w, data, xsize, ysize); return true;
             default:
                 if (hdat >= 10 && hdat <= 39)   { exHDATDanoGD(w, data, xsize, ysize, hdat - 10); return true; }
-                if (hdat >= 51 && hdat <= 134)  { exHDAT51_134(w, data, xsize, ysize, hdat - 51); return true; }
-                if (hdat >= 170 && hdat <= 250) { exHDATCartas(w, data, xsize, ysize, hdat - 170); return true; }
+                // 53 e 54 caem nos case acima: NÃO são efeitos de formação.
+                if (hdat >= 51 && hdat <= 134)  return exHDAT51_134(w, data, xsize, ysize, hdat - 51);
+                if (hdat >= 170 && hdat <= 250) return exHDATCartas(w, data, xsize, ysize, hdat - 170);
                 return false;
         }
     }
@@ -70,6 +81,16 @@ public final class hdatGD {
      *         foi encontrada no bloco.
      */
     public static byte[] processBuild(String block, int xsize, int ysize, ErrorReporter reporter) throws IOException {
+        if (block.contains("$BONUS_EXP_DESEMPENHO")) return HdatTabela.compilar(block, xsize, ysize, true, null, 0, reporter);
+        if (block.contains("$DISTANCIAS_IA"))        return HdatTabela.compilar(block, xsize, ysize, false, NOMES_GD2, 2, reporter);
+        if (block.contains("$PROGRESSAO_ARCADE"))    return HdatTabela.compilar(block, xsize, ysize, false, NOMES_GD4, 4, reporter);
+        if (block.contains("$MULTIPLICADOR_COMBO"))  return HdatTabela.compilar(block, xsize, ysize, true, NOMES_GD5, 5, reporter);
+        if (block.contains("$MAPA_FONTE"))           return HdatTabela.compilar(block, xsize, ysize, false, null, 8, reporter);
+        if (block.contains("$CONFIG_CENA"))          return HdatTabela.compilar(block, xsize, ysize, true, null, 9, reporter);
+        if (block.contains("$BP_POR_ESTAGIO"))       return HdatTabela.compilar(block, xsize, ysize, false, null, 41, reporter);
+        if (block.contains("$BP_CHEFE"))             return HdatTabela.compilar(block, xsize, ysize, false, null, 42, reporter);
+        if (block.contains("$PROB_RECOMPENSA"))      return HdatTabela.compilar(block, xsize, ysize, false, null, 53, reporter);
+        if (block.contains("$TRANSFORMACAO"))        return HdatTabela.compilar(block, xsize, ysize, false, null, 54, reporter);
         if (block.contains("$IA_COMPORTAMENTO"))        return bdHDAT3(block, reporter);
         if (block.contains("$EXP_NEXT_LEVEL"))          return bdHDAT43(block, reporter);
         if (block.contains("$FORMACAO"))                return bdHDAT50(block, reporter);
@@ -94,10 +115,64 @@ public final class hdatGD {
         if (block.contains("$FLAGS_VIDA_ESPECIAL"))     return bdHDAT166(block, reporter);
         if (block.contains("$MODO_DEBUG"))              return bdHDAT167(block, reporter);
         if (block.contains("$REACAO_DANO_GD_"))         return bdHDATDanoGD(block, reporter);
-        if (block.contains("$EFEITO_FORMACAO_"))        return bdHDAT51_134(block, reporter);
-        if (block.contains("$CARTA_"))                  return bdHDATCartas(block, reporter);
+        if (block.contains("$EFEITO_FORMACAO_"))        return bdHDAT51_134(block, xsize, ysize, reporter);
+        if (block.contains("$CARTA_"))                  return bdHDATCartas(block, xsize, ysize, reporter);
         return null;
     }
+
+    /* ══════════════════════════════════════════════════════════════════
+       Tabelas simples (HdatTabela) — layout tirado das leituras do TCBManajer
+    ══════════════════════════════════════════════════════════════════ */
+
+    private static final String[] DOC_GD0 = {
+        "Bônus de EXP por desempenho (modo 745, fim de estágio, depois da missão inicial).",
+        "Tabela de short. Varre da última linha para a primeira: na primeira cuja col 0 o",
+        "desempenho do round alcança, o EXP ganho = col (dificuldade + 1). Col 0 = mínimo.",
+    };
+    private static final String[] NOMES_GD2 = { "GUARDA_PROJETIL", "PERTO", "MEDIO" };
+    private static final String[] DOC_GD2 = {
+        "Distâncias da IA (modo 685). GUARDA_PROJETIL col 0 = iRangeBulletGuard;",
+        "PERTO/MEDIO: col 0 = no chão (iDistNear/iDistMiddle), col 1 = no ar (iDistNearAir/iDistMiddleAir).",
+    };
+    private static final String[] NOMES_GD4 = {
+        "NIVEL_IA_FACIL", "NIVEL_IA_NORMAL", "NIVEL_IA_DIFICIL",
+        "NIVEL_EXTRA_FACIL", "NIVEL_EXTRA_NORMAL", "NIVEL_EXTRA_DIFICIL",
+        "EXP_EXTRA_FACIL", "EXP_EXTRA_NORMAL", "EXP_EXTRA_DIFICIL",
+        "NIVEL_FIXO_INICIAL", "NIVEL_IA_FIXO_INICIAL", "EXP_ESTAGIO_INICIAL",
+    };
+    private static final String[] DOC_GD4 = {
+        "Progressão do arcade: coluna = estágio (0-7).",
+        "NIVEL_IA_*: CPULevel do oponente. NIVEL_EXTRA_*: somado ao nível do jogador. EXP_EXTRA_*: EXP extra do estágio.",
+        "*_INICIAL: usados enquanto a missão inicial não foi concluída (iMissionClear == 0).",
+    };
+    private static final String[] NOMES_GD5 = { "PONTOS_POR_COMBO", "VALOR_POR_COMBO" };
+    private static final String[] DOC_GD5 = {
+        "Tabela de short por combo: coluna = ComboCount - 2 (combo 2..15 → 0..13). Usada em DamageChange.",
+        "PONTOS_POR_COMBO: % aplicado aos pontos do golpe especial (char HDAT 5).",
+        "VALOR_POR_COMBO: substitui o valor do hit quando há dano (0 vira 1).",
+    };
+    private static final String[] DOC_GD8 = {
+        "Mapa de fonte do CREATE_STRING: coluna = código do caractere (texto do HDAT 7) → padrão do sprite da fonte.",
+    };
+    private static final String[] DOC_GD9 = {
+        "Configuração de cena (modo 808, linha = cena). Tabela de short.",
+        "Col 0 → LoadData[5] (pack carregado no slot 5). Col 1 → cenário (-1 = mantém; 0 = cenário atual + 1).",
+        "Demais colunas também são lidas pelos modos 808/809/816 (função não confirmada).",
+    };
+    private static final String[] DOC_GD41 = {
+        "BP do estágio: linha = estágio (0-7), coluna = dificuldade. BP ganho = valor × 10 (modo 745).",
+    };
+    private static final String[] DOC_GD42 = {
+        "BP do chefe (modo 1, estágio múltiplo de 5): linha = estágio / 5, col 0 × 10 = BP.",
+    };
+    private static final String[] DOC_GD53 = {
+        "Prêmio sorteado no fim da luta (modo 0). Linha = prêmio; coluna = dificuldade × 3 + categoria",
+        "(0: combo máximo >= 13, 1: combo >= 8, 2: perfect). Cada coluna deve somar 100 (%).",
+        "Linhas 1-4 → item 256 + linha; 5-7 → item linha + 12 (ver TCBManajer modo 745).",
+    };
+    private static final String[] DOC_GD54 = {
+        "Transformação (modo 990): linha = PlayerType atual, col 0 = PlayerType depois de transformar.",
+    };
 
     /* ══════════════════════════════════════════════════════════════════
        HDAT 3 — $IA_COMPORTAMENTO
@@ -177,7 +252,7 @@ public final class hdatGD {
             int reqAfin1 = data[base + 3] & 0xFF;
             int reqAfin2 = data[base + 4] & 0xFF;
 
-            w.write("         $LINHA_" + linha + ": {$CARD_ID: " + cardId
+            w.write("         $LINHA_" + linha + ": {$TABELA_EFEITO: " + cardId
                     + ", $TIPO_REQUISITO: " + tipoRequisito
                     + ", $REQ_AFINIDADE: [" + reqAfin0 + ", " + reqAfin1 + ", " + reqAfin2 + "]"
                     + ", $CARTAS_EXIGIDAS: [");
@@ -192,7 +267,7 @@ public final class hdatGD {
 
     private static byte[] bdHDAT50(String block, ErrorReporter reporter) {
         Pattern pLinha = Pattern.compile(
-            "\\$LINHA_(\\d+):\\s*\\{\\$CARD_ID:\\s*(-?[\\d.]+)" +
+            "\\$LINHA_(\\d+):\\s*\\{\\$(?:TABELA_EFEITO|CARD_ID):\\s*(-?[\\d.]+)" +
             ",\\s*\\$TIPO_REQUISITO:\\s*(-?[\\d.]+)" +
             ",\\s*\\$REQ_AFINIDADE:\\s*\\[(-?[\\d.]+),\\s*(-?[\\d.]+),\\s*(-?[\\d.]+)\\]" +
             ",\\s*\\$CARTAS_EXIGIDAS:\\s*\\[([^\\]]*)\\]" +
@@ -219,7 +294,7 @@ public final class hdatGD {
             int base = linha * HDAT50_COLS;
             String label = "$LINHA_" + linha;
 
-            data[base]     = byteOf(checkedRawGroup(m.group(2), label + "/$CARD_ID",        50, 0, 255, reporter, m.group()));
+            data[base]     = byteOf(checkedRawGroup(m.group(2), label + "/$TABELA_EFEITO",  50, 0, 255, reporter, m.group()));
             data[base + 1] = byteOf(checkedRawGroup(m.group(3), label + "/$TIPO_REQUISITO",  50, 0, 255, reporter, m.group()));
             data[base + 2] = byteOf(checkedRawGroup(m.group(4), label + "/$REQ_AFINIDADE[0]", 50, 0, 255, reporter, m.group()));
             data[base + 3] = byteOf(checkedRawGroup(m.group(5), label + "/$REQ_AFINIDADE[1]", 50, 0, 255, reporter, m.group()));
@@ -1166,105 +1241,148 @@ public final class hdatGD {
 
     /* ══════════════════════════════════════════════════════════════════
        HDAT 51-134 — $EFEITO_FORMACAO_{N}
+
+       O índice deste HDAT é a coluna 0 de uma linha do HDAT 50 ($TABELA_EFEITO):
+       o jogo lê piGameData[Pos[efeito] + XSize * linha + 0], então só a coluna
+       0 de cada linha importa. Linhas lidas (TCBManajer.GetCard*):
+         3 ATK (GetCardAttack / ×1000 em GetCardAttackFm)   6 DEF (idem Defence)
+         7 Synchro (×10)   8 estoque de Synchro (×100)   16 fúria   20 Rush Red
+       53 e 54 NÃO entram aqui (são $PROB_RECOMPENSA e $TRANSFORMACAO). Quais
+       outros índices são de fato efeitos depende dos valores do HDAT 50.
     ══════════════════════════════════════════════════════════════════ */
 
-    private static final int HDAT51_134_TAMANHO = 22;
-
-    private static void exHDAT51_134(BufferedWriter w, byte[] data, int xsize, int ysize, int formacaoId) throws IOException {
-        int ataque   = data.length > 3  ? (data[3]  & 0xFF) : 0;
-        int defesa   = data.length > 6  ? (data[6]  & 0xFF) : 0;
-        int bonusKi  = data.length > 7  ? (data[7]  & 0xFF) * 10 : 0;
-        int barraKi  = data.length > 8  ? (data[8]  & 0xFF) : 0;
-        boolean furia = data.length > 16 && (data[16] & 0xFF) != 0;
-
-        w.write("      $EFEITO_FORMACAO_" + formacaoId + ": {\n");
-        w.write("         $ATAQUE: " + ataque + ",\n");
-        w.write("         $DEFESA: " + defesa + ",\n");
-        w.write("         $BONUS_KI: " + bonusKi + ",\n");
-        w.write("         $BONUS_BARRA_KI: " + barraKi + ",\n");
-        w.write("         $FURIA_PERMANENTE: " + (furia ? "YES" : "NO") + ",\n");
-        w.write("      },\n");
+    private static final String[] NOMES_EFEITO = new String[32];
+    static {
+        NOMES_EFEITO[3]  = "ATAQUE";
+        NOMES_EFEITO[6]  = "DEFESA";
+        NOMES_EFEITO[7]  = "BONUS_KI";        // Synchro; exibido ×10 (como o jogo usa)
+        NOMES_EFEITO[8]  = "BONUS_BARRA_KI";  // estoque de Synchro (×100 no jogo)
+        NOMES_EFEITO[16] = "FURIA";           // somado à taxa de fúria (não é sim/não)
+        NOMES_EFEITO[20] = "RUSH_RED";
     }
 
-    private static byte[] bdHDAT51_134(String block, ErrorReporter reporter) {
-        byte[] data = new byte[HDAT51_134_TAMANHO];
+    private static boolean exHDAT51_134(BufferedWriter w, byte[] data, int xsize, int ysize, int formacaoId) throws IOException {
+        if (xsize != 1 || ysize <= 0 || data.length != ysize) return false; // layout diferente → $RAW
 
-        Integer ataque  = extractOptionalChecked(block, "\\$ATAQUE:\\s*(-?[\\d.]+)", "$ATAQUE", -1, 0, 255, reporter);
-        Integer defesa  = extractOptionalChecked(block, "\\$DEFESA:\\s*(-?[\\d.]+)", "$DEFESA", -1, 0, 255, reporter);
-        Integer bonusKi = extractOptionalChecked(block, "\\$BONUS_KI:\\s*(-?[\\d.]+)", "$BONUS_KI", -1, 0, 2550, reporter);
-        Integer barraKi = extractOptionalChecked(block, "\\$BONUS_BARRA_KI:\\s*(-?[\\d.]+)", "$BONUS_BARRA_KI", -1, 0, 255, reporter);
-        boolean furia = extractYesNo(block, "\\$FURIA_PERMANENTE:\\s*(\\w+)");
+        w.write("      $EFEITO_FORMACAO_" + formacaoId + ": {\n");
+        w.write("         // Uma linha por campo (só a coluna 0 existe). BONUS_KI é mostrado × 10.\n");
+        for (int linha = 0; linha < ysize; linha++) {
+            int v = data[linha] & 0xFF;
+            String nome = linha < NOMES_EFEITO.length ? NOMES_EFEITO[linha] : null;
+            if (nome == null) {
+                w.write("         $LINHA_" + linha + ": " + v + ",\n");
+            } else {
+                w.write("         $" + nome + ": " + (linha == 7 ? v * 10 : v) + ",\n");
+            }
+        }
+        w.write("      },\n");
+        return true;
+    }
 
-        data[3]  = byteOf(ataque);
-        data[6]  = byteOf(defesa);
-        data[7]  = (byte) (((bonusKi != null ? bonusKi : 0) / 10) & 0xFF); // desfaz a multiplicação por 10 da exibição
-        data[8]  = byteOf(barraKi);
-        data[16] = (byte) (furia ? 1 : 0);
+    private static byte[] bdHDAT51_134(String block, int xsize, int ysize, ErrorReporter reporter) {
+        // Formato antigo tinha tamanho fixo de 22 e não trazia $COL/$ROW úteis.
+        int linhas = (xsize == 1 && ysize > 0) ? ysize : 22;
+        byte[] data = new byte[linhas];
 
-        // Preserva campos brutos $CAMPO_NN adicionados manualmente ao texto — o que
-        // não for encontrado fica 0, mesmo comportamento de sempre.
+        for (int linha = 0; linha < linhas; linha++) {
+            String nome = linha < NOMES_EFEITO.length ? NOMES_EFEITO[linha] : null;
+            Integer v = (nome != null)
+                    ? extractOptionalChecked(block, "\\$" + nome + ":\\s*(-?[\\d.]+)", "$" + nome, -1, 0, linha == 7 ? 2550 : 255, reporter)
+                    : extractOptionalChecked(block, "\\$LINHA_" + linha + ":\\s*(-?[\\d.]+)", "$LINHA_" + linha, -1, 0, 255, reporter);
+            if (v == null) continue;
+            data[linha] = (byte) ((linha == 7 ? v / 10 : v) & 0xFF);
+        }
+
+        // Compatibilidade com o formato antigo: $FURIA_PERMANENTE: YES/NO e $CAMPO_NN.
+        if (!block.contains("$FURIA:") && block.contains("$FURIA_PERMANENTE")) {
+            data[16] = (byte) (extractYesNo(block, "\\$FURIA_PERMANENTE:\\s*(\\w+)") ? 1 : 0);
+        }
         Matcher m = Pattern.compile("\\$CAMPO_(\\d+):\\s*(-?[\\d.]+)").matcher(block);
         while (m.find()) {
             int pos = Integer.parseInt(m.group(1));
-            if (pos >= 0 && pos < HDAT51_134_TAMANHO) {
+            if (pos >= 0 && pos < data.length) {
                 Integer v = checkedRawGroup(m.group(2), "$CAMPO_" + pos, -1, 0, 255, reporter, m.group());
                 data[pos] = byteOf(v);
             }
         }
-
         return data;
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       HDAT 170-250 — $CARTA_{N}
+       HDAT 170-250 — $CARTA_{N}   (carta N = HDAT 170 + N; GetCardNo devolve 1..80)
+
+       O jogo lê piGameData[Pos + XSize * K + nivel * 2] (short) SEMPRE com K par:
+       cada atributo ocupa 2 × XSize bytes = XSize níveis (11 no jogo). Com
+       XSize = 11 e YSize = 56 o bloco tem 616 bytes = 28 atributos (K = 0..54).
+       A versão anterior escrevia as 56 "constantes" de 11 em 11 bytes: as de K
+       ímpar se sobrepõem às pares, e ao recompilar uma edição em $ATK o
+       $ATR_07 seguinte regravava metade da linha com o valor antigo.
+
+       Atributos lidos (TCBManajer.GetCard*, GetPutCard*, AutoCardSet):
+         6 ATK (inteiro)       12 DEF (inteiro)     14 Synchro     16 estoque de Synchro
+         32 fúria              40 Rush Red          44 afinidade (comparada com o char HDAT 3 [9])
+         48 custo              50 ATK em milésimos  52 DEF em milésimos
     ══════════════════════════════════════════════════════════════════ */
 
-    private static final int HDATCARTAS_NIVEIS = 11;
-    private static final int HDATCARTAS_STRIDE = 11;
-    private static final int HDATCARTAS_TAMANHO_BLOCO = 616;
-    private static final int HDATCARTAS_MAX_CONSTANTE = 56;
+    private static final int HDATCARTAS_NIVEIS_PADRAO = 11;
+    private static final int HDATCARTAS_LINHAS_PADRAO = 56;
 
-    private static final String[] HDATCARTAS_NOMES = new String[HDATCARTAS_MAX_CONSTANTE];
+    private static final String[] HDATCARTAS_NOMES = new String[64];
     static {
         HDATCARTAS_NOMES[6]  = "ATK";
         HDATCARTAS_NOMES[12] = "DEF";
+        HDATCARTAS_NOMES[14] = "SYNCHRO";
+        HDATCARTAS_NOMES[16] = "SYNCHRO_ESTOQUE";
         HDATCARTAS_NOMES[32] = "ANGRY";
+        HDATCARTAS_NOMES[40] = "RUSH_RED";
         HDATCARTAS_NOMES[44] = "AFINIDADE";
         HDATCARTAS_NOMES[48] = "CUSTO";
         HDATCARTAS_NOMES[50] = "ATQ";
         HDATCARTAS_NOMES[52] = "DEF_EXIBICAO";
     }
 
-    private static void exHDATCartas(BufferedWriter w, byte[] data, int xsize, int ysize, int cardId) throws IOException {
-        w.write("      $CARTA_" + cardId + ":{\n");
-        for (int constante = 0; constante < HDATCARTAS_MAX_CONSTANTE; constante++) {
-            String nome = HDATCARTAS_NOMES[constante] != null ? HDATCARTAS_NOMES[constante] : ("ATR_" + String.format("%02d", constante));
-            w.write("         $" + nome + ": [");
-            for (int nivel = 0; nivel < HDATCARTAS_NIVEIS; nivel++) {
-                int byteOffset = HDATCARTAS_STRIDE * constante + nivel * 2;
-                int val = readShortAtByteOffset(data, byteOffset);
-                w.write(String.valueOf(val));
-                if (nivel < HDATCARTAS_NIVEIS - 1) w.write(", ");
-            }
-            w.write("], // por nível 0-10\n");
-        }
-        w.write("      },\n");
+    private static String nomeAtributo(int k) {
+        return (k < HDATCARTAS_NOMES.length && HDATCARTAS_NOMES[k] != null) ? HDATCARTAS_NOMES[k] : ("ATR_" + String.format("%02d", k));
     }
 
-    private static byte[] bdHDATCartas(String block, ErrorReporter reporter) {
-        byte[] data = new byte[HDATCARTAS_TAMANHO_BLOCO];
+    private static boolean exHDATCartas(BufferedWriter w, byte[] data, int xsize, int ysize, int cardId) throws IOException {
+        if (xsize <= 0 || ysize <= 0 || (ysize & 1) != 0 || data.length != xsize * ysize) return false; // → $RAW
 
-        for (int constante = 0; constante < HDATCARTAS_MAX_CONSTANTE; constante++) {
-            String nome = HDATCARTAS_NOMES[constante] != null ? HDATCARTAS_NOMES[constante] : ("ATR_" + String.format("%02d", constante));
-            Pattern p = Pattern.compile("\\$" + nome + ":\\s*\\[([^\\]]*)\\]");
-            Matcher m = p.matcher(block);
-            if (!m.find()) continue;
+        w.write("      $CARTA_" + cardId + ":{\n");
+        w.write("         // Um atributo por linha, um valor por nível (0-" + (xsize - 1) + "). ATQ/DEF_EXIBICAO em milésimos.\n");
+        for (int k = 0; k < ysize; k += 2) {
+            w.write("         $" + nomeAtributo(k) + ": [");
+            for (int nivel = 0; nivel < xsize; nivel++) {
+                w.write(String.valueOf(readShortAtByteOffset(data, xsize * k + nivel * 2)));
+                if (nivel < xsize - 1) w.write(", ");
+            }
+            w.write("],\n");
+        }
+        w.write("      },\n");
+        return true;
+    }
+
+    private static byte[] bdHDATCartas(String block, int xsize, int ysize, ErrorReporter reporter) {
+        int niveis = xsize > 0 ? xsize : HDATCARTAS_NIVEIS_PADRAO;
+        int linhas = (ysize > 0 && (ysize & 1) == 0) ? ysize : HDATCARTAS_LINHAS_PADRAO;
+        byte[] data = new byte[niveis * linhas];
+
+        // Só K par. Num texto do extractor antigo os $ATR_ ímpares (sobrepostos)
+        // são ignorados — assim uma edição nas linhas pares não é desfeita.
+        for (int k = 0; k < linhas; k += 2) {
+            String nome = nomeAtributo(k);
+            Matcher m = Pattern.compile("\\$" + nome + ":\\s*\\[([^\\]]*)\\]").matcher(block);
+            boolean achou = m.find();
+            if (!achou && !nome.startsWith("ATR_")) {
+                // nomes novos (SYNCHRO, RUSH_RED...): aceita o $ATR_NN do extractor antigo
+                m = Pattern.compile("\\$ATR_" + String.format("%02d", k) + ":\\s*\\[([^\\]]*)\\]").matcher(block);
+                achou = m.find();
+            }
+            if (!achou) continue;
             String[] partes = m.group(1).split(",");
-            for (int nivel = 0; nivel < HDATCARTAS_NIVEIS && nivel < partes.length; nivel++) {
-                int byteOffset = HDATCARTAS_STRIDE * constante + nivel * 2;
-                if (byteOffset + 1 >= data.length) continue;
-                Integer v = checkedRawGroup(partes[nivel].trim(), "$" + nome + "[" + nivel + "]", -1, 0, 65535, reporter, m.group());
-                writeShortAtByteOffset(data, byteOffset, v);
+            for (int nivel = 0; nivel < niveis && nivel < partes.length; nivel++) {
+                Integer v = checkedRawGroup(partes[nivel].trim(), "$" + nome + "[" + nivel + "]", -1, -32768, 65535, reporter, m.group());
+                writeShortAtByteOffset(data, niveis * k + nivel * 2, v);
             }
         }
         return data;

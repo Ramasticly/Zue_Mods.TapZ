@@ -101,11 +101,17 @@ public class BinBuilder {
         if (block.contains("$TXT:")) {
             // Captura apenas o conteúdo de $T_0: "texto"
             Matcher m = Pattern.compile("\\$T_\\d+:\\s*" + QUOTED_TEXT).matcher(block);
+            int linhas = 0;
             while (m.find()) {
                 byte[] b = unescapeText(m.group(1)).getBytes(StandardCharsets.UTF_8);
                 writeShortBE(baos, b.length); // Tamanho Big Endian como no Extractor
                 baos.write(b);
+                linhas++;
             }
+            // Completa até $ROW com textos vazios (como o Text00Builder fazia): o
+            // jogo acha a linha N somando os tamanhos das anteriores, então uma
+            // linha a menos faria as últimas lerem o HDAT seguinte.
+            for (; linhas < ysize; linhas++) writeShortBE(baos, 0);
         return baos.toByteArray();
         }
 
@@ -153,7 +159,10 @@ public class BinBuilder {
      * escapados), seguido da vírgula. O antigo "(.*?)\"," parava no primeiro
      * \"," DE DENTRO do texto (ex.: "Olá", disse) e cortava a string.
      */
-    static final String QUOTED_TEXT = "\"((?:[^\"\\\\]|\\\\.)*)\"\\s*,";
+    // Forma "unrolled" possessiva: (?:[^"\\]|\\.)* recursava uma vez POR
+    // CARACTERE no java.util.regex e estourava a pilha (StackOverflowError) em
+    // textos longos; assim só há repetição de grupo por sequência de escape.
+    static final String QUOTED_TEXT = "\"([^\"\\\\]*+(?:\\\\.[^\"\\\\]*+)*+)\"\\s*,";
 
     /**
      * Desfaz o escape em UMA passada. O replace encadeado anterior

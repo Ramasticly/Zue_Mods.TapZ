@@ -39,3 +39,8 @@ O `BinExtractor` só grava um HDAT no formato detalhado se esse texto,
 recompilado, devolve **exatamente** os mesmos bytes; senão grava `$RAW` com um
 comentário. Assim, extrair → compilar sem editar nada nunca muda o binário
 (o mesmo vale para DAC, texto do `text00` e o `.pac` reempacotado).
+
+## Mapa dos HDATs
+
+`HDATS.md` lista cada HDAT do `gamedata.pac` e do `charNN.pac` que o
+`TCBManajer` lê (inclusive por índice em variável), a função e o extractor.

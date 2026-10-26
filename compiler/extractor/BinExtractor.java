@@ -132,7 +132,11 @@ public class BinExtractor {
         switch (pasta) {
             case 0: // gamedata
                 switch (hdat) {
+                    // 7 = texto do CREATE_STRING; 137/138/154 = GameData_TextPage do idioma 0
+                    // (nome/descrição de formação e textos de estágio); 271-279 = as mesmas
+                    // páginas nos idiomas 1-3 (TCBManajer.GameData_TextPage[iLanguage * 3 + n]).
                     case 7: case 44: case 137: case 138: case 154:
+                    case 271: case 272: case 273: case 274: case 275: case 276: case 277: case 278: case 279:
                         writeText(w, data, ysize); return true;
                 }
                 return hdatGD.processExtraction(w, data, hdat, xsize, ysize);
