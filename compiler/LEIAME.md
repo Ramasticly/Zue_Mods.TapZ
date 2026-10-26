@@ -8,11 +8,17 @@ Um único pacote para o **jogo** e para o **app** (Tap Ult). Junta o antigo
 
 | Pasta | Onde entra | Conteúdo |
 |---|---|---|
-| `compiler/` (tudo, menos `jogo/`) | jogo **e** app | Java puro: extractors, builders, `hdatChar`/`hdatGD`/`hdatBack`, DAC, SPR, Extras (parser/builder/extractor), `errors/` |
+| `compiler/global/` | jogo **e** app | Java puro: extractors, builders, `hdatChar`/`hdatGD`/`hdatBack`, DAC, SPR, Extras (parser/builder/extractor), `errors/` |
 | `compiler/jogo/` | **só no jogo** | `Compiler.java` (estende `GameData`), `PacBuilderView`, `apk/` (export de Mod APK), runtime de Extras (`ExtrasReader`, `video/`, `webp/`, pacote `com.namcobandaigames.dragonballtap.apk`) |
+| `compiler/app/` | **só no app** | hoje vazio (ver `app/LEIAME.md`) — nenhuma classe é exclusiva do app |
 
-O núcleo não importa nenhuma classe do jogo (`Logue`, `GameData`, `TCBManajer`…),
-então compila no app sem stubs.
+- Projeto do jogo = `global/` + `jogo/`.
+- Projeto do app = `global/` + `app/`.
+
+O `global/` não importa nenhuma classe do jogo (`Logue`, `GameData`, `TCBManajer`…),
+então compila no app sem stubs. O `errors/` (que só vinha no appCompiler) fica
+em `global/` porque os builders compartilhados o usam — no jogo eles recebem
+`reporter == null`.
 
 ## A flag `PacBuilder.isApp`
 
