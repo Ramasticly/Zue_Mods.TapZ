@@ -1,9 +1,9 @@
 package com.zue.gd.util;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.nio.charset.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.*;
 
@@ -74,7 +74,7 @@ public final class hdatChar {
         if (block.contains("$REGENERACAO_KI"))           return bdHDAT1(block, reporter);
         if (block.contains("$TEXTOS_DO_PERSONAGEM"))     return bdHDAT2(block);
         if (block.contains("$STATUS_BASE_E_FISICA"))     return bdHDAT3(block, reporter);
-        if (block.contains("$ATRIBUTOS_DE_GOLPE"))       return bdHDAT4(block, reporter);
+        if (block.contains("$ATRIBUTOS_DE_GOLPE"))       return bdHDAT4(block, xsize, reporter);
         if (block.contains("$PONTUACAO_POR_GOLPE"))      return bdHDAT5(block, xsize, ysize, reporter);
         if (block.contains("$SEQUENCIAS_IA"))            return bdHDAT6(block, xsize, reporter);
         if (block.contains("$ROTEIRO_CUTSCENE"))         return bdHDAT13(block, xsize, ysize, reporter);
@@ -289,29 +289,35 @@ public final class hdatChar {
         int ptr = 0;
         int len = data.length;
         for (int i = 0; i < ysize; i++) {
-            String txt = "";
+            byte[] chunk = new byte[0];
             if (ptr + 2 <= len) {
                 int strLen = ((data[ptr] & 0xFF) << 8) | (data[ptr + 1] & 0xFF);
                 ptr += 2;
                 if (strLen > 0) {
                     int available = Math.min(strLen, len - ptr);
-                    byte[] chunk = new byte[available];
+                    chunk = new byte[available];
                     System.arraycopy(data, ptr, chunk, 0, available);
-                    txt = decodeWithFallback(chunk);
                     ptr += available;
                 }
             }
-            String escaped = txt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
-            w.write("         $LINHA_" + i + ": \"" + escaped + "\",\n");
+            // mesmo formato do $T_N: "..." UTF-8, SJIS"..." Shift_JIS, \xHH byte cru
+            w.write("         $LINHA_" + i + ": " + BinExtractor.quoteText(chunk) + ",\n");
         }
         w.write("      },\n");
     }
 
     private static byte[] bdHDAT2(String block) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Matcher m = Pattern.compile("\\$LINHA_\\d+:\\s*" + BinBuilder.QUOTED_TEXT).matcher(block);
+        Matcher m = Pattern.compile("\\$LINHA_\\d+:\\s*(SJIS)?" + BinBuilder.QUOTED_TEXT).matcher(block);
+        Charset sjis = null;
         while (m.find()) {
-            byte[] b = BinBuilder.unescapeText(m.group(1)).getBytes(StandardCharsets.UTF_8);
+            Charset cs = StandardCharsets.UTF_8;
+            if (m.group(1) != null) {
+                if (sjis == null) sjis = BinExtractor.shiftJis();
+                if (sjis == null) throw new IOException("Shift_JIS não existe nesta plataforma ($LINHA_ com SJIS\"\")");
+                cs = sjis;
+            }
+            byte[] b = BinBuilder.encodeText(m.group(2), cs);
             baos.write((b.length >> 8) & 0xFF);
             baos.write(b.length & 0xFF);
             baos.write(b);
@@ -439,7 +445,7 @@ public final class hdatChar {
 
     private static void exHDAT4(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
         w.write("      $ATRIBUTOS_DE_GOLPE:{\n");
-        int stride = 48;
+        int stride = hdat4Stride(xsize);
         int count = data.length / stride;
 
         w.write("      // (documentação de campos disponível no histórico do projeto)\n\n");
@@ -474,16 +480,29 @@ public final class hdatChar {
             w.write("            $POUSO_AO_ACERTAR: "                 + readS16(data, base + 22) + ",\n");
             w.write("            // --- OPONENTE ---\n");
             w.write("            $OPONENTE_ANIM_SENDO_AGARRADO: "     + readS16(data, base + 24) + ",\n");
-            w.write("            // Campos sem função conhecida.\n");
-            w.write("            $DESCONHECIDO_44: "                   + readS16(data, base + 44) + ",\n");
-            w.write("            $DESCONHECIDO_46: "                   + readS16(data, base + 46) + "\n");
+            if (stride > 44) w.write("            // Campos sem função conhecida.\n");
+            for (int off = 44; off + 1 < stride; off += 2) {
+                w.write("            $DESCONHECIDO_" + off + ": " + readS16(data, base + off) + (off + 3 < stride ? ",\n" : "\n"));
+            }
             w.write("         },\n");
         }
         w.write("      },\n");
     }
 
-    private static byte[] bdHDAT4(String block, ErrorReporter reporter) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    /**
+     * Bytes por golpe no HDAT 4 = 2 * $COL (TCBManajer lê golpe * 2 *
+     * piGameDataXSize[4] + offset). Não é sempre 24 colunas: o char01 original
+     * tem 23, e com 48 bytes fixos os golpes saíam desalinhados e os bytes do
+     * fim se perdiam. Depois do offset 42 (último que o jogo lê) vêm
+     * $DESCONHECIDO_44, _46... até o fim da linha.
+     */
+    private static int hdat4Stride(int xsize) {
+        return xsize > 0 ? xsize * 2 : 48;
+    }
+
+    private static byte[] bdHDAT4(String block, int xsize, ErrorReporter reporter) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int stride = hdat4Stride(xsize);
 
         // Descobre quantos $GOLPE_N existem e em que ordem, depois isola cada bloco
         // por contagem de profundidade de chaves (extractBlock) — mais robusto que
@@ -504,6 +523,7 @@ public final class hdatChar {
                 continue;
             }
             found++;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(stride);
             writeShortLE(baos, checkedS16(c, "\\$ATK_FLAGS:\\s*(-?[\\d.]+)",                    golpeLabel + "/$ATK_FLAGS", reporter));
             writeShortLE(baos, checkedS16(c, "\\$ANIM_INICIAL:\\s*(-?[\\d.]+)",                 golpeLabel + "/$ANIM_INICIAL", reporter));
             writeShortLE(baos, checkedS16(c, "\\$PROJETIL_ANIM_NORMAL:\\s*(-?[\\d.]+)",         golpeLabel + "/$PROJETIL_ANIM_NORMAL", reporter));
@@ -526,8 +546,10 @@ public final class hdatChar {
             writeShortLE(baos, checkedS16(c, "\\$PROJETIL_ANIM_ACERTAR_GLOBAL:\\s*(-?[\\d.]+)", golpeLabel + "/$PROJETIL_ANIM_ACERTAR_GLOBAL", reporter));
             writeShortLE(baos, checkedS16(c, "\\$PROJETIL_COLISAO_CHAO:\\s*(-?[\\d.]+)",        golpeLabel + "/$PROJETIL_COLISAO_CHAO", reporter));
             writeShortLE(baos, checkedS16(c, "\\$SUBPROJETIL_COLISAO_CHAO:\\s*(-?[\\d.]+)",     golpeLabel + "/$SUBPROJETIL_COLISAO_CHAO", reporter));
-            writeShortLE(baos, checkedS16(c, "\\$DESCONHECIDO_44:\\s*(-?[\\d.]+)",              golpeLabel + "/$DESCONHECIDO_44", reporter));
-            writeShortLE(baos, checkedS16(c, "\\$DESCONHECIDO_46:\\s*(-?[\\d.]+)",              golpeLabel + "/$DESCONHECIDO_46", reporter));
+            for (int off = 44; off + 1 < stride; off += 2) {
+                writeShortLE(baos, checkedS16(c, "\\$DESCONHECIDO_" + off + ":\\s*(-?[\\d.]+)", golpeLabel + "/$DESCONHECIDO_" + off, reporter));
+            }
+            out.write(Arrays.copyOf(baos.toByteArray(), stride)); // $COL < 22: o que não cabe na linha fica de fora
         }
         if (found == 0) {
             ErrorReporter.reportIfPresent(reporter, CompileError.builder()
@@ -536,7 +558,7 @@ public final class hdatChar {
                     .hdatIndex(4)
                     .message("$ATRIBUTOS_DE_GOLPE não contém nenhum $GOLPE_N reconhecível — verifique chaves balanceadas"));
         }
-        return baos.toByteArray();
+        return out.toByteArray();
     }
 
     /* ══════════════════════════════════════════════════════════════════
@@ -1130,18 +1152,6 @@ public final class hdatChar {
         int value = (v != null) ? v : 0;
         os.write(value & 0xFF);
         os.write((value >> 8) & 0xFF);
-    }
-
-    private static String decodeWithFallback(byte[] chunk) {
-        if (chunk == null || chunk.length == 0) return "";
-        try {
-            CharsetDecoder utf8 = StandardCharsets.UTF_8.newDecoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT);
-            return utf8.decode(ByteBuffer.wrap(chunk)).toString();
-        } catch (Exception e) {
-            return new String(chunk, Charset.forName("Shift_JIS"));
-        }
     }
 
     /**

@@ -90,7 +90,7 @@ as que usam índice de HDAT em variável.
 | 1 | Regeneração de ki (`DamageChange`): pares divisor/bônus | byte, 8 | `$REGENERACAO_KI` |
 | 2 | Textos do idioma 0 (`CharData_TextPage[0]`) | texto | `$TEXTOS_DO_PERSONAGEM` |
 | 3 | Status base: [0]/[1] velocidade (também recuo no empurrão), [3] largura (o jogo usa /2), [8] ki ×100, [9] afinidade, [11] HP, [12] ATK ×10, [14] DEF ×10, [17] custo | byte, 18 | `$STATUS_BASE_E_FISICA` |
-| 4 | Atributos de golpe (24 shorts) | short, 24 col | `$ATRIBUTOS_DE_GOLPE` |
+| 4 | Atributos de golpe: 1 linha por golpe, 1 short por coluna (o jogo lê os offsets 0–42; o resto sai como `$DESCONHECIDO_N`) | short, `$COL` col (char01 = 23) | `$ATRIBUTOS_DE_GOLPE` |
 | 5 | Pontos por golpe especial (ANO 27–66) | short, 40 | `$PONTUACAO_POR_GOLPE` |
 | 6 | Sequências da CPU: pares ação/tempo, [8] continua, [9] exige cancel | byte, 10 col | `$SEQUENCIAS_IA` (desligado; idem HDAT 0) |
 | 7 | **Crescimento por nível** (linha = nível 0–98; stat = base do HDAT 3 + soma até o nível): col 0 HP, 1 ATK, 2 ki/Synchro, 3 DEF, 21 custo — `GetHP/GetAttack/GetSynchro/GetDeffence/GetCost` | byte, 22 col | `$CRESCIMENTO_POR_NIVEL` **(novo)** |
