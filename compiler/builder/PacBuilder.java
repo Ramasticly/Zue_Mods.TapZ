@@ -13,7 +13,11 @@ public final class PacBuilder {
     // Nasce false: o comportamento do jogo (Compiler.java, em runtime)
     // não muda em nada — ele nunca liga esta flag. Cabe ao app ligá-la
     // antes de rodar o build em lote.
-    public static boolean isApp = false;
+    //
+    // É a ÚNICA flag de modo do pacote: PacExtractor também a consulta
+    // (organização da extração em BACKS/CARDS/CHARS/SYSTEM), então o app
+    // só precisa de "PacBuilder.isApp = true;" uma vez.
+    public static volatile boolean isApp = false;
 
     // Callback opcional de progresso, por item processado (.spr ou .*.txt
     // convertido). Aditivo: build(folderPath) continua igual, cb == null
@@ -209,8 +213,50 @@ public final class PacBuilder {
         return count;
     }
 
+    /**
+     * Apaga, antes de um build, os binários que o build vai regenerar a partir
+     * de um .txt que ainda existe na pasta: "000.dac" quando há "000.dac.txt"
+     * (idem .bin/.cnv) e, dentro de cada pasta .spr, "000.bin" quando há
+     * "000.bin.txt". Assim um .txt que falhar ao compilar não deixa o binário
+     * antigo ser carregado em silêncio.
+     *
+     * Nunca apaga o que o build NÃO recria (.act, .png, .wav, .mp4, .webp, ou
+     * um binário sem .txt correspondente). A versão anterior (duplicada em
+     * Compiler e ModApkBuilder) montava o nome pelo índice do bloco na tabela
+     * do .pac — mas o PacExtractor sempre grava ACT/BIN/CNV/DAC/SPR como "000",
+     * então ela apagava o arquivo errado ou, quando o bloco 0 era ACT, apagava
+     * o 000.act (dado cru, sem .txt para regenerar).
+     */
+    public static void cleanProjectFolder(File pacFolder) {
+        if (pacFolder == null || !pacFolder.isDirectory()) return;
+        cleanGeneratedBinaries(pacFolder);
+        File[] subs = pacFolder.listFiles();
+        if (subs == null) return;
+        for (File f : subs) {
+            if (f.isDirectory() && f.getName().toLowerCase().endsWith(".spr")) {
+                cleanGeneratedBinaries(f);
+            }
+        }
+    }
+
+    private static void cleanGeneratedBinaries(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (!f.isFile() || !f.getName().toLowerCase().endsWith(".txt")) continue;
+            String target = stripTxtExtension(f.getName());
+            String t = target.toLowerCase();
+            if (t.endsWith(".bin") || t.endsWith(".cnv") || t.endsWith(".dac")) {
+                File out = new File(dir, target);
+                if (out.isFile()) out.delete();
+            }
+        }
+    }
+
+    // Case-insensitive, igual ao SprBuilder: com ".TXT" maiúsculo o
+    // lastIndexOf(".txt") dava -1 e o binário era gravado POR CIMA do .txt.
     private static String stripTxtExtension(String name) {
-        int idx = name.lastIndexOf(".txt");
+        int idx = name.toLowerCase().lastIndexOf(".txt");
         return (idx > 0) ? name.substring(0, idx) : name;
     }
 
@@ -231,8 +277,17 @@ public final class PacBuilder {
         }
 
         ByteArrayInputStream in = new ByteArrayInputStream(dump);
-        DacParser parser = new DacParser(in, anoCount, reporter, dumpFile.getName(), packName);
-        return parser.parse().build();
+        // ExtrasParser guarda estado ESTÁTICO entre parse() e build() — o
+        // jogo (SetLoad) e o export de APK (thread própria) podem compilar ao
+        // mesmo tempo, então parse+build de um .dac precisam ser atômicos.
+        synchronized (ExtrasParser.class) {
+            try {
+                DacParser parser = new DacParser(in, anoCount, reporter, dumpFile.getName(), packName);
+                return parser.parse().build();
+            } finally {
+                ExtrasParser.reset(); // solta as referências deste .dac (o mapa é estático)
+            }
+        }
     }
 
     private static byte[] readFast(File f) throws IOException {

@@ -79,22 +79,30 @@ public class BinBuilder {
         return sb.toString();
     }
 
+    /**
+     * Compila UM bloco $HDAT_N (o texto completo, de "$HDAT_N:{" até a "}"
+     * final) exatamente como build() faria. Usado pelo BinExtractor para
+     * conferir, já na extração, se o texto gerado volta aos mesmos bytes.
+     */
+    static byte[] buildHdatBlock(String hdatBlock, int xsize, int ysize) throws IOException {
+        return buildInnerBlock(hdatBlock, xsize, ysize, null);
+    }
+
     private static byte[] buildInnerBlock(String block, int xsize, int ysize, ErrorReporter reporter) throws IOException {
         byte[] result;
 
         if ((result = hdatChar.processBuild(block, xsize, ysize, reporter)) != null) return result;
         if ((result = hdatGD.processBuild(block, xsize, ysize, reporter)) != null) return result;
-        // if ((result = hdatBack.processBuild(block, xsize, ysize, reporter)) != null) return result; // back (cenário) — despacho por tag, ver hdatBack.java
+        if ((result = hdatBack.processBuild(block, xsize, ysize, reporter)) != null) return result; // back (cenário) — despacho por tag, ver hdatBack.java
 
         // --- BLOCOS DE SISTEMA / GLOBAIS (não pertencem a nenhum domínio específico) ---
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         if (block.contains("$TXT:")) {
             // Captura apenas o conteúdo de $T_0: "texto"
-            Pattern p = Pattern.compile("\\$T_\\d+:\\s*\"(.*?)\",", Pattern.DOTALL);
-            Matcher m = p.matcher(block);
+            Matcher m = Pattern.compile("\\$T_\\d+:\\s*" + QUOTED_TEXT).matcher(block);
             while (m.find()) {
-                byte[] b = unescape(m.group(1)).getBytes(StandardCharsets.UTF_8);
+                byte[] b = unescapeText(m.group(1)).getBytes(StandardCharsets.UTF_8);
                 writeShortBE(baos, b.length); // Tamanho Big Endian como no Extractor
                 baos.write(b);
             }
@@ -140,8 +148,32 @@ public class BinBuilder {
         os.write(v & 0xFF);
     }
 
-    private static String unescape(String s) {
-        return s.replace("\\n", "\n").replace("\\r", "\r").replace("\\\"", "\"").replace("\\\\", "\\");
+    /**
+     * Texto entre aspas no formato que os extractors escrevem (\\ \" \n \r
+     * escapados), seguido da vírgula. O antigo "(.*?)\"," parava no primeiro
+     * \"," DE DENTRO do texto (ex.: "Olá", disse) e cortava a string.
+     */
+    static final String QUOTED_TEXT = "\"((?:[^\"\\\\]|\\\\.)*)\"\\s*,";
+
+    /**
+     * Desfaz o escape em UMA passada. O replace encadeado anterior
+     * (\\n → quebra antes de \\\\ → \\) transformava um "\\" seguido de "n" do
+     * texto original (ex.: C:\\novo) em quebra de linha.
+     */
+    static String unescapeText(String s) {
+        if (s.indexOf('\\') < 0) return s;
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                char n = s.charAt(i + 1);
+                if (n == 'n') { sb.append('\n'); i++; continue; }
+                if (n == 'r') { sb.append('\r'); i++; continue; }
+                if (n == '"' || n == '\\') { sb.append(n); i++; continue; }
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 
     private static String getBalancedBlock(String text, String startMarker) {
@@ -150,9 +182,24 @@ public class BinBuilder {
         int braceStart = text.indexOf("{", startIndex);
         if (braceStart == -1) return null;
         int depth = 0;
+        boolean inQuote = false;
         for (int i = braceStart; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == '{') depth++;
+            // Chaves dentro de textos ($T_N:"...{...}") não contam — antes um
+            // "{" ou "}" num texto desalinhava o fim do $HDAT_N.
+            if (inQuote) {
+                if (c == '\\') i++;
+                else if (c == '"') inQuote = false;
+                continue;
+            }
+            if (c == '/' && i + 1 < text.length() && text.charAt(i + 1) == '/') {
+                int eol = text.indexOf('\n', i);
+                if (eol < 0) break;
+                i = eol; // comentário "//" até o fim da linha: aspas/chaves nele não contam
+                continue;
+            }
+            if (c == '"') inQuote = true;
+            else if (c == '{') depth++;
             else if (c == '}') {
                 depth--;
                 if (depth == 0) return text.substring(startIndex, i + 1);

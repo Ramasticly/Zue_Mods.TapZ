@@ -90,8 +90,22 @@ public class PacBuilderView {
                     if (isCancelled) break; 
                     final String fName = folders.get(i);
                     final int prog = (i * 100) / folders.size();
-                    
-                    RealPacBuilder.buildSingle(new File("/storage/emulated/0/Tap Battle/assets/", fName), outRoot, new RealPacBuilder.ProgressCallback() {
+                    final File packDir = new File("/storage/emulated/0/Tap Battle/assets/", fName);
+
+                    // Compila os .txt antes de empacotar (igual ao Compiler/ModApkBuilder):
+                    // sem isto o .pac saía com os binários da última vez que o jogo
+                    // carregou o pack, ignorando edições feitas depois.
+                    try {
+                        PacBuilder.cleanProjectFolder(packDir);
+                        PacBuilder.build(packDir.getAbsolutePath());
+                    } catch (final Exception e) {
+                        uiHandler.post(new Runnable() {
+                            @Override public void run() { Toast.makeText(Utility.activ, "Erro ao compilar " + fName + ": " + e.getMessage(), Toast.LENGTH_LONG).show(); }
+                        });
+                        continue;
+                    }
+
+                    RealPacBuilder.buildSingle(packDir, outRoot, new RealPacBuilder.ProgressCallback() {
                         @Override public void onBuildStart(String p, int idx, int t) { updateUI("Iniciando: " + p, prog); }
                         @Override public void onSegmentPacked(String p, int idx, String f, int s) { updateUI("Processando: " + f, -1); }
                         @Override public void onBuildDone(String p) { updateUI("Concluído: " + p, prog + (100/Math.max(1, folders.size()))); }

@@ -73,7 +73,11 @@ public final class hdatChar {
         if (block.contains("$PONTUACAO_POR_GOLPE"))      return bdHDAT5(block, xsize, ysize, reporter);
         if (block.contains("$SEQUENCIAS_IA"))            return bdHDAT6(block, xsize, reporter);
         if (block.contains("$ROTEIRO_CUTSCENE"))         return bdHDAT13(block, xsize, ysize, reporter);
-        if (block.contains("$REACAO_DE_DANO_"))          return bdHDATDano(block, reporter);
+        // O extractor (exHDATDano) escreve "$REACAO_DANO_N"; aqui só se
+        // procurava "$REACAO_DE_DANO_", então os HDAT 14-33 caíam no fallback
+        // e voltavam com 0 bytes. "DE_" continua aceito (arquivos antigos); o
+        // dígito logo após "DANO_" deixa de fora o "$REACAO_DANO_GD_" do gamedata.
+        if (DANO_TAG.matcher(block).find())             return bdHDATDano(block, reporter);
         if (block.contains("$DISPUTA_DE_PODER"))         return bdHDAT34(block, xsize, ysize, reporter);
         if (block.contains("$DANO_DE_EVENTOS_CUTSCENE"))  return bdHDAT35(block, xsize, ysize, reporter);
         if (block.contains("$SISTEMA_DE_VOZES"))         return bdHDAT36(block, xsize, ysize, reporter);
@@ -224,16 +228,28 @@ public final class hdatChar {
             int base = i * 2;
             int div = (base < data.length) ? data[base] & 0xFF : 1;
             int bon = (base + 1 < data.length) ? data[base + 1] & 0xFF : 0;
-            int percent = (div == 0 ? 0 : (bon * 100) / div);
-            w.write("         " + REGEN_LABELS[i] + ": " + percent + ",\n");
+            // O jogo faz dano * bônus / divisor. Divisor 100 → sai como % (formato
+            // de sempre); qualquer outro sai como "bônus/divisor" para não perder
+            // precisão (antes era sempre convertido para % e gravado com divisor 100).
+            String value = (div == 100) ? String.valueOf(bon) : (bon + "/" + div);
+            w.write("         " + REGEN_LABELS[i] + ": " + value + ",\n");
         }
         w.write("         // Nota: Valores em % do dano convertido em Ki. 300 de dano, 30% do dano convertido em Ki = 100 de ki (uma barra)\n");
+        w.write("         // \"B/D\" = bônus/divisor exatos do binário (o jogo usa dano * B / D).\n");
         w.write("      },\n");
     }
 
     private static byte[] bdHDAT1(String block, ErrorReporter reporter) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         for (String label : REGEN_LABELS) {
+            Matcher frac = Pattern.compile(label + ":\\s*(\\d+)\\s*/\\s*(\\d+)").matcher(block);
+            if (frac.find()) {
+                Integer bon = checkedRawGroup(frac.group(1), "$" + label, 1, 0, 255, reporter, frac.group());
+                Integer div = checkedRawGroup(frac.group(2), "$" + label, 1, 0, 255, reporter, frac.group());
+                baos.write((div != null ? div : 100) & 0xFF);
+                baos.write((bon != null ? bon : 0) & 0xFF);
+                continue;
+            }
             Integer percent = extractOptionalChecked(block, label + ":\\s*(-?[\\d.]+)", "$" + label, 1, 0, 255, reporter);
             int p = (percent != null) ? percent : 0;
             baos.write(100 & 0xFF);
@@ -271,10 +287,9 @@ public final class hdatChar {
 
     private static byte[] bdHDAT2(String block) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Pattern p = Pattern.compile("\\$LINHA_\\d+:\\s*\"(.*?)\",", Pattern.DOTALL);
-        Matcher m = p.matcher(block);
+        Matcher m = Pattern.compile("\\$LINHA_\\d+:\\s*" + BinBuilder.QUOTED_TEXT).matcher(block);
         while (m.find()) {
-            byte[] b = unescape(m.group(1)).getBytes(StandardCharsets.UTF_8);
+            byte[] b = BinBuilder.unescapeText(m.group(1)).getBytes(StandardCharsets.UTF_8);
             baos.write((b.length >> 8) & 0xFF);
             baos.write(b.length & 0xFF);
             baos.write(b);
@@ -310,7 +325,9 @@ public final class hdatChar {
         for (int i = 0; i < data.length; i++) vals[i] = data[i] & 0xFF;
 
         w.write("         // --- CORPO ---\n");
-        w.write("         $LARGURA: "                + vals[3] / 2 + ",\n");
+        // byte 3 = largura cheia; o texto mostra a metade. Byte ímpar sai como
+        // "N.5" (antes o bit baixo era descartado no rebuild).
+        w.write("         $LARGURA: "                + (vals[3] / 2) + (vals[3] % 2 != 0 ? ".5" : "") + ",\n");
         w.write("         $ALTURA: "                 + vals[4] + ",\n");
         w.write("\n");
 
@@ -351,7 +368,7 @@ public final class hdatChar {
         data[0]  = (byte) checked(block, "\\$VELOCIDADE_MOVIMENTO:\\s*(-?[\\d.]+)",       "$VELOCIDADE_MOVIMENTO",       3, 0, 255, reporter);
         data[1]  = (byte) checked(block, "\\$VELOCIDADE_RECUO:\\s*(-?[\\d.]+)",           "$VELOCIDADE_RECUO",           3, 0, 255, reporter);
         data[2]  = (byte) checked(block, "\\$DESCONHECIDO_2:\\s*(-?[\\d.]+)",             "$DESCONHECIDO_2",             3, 0, 255, reporter);
-        data[3]  = (byte) (checked(block, "\\$LARGURA:\\s*(-?[\\d.]+)",                   "$LARGURA",                    3, 0, 127, reporter) * 2);
+        data[3]  = (byte) larguraToByte(block, reporter);
         data[4]  = (byte) checked(block, "\\$ALTURA:\\s*(-?[\\d.]+)",                     "$ALTURA",                     3, 0, 255, reporter);
         data[5]  = (byte) checked(block, "\\$DISTANCIA_AGARRE:\\s*(-?[\\d.]+)",           "$DISTANCIA_AGARRE",           3, 0, 255, reporter);
         data[6]  = (byte) checked(block, "\\$PODE_VOAR:\\s*(-?[\\d.]+)",                  "$PODE_VOAR",                  3, 0, 1,   reporter);
@@ -367,6 +384,31 @@ public final class hdatChar {
         data[16] = (byte) checked(block, "\\$ANIM_ENTRADA:\\s*(-?[\\d.]+)",               "$ANIM_ENTRADA",               3, 0, 255, reporter);
         data[17] = (byte) checked(block, "\\$PONTOS_EQUIPAR_CARTAS:\\s*(-?[\\d.]+)",      "$PONTOS_EQUIPAR_CARTAS",      3, 0, 255, reporter);
         return data;
+    }
+
+    // $LARGURA aceita meio pixel ("12.5" → byte 25), espelhando exHDAT3.
+    private static int larguraToByte(String block, ErrorReporter reporter) {
+        Matcher m = Pattern.compile("\\$LARGURA:\\s*(-?[\\d.]+)").matcher(block);
+        if (!m.find()) {
+            ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                    .fieldTag("$LARGURA").hdatIndex(3).message("$LARGURA não encontrado no bloco"));
+            return 0;
+        }
+        int v;
+        try {
+            v = (int) Math.round(Double.parseDouble(m.group(1)) * 2);
+        } catch (NumberFormatException e) {
+            ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                    .fieldTag("$LARGURA").hdatIndex(3).rawLine(m.group())
+                    .message("$LARGURA espera um número, mas recebeu \"" + m.group(1) + "\""));
+            return 0;
+        }
+        if (v < 0 || v > 255) {
+            ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                    .fieldTag("$LARGURA").hdatIndex(3).rawLine(m.group())
+                    .message("$LARGURA = " + m.group(1) + " está fora do range esperado [0..127.5]"));
+        }
+        return v;
     }
 
     /* ══════════════════════════════════════════════════════════════════
@@ -608,28 +650,35 @@ public final class hdatChar {
     ══════════════════════════════════════════════════════════════════ */
 
     private static void exHDAT13(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
+        // Comentários e leitura COM SINAL vindos do hdat13.java mais novo do
+        // gameCompiler: o TCBManajer (modo 996) lê todos os campos como short
+        // ((short) ...), então -1 aparece como -1 e não 65535.
         w.write("      $ROTEIRO_CUTSCENE:{\n");
         w.write("         // Ativado por hitbox flag=20. O 3º valor da hitbox (COORDS) é o índice do evento.\n");
-        w.write("         // $ALVO: 0=effect.pac | 1=char.pac do player | 2=bobj.pac\n");
-        w.write("         // $DURACAO: 0=dura até animação mudar | N=encerra após N frames\n");
-        w.write("         // $Z_LAYER: 0=$PRIO 200 (exceto Eventos 8/9) | 1=$PRIO 17/19/21 | 2=$PRIO 400\n");
-        w.write("         // $ANIM_ID: animação virado p/ direita (0=sem animação); $ANIM_FLIP: virado p/ esquerda\n");
-        w.write("         // $CAM_MODE: 0=normal | 1=fixa MID em 0,0 (cenário some) | 2+=fixa MID (cenário fica)\n");
-        w.write("         // $TRAVAR_VIT: 0=oponente livre | 1+=oponente congelado no estado 925\n");
-        w.write("         // $FLAG: ver documentação de comportamento de câmera/scroll por evento\n\n");
+        w.write("         // $ALVO: 0=effect.pac | 1=char.pac do player | outro valor=ranura 2\n");
+        w.write("         // $DURACAO: 0 ou valor negativo = até mudar a animação; N positivo = limite de frames\n");
+        w.write("         // $Z_LAYER: 0=prioridade 200 (eventos 8/9: 10); 1=17 (evento 8: 19; evento 9: 21); outro=400\n");
+        w.write("         // $ANIM_ID: animação virado para a direita (0=sem animação); $ANIM_FLIP: virado para a esquerda\n");
+        w.write("         // $CAM_MODE: 0=câmera normal | diferente de 0=origem MID em 0,0; 1 também ativa tela cheia\n");
+        w.write("         //            Eventos 8 e 9 são posicionados em MID 0,0 independentemente de $CAM_MODE.\n");
+        w.write("         // $TRAVAR_VIT: diferente de 0 congela o oponente no estado 925\n");
+        w.write("         // $FLAG: 0=nada | 1=PlayerState do atacante | 2=PlayerState do oponente se Life<=0\n");
+        w.write("         //        3=scroll até o atacante | 4=desativa seguimento de câmera | 5=foca o oponente | 6=parede na borda\n");
+        w.write("         //        7=oponente atravessa bordas | 8=atacante atravessa bordas | 9=ambos atravessam bordas\n");
+        w.write("         //        10-12=teleporte do oponente | 13-15=teleporte do atacante\n\n");
 
         for (int i = 0; i < ysize; i++) {
             int ptr = i * 2 * xsize;
             if (ptr + 15 >= data.length) break;
 
-            int alvo      = readShortU(data, ptr +  0);
-            int duracao   = readShortU(data, ptr +  2);
-            int zLayer    = readShortU(data, ptr +  4);
-            int animId    = readShortU(data, ptr +  6);
-            int animFlip  = readShortU(data, ptr +  8);
-            int camMode   = readShortU(data, ptr + 10);
-            int travarVit = readShortU(data, ptr + 12);
-            int mapEvt    = readShortU(data, ptr + 14);
+            int alvo      = readS16(data, ptr +  0);
+            int duracao   = readS16(data, ptr +  2);
+            int zLayer    = readS16(data, ptr +  4);
+            int animId    = readS16(data, ptr +  6);
+            int animFlip  = readS16(data, ptr +  8);
+            int camMode   = readS16(data, ptr + 10);
+            int travarVit = readS16(data, ptr + 12);
+            int mapEvt    = readS16(data, ptr + 14);
 
             w.write(String.format(
                 "         $EVT_%02d: { $ALVO:%d, $DURACAO:%d, $Z_LAYER:%d, $ANIM_ID:%d, $ANIM_FLIP:%d, $CAM_MODE:%d, $TRAVAR_VIT:%d, $FLAG:%d },\n",
@@ -692,6 +741,7 @@ public final class hdatChar {
     ══════════════════════════════════════════════════════════════════ */
 
     private static final int DANO_STRIDE = 14;
+    private static final Pattern DANO_TAG = Pattern.compile("\\$REACAO_(?:DE_)?DANO_\\d");
 
     private static void exHDATDano(BufferedWriter w, byte[] data, int xsize, int ysize, int damageType) throws IOException {
         w.write("      $REACAO_DANO_" + damageType + ":{\n");
@@ -910,7 +960,9 @@ public final class hdatChar {
     }
 
     private static byte[] bdHDAT38(String block, int xsize, int ysize, ErrorReporter reporter) {
-        byte[] data = new byte[xsize * ysize];
+        // O jogo lê um short (2 bytes) aqui; com $COL:1/$ROW:1 (tabela de short)
+        // xsize*ysize dava 1 byte e o byte alto da carta se perdia.
+        byte[] data = new byte[Math.max(2, xsize * ysize)];
         Integer v = extractOptionalChecked(block, "\\$CARTA_RECOMPENSA_ARCADE:\\s*(-?[\\d.]+)", "$CARTA_RECOMPENSA_ARCADE", 38, 0, 65535, reporter);
         if (v != null) {
             if (data.length >= 2) {
@@ -1068,10 +1120,6 @@ public final class hdatChar {
         } catch (Exception e) {
             return new String(chunk, Charset.forName("Shift_JIS"));
         }
-    }
-
-    private static String unescape(String s) {
-        return s.replace("\\n", "\n").replace("\\r", "\r").replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
     /**

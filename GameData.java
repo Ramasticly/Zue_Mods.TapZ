@@ -207,13 +207,6 @@ public class GameData {
 
     public boolean Init(GlobalWork gw, String name, int cnvType, int loadFilter) {
         NAME = name;
-        if (NAME.startsWith("back") && !NAME.contains("obj")) {
-            try {
-                throw new RuntimeException("BACK loaded " + NAME + " " + TCBManajer.MD);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
         boolean z = false;
         Dispose(gw);
         if (name != null && name.length() > 0) {
@@ -273,7 +266,9 @@ public class GameData {
         return true;
     }
 
-    private boolean decodeData(GlobalWork gw, byte[] src, int dataPos, int dataSize, int dataType, int cnvType, int loadFilter) {
+    // protected (era private): o Compiler (com.zue.gd.util, subclasse) chama
+    // direto em vez de achar o método por reflexão.
+    protected boolean decodeData(GlobalWork gw, byte[] src, int dataPos, int dataSize, int dataType, int cnvType, int loadFilter) {
         switch (dataType) {
             case 0x706e6700: // png
                 if ((loadFilter & 1) == 0) {
@@ -365,6 +360,12 @@ public class GameData {
                 }
                 break;
             case 0x77617600: // wav
+                // sound[] tem SOUND_MAX posições: um pack com mais WAVs (fácil de
+                // acontecer num mod) estourava o array e abortava o load inteiro.
+                if (this.iSoundCount >= this.sound.length) {
+                    Log.e("GameData " + (NAME == null ? "" : NAME), "mais de " + SOUND_MAX + " WAVs no pack — WAV ignorado");
+                    break;
+                }
                 this.sound[this.iSoundCount] = null;
                 this.sound[this.iSoundCount] = new byte[dataSize];
                 if (this.sound[this.iSoundCount] != null) {
@@ -425,6 +426,15 @@ public class GameData {
             return this.animTex[no];
         }
         return null;
+    }
+
+    /**
+     * Sobe um PNG em memória para a textura dada. AndroidGLTexture.loadTexture
+     * é protected (só visível neste pacote); o Compiler, em com.zue.gd.util,
+     * usa este método em vez de reflexão.
+     */
+    public static boolean loadPng(GlobalWork gw, AndroidGLTexture tex, byte[] png) {
+        return tex.loadTexture(gw.gl, png, 0, png.length, true);
     }
 
     public int getSoundCount() {
@@ -636,7 +646,9 @@ public class GameData {
             java.lang.ref.WeakReference<GameData>> _glRegistry = new java.util.ArrayList<
             java.lang.ref.WeakReference<GameData>>();
 
-    private static void registerForGLReload(GameData gd) {
+    // protected (era private): o Compiler registra os GameData que ele monta
+    // a partir da pasta do projeto, que não passam por Init(byte[]).
+    protected static void registerForGLReload(GameData gd) {
         synchronized (_glRegistry) {
             for (int i = _glRegistry.size() - 1; i >= 0; i--) {
                 GameData g = _glRegistry.get(i).get();
@@ -728,13 +740,24 @@ public class GameData {
             }
         }
 
+        reloadDerivedGL(gw, this.iLoadFilterSaved);
+        return true;
+    }
+
+    /**
+     * Recria o que é DERIVADO de dados de CPU já em memória: thumbnails de
+     * vídeo (de videoList) e texturas webp (cada AnimatedTexture guarda seus
+     * bytes). Separado de GLReload para o Compiler reaproveitar depois de
+     * recarregar png/spr da pasta do projeto.
+     */
+    protected void reloadDerivedGL(GlobalWork gw, int loadFilter) {
         // NOVO: re-extrai e re-sobe as thumbnails de vídeo — os textureIds
         // antigos morreram junto com o contexto EGL, mas os bytes crus em
         // videoList sobreviveram (são dados de CPU, como dac/bin/cnv/act).
         // Reconstrói vidThumbTexId do zero, na MESMA ordem de videoList —
         // os índices continuam válidos para quem já usa
         // getVideoThumbTexId(videoIndex).
-        if ((this.iLoadFilterSaved & 64) == 0 && !this.videoList.isEmpty()) {
+        if ((loadFilter & 64) == 0 && !this.videoList.isEmpty()) {
             this.videoThumbTexIdList.clear();
             for (Object rawObj : this.videoList) {
                 byte[] raw = (byte[]) rawObj;
@@ -752,13 +775,15 @@ public class GameData {
         // bytes e recria o(s) textureId(s) — a REFERÊNCIA de objeto
         // (a própria AnimatedTexture) continua a mesma, então getAnimTex(N)
         // permanece válido sem precisar reindexar nada.
-        if ((this.iLoadFilterSaved & 128) == 0) {
+        //
+        // Mesmo bit de loadFilter que decodeData usa para decidir se carrega
+        // webp (1, igual ao png). Antes aqui era 128: com o bit 128 ligado e o
+        // 1 desligado, os webp eram carregados mas nunca recarregados.
+        if ((loadFilter & 1) == 0) {
             for (Object t : this.animTexList) {
                 ((AnimatedTexture) t).reloadGL(gw.gl);
             }
         }
-
-        return true;
     }
 
     private boolean binCnv(int t, byte[] src, int offset, int size) {

@@ -3,9 +3,11 @@ package com.zue.gd.util;
 import java.io.*;
 import java.util.*;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import com.namcobandaigames.dragonballtap.apk.*;
 
+// Lado do JOGO (só existe no projeto do jogo — depende de GameData/TCBManajer).
+// Em runtime, PacBuilder.isApp fica sempre false: extrai/compila na própria
+// pasta do pack (MainPath/<pack>/) e carrega os binários soltos de lá.
 public class Compiler extends GameData {
 
     public static String MainPath = "/storage/emulated/0/Tap Battle/assets/";
@@ -17,195 +19,195 @@ public class Compiler extends GameData {
     private static final int TYPE_DAC = 0x64616300;
     private static final int TYPE_SPR = 0x73707200;
     private static final int TYPE_WAV = 0x77617600;
-    private static final int TYPE_VID = 0x76696400; // NOVO — mesma tag "vid\0" do GameData.decodeData
-    private static final int TYPE_WEBP = 0x77656200; // NOVO — mesma tag "web\0" do GameData.decodeData
+    private static final int TYPE_VID = 0x76696400; // mesma tag "vid\0" do GameData.decodeData
+    private static final int TYPE_WEBP = 0x77656200; // mesma tag "web\0" do GameData.decodeData
+
+    private static final Comparator<File> BY_NAME = new Comparator<File>() {
+        @Override
+        public int compare(File f1, File f2) {
+            return f1.getName().compareToIgnoreCase(f2.getName());
+        }
+    };
+
+    // Pasta/parâmetros do último loadFromProjectFolder — usados por GLReload.
+    // null = este objeto foi carregado do .pac original (GameData.Init).
+    private File loadedFolder = null;
+    private int loadedFilter = 0;
 
     public Compiler() {
         super();
     }
 
-    /** Espera o arquivo PAC ser extraído e liberado pelo sistema de arquivos. */
-    private void waitForExtraction(String pacName) {
-        File pacFile = new File(MainPath, pacName + ".pac");
-        int attempts = 0;
-        long lastSize = -1;
-
-        while (!pacFile.exists() || pacFile.length() == 0) {
-            if (attempts >= 50) return;
-            try {
-                Thread.sleep(100);
-            } catch (Exception e) {
-            }
-            attempts++;
+    /**
+     * Garante a pasta do projeto (extrai o .pac se ela ainda não existe) e
+     * recompila os .txt. Retorna false se não há nem pasta nem .pac em MainPath.
+     *
+     * PacExtractor.extract é síncrono: a espera por arquivo que existia aqui
+     * (waitForExtraction) olhava o próprio .pac de origem e só dormia
+     * ~300 ms por pack — até ~9 s num SetLoad de 31 slots.
+     */
+    private static boolean prepareProjectFolder(String pacName) throws Exception {
+        File projectFolder = new File(MainPath, pacName);
+        if (!projectFolder.isDirectory()) {
+            if (!new File(MainPath, pacName + ".pac").isFile()) return false;
+            PacExtractor.extract(MainPath, pacName + ".pac");
         }
-
-        attempts = 0;
-        while (attempts < 30) {
-            long currentSize = pacFile.length();
-            if (currentSize > 0 && currentSize == lastSize) {
-                try {
-                    Thread.sleep(200);
-                } catch (Exception e) {
-                }
-                return;
-            }
-            lastSize = currentSize;
-            try {
-                Thread.sleep(100);
-            } catch (Exception e) {
-            }
-            attempts++;
-        }
+        PacBuilder.cleanProjectFolder(projectFolder);
+        PacBuilder.build(projectFolder.getAbsolutePath());
+        return true;
     }
 
     public boolean startCompile(GlobalWork gw, TCBManajer tm, int slot) {
+        Object[] chrGameData;
         try {
             int[] idList = (int[]) getReflectedField(tm, "IDList");
             int[] loadData = (int[]) getReflectedField(tm, "LoadData");
             int[] loadFilter = (int[]) getReflectedField(tm, "LoadFilter");
-            Object[] chrGameData = (Object[]) getReflectedField(tm, "ChrGameData");
+            chrGameData = (Object[]) getReflectedField(tm, "ChrGameData");
 
             String pacName = tm.GetResName2(gw, idList[slot], loadData[slot]);
             if (pacName == null) return false;
 
-            File projectFolder = new File(MainPath, pacName);
-
-            if (!projectFolder.exists()) {
-                PacExtractor.extract(MainPath, pacName + ".pac");
-                waitForExtraction(pacName);
-            } else {
-                cleanProjectFolder(MainPath, pacName);
-            }
-
-            PacBuilder.build(projectFolder.getAbsolutePath());
-
             if (pacName.equalsIgnoreCase("gamedata") || pacName.equalsIgnoreCase("text00")) {
-                return true;
+                // carregados à parte por InitGameData (loadSpecial); aqui só compila
+                return prepareProjectFolder(pacName);
             }
 
-            GameData result = this.loadFromProjectFolder(gw, pacName, 2, loadFilter[slot]);
+            // O SetLoad original fazia ChrGameData[slot].Init(...), que libera as
+            // texturas do pack anterior antes de carregar. Trocar o objeto do slot
+            // sem Dispose vazava todas as texturas GL de cada pack a cada luta.
+            GameData old = (GameData) chrGameData[slot];
+            if (old != null && old != this) old.Dispose(gw);
+            chrGameData[slot] = this; // em caso de falha o slot fica com um GameData vazio, como no Init original
 
-            if (result != null) {
-                chrGameData[slot] = result;
-                return true;
+            boolean fromFolder = prepareProjectFolder(pacName);
+
+            if (fromFolder) {
+                return this.loadFromProjectFolder(gw, pacName, 2, loadFilter[slot]) != null;
             }
+            // Sem pasta nem .pac em MainPath: usa o .pac original do APK
+            // (mesmo caminho do SetLoad original).
+            return this.loadFromAssets(gw, pacName, 2, loadFilter[slot]);
         } catch (Throwable th) {
-        Logue.StackTrace(th);
+            Logue.StackTrace(th);
         }
         return false;
     }
 
     public GameData loadSpecial(GlobalWork gw, String pacName, int cnvType, int loadFilter) {
         try {
-            File projectFolder = new File(MainPath, pacName);
-
-            if (!projectFolder.exists()) {
-                PacExtractor.extract(MainPath, pacName + ".pac");
-                waitForExtraction(pacName);
-            } else {
-                cleanProjectFolder(MainPath, pacName);
-                PacBuilder.build(projectFolder.getAbsolutePath());
+            // Antes, na primeira execução (pasta ainda não existia) só extraía e
+            // NÃO compilava: o gamedata/text00 carregado ficava sem o 000.dac e
+            // piGameData nulo derrubava o jogo logo no início.
+            if (prepareProjectFolder(pacName)) {
+                GameData r = this.loadFromProjectFolder(gw, pacName, cnvType, loadFilter);
+                if (r != null) return r;
             }
-
-            return this.loadFromProjectFolder(gw, pacName, cnvType, loadFilter);
-
+            return this.loadFromAssets(gw, pacName, cnvType, loadFilter) ? this : null;
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            Logue.StackTrace(e);
+            return this.loadFromAssets(gw, pacName, cnvType, loadFilter) ? this : null;
         }
     }
 
+    private boolean loadFromAssets(GlobalWork gw, String pacName, int cnvType, int loadFilter) {
+        this.loadedFolder = null;
+        return super.Init(gw, pacName, cnvType, loadFilter);
+    }
+
     private GameData loadFromProjectFolder(GlobalWork gw, String name, int cnvType, int loadFilter) {
-        this.NAME = name;
         this.Dispose(gw);
+        this.NAME = name;
+        this.loadedFolder = null;
 
         File folder = new File(MainPath, name);
-        if (!folder.exists()) return null;
+        if (!folder.isDirectory()) return null;
 
         try {
-            Method decodeMethod = GameData.class.getDeclaredMethod("decodeData",
-                    GlobalWork.class, byte
-                            [].class, int.class, int.class, int.class, int.class, int.class);
-            decodeMethod.setAccessible(true);
-
             File[] files = folder.listFiles();
             if (files == null) return null;
-
-            Arrays.sort(files, new Comparator<File>() {
-                @Override
-                public int compare(File f1, File f2) {
-                    return f1.getName().compareToIgnoreCase(f2.getName());
-                }
-            });
+            Arrays.sort(files, BY_NAME);
 
             for (File f : files) {
                 String fileName = f.getName().toLowerCase();
-                int type = -1;
 
-                if (fileName.endsWith(".png")) type = TYPE_PNG;
-                else if (fileName.endsWith(".act")) type = TYPE_ACT;
-                else if (fileName.endsWith(".bin")) type = TYPE_BIN;
-                else if (fileName.endsWith(".cnv")) type = TYPE_CNV;
-                else if (fileName.endsWith(".dac")) type = TYPE_DAC;
-                else if (fileName.endsWith(".wav")) type = TYPE_WAV;
-                else if (fileName.endsWith(".spr")) type = TYPE_SPR;
-                else if (fileName.endsWith(".mp4")) type = TYPE_VID; // NOVO
-                else if (fileName.endsWith(".webp")) type = TYPE_WEBP; // NOVO — sem isto, .webp caía em "type == -1" e era ignorado (continue), nunca chegando ao decodeData
-
-                if (type == -1) continue;
-
-                if (type == TYPE_SPR) {
-                    if ((loadFilter & 32) == 0) {
+                if (f.isDirectory()) {
+                    if (fileName.endsWith(".spr") && (loadFilter & 32) == 0) {
                         if (this.sprite != null) this.sprite.Dispose(gw);
                         this.sprite = new CompilerSpriteData(f.getAbsolutePath());
                         this.sprite.Init(gw, 0, (byte[]) null);
                     }
-                } else {
-                    byte[] fileData = readFullFile(f);
-                    if (fileData != null) {
-                        decodeMethod.invoke(this, gw, fileData, 0, fileData.length, type, cnvType, loadFilter);
-                    }
+                    continue;
+                }
+
+                int type = typeOf(fileName);
+                if (type == -1) continue;
+
+                byte[] fileData = readFullFile(f);
+                if (!this.decodeData(gw, fileData, 0, fileData.length, type, cnvType, loadFilter)) {
+                    return null; // decodeData já fez Dispose (bin/cnv/dac inválido)
                 }
             }
+
+            this.loadedFolder = folder;
+            this.loadedFilter = loadFilter;
+            // Init(byte[]) não é usado aqui, então o registro para recarga após
+            // perda do contexto GL (app em segundo plano) precisa ser feito à mão
+            // — sem isto, as texturas deste pack ficavam com ID 0 (invisíveis).
+            registerForGLReload(this);
             return this;
         } catch (Exception e) {
-            e.printStackTrace();
+            Logue.StackTrace(e);
             return null;
         }
     }
 
-    private byte[] getFileBytesByType(File folder, String idx, int type) throws IOException {
-        File file = null;
-        switch (type) {
-            case TYPE_PNG:
-                file = new File(folder, idx + ".png");
-                break;
-            case TYPE_WAV:
-                file = new File(folder, idx + ".wav");
-                break;
-            case TYPE_ACT:
-                file = new File(folder, idx + ".act");
-                break;
-            case TYPE_BIN:
-                file = new File(folder, idx + ".bin");
-                break;
-            case TYPE_CNV:
-                file = new File(folder, idx + ".cnv");
-                break;
-            case TYPE_DAC:
-                file = new File(folder, idx + ".dac");
-                break;
-            case TYPE_VID:
-                file = new File(folder, idx + ".mp4");
-                break;
-            case TYPE_WEBP:
-                file = new File(folder, idx + ".webp");
-                break;
-            case TYPE_SPR:
-                file = new File(new File(folder, idx + ".spr"), "000.bin");
-                break;
+    /**
+     * Recarga pós-perda de contexto EGL de um pack montado a partir da pasta:
+     * relê os .png/.spr da MESMA pasta, na MESMA ordem do load, para os MESMOS
+     * objetos (índices continuam válidos). O GLReload da classe base reabriria
+     * o .pac ORIGINAL dos assets, com outras imagens.
+     */
+    @Override
+    public boolean GLReload(GlobalWork gw) {
+        if (this.loadedFolder == null) return super.GLReload(gw);
+
+        File[] files = this.loadedFolder.listFiles();
+        if (files == null) return false;
+        Arrays.sort(files, BY_NAME);
+
+        int k = 0;
+        for (File f : files) {
+            String n = f.getName().toLowerCase();
+            try {
+                if (f.isDirectory()) {
+                    if (n.endsWith(".spr") && (this.loadedFilter & 32) == 0 && this.sprite != null) {
+                        this.sprite.Init(gw, 0, (byte[]) null); // CompilerSpriteData relê a pasta
+                    }
+                } else if (n.endsWith(".png") && (this.loadedFilter & 1) == 0) {
+                    if (k < this.imageList.size()) {
+                        GameData.loadPng(gw, (AndroidGLTexture) this.imageList.get(k), readFullFile(f));
+                    }
+                    k++;
+                }
+            } catch (IOException e) {
+                Logue.StackTrace(e);
+            }
         }
-        return (file != null && file.exists()) ? readFullFile(file) : null;
+        reloadDerivedGL(gw, this.loadedFilter);
+        return true;
+    }
+
+    private static int typeOf(String lowerName) {
+        if (lowerName.endsWith(".png")) return TYPE_PNG;
+        if (lowerName.endsWith(".act")) return TYPE_ACT;
+        if (lowerName.endsWith(".bin")) return TYPE_BIN;
+        if (lowerName.endsWith(".cnv")) return TYPE_CNV;
+        if (lowerName.endsWith(".dac")) return TYPE_DAC;
+        if (lowerName.endsWith(".wav")) return TYPE_WAV;
+        if (lowerName.endsWith(".mp4")) return TYPE_VID;
+        if (lowerName.endsWith(".webp")) return TYPE_WEBP; // sem isto, .webp era ignorado e nunca chegava ao decodeData
+        return -1;
     }
 
     private Object getReflectedField(Object obj, String fieldName) throws Exception {
@@ -214,56 +216,27 @@ public class Compiler extends GameData {
         return f.get(obj);
     }
 
+    /** Mantido por compatibilidade: mesma limpeza segura do PacBuilder. */
     public void cleanProjectFolder(String path, String pacName) {
         String folderName = pacName.toLowerCase().endsWith(".pac") ? pacName.substring(0, pacName.length() - 4) : pacName;
-        File folder = new File(path, folderName);
-        File pacFile = new File(path, pacName + ".pac");
-        if (!pacFile.exists() || !folder.exists()) return;
-        try (FileInputStream in = new FileInputStream(pacFile)) {
-            byte[] h = new byte[2];
-            in.read(h);
-            int count = (h[0] & 0xFF) | ((h[1] & 0xFF) << 8);
-            byte[] table = new byte[count * 16];
-            in.read(table);
-            for (int i = 0; i < count; i++) {
-                int typePos = (i * 16) + 8;
-                int magic = ((table[typePos] & 0xFF) << 24) | ((table[typePos + 1] & 0xFF) << 16) |
-                        ((table[typePos + 2] & 0xFF) << 8) | (table[typePos + 3] & 0xFF);
-                if (magic != TYPE_PNG && magic != TYPE_WAV && magic != TYPE_VID && magic != TYPE_WEBP)
-                    executeSelectiveDelete(folder, i, magic);
-            }
-        } catch (IOException e) {
-        }
+        PacBuilder.cleanProjectFolder(new File(path, folderName));
     }
 
-    private void executeSelectiveDelete(File folder, int index, int magic) {
-        String idx = String.format("%03d", index);
-        if (magic == TYPE_SPR) {
-            File sprBin = new File(new File(folder, idx + ".spr"), idx + ".bin");
-            if (sprBin.exists()) sprBin.delete();
-        } else {
-            String[] exts = {".bin", ".cnv", ".dac", ".act"};
-            for (String e : exts) {
-                File f = new File(folder, idx + e);
-                if (f.exists()) f.delete();
-            }
-        }
-    }
-
-    private byte[] readFullFile(File f) throws IOException {
+    // Lê até o fim (um único in.read pode devolver menos que o tamanho do arquivo).
+    private static byte[] readFullFile(File f) throws IOException {
         byte[] b = new byte[(int) f.length()];
-        try (FileInputStream in = new FileInputStream(f)) {
-            in.read(b);
+        FileInputStream in = new FileInputStream(f);
+        try {
+            int off = 0;
+            while (off < b.length) {
+                int r = in.read(b, off, b.length - off);
+                if (r <= 0) break;
+                off += r;
+            }
+        } finally {
+            in.close();
         }
         return b;
-    }
-
-    private byte[] readHeader(File f, int size) throws IOException {
-        try (FileInputStream in = new FileInputStream(f)) {
-            byte[] b = new byte[Math.min(size, (int) f.length())];
-            in.read(b);
-            return b;
-        }
     }
 
     public static class CompilerSpriteData extends SpriteData {
@@ -294,40 +267,28 @@ public class Compiler extends GameData {
                 // confirmada do bug "IMG:0 mostrando o webp errado"
                 // (013.webp aparecendo no lugar de 012.webp). Mesma
                 // ordenação usada em loadFromProjectFolder (alfabética,
-                // compareToIgnoreCase) e implicitamente preservada pelo
-                // mini-pac binário (que já vem ordenado por
-                // RealPacBuilder/SprBuilder no momento do empacotamento).
-                Arrays.sort(files, new Comparator<File>() {
-                    @Override
-                    public int compare(File f1, File f2) {
-                        return f1.getName().compareToIgnoreCase(f2.getName());
-                    }
-                });
-
-                Method loadTextureMethod = AndroidGLTexture.class.getDeclaredMethod("loadTexture",
-                        javax.microedition.khronos.opengles.GL10.class, byte
-                                [].class, int.class, int.class, boolean.class);
-                loadTextureMethod.setAccessible(true);
+                // compareToIgnoreCase) e no RealPacBuilder.packSpr.
+                Arrays.sort(files, BY_NAME);
 
                 for (File f : files) {
+                    if (!f.isFile()) continue;
                     String name = f.getName().toLowerCase();
-                    byte[] fData = null;
-
-                    try (FileInputStream in = new FileInputStream(f)) {
-                        fData = new byte[(int) f.length()];
-                        in.read(fData);
+                    if (!name.endsWith(".png") && !name.endsWith(".bin") && !name.endsWith(".webp")) {
+                        continue; // .bin.txt e afins: não lê à toa
                     }
+                    byte[] fData = readFullFile(f);
 
                     if (name.endsWith(".png")) {
+                        // Entra na lista mesmo se falhar (GetImage() == 0, não
+                        // desenha), como em GameData.decodeData: pular a textura
+                        // deslocava o índice de todas as imagens seguintes.
                         AndroidGLTexture tex = new AndroidGLTexture();
-                        boolean success = (boolean) loadTextureMethod.invoke(tex, gw.gl, fData, 0, fData.length, true);
-                        if (success) {
-                            this._imageList.add(tex);
-                        }
+                        GameData.loadPng(gw, tex, fData);
+                        this._imageList.add(tex);
                     } else if (name.endsWith(".bin")) {
                         this.pData[0] = fData;
-                    } else if (name.endsWith(".webp")) {
-                        // NOVO — mesmo princípio do branch "web" em
+                    } else {
+                        // mesmo princípio do branch "web" em
                         // SpriteData.Init(byte[]): fila própria
                         // _animTexList/_animTex[], separada de
                         // _imageList. Uma falha de decodificação aqui
@@ -343,7 +304,7 @@ public class Compiler extends GameData {
                 }
                 return true;
             } catch (Exception e) {
-                e.printStackTrace();
+                Logue.StackTrace(e);
                 return false;
             }
         }

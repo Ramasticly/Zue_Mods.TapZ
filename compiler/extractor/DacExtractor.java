@@ -449,6 +449,17 @@ public class DacExtractor {
         }
     }
 
+    // Valor interno de movimento (fixo 16.16) → pixels em decimal EXATO.
+    // Todo int/65536 tem expansão decimal finita (até 16 casas) e
+    // DacParser.pixelsToInternal volta exatamente ao mesmo int. A versão
+    // anterior arredondava para 2 casas: 0x2000 (0.125 px) virava "0.13" e
+    // voltava como 8519, mudando a física de todo golpe recompilado.
+    static String fixedToPixels(int v) {
+        java.math.BigDecimal d = new java.math.BigDecimal(v)
+                .divide(java.math.BigDecimal.valueOf(65536)).stripTrailingZeros();
+        return d.scale() <= 0 ? d.toBigInteger().toString() : d.toPlainString();
+    }
+
     // ---- O extrator limpo (mesma lógica) ----
     public static void DacExtractor(BufReader reader, Printer printer) {
         reader.seek(2L);
@@ -611,24 +622,21 @@ public class DacExtractor {
                                 mpt.speedX = reader.readIntLE();
                                 Vars v10 = printer.vars;
                                 v10.pos = 0;
-                                double _px10 = Math.round(mpt.speedX / 65536.0 * 100.0) / 100.0;
-                                v10.add(_px10 == (long) _px10 ? String.valueOf((long) _px10) : String.valueOf(_px10));
+                                v10.add(fixedToPixels(mpt.speedX));
                                 printer.writef("$XSPEED: %s, ");
                             }
                             if ((mvFlags & 2) != 0) {
                                 mpt.speedY = reader.readIntLE();
                                 Vars v11 = printer.vars;
                                 v11.pos = 0;
-                                double _px11 = Math.round(mpt.speedY / 65536.0 * 100.0) / 100.0;
-                                v11.add(_px11 == (long) _px11 ? String.valueOf((long) _px11) : String.valueOf(_px11));
+                                v11.add(fixedToPixels(mpt.speedY));
                                 printer.writef("$YSPEED: %s, ");
                             }
                             if ((mvFlags & 4) != 0) {
                                 mpt.accelX = reader.readIntLE();
                                 Vars v12 = printer.vars;
                                 v12.pos = 0;
-                                double _px12 = Math.round(mpt.accelX / 65536.0 * 100.0) / 100.0;
-                                v12.add(_px12 == (long) _px12 ? String.valueOf((long) _px12) : String.valueOf(_px12));
+                                v12.add(fixedToPixels(mpt.accelX));
                                 printer.writef("$XACCEL: %s, ");
                             } else {
                                 mpt.accelX = 0;
@@ -637,8 +645,7 @@ public class DacExtractor {
                                 mpt.accelY = reader.readIntLE();
                                 Vars v13 = printer.vars;
                                 v13.pos = 0;
-                                double _px13 = Math.round(mpt.accelY / 65536.0 * 100.0) / 100.0;
-                                v13.add(_px13 == (long) _px13 ? String.valueOf((long) _px13) : String.valueOf(_px13));
+                                v13.add(fixedToPixels(mpt.accelY));
                                 printer.writef("$YACCEL: %s, ");
                             } else {
                                 mpt.accelY = 0;
@@ -746,6 +753,11 @@ public class DacExtractor {
                     }
                     printer.indent(-3);
                     printer.println("},");
+                } else if ((pflags & 6) == 0) {
+                    // ANO existente mas sem PRIO/LINK/MPT: sem esta linha ele
+                    // sairia idêntico a um ANO inexistente (ponteiro -1) e o
+                    // DacParser não teria como distinguir os dois.
+                    printer.println("$MPTS:{ },");
                 }
             }
 

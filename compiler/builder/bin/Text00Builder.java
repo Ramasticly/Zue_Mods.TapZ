@@ -12,8 +12,10 @@ public final class Text00Builder {
             Pattern.compile("\\$COL:\\s*(\\d+)");
     private static final Pattern ROW_PATTERN =
             Pattern.compile("\\$ROW:\\s*(\\d+)");
+    // Mesmo leitor de texto do BinBuilder: o antigo "(.*?)\"," parava no
+    // primeiro \"," de dentro do texto.
     private static final Pattern TEXT_PATTERN =
-            Pattern.compile("\\$T_\\d+:\\\"(.*?)\\\",", Pattern.DOTALL);
+            Pattern.compile("\\$T_\\d+:\\s*" + BinBuilder.QUOTED_TEXT);
 
     private Text00Builder() {}
 
@@ -31,7 +33,7 @@ public final class Text00Builder {
         int count = 0;
         while (m.find() && count < row) {
             String raw = m.group(1);
-            String str = unescapeQuotes(raw);
+            String str = BinBuilder.unescapeText(raw);
 
             byte[] bytes = str.getBytes("UTF-8");
 
@@ -70,22 +72,6 @@ public final class Text00Builder {
     private static int extractInt(String src, Pattern p) {
         Matcher m = p.matcher(src);
         return m.find() ? Integer.parseInt(m.group(1)) : 0;
-    }
-
-    private static String unescapeQuotes(String s) {
-        // mais rápido que regex
-        if (s.indexOf("\\\"") < 0) return s;
-        StringBuilder sb = new StringBuilder(s.length());
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\\' && i + 1 < s.length() && s.charAt(i + 1) == '"') {
-                sb.append('"');
-                i++;
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 
     private static String readFastText(File f) throws IOException {

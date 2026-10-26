@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public class BinExtractor {
 
@@ -69,7 +70,7 @@ public class BinExtractor {
                 if (size > 0) {
                     byte[] block = new byte[size];
                     System.arraycopy(data, start, block, 0, size);
-                    writeInnerBlock(w, block, pastaFixa, i, cols[i], rows[i]);
+                    writeVerifiedBlock(w, block, pastaFixa, i, cols[i], rows[i], size);
                 } else {
                     w.write("      $RAW:null\n");
                 }
@@ -80,39 +81,86 @@ public class BinExtractor {
         }
     }
 
-    private static void writeInnerBlock(BufferedWriter w, byte
-                    [] data, int pasta, int hdat, int xsize, int ysize)
-            throws IOException {
-        int ptr = 0;
-        int len = data.length;
+    /**
+     * Escreve o HDAT no formato detalhado (hdatGD/hdatChar/hdatBack/texto) SÓ
+     * se esse texto, compilado de volta pelo BinBuilder, reproduz exatamente os
+     * mesmos bytes. Caso contrário grava $RAW, que é sempre exato.
+     *
+     * Motivo: vários formatos detalhados assumem um tamanho fixo de tabela
+     * (ex.: carta = 616 bytes, formação = 22 bytes, $PONTUACAO_POR_GOLPE = 80
+     * bytes) ou convertem com perda (ex.: $LARGURA = byte/2, $REGENERACAO_KI
+     * em %). Num .pac cujo HDAT não bate com essa suposição, extrair e
+     * recompilar SEM editar nada mudava o binário. Com a verificação,
+     * "extrair → compilar" sem edição é sempre identidade, e o formato
+     * detalhado continua sendo usado em todos os HDATs onde ele é exato.
+     */
+    private static void writeVerifiedBlock(BufferedWriter w, byte[] data, int pasta, int hdat,
+                                           int xsize, int ysize, int size) throws IOException {
+        String formatted = null;
+        try {
+            StringWriter sw = new StringWriter();
+            BufferedWriter tmp = new BufferedWriter(sw);
+            boolean wrote = writeFormatted(tmp, data, pasta, hdat, xsize, ysize);
+            tmp.flush();
+            if (wrote) formatted = sw.toString();
+        } catch (RuntimeException e) {
+            formatted = null; // formato detalhado não suporta este tamanho (ex.: índice fora do array)
+        }
 
+        if (formatted != null) {
+            String asBlock = "   $HDAT_" + hdat + ":{$info:{$COL: " + xsize + ", $ROW: " + ysize
+                    + ", $SZ: &" + String.format("%08X", size) + "},\n" + formatted + "   },\n";
+            byte[] rebuilt;
+            try {
+                rebuilt = BinBuilder.buildHdatBlock(asBlock, xsize, ysize);
+            } catch (Exception e) {
+                rebuilt = null;
+            }
+            if (Arrays.equals(rebuilt, data)) {
+                w.write(formatted);
+                return;
+            }
+            w.write("      // Formato detalhado deste HDAT não reproduz os bytes originais\n");
+            w.write("      // (tamanho/colunas diferentes do esperado) — gravado em $RAW para não perder dado.\n");
+        }
+        writeRaw(w, data, xsize);
+    }
+
+    /** @return true se escreveu um formato detalhado; false se este HDAT só tem $RAW. */
+    private static boolean writeFormatted(BufferedWriter w, byte[] data, int pasta, int hdat, int xsize, int ysize)
+            throws IOException {
         switch (pasta) {
             case 0: // gamedata
                 switch (hdat) {
                     case 7: case 44: case 137: case 138: case 154:
-                        writeText(w, data, ysize); return;
+                        writeText(w, data, ysize); return true;
                 }
-                if (hdatGD.processExtraction(w, data, hdat, xsize, ysize)) return;
-                break;
+                return hdatGD.processExtraction(w, data, hdat, xsize, ysize);
             case 3: // text00
             case 5: // card
                 writeText(w, data, ysize);
-                return;
+                return true;
             case 4: // char
-                if (hdatChar.processExtraction(w, data, hdat, xsize, ysize)) return;
-                break;
-            /*case 6: // NOVO — back (cenário/stage): backNN.pac, chunk "bin" → ChrGameData[1].piGameData[]
-                // Diferente de "gamedata"/"char" acima, aqui é UMA classe só cuidando de
-                // todos os HDATs desta pasta — ela decide por dentro o que já foi
-                // confirmado (HDAT 0, HDAT 2) e o que ainda não foi (fallback hex).
+                return hdatChar.processExtraction(w, data, hdat, xsize, ysize);
+            case 6: // back (cenário/stage): backNN.pac, chunk "bin" → ChrGameData[1].piGameData[]
+                // UMA classe só cuida de todos os HDATs desta pasta — ela decide por
+                // dentro o que já foi confirmado (HDAT 0, HDAT 2); o resto vai em $RAW.
                 // Ver hdatBack.java pro detalhe de cada campo.
-                if (hdatBack.processExtraction(w, data, hdat, xsize, ysize)) return;
-                break;*/
+                return hdatBack.processExtraction(w, data, hdat, xsize, ysize);
         }
+        return false;
+    }
+
+    private static void writeRaw(BufferedWriter w, byte[] data, int xsize) throws IOException {
+        int ptr = 0;
+        int len = data.length;
+        // xsize só define a largura da linha; com $COL: 0 o laço abaixo nunca
+        // avançava ptr e travava a extração num loop infinito.
+        int perLine = (xsize > 0) ? xsize : 16;
         w.write("      $RAW:B[\n");
         while (ptr < len) {
             w.write("         ");
-            for (int c = 0; c < xsize && ptr < len; c++) {
+            for (int c = 0; c < perLine && ptr < len; c++) {
                 w.write("&" + HEX_TABLE[data[ptr++] & 0xFF] + ", ");
             }
             w.write("\n");

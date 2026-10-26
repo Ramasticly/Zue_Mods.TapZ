@@ -4,19 +4,15 @@ import java.io.*;
 
 public final class PacExtractor {
 
-    // Quando true, extract() organiza a saída em subpastas por categoria
-    // (BACKS/CARDS/CHARS/SYSTEM) dentro de pacPath, em vez de gravar direto
-    // em pacPath/nomeDoPac/ como o jogo espera.
+    // Modo app: quando PacBuilder.isApp == true, extract() organiza a saída
+    // em subpastas por categoria (BACKS/CARDS/CHARS/SYSTEM) dentro de
+    // pacPath, em vez de gravar direto em pacPath/nomeDoPac/ como o jogo
+    // espera.
     //
-    // Nasce false: o comportamento do jogo (Compiler.java, em runtime) não
-    // muda em nada — ele monta o caminho da pasta extraída como
-    // "new File(MainPath, pacName)" e nunca liga esta flag. Cabe ao app
-    // ligá-la antes de rodar a extração em lote.
-    //
-    // Mesmo princípio do PacBuilder.isApp — reaproveitado aqui em vez de
-    // criar uma flag por classe, já que ambas representam a mesma decisão
-    // ("estamos rodando como app, não como jogo em runtime").
-    public static boolean isApp = false;
+    // Não existe flag própria aqui: a decisão "estamos rodando como app,
+    // não como jogo em runtime" é UMA só para o pacote inteiro e vive em
+    // PacBuilder.isApp (o jogo nunca liga; o app liga uma vez, antes de
+    // extrair/compilar em lote).
 
     // Callback opcional de progresso, por segmento dentro do PAC.
     // Aditivo: quem já chama extract(pacPath, pacFileName) — como o
@@ -78,7 +74,7 @@ public final class PacExtractor {
                 : pacFileName + "_extracted";
 
         File outDir;
-        if (isApp) {
+        if (PacBuilder.isApp) {
             String category = decideCategory(pacFileName);
             outDir = new File(new File(pacPath, category), folderName);
         } else {
@@ -213,7 +209,7 @@ public final class PacExtractor {
     }
 
     // Portado do PacExtractor original do app — organização em subpastas
-    // usada apenas quando isApp == true (ver comentário da flag).
+    // usada apenas quando PacBuilder.isApp == true.
     private static String decideCategory(String packName) {
         String n = packName.toLowerCase();
         if (n.startsWith("back") || n.startsWith("bobj")) return "BACKS";

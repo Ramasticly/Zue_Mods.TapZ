@@ -138,7 +138,9 @@ public final class Text00Extractor {
                 txt = new String(chunk);
             }
 
-            txt = txt.replace("\"", "\\\"");
+            // Mesmo escape de BinExtractor.writeText (barra, aspas, quebras),
+            // lido de volta por BinBuilder.unescapeText no Text00Builder.
+            txt = txt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
 
             out.append("         $T_").append(i)
                .append(":\"").append(txt).append("\",\n");

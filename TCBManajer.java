@@ -31621,12 +31621,17 @@ private void handleResume(GlobalWork gw) {
 
             var4 = var3;
             if ((var7 & 16) != 0) {
+                // Quantidade de hits do PRÓXIMO frame (o byte que está sendo
+                // pulado aqui). Antes usava var2.iHitNum, que é a do frame
+                // ATUAL: com contagens diferentes entre os dois frames, o
+                // ponteiro saía desalinhado e o $RAZ interpolado vinha de lixo.
+                int nextHitNum = this.ChrGameData[var6].getData(3)[var3] & 255;
                 ++var3;
                 var10 = 0;
 
                 while (true) {
                     var4 = var3;
-                    if (var10 >= var2.iHitNum) {
+                    if (var10 >= nextHitNum) {
                         break;
                     }
 
@@ -31644,7 +31649,17 @@ private void handleResume(GlobalWork gw) {
 
             var3 = var4;
             if ((var7 & 64) != 0) {
-                var3 = var4 + 2 + 4;
+                // OPT normal = 2 + 4 bytes; gatilho de extras (225: $VID/$GIF/
+                // OPT real) tem tamanho variável — pular 6 fixos desalinhava o
+                // $RAZ do próximo frame. ExtrasReader.skip só atravessa os
+                // bytes, sem tocar vídeo nem mudar o objeto.
+                byte[] dacNext = this.ChrGameData[var6].getData(3);
+                int nextOptFlag = (dacNext[var4 + 1] & 255) << 8 | (dacNext[var4] & 255);
+                if (ExtrasReader.isExtrasFlag(nextOptFlag)) {
+                    var3 = ExtrasReader.skip(dacNext, var4 + 2);
+                } else {
+                    var3 = var4 + 2 + 4;
+                }
             }
 
             if ((var7 & 128) != 0) {

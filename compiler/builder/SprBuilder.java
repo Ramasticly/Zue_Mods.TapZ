@@ -142,9 +142,8 @@ public final class SprBuilder {
     //
     // NÃO monta nenhum mini-pac aqui — quem remonta o .pac final a
     // partir da pasta inteira (incluindo os .png/.webp intocados e o
-    // .bin recém-gerado) é RealPacBuilder.packFolderToBytes, que já lê
-    // genericamente qualquer arquivo não-.txt/.json da pasta, sem
-    // precisar de nenhuma lógica específica de sprite ali.
+    // .bin recém-gerado) é RealPacBuilder.packSpr, que pega só o .bin,
+    // os .png e os .webp da pasta (o mesmo que o jogo lê do sprite).
     // ══════════════════════════════════════════════════════════════════
     public static void build(File sprDir) throws Exception {
         build(sprDir, null);

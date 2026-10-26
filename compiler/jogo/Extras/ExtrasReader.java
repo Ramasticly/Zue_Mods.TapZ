@@ -92,6 +92,41 @@ public class ExtrasReader {
         return obj.extras.instanceHandle(global, obj, tm, dac, dataPtr);
     }
 
+    // Atravessa um gatilho de extras SEM executar nada e devolve o dataPtr
+    // logo depois dele. dataPtr: logo após o rawOptFlag (225) de 2 bytes,
+    // como em handle(). Usado por TCBManajer._Hokan, que lê o PRÓXIMO frame
+    // só para interpolar e pulava a OPT com 6 bytes fixos — com $VID/$GIF no
+    // próximo frame, o $RAZ era lido do lugar errado.
+    //
+    // Tamanhos: precisam bater com processFunction()/VideoTexture.playFromDac
+    // (e com ExtrasBuilder, do lado do Compiler).
+    public static int skip(byte[] dac, int dataPtr) {
+        int funcCount = dac[dataPtr++] & 255;
+        int codesStart = dataPtr;
+        dataPtr += funcCount;
+        for (int i = 0; i < funcCount; i++) {
+            switch (dac[codesStart + i] & 255) {
+                case FUNC_PLAY_VIDEO: {
+                    // skip, flags, width, height (2 bytes cada) + opcionais
+                    int flags = (dac[dataPtr + 3] & 255) << 8 | (dac[dataPtr + 2] & 255);
+                    dataPtr += 8;
+                    if ((flags & VideoRequest.FLAG_HAS_STOP_POINT) != 0) dataPtr += 3; // stopAno(2) + stopMpt(1)
+                    if ((flags & VideoRequest.FLAG_HAS_NEW_BGM) != 0) dataPtr += 1;    // newBgmId
+                    break;
+                }
+                case FUNC_ANIM_TEX:
+                    dataPtr += 2;
+                    break;
+                case FUNC_REAL_OPT:
+                    dataPtr += 6; // wOptFlag(2) + OptData[4]
+                    break;
+                default:
+                    break; // código desconhecido: payload de tamanho zero (ver processFunction)
+            }
+        }
+        return dataPtr;
+    }
+
     // ── Lógica de instância (precisa ser de instância porque guarda o
     //    VideoTexture/player, que é específico de cada ObjReq) ──────────
     private int instanceHandle(GlobalWork global, ObjReq obj, TCBManajer tm, byte[] dac, int dataPtr) {
@@ -177,14 +212,11 @@ public class ExtrasReader {
     // pular, mas idealmente sem disparar side effects desnecessários.
     //
     // LIMITAÇÃO CONHECIDA: FUNC_PLAY_VIDEO ainda dispara o side effect real
-    // (inicia o vídeo) mesmo aqui, porque o tamanho do payload de vídeo é
-    // fixo e conhecido (8 bytes: canSkip/flags/width/height, 2 bytes cada),
-    // então tecnicamente daria para só somar 8 sem chamar playFromDac — mas
-    // por segurança e simplicidade optei por reaproveitar processFunction()
-    // por completo aqui. Se o cenário "leave==true bem na hora de um
-    // gatilho de vídeo" for um problema real na prática, ajustar este
-    // método para somar 8 diretamente no case FUNC_PLAY_VIDEO, sem
-    // instanciar/chamar o player.
+    // (inicia o vídeo) mesmo aqui — por segurança e simplicidade este método
+    // reaproveita processFunction() por completo. O payload de vídeo NÃO tem
+    // tamanho fixo (8 bytes + 3 se FLAG_HAS_STOP_POINT + 1 se
+    // FLAG_HAS_NEW_BGM); para só atravessar o gatilho sem side effects, use
+    // ExtrasReader.skip(dac, dataPtr).
     private int skipAllFunctions(GlobalWork global, ObjReq obj, TCBManajer tm,
                                    int funcCount, byte[] dac, int dataPtr) {
         int[] funcCodes = new int[funcCount];

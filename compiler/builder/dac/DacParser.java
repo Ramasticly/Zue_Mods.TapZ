@@ -86,6 +86,11 @@ public final class DacParser {
         inOpt = false;
         inRaz = false;
         lineNumber = 0;
+        // O registro do ExtrasParser é estático e ninguém chamava reset():
+        // crescia a cada .dac compilado (segurando todos os MptInstance) e um
+        // $VID sem "}" final deixava _accumulating ligado, engolindo o resto
+        // deste arquivo E os próximos .dac. Começa sempre limpo.
+        ExtrasParser.reset();
 
         while (readLine()) {
             String t = line.trim();
@@ -174,7 +179,10 @@ public final class DacParser {
             /* ===================== MPT ===================== */
 
             if (t.startsWith("$MPTS:{")) {
-                // só organiza; o que importa são as linhas $MPT_
+                // só organiza; o que importa são as linhas $MPT_ — mas marca
+                // o ANO como existente: é assim que o DacExtractor representa
+                // um ANO presente sem PRIO/LINK/MPT ("$MPTS:{ },").
+                currentAno.used = true;
                 continue;
             }
 
@@ -593,7 +601,11 @@ public final class DacParser {
 
         int anoIndex = Integer.parseInt(mAno.group(1));
         currentAno = rebuilder.getAno(anoIndex);
-        currentAno.used = true;
+        // NÃO marca used aqui: o DacExtractor imprime "$ANO_N: { }" também
+        // para ANOs inexistentes (ponteiro -1 no binário). Marcar no cabeçalho
+        // transformava todo ANO inexistente num ANO vazio (0 MPTs) — e o
+        // _SetAct do jogo só pula o ANO quando o ponteiro é -1; com 0 MPTs ele
+        // segue e lê frames de lixo. used é ligado por $PRIO/$LINK_/$MPTS/$MPT_.
     }
 
     private void handlePrio(String t) {
