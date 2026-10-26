@@ -15,6 +15,15 @@ Um único pacote para o **jogo** e para o **app** (Tap Ult). Junta o antigo
 - Projeto do jogo = `global/` + `jogo/`.
 - Projeto do app = `global/` + `app/`.
 
+Para compilar:
+
+- **App:** não copie `jogo/` (depende de `GameData`/`TCBManajer` e o
+  `jogo/apk/ApkProcessor` colide com o `ApkProcessor` do app). Use
+  `PacBuilder.isApp = true` — o `PacExtractor.isApp` não existe mais.
+- **Jogo:** use o `GameData.java` (e o `TCBManajer.java`) deste repositório:
+  o `Compiler` chama `decodeData`, `registerForGLReload`, `loadPng` e
+  `reloadDerivedGL`, que só existem no `GameData` corrigido.
+
 O `global/` não importa nenhuma classe do jogo (`Logue`, `GameData`, `TCBManajer`…),
 então compila no app sem stubs. O `errors/` (que só vinha no appCompiler) fica
 em `global/` porque os builders compartilhados o usam — no jogo eles recebem

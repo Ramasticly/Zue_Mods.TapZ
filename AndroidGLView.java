@@ -132,7 +132,9 @@ public class AndroidGLView extends GLSurfaceView {
         BluetoothManajer.clearInstance();
     }
 
-    protected void onActivityResult(int requestCode, int ResultCode, Intent date) {
+    // public: View tem onActivityResult(int,int,Intent) público (API oculta); com
+    // "protected" o override reduz a visibilidade e não compila com o framework completo.
+    public void onActivityResult(int requestCode, int ResultCode, Intent date) {
         if (requestCode != 1) {
         }
     }
