@@ -12,6 +12,7 @@ import java.util.List;
  *     ANTIGO (onde as classes estao de verdade no dex), como o aapt --rename-manifest-package faz;
  *     authorities de provider com o pacote antigo passam a usar o novo (senao dois APKs nao instalam juntos).
  *   - uses-sdk: minSdkVersion / targetSdkVersion.
+ *   - android:label do application: nome do app no celular (texto direto no manifesto).
  * Os textos novos sao acrescentados no fim do string pool (os antigos ficam como estao: os outros
  * elementos que os usam nao mudam).
  */
@@ -19,11 +20,20 @@ final class AxmlPatcher {
     private AxmlPatcher() { }
 
     private static final int RES_XML = 0x0003, RES_STRING_POOL = 0x0001, RES_XML_START = 0x0102;
-    private static final int TYPE_STRING = 0x03, TYPE_INT_DEC = 0x10;
+    private static final int TYPE_REFERENCE = 0x01, TYPE_STRING = 0x03, TYPE_INT_DEC = 0x10;
     private static final int NO_ENTRY = 0xFFFFFFFF;
 
     /** newPkg null/vazio = nao troca; minSdk/targetSdk menor que 1 = nao troca. */
     static byte[] patch(byte[] in, String newPkg, int minSdk, int targetSdk) throws IOException {
+        return patch(in, newPkg, minSdk, targetSdk, null);
+    }
+
+    /**
+     * label: nome do app no celular (null/vazio = nao troca). Vai direto no android:label do &lt;application&gt;
+     * (e das activities que usam o mesmo @string), como texto: o launcher e as configuracoes usam esse
+     * nome; nao precisa mexer no resources.arsc.
+     */
+    static byte[] patch(byte[] in, String newPkg, int minSdk, int targetSdk, String label) throws IOException {
         byte[] b = in.clone();
         if (u16(b, 0) != RES_XML || u16(b, 8) != RES_STRING_POOL) {
             throw new IOException("AndroidManifest.xml nao e um XML binario");
@@ -46,6 +56,8 @@ final class AxmlPatcher {
 
         String oldPkg = null;
         boolean renamePkg = false;
+        boolean setLabel = label != null && label.length() > 0;
+        int appLabelRef = 0;                     // @string do label do <application> (activities com o mesmo ref tambem mudam)
         int pos = poolStart + poolSize;
         while (pos + 8 <= b.length) {
             int type = u16(b, pos);
@@ -78,6 +90,16 @@ final class AxmlPatcher {
                             b[a + 15] = (byte) TYPE_INT_DEC;
                             put32(b, a + 16, v);
                         }
+                    } else if (setLabel && "label".equals(an) && ("application".equals(el)
+                            || (("activity".equals(el) || "activity-alias".equals(el)) && dataType == TYPE_REFERENCE && appLabelRef != 0
+                                && u32(b, a + 16) == appLabelRef))) {
+                        if ("application".equals(el) && dataType == TYPE_REFERENCE) {
+                            appLabelRef = u32(b, a + 16);
+                        }
+                        int idx = addString(strs, added, label);
+                        put32(b, a + 8, idx);
+                        b[a + 15] = (byte) TYPE_STRING;
+                        put32(b, a + 16, idx);
                     } else if (renamePkg && val != null && isComponent(el) && isClassAttr(an)) {
                         String abs = val.startsWith(".") ? oldPkg + val : (val.indexOf('.') < 0 ? oldPkg + "." + val : null);
                         if (abs != null) {

@@ -25,6 +25,8 @@ public class ApkProcessor {
         /** Nome de pacote novo (so o manifesto; as classes continuam onde estao). */
         public String packageName;
         public int minSdk = -1, targetSdk = -1;
+        /** Nome do app no celular (null = o do base_apk). */
+        public String appName;
         /** Icone novo (vai para os res/mipmap-.../ic_launcher.png e res/drawable-.../icon.png). */
         public android.graphics.Bitmap icon;
     }
@@ -104,8 +106,9 @@ public class ApkProcessor {
                 data = inputToByte(is);
             }
             if (opt != null && zipPath.equals("AndroidManifest.xml")
-                    && ((opt.packageName != null && opt.packageName.length() > 0) || opt.minSdk > 0 || opt.targetSdk > 0)) {
-                data = AxmlPatcher.patch(data, opt.packageName, opt.minSdk, opt.targetSdk);
+                    && ((opt.packageName != null && opt.packageName.length() > 0) || opt.minSdk > 0 || opt.targetSdk > 0
+                        || (opt.appName != null && opt.appName.length() > 0))) {
+                data = AxmlPatcher.patch(data, opt.packageName, opt.minSdk, opt.targetSdk, opt.appName);
             }
             if (opt != null && opt.icon != null && isIcon(zipPath)) {
                 data = iconPng(data, opt.icon);
