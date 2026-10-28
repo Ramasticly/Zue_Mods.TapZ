@@ -3664,18 +3664,24 @@ diff -ruN a/BusyDialog.java b/BusyDialog.java
          cnt.setGravity(Gravity.END);
 diff -ruN a/CharAssets.java b/CharAssets.java
 --- a/CharAssets.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/CharAssets.java	2026-10-28 22:24:31.908917824 +0000
-@@ -29,7 +29,7 @@
++++ b/CharAssets.java	2026-10-28 22:40:53.920508617 +0000
+@@ -29,16 +29,27 @@
          this.sprites = new SpriteCache(dir, cnv);
      }
  
 -    /** CNV da pasta: o .cnv.txt (o que o jogo compila) se for mais recente que o binario, senao o binario. */
++    /** De onde veio o ultimo CNV lido por {@link #readCnv} (para o seletor de sprites mostrar como o arquivo foi entendido). */
++    static final String KIND_TXT = "txt", KIND_TEXT = "text", KIND_BIN = "bin";
++    static volatile String lastCnvKind = KIND_BIN;
++
 +    /** CNV da pasta: o .cnv.txt (coordenadas finais, ja x2 no personagem) se existir; senao o .cnv, lido como texto (coordenadas originais) e, se nao tiver texto, como binario. */
      static Cnv readCnv(File cnvF, boolean character) throws IOException {
          File txt = new File(cnvF.getPath() + ".txt");
          if (txt.isFile()) {
-@@ -38,7 +38,13 @@
-                 if (c != null) return c;
+             try {
+                 Cnv c = Cnv.fromTxt(new String(GameData.readAll(txt), "UTF-8"), character);
+-                if (c != null) return c;
++                if (c != null) { lastCnvKind = KIND_TXT; return c; }
              } catch (RuntimeException ignored) { }
          }
 -        return Cnv.read(GameData.readAll(cnvF), character);
@@ -3683,13 +3689,14 @@ diff -ruN a/CharAssets.java b/CharAssets.java
 +        // o .cnv fora do PAC e texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem x2: tenta texto primeiro, binario so se nao houver texto
 +        try {
 +            Cnv c = Cnv.fromTxt(new String(raw, "UTF-8"), character, false);
-+            if (c != null) return c;
++            if (c != null) { lastCnvKind = KIND_TEXT; return c; }
 +        } catch (RuntimeException ignored) { }
++        lastCnvKind = KIND_BIN;
 +        return Cnv.read(raw, character);
      }
  
      /** Lista de sprites desta pasta (folhas + CNV em memoria). */
-@@ -130,6 +136,26 @@
+@@ -130,6 +141,26 @@
                  dac.setAno(i, na);
              } catch (Exception ex) { /* bloco que nao le: fica o binario */ }
          }
@@ -3716,7 +3723,7 @@ diff -ruN a/CharAssets.java b/CharAssets.java
      }
  
      private static final String[] FR_KEYS = {"DUR_C", "DUR_A", "ANO", "XSPEED", "YSPEED", "XACCEL", "YACCEL", "XSPEED_A", "YSPEED_A", "XACCEL_A", "YACCEL_A", "COMP", "WALL", "VOZ"};
-@@ -151,6 +177,8 @@
+@@ -151,6 +182,8 @@
              java.util.regex.Matcher mw = java.util.regex.Pattern.compile("\\$LARGURA\\s*:\\s*(\\d+)").matcher(blk);
              java.util.regex.Matcher mh = java.util.regex.Pattern.compile("\\$ALTURA\\s*:\\s*(\\d+)").matcher(blk);
              if (mw.find() && mh.find()) cd.setBody(Integer.parseInt(mw.group(1)) * 2, Integer.parseInt(mh.group(1)));
@@ -6131,7 +6138,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-28 22:25:29.404341340 +0000
++++ b/I18nCatalog.java	2026-10-28 22:41:20.411337696 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6145,7 +6152,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-28 22:25:29.401559968 +0000
++++ b/I18nCatalog0.java	2026-10-28 22:41:20.408012070 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6418,7 +6425,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-28 22:25:29.402223573 +0000
++++ b/I18nCatalog1.java	2026-10-28 22:41:20.408769264 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6691,7 +6698,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-28 22:25:29.402854145 +0000
++++ b/I18nCatalog2.java	2026-10-28 22:41:20.409653848 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6964,7 +6971,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-28 22:25:29.403353901 +0000
++++ b/I18nCatalog3.java	2026-10-28 22:41:20.410229674 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7237,7 +7244,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-28 22:25:29.403915143 +0000
++++ b/I18nCatalog4.java	2026-10-28 22:41:20.410802453 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7510,8 +7517,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-28 22:25:29.404209138 +0000
-@@ -0,0 +1,83 @@
++++ b/I18nCatalog5.java	2026-10-28 22:41:20.411165808 +0000
+@@ -0,0 +1,90 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -7587,6 +7594,13 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"nao consegui trocar {0}", "could not replace {0}", "no pude reemplazar {0}"},
 +        {"nao consegui gravar {0}", "could not write {0}", "no pude grabar {0}"},
 +        {"Som silenciado.", "Sound silenced.", "Sonido silenciado."},
++        {"Lido de ", "Read from ", "Leído de "},
++        {"coordenadas finais, divididas por 2 no personagem", "final coordinates, divided by 2 for a character", "coordenadas finales, divididas por 2 en el personaje"},
++        {"texto, coordenadas originais", "text, original coordinates", "texto, coordenadas originales"},
++        {"binario", "binary", "binario"},
++        {"recorte", "crop", "recorte"},
++        {"ESCALA: AUTO ({0})", "SCALE: AUTO ({0})", "ESCALA: AUTO ({0})"},
++        {"ESCALA: {0}", "SCALE: {0}", "ESCALA: {0}"},
 +        {"SONS", "SOUNDS", "SONIDOS"},
 +        {"Carregue um personagem para gerenciar os sons", "Load a character to manage the sounds", "Carga un personaje para administrar los sonidos"},
 +        {"Total {0}: {1} px em {2} ticks (frames {3} a {4})", "Total {0}: {1} px in {2} ticks (frames {3} to {4})", "Total {0}: {1} px en {2} ticks (frames {3} a {4})"},
@@ -11034,8 +11048,8 @@ diff -ruN a/OggPcm.java b/OggPcm.java
 +}
 diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 --- a/PacSpritePicker.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/PacSpritePicker.java	2026-10-28 13:36:04.447032910 +0000
-@@ -0,0 +1,201 @@
++++ b/PacSpritePicker.java	2026-10-28 22:41:20.364148977 +0000
+@@ -0,0 +1,217 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -11066,7 +11080,10 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +    private static final int BG = 0xFF14171C, LINE = 0xFF3A4150, TEXT = 0xFFE6E8EC, DIM = 0xFF8A93A6, OK = 0xFF7CE08A, HI = 0xFF21402C;
 +
 +    /** {@code uiOnly}: atualiza a tela depois de gravar (o commit das folhas ja foi feito aqui). */
-+    static void show(final Activity a, File picked, final SpriteLib target, final Runnable uiOnly) {
++    static void show(final Activity a, File picked, final SpriteLib target, final Runnable uiOnly) { show(a, picked, target, uiOnly, 0); }
++
++    /** {@code scaleMode}: 0 = pela pasta (charNN = escala 2), 1 ou 2 = o usuario escolheu a escala do pac. */
++    static void show(final Activity a, final File picked, final SpriteLib target, final Runnable uiOnly, final int scaleMode) {
 +        final File cnvF = SpriteImportPlan.cnvOf(picked);
 +        final File dir = cnvF.getParentFile();
 +        if (SpriteImportPlan.sameFolder(dir, target.dir)) {
@@ -11076,7 +11093,7 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +        final SpriteLib src;
 +        final List<SpriteImportPlan.Item> items;
 +        try {
-+            Cnv c = CharAssets.readCnv(cnvF, SpriteImportPlan.isCharacterDir(dir));
++            Cnv c = CharAssets.readCnv(cnvF, scaleMode == 0 ? SpriteImportPlan.isCharacterDir(dir) : scaleMode == 2);
 +            src = new SpriteLib(dir, cnvF, c, c.scale());
 +            items = SpriteImportPlan.items(c);
 +        } catch (Throwable t) {
@@ -11102,6 +11119,15 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                + ". Toque nas que quer adicionar.", 11, DIM, false);
 +        hint.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 8));
 +        root.addView(hint);
++        final String kind = CharAssets.lastCnvKind;
++        Cnv.Entry e0 = src.cnv.byImage(items.get(0).index);
++        TextView diag = SpriteListScreen.text(a, "Lido de " + (CharAssets.KIND_TXT.equals(kind) ? cnvF.getName() + ".txt" : cnvF.getName()) + " ("
++                + (CharAssets.KIND_TXT.equals(kind) ? "coordenadas finais, divididas por 2 no personagem"
++                : CharAssets.KIND_TEXT.equals(kind) ? "texto, coordenadas originais" : "binario") + ")  ·  SPR_" + items.get(0).index + ": "
++                + e0.x + "," + e0.y + " " + e0.width + "x" + e0.height + " \u2192 " + "recorte" + " " + (e0.x * src.scale) + "," + (e0.y * src.scale) + " "
++                + (e0.width * src.scale) + "x" + (e0.height * src.scale), 10, DIM, false);
++        diag.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 6));
++        root.addView(diag);
 +
 +        final boolean[] on = new boolean[items.size()];
 +        final Map<Integer, Bitmap> thumbs = new HashMap<Integer, Bitmap>();
@@ -11150,6 +11176,10 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +        bar.setOrientation(LinearLayout.HORIZONTAL);
 +        bar.setPadding(SpriteListScreen.dp(a, 12), 0, SpriteListScreen.dp(a, 12), SpriteListScreen.dp(a, 8));
 +        bar.addView(SpriteListScreen.button(a, "TODAS", new View.OnClickListener() { @Override public void onClick(View v) { java.util.Arrays.fill(on, true); ad.notifyDataSetChanged(); upd.run(); } }));
++        final int nextMode = scaleMode == 0 ? 1 : scaleMode == 1 ? 2 : 0;
++        bar.addView(SpriteListScreen.button(a, scaleMode == 0 ? "ESCALA: AUTO (" + src.scale + ")" : "ESCALA: " + scaleMode, new View.OnClickListener() {
++            @Override public void onClick(View v) { src.release(); d.dismiss(); show(a, picked, target, uiOnly, nextMode); }
++        }), SpriteListScreen.lpm(a, 8));
 +        bar.addView(SpriteListScreen.button(a, "NENHUMA", new View.OnClickListener() { @Override public void onClick(View v) { java.util.Arrays.fill(on, false); ad.notifyDataSetChanged(); upd.run(); } }), SpriteListScreen.lpm(a, 8));
 +        root.addView(bar);
 +        root.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1f));
@@ -15099,7 +15129,7 @@ diff -ruN a/SpriteBoxEditor.java b/SpriteBoxEditor.java
          dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ACCENT);
 diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 --- a/SpriteImportPlan.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/SpriteImportPlan.java	2026-10-28 13:35:16.345666404 +0000
++++ b/SpriteImportPlan.java	2026-10-28 22:40:53.920814637 +0000
 @@ -0,0 +1,80 @@
 +package com.zue.attackeditor;
 +
@@ -15161,8 +15191,8 @@ diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 +        return picked;
 +    }
 +
-+    /** So as pastas charNN usam escala 2. */
-+    static boolean isCharacterDir(File dir) { return dir != null && dir.getName().matches("char\\d{2}"); }
++    /** Pastas de personagem usam escala 2: charNN (tambem char5, char05_copia, Char05); charf/chara... sao outros packs. */
++    static boolean isCharacterDir(File dir) { return dir != null && dir.getName().matches("(?i)char\\d+.*"); }
 +
 +    /** Nao importa do proprio personagem. */
 +    static boolean sameFolder(File a, File b) {
@@ -20143,8 +20173,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-28 22:25:29.485087629 +0000
-@@ -0,0 +1,516 @@
++++ b/test/I18nIgnored.java	2026-10-28 22:41:20.497714900 +0000
+@@ -0,0 +1,523 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -20266,6 +20296,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "%03d.wav",
 +        "%s · ANIM %d · MPT %d · LINKS %d · proj %d/%d/%d",
 +        "(?![0-9A-Za-z_])\\s*:\\s*\\{",
++        "(?i)char\\d+.*",
 +        "(\\$ALTURA\\s*:\\s*)-?\\d+",
 +        "(\\$COL\\s*:\\s*)\\d+",
 +        "(\\$DISTANCIA_AGARRE\\s*:\\s*)-?\\d+",
@@ -20273,6 +20304,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "(\\$ROW\\s*:\\s*)\\d+",
 +        "(\\$SZ\\s*:\\s*&)[0-9A-Fa-f]+",
 +        "(\\d{3})\\.(png|wav)",
++        ")  ·  SPR_",
 +        ") para nao ficar buraco. Eles nao aparecem na lista. Continuar?",
 +        ") → sons comuns novos (100 a ",
 +        ") → sons do personagem (80 a ",
@@ -20384,6 +20416,8 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "Documents",
 +        "Download",
 +        "END",
++        "ESCALA: ",
++        "ESCALA: AUTO (",
 +        "End",
 +        "FLAG",
 +        "FR-PREVIEW SET",
@@ -20539,6 +20573,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "audio/opus",
 +        "base x",
 +        "base y",
++        "bin",
 +        "bobj",
 +        "cHRM",
 +        "char",
@@ -20638,11 +20673,13 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "sprite",
 +        "sprite_grupos.json",
 +        "tRNS",
++        "text",
 +        "text/markdown",
 +        "text/plain",
 +        "time",
 +        "toolbar",
 +        "transf.",
++        "txt",
 +        "vazia",
 +        "vazio",
 +        "x para manter o tamanho na tela",
@@ -22143,8 +22180,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/SpriteImportPlanTest.java b/test/SpriteImportPlanTest.java
 --- a/test/SpriteImportPlanTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/SpriteImportPlanTest.java	2026-10-28 22:24:43.845953817 +0000
-@@ -0,0 +1,104 @@
++++ b/test/SpriteImportPlanTest.java	2026-10-28 22:41:45.456229357 +0000
+@@ -0,0 +1,114 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -22194,6 +22231,8 @@ diff -ruN a/test/SpriteImportPlanTest.java b/test/SpriteImportPlanTest.java
 +        check("cnvOf mantem o .cnv", SpriteImportPlan.cnvOf(new File("/a/b/000.cnv")).getName(), "000.cnv");
 +        check("pasta de personagem", SpriteImportPlan.isCharacterDir(new File("/x/assets/char07")), true);
 +        check("pasta de efeito nao", SpriteImportPlan.isCharacterDir(new File("/x/assets/effect")), false);
++        check("pasta de personagem com sufixo, maiuscula ou 1 digito", SpriteImportPlan.isCharacterDir(new File("/x/char07_copia")) + ":" + SpriteImportPlan.isCharacterDir(new File("/x/Char7")) + ":" + SpriteImportPlan.isCharacterDir(new File("/x/char123")), "true:true:true");
++        check("chara/charf/char sem numero nao", SpriteImportPlan.isCharacterDir(new File("/x/chara01")) + ":" + SpriteImportPlan.isCharacterDir(new File("/x/char")), "false:false");
 +        check("charf nao e personagem", SpriteImportPlan.isCharacterDir(new File("/x/assets/charf007")), false);
 +        File t = new File(System.getProperty("java.io.tmpdir"));
 +        check("mesma pasta", SpriteImportPlan.sameFolder(t, new File(t, ".")), true);
@@ -22246,6 +22285,14 @@ diff -ruN a/test/SpriteImportPlanTest.java b/test/SpriteImportPlanTest.java
 +        List<SpriteImportPlan.Item> ti = SpriteImportPlan.items(t1);
 +        check("sprites do .cnv texto entram no plano", ti.size() + ":" + SpriteImportPlan.describe(ti.get(0)), "2:SPR_0  73x68");
 +        check("ampliacao de um pac de efeito (escala 1) para o personagem", SpriteImportPlan.factor(t1e.scale(), t1.scale()), 2);
++        File fk = new File(td, "k.cnv");
++        java.nio.file.Files.write(fk.toPath(), logical.getBytes("UTF-8"));
++        CharAssets.readCnv(fk, true);
++        check("diagnostico: .cnv em texto", CharAssets.lastCnvKind, CharAssets.KIND_TEXT);
++        CharAssets.readCnv(f3b, true);
++        check("diagnostico: .cnv.txt ao lado", CharAssets.lastCnvKind, CharAssets.KIND_TXT);
++        CharAssets.readCnv(f4, true);
++        check("diagnostico: binario", CharAssets.lastCnvKind, CharAssets.KIND_BIN);
 +        System.out.println("SpriteImportPlanTest fails=" + fails);
 +    }
 +}
