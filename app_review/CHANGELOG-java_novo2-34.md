@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1246 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1257 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -303,6 +303,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Gerenciamento de frames sem crash por índice -1** (`ArrayIndexOutOfBoundsException: index=-1` em `FrameOps.applyAll`, ao copiar de um frame para outros): a página “Copiar” continuava ativa quando a seleção passava para um objeto/link/transição (`idx = -1`) e o APLICAR chamava `applyAll(…, -1, …)`. Correção em três camadas: (1) a gaveta volta para a grade ao selecionar objeto/link/transição e `applyAllTab`/`applySpriteTab`/`follow` só agem com sprite selecionado (`spriteSelected`); (2) todas as operações puras de `FrameOps`, `FrameTools` e `ObjModel` ignoram índice fora de `[0, len)` em vez de lançar (`FrameOps.ok`); `TimelineOps` recusa índice inválido com aviso; (3) `FrameIndexRobustTest` chama por reflexão cada operação pública com índices −2, −1, 0, len−1, len, len+3 (56 métodos, ~3,9 milhões de chamadas): 0 exceção.
 - AJUDA (PT/EN/ES: SONS, Movimento X/Y, DIVIDIR, “Os 15 botões”) e MD (11.1/11.2/11.3) atualizados. **Telas novas (Movimento X/Y, botão SONS, DIVIDIR) só compiladas e revisadas — não rodadas num aparelho.**
 
+### 3.1zm Importar sprites de outro pac: `.cnv` em texto
+- O `.cnv` que vem de outros pacs é **texto** (`CNV_TXT_ { $SPR_0:{$src:5, $x:96, …} }`) com as coordenadas **originais** (sem ×2), e o app o lia como binário (“CNV vazio ou pequeno demais”/lixo). `CharAssets.readCnv` agora tenta **texto primeiro** e só cai no binário se não houver nenhuma entrada de texto. Ordem: `.cnv.txt` (coordenadas finais, já ×2 no personagem → o app divide por 2) → `.cnv` em texto (coordenadas originais, lidas como estão; o recorte multiplica pela escala do personagem) → `.cnv` binário.
+- `Cnv.fromTxt(texto, personagem, unidadesFisicas)`: `false` = `.cnv` em texto (não divide), `true` = `.cnv.txt` (divide por 2 em personagem, como antes).
+- Testes: `SpriteImportPlanTest` 27 → 38 (amostra do usuário em personagem e em effect, BOM e comentário, `.cnv.txt` ao lado vence, binário continua, arquivo pequeno dá erro, plano e ampliação 1→2). AJUDA (PT/EN/ES) e MD atualizados. A tela `PacSpritePicker` não mudou (só compilada/revisada, não rodada num aparelho).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -359,7 +364,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **GrabEditTest (novo)** | 12 |
 | **HurtboxAllTest (novo)** | 8 |
 | **RootKindTest (novo)** | 18 |
-| **SpriteImportPlanTest (novo)** | 27 |
+| **SpriteImportPlanTest (novo)** | 38 |
 | **SoundIdsTest (novo)** | 61 |
 | **FrameIndexRobustTest (novo)** | 1 |
 

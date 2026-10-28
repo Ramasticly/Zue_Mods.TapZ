@@ -187,7 +187,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-28 15:08:42.571145933 +0000
++++ b/AiHelpDoc.java	2026-10-28 22:25:57.101765525 +0000
 @@ -0,0 +1,845 @@
 +package com.zue.attackeditor;
 +
@@ -425,7 +425,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "Sound id `SE` (an **unsigned byte, 0–255**; values above 127 only work in a `TCBManajer` patched for that): 0 = none; 1..79 = common game sounds `se_00`..`se_78` (file = id − 1; the app's sound list plays them); **80..99 = the character's own `*.wav` files in sorted file-name order** (first wav = 80, at most 20); 100..255 = new common sounds `se_99`..`se_254` (file names have 3 digits from `se_100.ogg`). Files `se_79`..`se_99` are silent filler (the game loads the `se_` files in sequence, never delete one); the first new global sound after `se_78` is `se_100` (id 101). The app adds global sounds as **Opus inside .ogg** (Android 10+). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.\n" +
 +        "\n" +
 +        "### 5.7 Sprites and the CNV\n" +
-+        "Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.\n" +
++        "Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). A `.cnv` outside the PAC is plain text (`CNV_TXT_ { $SPR_n:{$src:…, $x:…, …} }`) with the **original** coordinates (no ×2); `.cnv.txt` holds the **final** coordinates (already ×2 for characters). Either can be used as the source when importing sprites from another pac. The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.\n" +
 +        "\n" +
 +        "### 5.8 Linked animations (links) and effects\n" +
 +        "A link spawns another ANO together with its parent (effects, body parts, auras) and follows it. Only 1 level, max 13 per ANO. Effects can also be triggered by hit flags 10–17 / 41–125 (see 5.2).\n" +
@@ -3664,8 +3664,32 @@ diff -ruN a/BusyDialog.java b/BusyDialog.java
          cnt.setGravity(Gravity.END);
 diff -ruN a/CharAssets.java b/CharAssets.java
 --- a/CharAssets.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/CharAssets.java	2026-10-28 13:25:17.425227523 +0000
-@@ -130,6 +130,26 @@
++++ b/CharAssets.java	2026-10-28 22:24:31.908917824 +0000
+@@ -29,7 +29,7 @@
+         this.sprites = new SpriteCache(dir, cnv);
+     }
+ 
+-    /** CNV da pasta: o .cnv.txt (o que o jogo compila) se for mais recente que o binario, senao o binario. */
++    /** CNV da pasta: o .cnv.txt (coordenadas finais, ja x2 no personagem) se existir; senao o .cnv, lido como texto (coordenadas originais) e, se nao tiver texto, como binario. */
+     static Cnv readCnv(File cnvF, boolean character) throws IOException {
+         File txt = new File(cnvF.getPath() + ".txt");
+         if (txt.isFile()) {
+@@ -38,7 +38,13 @@
+                 if (c != null) return c;
+             } catch (RuntimeException ignored) { }
+         }
+-        return Cnv.read(GameData.readAll(cnvF), character);
++        byte[] raw = GameData.readAll(cnvF);
++        // o .cnv fora do PAC e texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem x2: tenta texto primeiro, binario so se nao houver texto
++        try {
++            Cnv c = Cnv.fromTxt(new String(raw, "UTF-8"), character, false);
++            if (c != null) return c;
++        } catch (RuntimeException ignored) { }
++        return Cnv.read(raw, character);
+     }
+ 
+     /** Lista de sprites desta pasta (folhas + CNV em memoria). */
+@@ -130,6 +136,26 @@
                  dac.setAno(i, na);
              } catch (Exception ex) { /* bloco que nao le: fica o binario */ }
          }
@@ -3692,7 +3716,7 @@ diff -ruN a/CharAssets.java b/CharAssets.java
      }
  
      private static final String[] FR_KEYS = {"DUR_C", "DUR_A", "ANO", "XSPEED", "YSPEED", "XACCEL", "YACCEL", "XSPEED_A", "YSPEED_A", "XACCEL_A", "YACCEL_A", "COMP", "WALL", "VOZ"};
-@@ -151,6 +171,8 @@
+@@ -151,6 +177,8 @@
              java.util.regex.Matcher mw = java.util.regex.Pattern.compile("\\$LARGURA\\s*:\\s*(\\d+)").matcher(blk);
              java.util.regex.Matcher mh = java.util.regex.Pattern.compile("\\$ALTURA\\s*:\\s*(\\d+)").matcher(blk);
              if (mw.find() && mh.find()) cd.setBody(Integer.parseInt(mw.group(1)) * 2, Integer.parseInt(mh.group(1)));
@@ -3836,6 +3860,31 @@ diff -ruN a/CharData.java b/CharData.java
          if (t.size() > 3 && t.bytes(3).length >= 7) cd.flies = (t.bytes(3)[6] & 255) != 0;       // PODE_VOAR (byte 6)
          if (t.size() > 3 && t.bytes(3).length >= 4) cd.halfWidth = (t.bytes(3)[3] & 255) / 2;       // LARGURA (byte 3 / 2)
          return cd;
+diff -ruN a/Cnv.java b/Cnv.java
+--- a/Cnv.java	2026-10-18 12:20:33.000000000 +0000
++++ b/Cnv.java	2026-10-28 22:24:31.908309668 +0000
+@@ -108,13 +108,19 @@
+             "\\$src:(-?\\d+),\\s*\\$x:(-?\\d+),\\s*\\$y:(-?\\d+),\\s*\\$w:(-?\\d+),\\s*\\$h:(-?\\d+)");
+ 
+     /** Le o .cnv.txt (como o CnvBuilder do jogo: personagem divide por 2). Devolve null se nao achou nenhuma entrada. */
+-    public static Cnv fromTxt(String text, boolean characterCnv) throws IOException {
++    public static Cnv fromTxt(String text, boolean characterCnv) throws IOException { return fromTxt(text, characterCnv, true); }
++
++    /**
++     * {@code physicalUnits}: true = .cnv.txt (coordenadas finais, ja x2 no personagem: divide por 2); false = .cnv escrito em texto
++     * (coordenadas originais, como as do binario: ficam como estao e o recorte multiplica pela escala do personagem).
++     */
++    public static Cnv fromTxt(String text, boolean characterCnv, boolean physicalUnits) throws IOException {
+         java.util.regex.Matcher m = TXT.matcher(text);
+         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+         while (m.find()) {
+             int src = Integer.parseInt(m.group(1)), x = Integer.parseInt(m.group(2)), y = Integer.parseInt(m.group(3));
+             int w = Integer.parseInt(m.group(4)), h = Integer.parseInt(m.group(5));
+-            if (characterCnv) { x >>= 1; y >>= 1; w >>= 1; h >>= 1; }
++            if (characterCnv && physicalUnits) { x >>= 1; y >>= 1; w >>= 1; h >>= 1; }
+             byte[] e = encode(src, x, y, w, h);
+             out.write(e, 0, e.length);
+         }
 diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 --- a/CutsceneInfo.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/CutsceneInfo.java	2026-10-24 21:48:20.027333776 +0000
@@ -5180,8 +5229,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-28 15:08:05.565563899 +0000
-@@ -0,0 +1,633 @@
++++ b/HelpText.java	2026-10-28 22:25:22.817752322 +0000
+@@ -0,0 +1,634 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -5549,7 +5598,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        sn.add("Sprites e CNV",
 +                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). "
 +                + "As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber."
-+                + " Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só.");
++                + " Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só."
++                + " O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto).");
 +        c.add(sn);
 +
 +        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
@@ -6081,7 +6131,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-28 15:09:34.662556352 +0000
++++ b/I18nCatalog.java	2026-10-28 22:25:29.404341340 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6095,7 +6145,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-28 15:09:34.658441106 +0000
++++ b/I18nCatalog0.java	2026-10-28 22:25:29.401559968 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6368,7 +6418,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-28 15:09:34.659286366 +0000
++++ b/I18nCatalog1.java	2026-10-28 22:25:29.402223573 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6641,7 +6691,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-28 15:09:34.660112664 +0000
++++ b/I18nCatalog2.java	2026-10-28 22:25:29.402854145 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6914,7 +6964,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-28 15:09:34.660986596 +0000
++++ b/I18nCatalog3.java	2026-10-28 22:25:29.403353901 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7187,7 +7237,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-28 15:09:34.661766113 +0000
++++ b/I18nCatalog4.java	2026-10-28 22:25:29.403915143 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7460,7 +7510,7 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-28 15:09:34.662257582 +0000
++++ b/I18nCatalog5.java	2026-10-28 22:25:29.404209138 +0000
 @@ -0,0 +1,83 @@
 +package com.zue.attackeditor;
 +
@@ -7592,7 +7642,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-28 15:09:06.205983873 +0000
++++ b/I18nHelpCatalog.java	2026-10-28 22:25:29.337475955 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -7606,7 +7656,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-28 15:09:06.204373064 +0000
++++ b/I18nHelpCatalog0.java	2026-10-28 22:25:29.336621180 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7691,7 +7741,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-28 15:09:06.204528768 +0000
++++ b/I18nHelpCatalog1.java	2026-10-28 22:25:29.336716659 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7776,7 +7826,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-28 15:09:06.204704029 +0000
++++ b/I18nHelpCatalog2.java	2026-10-28 22:25:29.336865918 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7861,7 +7911,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-28 15:09:06.204849742 +0000
++++ b/I18nHelpCatalog3.java	2026-10-28 22:25:29.336972360 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7946,7 +7996,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-28 15:09:06.205019462 +0000
++++ b/I18nHelpCatalog4.java	2026-10-28 22:25:29.337054170 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8031,7 +8081,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-28 15:09:06.205166644 +0000
++++ b/I18nHelpCatalog5.java	2026-10-28 22:25:29.337134828 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8116,7 +8166,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-28 15:09:06.205547363 +0000
++++ b/I18nHelpCatalog6.java	2026-10-28 22:25:29.337224651 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8201,7 +8251,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-28 15:09:06.205736973 +0000
++++ b/I18nHelpCatalog7.java	2026-10-28 22:25:29.337335480 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8286,7 +8336,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-28 15:09:06.205887425 +0000
++++ b/I18nHelpCatalog8.java	2026-10-28 22:25:29.337439920 +0000
 @@ -0,0 +1,78 @@
 +package com.zue.attackeditor;
 +
@@ -8307,9 +8357,9 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
-+        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só.",
-+         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once.",
-+         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez."},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto).",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text).",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto)."},
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
@@ -20093,7 +20143,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-28 15:09:34.754824891 +0000
++++ b/test/I18nIgnored.java	2026-10-28 22:25:29.485087629 +0000
 @@ -0,0 +1,516 @@
 +package com.zue.attackeditor;
 +
@@ -22093,8 +22143,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/SpriteImportPlanTest.java b/test/SpriteImportPlanTest.java
 --- a/test/SpriteImportPlanTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/SpriteImportPlanTest.java	2026-10-28 13:36:59.993078438 +0000
-@@ -0,0 +1,65 @@
++++ b/test/SpriteImportPlanTest.java	2026-10-28 22:24:43.845953817 +0000
+@@ -0,0 +1,104 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -22157,6 +22207,45 @@ diff -ruN a/test/SpriteImportPlanTest.java b/test/SpriteImportPlanTest.java
 +                "5 sprite(s) distintos  \u00b7  escala 2  \u00b7  entran sin cambiar el tamaño. Toca los que quieras agregar.");
 +        check("botao ADICIONAR n ES", I18n.trTo("ADICIONAR 3", I18n.ES), "AGREGAR 3");
 +        check("TODAS/NENHUMA EN", I18n.trTo("TODAS", I18n.EN) + "/" + I18n.trTo("NENHUMA", I18n.EN), "ALL/NONE");
++        // ---- .cnv em texto (coordenadas originais, sem x2) x .cnv.txt (coordenadas finais, ja x2) x binario
++        File td = java.nio.file.Files.createTempDirectory("cnvtxt").toFile();
++        String logical = "CNV_TXT_ {\n   $SPR_0:{$src:5, $x:96, $y:144, $w:73, $h:68},\n   $SPR_1:{$src:6, $x:108, $y:0, $w:72, $h:67},\n}\n";
++        String physical = "CNV_TXT_ {\n   $SPR_0:{$src:5, $x:192, $y:288, $w:146, $h:136},\n   $SPR_1:{$src:6, $x:216, $y:0, $w:144, $h:134},\n}\n";
++        File f1 = new File(td, "a.cnv");
++        java.nio.file.Files.write(f1.toPath(), logical.getBytes("UTF-8"));
++        Cnv t1 = CharAssets.readCnv(f1, true);
++        Cnv.Entry e0 = t1.byImage(0);
++        check(".cnv texto de personagem: coordenadas originais, sem dividir", e0.source + ":" + e0.x + ":" + e0.y + ":" + e0.width + ":" + e0.height, "5:96:144:73:68");
++        check(".cnv texto de personagem: escala 2 (o recorte multiplica)", t1.scale() + ":" + t1.size(), "2:2");
++        Cnv t1e = CharAssets.readCnv(f1, false);
++        check(".cnv texto de effect: mesmos numeros, escala 1", t1e.byImage(1).width + ":" + t1e.scale(), "72:1");
++        File f2 = new File(td, "b.cnv");
++        java.nio.file.Files.write(f2.toPath(), ("\uFEFF// pac\n" + logical).getBytes("UTF-8"));
++        check(".cnv texto com BOM e comentario", CharAssets.readCnv(f2, true).byImage(1).height, 67);
++        File f3 = new File(td, "c.cnv");
++        java.nio.file.Files.write(f3.toPath(), physical.getBytes("UTF-8"));
++        File f3t = new File(td, "c.cnv.txt");
++        java.nio.file.Files.write(f3t.toPath(), physical.getBytes("UTF-8"));
++        File f3b = new File(td, "d.cnv");
++        java.nio.file.Files.write(f3b.toPath(), logical.getBytes("UTF-8"));
++        File f3bt = new File(td, "d.cnv.txt");
++        java.nio.file.Files.write(f3bt.toPath(), physical.getBytes("UTF-8"));
++        Cnv both = CharAssets.readCnv(f3b, true);
++        check(".cnv.txt ao lado vence e divide por 2 (coordenadas finais -> originais)", both.byImage(0).width + ":" + both.byImage(0).x + ":" + both.byImage(1).y, "73:96:0");
++        check("so .cnv.txt (sem .cnv): o picker usa o .cnv e o .txt e lido", SpriteImportPlan.cnvOf(f3t).getName(), "c.cnv");
++        check(".cnv.txt de effect nao divide", CharAssets.readCnv(f3, false).byImage(0).width, 73 * 2);
++        File f4 = new File(td, "e.cnv");
++        java.nio.file.Files.write(f4.toPath(), cnv(new int[][] {{3, 10, 20, 30, 40}, {4, 1, 2, 3, 4}}, true).encode());
++        Cnv bin = CharAssets.readCnv(f4, true);
++        check(".cnv binario sem texto continua lido como binario", bin.size() + ":" + bin.byImage(0).source + ":" + bin.byImage(0).width + ":" + bin.byImage(1).height, "2:3:30:4");
++        File f5 = new File(td, "f.cnv");
++        java.nio.file.Files.write(f5.toPath(), new byte[3]);
++        boolean err = false;
++        try { CharAssets.readCnv(f5, true); } catch (java.io.IOException ex) { err = true; }
++        check(".cnv sem texto e pequeno demais para binario: erro", err, true);
++        List<SpriteImportPlan.Item> ti = SpriteImportPlan.items(t1);
++        check("sprites do .cnv texto entram no plano", ti.size() + ":" + SpriteImportPlan.describe(ti.get(0)), "2:SPR_0  73x68");
++        check("ampliacao de um pac de efeito (escala 1) para o personagem", SpriteImportPlan.factor(t1e.scale(), t1.scale()), 2);
 +        System.out.println("SpriteImportPlanTest fails=" + fails);
 +    }
 +}
