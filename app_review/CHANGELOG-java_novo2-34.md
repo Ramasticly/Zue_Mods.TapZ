@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1269 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1274 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -311,6 +311,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 
 - **Escala do pac deduzida (corrige `.cnv` em texto que aparecia como “escala 1 → 2” e saía com recorte pela metade)**: a escala 2 não depende mais só do nome da pasta. Agora vale personagem se a pasta é `char`+número **ou tem `000.bin`**; e, se ainda assim sobrar escala 1 (e o arquivo não é `.cnv.txt`), o app compara os recortes com o tamanho dos PNG (`SpriteImportPlan.guessScale`): se todos só cabem nas folhas multiplicados por 2 e, multiplicados, quase enchem alguma folha (≥ 85 %), é pac de escala 2 e o CNV é relido assim — a linha de diagnóstico avisa “escala 2 deduzida do tamanho das folhas”. Só promove 1 → 2, nunca o contrário; o botão ESCALA continua mandando.
 
+### 3.1zn Seletores de pasta e CNV: “...↑”, VOLTAR e substituir por sprite de CNV
+- **“...↑”**: em todo seletor de arquivos (sprites e sons) o primeiro item de qualquer pasta, **menos a raiz**, é `...↑`, que sobe um nível (`FilePicker.hasUpRow`; `SUBIR`/`PRINCIPAL` continuam).
+- **VOLTAR na escolha das sprites de um CNV** (botão ou voltar do celular) volta ao **seletor de arquivos, na pasta onde estava o .cnv**, em vez de cair na lista de sprites (também quando o CNV é do próprio personagem ou não abre).
+- **Substituir imagem** agora mostra também os `.cnv`/`.cnv.txt`: tocar num abre as sprites dele e dá para escolher **uma só** (marcar outra desmarca a anterior; botão SUBSTITUIR); ela é recortada com a escala deduzida do pac, ampliada 1→2 se preciso, e grava no lugar da SPR_n.
+- AJUDA (PT/EN/ES) e MD atualizados. **Telas só compiladas/revisadas, não rodadas num aparelho.**
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -369,6 +375,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **RootKindTest (novo)** | 18 |
 | **SpriteImportPlanTest (novo)** | 50 |
 | **SoundIdsTest (novo)** | 61 |
+| **FilePickerTest (novo)** | 5 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
