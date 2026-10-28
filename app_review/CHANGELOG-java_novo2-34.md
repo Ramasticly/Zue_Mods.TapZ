@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1274 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1291 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -317,6 +317,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Substituir imagem** agora mostra também os `.cnv`/`.cnv.txt`: tocar num abre as sprites dele e dá para escolher **uma só** (marcar outra desmarca a anterior; botão SUBSTITUIR); ela é recortada com a escala deduzida do pac, ampliada 1→2 se preciso, e grava no lugar da SPR_n.
 - AJUDA (PT/EN/ES) e MD atualizados. **Telas só compiladas/revisadas, não rodadas num aparelho.**
 
+### 3.1zo `$src` do CNV é o ÍNDICE da folha, não o número do nome
+- Numa pasta com `017.png`, `018.cnv` e `019.png`, o `$src:18` procurava `018.png` (que não existe) e o recorte falhava. Agora `$src` = **posição da folha na lista dos `NNN.png` da pasta, em ordem de nome** (`SheetFiles`, Java puro): `$src:18` = `019.png`. Com PNG contínuos a partir de `000` (o caso comum) índice e número coincidem — nada muda.
+- Todos os usos de recorte seguem a regra: preview (`SpriteCache`), lista de sprites/edição (`SpriteLib`: abrir, gravar, folha nova com o próximo número depois da última, `shiftWavs` pelo maior número de folha), seletor de sprites de outro pac e dedução de escala (`PacSpritePicker.sheetSizes`). Folha inexistente vira erro legível (“folha $src:N não existe (a pasta tem K folha(s) PNG)”), sem exceção por frame.
+- Testes: `SheetFilesTest` (17: o caso 017/018.cnv/019, ordem por número, maiúscula, ignora `.cnv`/`.txt`/PNG com outro nome, fora do intervalo, `nextNumber` com buraco). `SpriteCache`/`SpriteLib`/seletor só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -376,6 +381,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteImportPlanTest (novo)** | 50 |
 | **SoundIdsTest (novo)** | 61 |
 | **FilePickerTest (novo)** | 5 |
+| **SheetFilesTest (novo)** | 17 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

@@ -187,7 +187,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-28 23:18:25.910338867 +0000
++++ b/AiHelpDoc.java	2026-10-28 23:33:12.066791579 +0000
 @@ -0,0 +1,845 @@
 +package com.zue.attackeditor;
 +
@@ -425,7 +425,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "Sound id `SE` (an **unsigned byte, 0–255**; values above 127 only work in a `TCBManajer` patched for that): 0 = none; 1..79 = common game sounds `se_00`..`se_78` (file = id − 1; the app's sound list plays them); **80..99 = the character's own `*.wav` files in sorted file-name order** (first wav = 80, at most 20); 100..255 = new common sounds `se_99`..`se_254` (file names have 3 digits from `se_100.ogg`). Files `se_79`..`se_99` are silent filler (the game loads the `se_` files in sequence, never delete one); the first new global sound after `se_78` is `se_100` (id 101). The app adds global sounds as **Opus inside .ogg** (Android 10+). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.\n" +
 +        "\n" +
 +        "### 5.7 Sprites and the CNV\n" +
-+        "Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). A `.cnv` outside the PAC is plain text (`CNV_TXT_ { $SPR_n:{$src:…, $x:…, …} }`) with the **original** coordinates (no ×2); `.cnv.txt` holds the **final** coordinates (already ×2 for characters). Either can be used as the source when importing sprites from another pac. The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.\n" +
++        "Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). A `.cnv` outside the PAC is plain text (`CNV_TXT_ { $SPR_n:{$src:…, $x:…, …} }`) with the **original** coordinates (no ×2); `.cnv.txt` holds the **final** coordinates (already ×2 for characters). Either can be used as the source when importing sprites from another pac. `$src` is the **index** of the sheet in the folder's list of `NNN.png` files sorted by name — not the number in the file name: with `017.png`, `018.cnv`, `019.png`, `$src:18` is `019.png`. The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.\n" +
 +        "\n" +
 +        "### 5.8 Linked animations (links) and effects\n" +
 +        "A link spawns another ANO together with its parent (effects, body parts, auras) and follows it. Only 1 level, max 13 per ANO. Effects can also be triggered by hit flags 10–17 / 41–125 (see 5.2).\n" +
@@ -5284,8 +5284,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-28 23:18:17.720569638 +0000
-@@ -0,0 +1,635 @@
++++ b/HelpText.java	2026-10-28 23:33:04.748751106 +0000
+@@ -0,0 +1,636 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -5655,7 +5655,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber."
 +                + " Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só."
 +                + " O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto)."
-+                + " Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível.");
++                + " Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível."
++                + " A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png.");
 +        c.add(sn);
 +
 +        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
@@ -6187,7 +6188,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-28 23:18:25.984099357 +0000
++++ b/I18nCatalog.java	2026-10-28 23:33:12.113373937 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6201,7 +6202,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-28 23:18:25.976064827 +0000
++++ b/I18nCatalog0.java	2026-10-28 23:33:12.108668598 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6474,7 +6475,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-28 23:18:25.977696407 +0000
++++ b/I18nCatalog1.java	2026-10-28 23:33:12.109777934 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6747,7 +6748,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-28 23:18:25.979105213 +0000
++++ b/I18nCatalog2.java	2026-10-28 23:33:12.110592454 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7020,7 +7021,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-28 23:18:25.980930388 +0000
++++ b/I18nCatalog3.java	2026-10-28 23:33:12.111444950 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7293,7 +7294,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-28 23:18:25.982284409 +0000
++++ b/I18nCatalog4.java	2026-10-28 23:33:12.112692078 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7566,8 +7567,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-28 23:18:25.983089978 +0000
-@@ -0,0 +1,97 @@
++++ b/I18nCatalog5.java	2026-10-28 23:33:12.113157719 +0000
+@@ -0,0 +1,100 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -7649,6 +7650,9 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"binario", "binary", "binario"},
 +        {"recorte", "crop", "recorte"},
 +        {"SUBSTITUIR", "REPLACE", "REEMPLAZAR"},
++        {"folha $src:", "sheet $src:", "hoja $src:"},
++        {" nao existe (a pasta tem ", " does not exist (the folder has ", " no existe (la carpeta tiene "},
++        {" folha(s) PNG)", " PNG sheet(s))", " hoja(s) PNG)"},
 +        {" substituida", " replaced", " reemplazado"},
 +        {". Escolha a sprite que vai substituir SPR_", ". Pick the sprite that will replace SPR_", ". Elige el sprite que reemplazará a SPR_"},
 +        {"recorte fora da folha", "crop outside the sheet", "recorte fuera de la hoja"},
@@ -7712,7 +7716,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-28 23:18:25.878973416 +0000
++++ b/I18nHelpCatalog.java	2026-10-28 23:33:12.030304546 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -7726,7 +7730,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-28 23:18:25.877590922 +0000
++++ b/I18nHelpCatalog0.java	2026-10-28 23:33:12.029236467 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7811,7 +7815,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-28 23:18:25.877741128 +0000
++++ b/I18nHelpCatalog1.java	2026-10-28 23:33:12.029357746 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7896,7 +7900,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-28 23:18:25.877944380 +0000
++++ b/I18nHelpCatalog2.java	2026-10-28 23:33:12.029486054 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7981,7 +7985,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-28 23:18:25.878062122 +0000
++++ b/I18nHelpCatalog3.java	2026-10-28 23:33:12.029665148 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8066,7 +8070,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-28 23:18:25.878165011 +0000
++++ b/I18nHelpCatalog4.java	2026-10-28 23:33:12.029764279 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8151,7 +8155,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-28 23:18:25.878259054 +0000
++++ b/I18nHelpCatalog5.java	2026-10-28 23:33:12.029916437 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8236,7 +8240,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-28 23:18:25.878597960 +0000
++++ b/I18nHelpCatalog6.java	2026-10-28 23:33:12.030023334 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8321,7 +8325,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-28 23:18:25.878784696 +0000
++++ b/I18nHelpCatalog7.java	2026-10-28 23:33:12.030147198 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8406,7 +8410,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-28 23:18:25.878922002 +0000
++++ b/I18nHelpCatalog8.java	2026-10-28 23:33:12.030252102 +0000
 @@ -0,0 +1,78 @@
 +package com.zue.attackeditor;
 +
@@ -8427,9 +8431,9 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
-+        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível.",
-+         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level.",
-+         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel."},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png.",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png.",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png."},
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
@@ -11104,7 +11108,7 @@ diff -ruN a/OggPcm.java b/OggPcm.java
 +}
 diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 --- a/PacSpritePicker.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/PacSpritePicker.java	2026-10-28 23:16:30.506217351 +0000
++++ b/PacSpritePicker.java	2026-10-28 23:31:50.786263841 +0000
 @@ -0,0 +1,298 @@
 +package com.zue.attackeditor;
 +
@@ -11133,14 +11137,14 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +final class PacSpritePicker {
 +    private PacSpritePicker() { }
 +
-+    /** Largura e altura de cada folha NNN.png usada pelo CNV (so o cabecalho do PNG; {0,0} se nao existe). */
++    /** Largura e altura de cada folha (PNG de indice $src) usada pelo CNV (so o cabecalho do PNG; {0,0} se nao existe). */
 +    private static int[][] sheetSizes(File dir, Cnv c) {
 +        int max = 0;
 +        for (int i = 0; i < c.size(); i++) { Cnv.Entry e = c.byImage(i); if (e != null && e.source > max) max = e.source; }
 +        int[][] out = new int[max + 1][2];
 +        for (int s = 0; s <= max; s++) {
-+            File f = new File(dir, SpriteLib.sheetName(s));
-+            if (!f.isFile()) continue;
++            File f = SheetFiles.file(dir, s);       // $src = indice da folha na lista dos PNG
++            if (f == null) continue;
 +            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
 +            o.inJustDecodeBounds = true;
 +            android.graphics.BitmapFactory.decodeFile(f.getPath(), o);
@@ -14729,6 +14733,75 @@ diff -ruN a/SeqMark.java b/SeqMark.java
              default: return "QUEDA";
          }
      }
+diff -ruN a/SheetFiles.java b/SheetFiles.java
+--- a/SheetFiles.java	1970-01-01 00:00:00.000000000 +0000
++++ b/SheetFiles.java	2026-10-28 23:31:50.702580974 +0000
+@@ -0,0 +1,65 @@
++package com.zue.attackeditor;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.Comparator;
++import java.util.List;
++import java.util.Locale;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++/**
++ * Folhas PNG de uma pasta. O {@code $src} do CNV e o INDICE da folha na lista dos PNG (ordem do nome), nao o numero do nome:
++ * com 017.png, 018.cnv e 019.png, o {@code $src:18} e a 019.png. Java puro (testado sem Android).
++ */
++final class SheetFiles {
++    private SheetFiles() { }
++
++    private static final Pattern SHEET = Pattern.compile("(\\d{3})\\.png", Pattern.CASE_INSENSITIVE);
++
++    /** E nome de folha (NNN.png)? */
++    static boolean isSheetName(String name) { return name != null && SHEET.matcher(name).matches(); }
++
++    /** Numero do nome (017 em 017.png), ou -1. */
++    static int numberOf(String name) {
++        Matcher m = name == null ? null : SHEET.matcher(name);
++        return m != null && m.matches() ? Integer.parseInt(m.group(1)) : -1;
++    }
++
++    /** Nome de uma folha pelo numero (o unico lugar que formata). */
++    static String name(int number) { return String.format(Locale.US, "%03d.png", number); }
++
++    /** As folhas da pasta (NNN.png), em ordem de numero: a posicao na lista e o {@code $src}. */
++    static List<File> list(File dir) {
++        ArrayList<File> out = new ArrayList<File>();
++        File[] fs = dir == null ? null : dir.listFiles();
++        if (fs == null) return out;
++        for (File f : fs) if (f.isFile() && isSheetName(f.getName())) out.add(f);
++        Collections.sort(out, new Comparator<File>() {
++            @Override public int compare(File a, File b) {
++                int d = numberOf(a.getName()) - numberOf(b.getName());
++                return d != 0 ? d : a.getName().compareTo(b.getName());
++            }
++        });
++        return out;
++    }
++
++    /** A folha de indice {@code src}, ou null se a pasta tem menos folhas. */
++    static File file(File dir, int src) {
++        if (src < 0) return null;
++        List<File> l = list(dir);
++        return src < l.size() ? l.get(src) : null;
++    }
++
++    static int count(File dir) { return list(dir).size(); }
++
++    /** Numero de uma folha nova: depois da ultima, para ela ganhar o indice {@code count} (0 se nao ha folhas). */
++    static int nextNumber(File dir) { return nextNumber(list(dir)); }
++
++    static int nextNumber(List<File> sheets) {
++        int max = -1;
++        for (File f : sheets) max = Math.max(max, numberOf(f.getName()));
++        return max + 1;
++    }
++}
 diff -ruN a/SoundAdjust.java b/SoundAdjust.java
 --- a/SoundAdjust.java	2026-10-18 13:50:55.000000000 +0000
 +++ b/SoundAdjust.java	2026-10-24 21:48:20.136681863 +0000
@@ -15264,6 +15337,52 @@ diff -ruN a/SpriteBoxEditor.java b/SpriteBoxEditor.java
                  .setNegativeButton("FECHAR", null).setNeutralButton("PULAR", null).setPositiveButton("APLICAR", null).create();
          dlg.show();
          dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ACCENT);
+diff -ruN a/SpriteCache.java b/SpriteCache.java
+--- a/SpriteCache.java	2026-10-18 12:39:53.000000000 +0000
++++ b/SpriteCache.java	2026-10-28 23:31:50.784654968 +0000
+@@ -80,7 +80,7 @@
+         int l = e.x * s, t = e.y * s, w = e.width * s, h = e.height * s;
+         if (e.width <= 0 || e.height <= 0) { fail(image, "IMG " + image + ": recorte vazio"); return null; }
+         if (l < 0 || t < 0 || l >= b.getWidth() || t >= b.getHeight()) {
+-            fail(image, "IMG " + image + ": recorte fora de " + pngName(e.source));
++            fail(image, "IMG " + image + ": recorte fora de " + sheetLabel(e.source));
+             return null;
+         }
+         int cw = Math.min(w, b.getWidth() - l);
+@@ -107,7 +107,12 @@
+         Bitmap cached = pngs.get(key);
+         if (cached != null && !cached.isRecycled()) return cached;
+         if (missingPngs.containsKey(key)) return null;
+-        File f = new File(characterDir, pngName(source));
++        File f = SheetFiles.file(characterDir, source);          // $src e o indice da folha na lista dos PNG, nao o numero do nome
++        if (f == null) {
++            missingPngs.put(key, Boolean.TRUE);
++            error("folha $src:" + source + " nao existe (a pasta tem " + SheetFiles.count(characterDir) + " folha(s) PNG)");
++            return null;
++        }
+         FileInputStream in = null;
+         try {
+             in = new FileInputStream(f);
+@@ -121,15 +126,16 @@
+             return b;
+         } catch (IOException ex) {
+             missingPngs.put(key, Boolean.TRUE);
+-            error(pngName(source) + ": " + ex.getMessage());
++            error(f.getName() + ": " + ex.getMessage());
+             return null;
+         } finally {
+             if (in != null) try { in.close(); } catch (IOException ignored) { }
+         }
+     }
+ 
+-    private static String pngName(int source) {
+-        return String.format(java.util.Locale.US, "%03d.png", source);
++    private String sheetLabel(int source) {
++        File f = SheetFiles.file(characterDir, source);
++        return f != null ? f.getName() : "$src:" + source;
+     }
+ 
+     private void fail(int image, String msg) {
 diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 --- a/SpriteImportPlan.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/SpriteImportPlan.java	2026-10-28 22:54:43.136440439 +0000
@@ -15373,6 +15492,76 @@ diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 +        return b.toString();
 +    }
 +}
+diff -ruN a/SpriteLib.java b/SpriteLib.java
+--- a/SpriteLib.java	2026-10-18 13:09:58.000000000 +0000
++++ b/SpriteLib.java	2026-10-28 23:32:00.479192443 +0000
+@@ -33,6 +33,8 @@
+     private final Map<Integer, Bitmap> sheets = new HashMap<Integer, Bitmap>();
+     private final HashSet<Integer> dirty = new HashSet<Integer>();
+     private boolean cnvDirty;
++    /** As folhas na ordem do {@code $src} (indice = posicao); as novas, ainda nao gravadas, entram no fim com o nome que vao ter. */
++    private final ArrayList<File> sheetFiles;
+     private int nSheets;
+     private int newSheets;
+     /** Grupos de sprites que vieram de imagens animadas. */
+@@ -45,14 +47,11 @@
+         this.cnv = cnv;
+         this.scale = scale;
+         this.groups = SpriteGroups.load(dir);
+-        int n = 0;
+-        while (new File(dir, sheetName(n)).isFile()) n++;
+-        nSheets = n;
++        this.sheetFiles = new ArrayList<File>(SheetFiles.list(dir));
++        nSheets = sheetFiles.size();
+     }
+ 
+-    public static String sheetName(int s) { return String.format(Locale.US, "%03d.png", s); }
+-
+-    public static boolean isSheetName(String n) { return n.matches("\\d{3}\\.png"); }
++    public static boolean isSheetName(String n) { return SheetFiles.isSheetName(n); }
+ 
+     public int sheetCount() { return nSheets; }
+     public int count() { return cnv.size(); }
+@@ -63,7 +62,7 @@
+         Bitmap b = sheets.get(Integer.valueOf(s));
+         if (b != null && !b.isRecycled()) return b;
+         if (s < 0 || s >= nSheets) return null;
+-        File f = new File(dir, sheetName(s));
++        File f = sheetFiles.get(s);
+         if (!f.isFile()) return null;
+         BitmapFactory.Options o = new BitmapFactory.Options();
+         o.inScaled = false;
+@@ -289,6 +288,7 @@
+             Bitmap ns = Bitmap.createBitmap(sp.newSize, sp.newSize, Bitmap.Config.ARGB_8888);
+             sheets.put(Integer.valueOf(nSheets), ns);
+             sp.sheet = nSheets;
++            sheetFiles.add(new File(dir, SheetFiles.name(SheetFiles.nextNumber(sheetFiles))));      // depois da ultima: ganha o indice nSheets
+             nSheets++;
+             newSheets++;
+             if (nSheets > 255) throw new IOException("mais de 255 folhas de sprite");
+@@ -321,8 +321,8 @@
+         for (Integer s : new ArrayList<Integer>(dirty)) {
+             Bitmap b = sheets.get(s);
+             if (b == null) continue;
+-            File out = new File(dir, sheetName(s.intValue()));
+-            File tmp = new File(dir, sheetName(s.intValue()) + ".tmp");
++            File out = sheetFiles.get(s.intValue());
++            File tmp = new File(dir, out.getName() + ".tmp");
+             FileOutputStream fo = new FileOutputStream(tmp);
+             try { b.compress(Bitmap.CompressFormat.PNG, 100, fo); } finally { fo.close(); }
+             if (out.exists() && !out.delete()) throw new IOException("nao consegui substituir " + out.getName());
+@@ -346,8 +346,9 @@
+         if (wavs.isEmpty()) return;
+         Collections.sort(wavs, new Comparator<File>() { @Override public int compare(File a, File b) { return a.getName().compareTo(b.getName()); } });
+         int first = Integer.parseInt(wavs.get(0).getName().substring(0, 3));
+-        if (first >= nSheets) return;
+-        int shift = nSheets - first;
++        int top = SheetFiles.nextNumber(sheetFiles) - 1;       // maior numero de folha
++        if (first > top) return;
++        int shift = top + 1 - first;
+         for (int i = wavs.size() - 1; i >= 0; i--) {
+             int n = Integer.parseInt(wavs.get(i).getName().substring(0, 3)) + shift;
+             wavs.get(i).renameTo(new File(dir, String.format(Locale.US, "%03d.wav", n)));
 diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 --- a/SpriteListScreen.java	2026-10-20 12:29:22.000000000 +0000
 +++ b/SpriteListScreen.java	2026-10-28 23:16:40.436666726 +0000
@@ -20396,8 +20585,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-28 23:18:26.098462001 +0000
-@@ -0,0 +1,523 @@
++++ b/test/I18nIgnored.java	2026-10-28 23:33:12.242157486 +0000
+@@ -0,0 +1,524 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -20513,6 +20702,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "$XSPEED: ",
 +        "$YACCEL: ",
 +        "$YSPEED: ",
++        "$src:",
 +        "%.0f KB",
 +        "%.1f MB",
 +        "%03d.png",
@@ -20527,6 +20717,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "(\\$ROW\\s*:\\s*)\\d+",
 +        "(\\$SZ\\s*:\\s*&)[0-9A-Fa-f]+",
 +        "(\\d{3})\\.(png|wav)",
++        "(\\d{3})\\.png",
 +        ")  ·  SPR_",
 +        ") para nao ficar buraco. Eles nao aparecem na lista. Continuar?",
 +        ") → sons comuns novos (100 a ",
@@ -20771,7 +20962,6 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "\\$FR_\\d+\\s*:",
 +        "\\$LARGURA\\s*:\\s*(\\d+)",
 +        "\\$src:(-?\\d+),\\s*\\$x:(-?\\d+),\\s*\\$y:(-?\\d+),\\s*\\$w:(-?\\d+),\\s*\\$h:(-?\\d+)",
-+        "\\d{3}\\.png",
 +        "\\d{3}\\.wav",
 +        "\\s*:\\s*)-?\\d+",
 +        "\\{\\s*\"nome\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"\\s*,\\s*\"inicio\"\\s*:\\s*(\\d+)\\s*,\\s*\"qtd\"\\s*:\\s*(\\d+)\\s*,\\s*\"atrasos\"\\s*:\\s*\\[([^\\]]*)\\]\\s*(?:,\\s*\"seq\"\\s*:\\s*\\[([^\\]]*)\\]\\s*)?\\}",
@@ -22071,6 +22261,62 @@ diff -ruN a/test/SaverCopyTest.java b/test/SaverCopyTest.java
 +
 +        Saver.deleteTree(tb);
 +        System.out.println("SaverCopyTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/SheetFilesTest.java b/test/SheetFilesTest.java
+--- a/test/SheetFilesTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/SheetFilesTest.java	2026-10-28 23:32:24.317529584 +0000
+@@ -0,0 +1,52 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.io.File;
++import java.nio.file.Files;
++import java.util.List;
++
++/** $src do CNV = indice da folha na lista dos PNG da pasta (nao o numero do nome). */
++public class SheetFilesTest {
++    static File dir(String... names) throws Exception {
++        File d = Files.createTempDirectory("sheets").toFile();
++        for (String n : names) Files.write(new File(d, n).toPath(), new byte[]{1});
++        return d;
++    }
++
++    static String names(List<File> l) { StringBuilder b = new StringBuilder(); for (File f : l) b.append(f.getName()).append(' '); return b.toString().trim(); }
++
++    public static void main(String[] args) throws Exception {
++        File a = dir("000.png", "001.png", "002.png", "000.cnv", "000.cnv.txt", "ano_000.txt", "foto.png", "SPR_1.png", "003.png.tmp", "000.wav");
++        check("contiguo: 3 folhas, so NNN.png", names(SheetFiles.list(a)), "000.png 001.png 002.png");
++        check("contiguo: indice = numero", SheetFiles.file(a, 2).getName(), "002.png");
++
++        // o caso do relato: 017.png, 018.cnv, 019.png
++        String[] n = new String[20];
++        int k = 0;
++        for (int i = 0; i <= 17; i++) n[k++] = String.format("%03d.png", i);
++        n[k++] = "018.cnv";
++        n[k++] = "019.png";
++        File b = dir(java.util.Arrays.copyOf(n, k));
++        check("017/018.cnv/019: 19 folhas PNG", SheetFiles.count(b), 19);
++        check("$src:17 = 017.png", SheetFiles.file(b, 17).getName(), "017.png");
++        check("$src:18 = 019.png (o 018 e o cnv, nao um PNG)", SheetFiles.file(b, 18).getName(), "019.png");
++        check("$src:19 nao existe", SheetFiles.file(b, 19), null);
++        check("indice negativo", SheetFiles.file(b, -1), null);
++
++        File c = dir("019.png", "001.png", "017.png");
++        check("ordem pelo numero, nao pela criacao", names(SheetFiles.list(c)), "001.png 017.png 019.png");
++        File up = dir("017.PNG", "018.png");
++        check("maiuscula conta", names(SheetFiles.list(up)), "017.PNG 018.png");
++        check("pasta inexistente", SheetFiles.list(new File("/nao/existe/x")).size() + ":" + SheetFiles.file(new File("/nao/existe/x"), 0), "0:null");
++        check("pasta nula", SheetFiles.count(null), 0);
++
++        check("nextNumber contiguo", SheetFiles.nextNumber(dir("000.png", "001.png", "002.png", "003.png", "004.png")), 5);
++        check("nextNumber com buraco", SheetFiles.nextNumber(dir("000.png", "001.png", "019.png")), 20);
++        check("nextNumber vazio", SheetFiles.nextNumber(dir()), 0);
++        check("nome de folha", SheetFiles.name(5) + ":" + SheetFiles.name(120), "005.png:120.png");
++        check("isSheetName", SheetFiles.isSheetName("017.png") + ":" + SheetFiles.isSheetName("17.png") + ":" + SheetFiles.isSheetName("017.png.tmp") + ":" + SheetFiles.isSheetName("a017.png"), "true:false:false:false");
++        check("numberOf", SheetFiles.numberOf("019.png") + ":" + SheetFiles.numberOf("foto.png"), "19:-1");
++        System.out.println("SheetFilesTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/SoundIdsTest.java b/test/SoundIdsTest.java
