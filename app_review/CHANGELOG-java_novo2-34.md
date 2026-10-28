@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1221 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1246 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -296,6 +296,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes puros: `SoundIdsTest` (61: ids↔arquivos, 3 dígitos, preenchimento, limite 254, `$SE` 200 no texto, o simulador tocando 150/85/100/8/255, reamostragem para 48 kHz). **O codificador OGG só foi compilado** (não roda na JVM): precisa ser conferido num aparelho com Android 10+ e no jogo patchado.
 - AJUDA (PT/EN/ES) e MD atualizados (ids, `se_NNN`, preenchimento, Opus).
 
+### 3.1zl Objeto corta na divisa de frames, Movimento em SPEED X / SPEED Y, botão SONS e crash com frame -1
+- **DIVIDIR de objeto** (hitbox, hurtbox, projétil, efeito, ação): o objeto pertence ao frame e não acaba no meio dele, então corta na **divisa de frames mais próxima do ponteiro** (empate: a anterior) e o **ponteiro vai para essa divisa** (`ObjModel.splitBoundary`). Objeto de um frame só: avisa que não há divisa. DIVIDIR de sprite e de trecho de velocidade continua cortando no ponteiro.
+- **Menu Movimento em duas seções, SPEED X e SPEED Y** (como Hitbox/Hurtbox): cada eixo tem velocidade, velocidade recebida (com “Remover” só do eixo — `FrameTools.zeroReceivedAxis`), aceleração (só aparece quando o *eixo* tem speed — `showAccelAxis`), **total de pixels do eixo** e **REMOVER SPEED só do eixo** (`FrameTools.clearAxis`; o trecho que vinha do frame só sai se o frame ficou sem movimento nenhum). Frame inicial/duração do trecho e MANTER VELOCIDADE aparecem nas duas e uma atualiza a outra. Faixas da timeline e filtro `#` não mudaram.
+- **Botão `SONS` de volta ao menu superior**, ao lado de `SPRITES` (agora 15 botões): abre a lista de sons (personagem + globais, ＋, ouvir, cortar, mais, substituir, silenciar) **sem “Usar este som”** — só gerenciar. Quem já tinha ordem de botões salva recebe o SONS logo depois do SPRITES (`ToolbarOrder.NEXT_TO_PREVIOUS`).
+- **Gerenciamento de frames sem crash por índice -1** (`ArrayIndexOutOfBoundsException: index=-1` em `FrameOps.applyAll`, ao copiar de um frame para outros): a página “Copiar” continuava ativa quando a seleção passava para um objeto/link/transição (`idx = -1`) e o APLICAR chamava `applyAll(…, -1, …)`. Correção em três camadas: (1) a gaveta volta para a grade ao selecionar objeto/link/transição e `applyAllTab`/`applySpriteTab`/`follow` só agem com sprite selecionado (`spriteSelected`); (2) todas as operações puras de `FrameOps`, `FrameTools` e `ObjModel` ignoram índice fora de `[0, len)` em vez de lançar (`FrameOps.ok`); `TimelineOps` recusa índice inválido com aviso; (3) `FrameIndexRobustTest` chama por reflexão cada operação pública com índices −2, −1, 0, len−1, len, len+3 (56 métodos, ~3,9 milhões de chamadas): 0 exceção.
+- AJUDA (PT/EN/ES: SONS, Movimento X/Y, DIVIDIR, “Os 15 botões”) e MD (11.1/11.2/11.3) atualizados. **Telas novas (Movimento X/Y, botão SONS, DIVIDIR) só compiladas e revisadas — não rodadas num aparelho.**
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -332,8 +339,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **GameRulesTest (novo)** | 31 |
 | **SpawnDiagTest (novo)** | 50 |
 | **LinkHierarchyTest (novo)** | 8 |
-| **FrameToolsTest (novo)** | 36 |
-| **ToolbarTest (novo)** | 75 |
+| **FrameToolsTest (novo)** | 47 |
+| **ToolbarTest (novo)** | 81 |
 | **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 37 |
 | **ReactionSlotsTest (novo)** | 20 |
@@ -348,12 +355,13 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HelpI18nTest (novo)** | 25 |
 | **ReloadTest (novo)** | 20 |
 | **TimelineLabelsTest (novo)** | 2 |
-| **TimelineEditTest (novo)** | 43 |
+| **TimelineEditTest (novo)** | 50 |
 | **GrabEditTest (novo)** | 12 |
 | **HurtboxAllTest (novo)** | 8 |
 | **RootKindTest (novo)** | 18 |
 | **SpriteImportPlanTest (novo)** | 27 |
 | **SoundIdsTest (novo)** | 61 |
+| **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
