@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1133 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1160 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -283,6 +283,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Bug corrigido — projétil/efeito aberto sozinho era tratado como personagem** (pousava no ANO 13 ao tocar o chão): `CharData.Move.rootKind` (personagem, projétil, efeito) definido ao abrir o ANO (projétil = referenciado pelo golpe, efeito = ANO 201–255 ou "✎ EDITAR EFEITO"). Projétil: segue o md 971 — no chão troca para `PROJETIL_COLISAO_CHAO` (`SUBPROJETIL_COLISAO_CHAO` no sub-projétil) se existir, senão continua; `y` preso ao chão sem zerar a velocidade, sem som de pouso, sem POUSO/QUEDA, sem sombra. Efeito: sem chão, pouso, queda nem sombra. ANOs de personagem seguem iguais.
 - AJUDA (PT/EN/ES) e MD atualizados. Testes: `GrabEditTest` (12), `HurtboxAllTest` (8), `RootKindTest` (18), POSE em `TimelineEditTest`. POSE, botões e a marca do agarrão só compilados e revisados (não rodados num aparelho).
 
+### 3.1zj Adicionar sprites de outros pacs (.cnv)
+- No seletor de **+ ADICIONAR** (lista de SPRITES) agora aparecem também os arquivos **.cnv / .cnv.txt**. Tocar num deles lê o CNV e **recorta as folhas PNG da mesma pasta** (leitura sem efeitos colaterais: não apaga PNGs soltos nem regrava nada na pasta de origem) e abre o **Picker de sprites do pac**: grade com miniaturas, toque para marcar, **TODAS / NENHUMA** e **ADICIONAR n** (`PacSpritePicker`, `FilePicker.IMAGES_CNV`).
+- **Escala**: o personagem usa escala 2 e efeito/charf/bobj escala 1; sprites de pacs de escala 1 entram **ampliadas 2x sem suavizar** (pixel art) para manter o tamanho na tela. Recortes repetidos (várias entradas apontando para a mesma região) entram uma vez só; entradas vazias são ignoradas; o CNV do próprio personagem é recusado.
+- Lógica pura em `SpriteImportPlan` (sprites distintas, fator de escala, nomes de arquivo) com `SpriteImportPlanTest` (27). A AJUDA (PT/EN/ES) descreve o recurso. Só compilado e revisado (não rodado num aparelho).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -339,6 +344,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **GrabEditTest (novo)** | 12 |
 | **HurtboxAllTest (novo)** | 8 |
 | **RootKindTest (novo)** | 18 |
+| **SpriteImportPlanTest (novo)** | 27 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
