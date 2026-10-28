@@ -30,13 +30,13 @@ muda só aquele personagem.
 
 | HDAT | Tag no `.txt` | Resumo |
 |---|---|---|
-| 0 | `$RAW` | Decisões da CPU (qual sequência usar em cada situação) |
+| 0 | `$COMPORTAMENTO_IA` | Decisões da CPU (qual sequência usar em cada situação) e tempo de reação |
 | 1 | `$REGENERACAO_KI` | Quanto ki se ganha ao bater, apanhar e defender |
 | 2, 43–45 | `$TEXTOS_DO_PERSONAGEM` | Falas e mensagens (2 = idioma 0; 43–45 = idiomas 1–3) |
 | 3 | `$STATUS_BASE_E_FISICA` | Corpo, velocidades, HP/ATK/DEF/ki base, afinidade, custo |
 | 4 | `$ATRIBUTOS_DE_GOLPE` | Uma linha por golpe especial: animações, projétil, flags |
 | 5 | `$PONTUACAO_POR_GOLPE` | Pontos ganhos ao acertar com cada animação especial |
-| 6 | `$RAW` | Sequências de comandos da CPU (e dos comandos de toque) |
+| 6 | `$SEQUENCIAS_IA` | Sequências de comandos da CPU (e dos comandos de toque) |
 | 7 | `$CRESCIMENTO_POR_NIVEL` | Quanto HP/ATK/DEF/ki/custo sobe em cada nível |
 | 8–12 | `$RAW` | Sem leitura no código |
 | 13 | `$ROTEIRO_CUTSCENE` | Eventos visuais disparados pela hitbox tipo 20 do DAC |
@@ -91,37 +91,58 @@ aos HDATs do personagem:
 
 ---
 
-## HDAT 0 — decisões da CPU (`$RAW`)
+## HDAT 0 — `$COMPORTAMENTO_IA`
 
-O extractor detalhado está desligado de propósito, então este HDAT sai em
-`$RAW`. É uma tabela de byte com 16 colunas × 45 linhas, lida em `Game7` modo 952.
+Tabela de byte, 16 colunas × 45 linhas, lida em `Game7` modo 952. Diz qual
+sequência do HDAT 6 a CPU executa em cada situação.
 
-- **Linha** = situação × 4 + variação (0–3, sorteada pela CPU).
-- **Coluna** = `CPULevel` (dificuldade da CPU, 0–7) quando a CPU está no chão,
-  ou 8 + `CPULevel` quando está no ar.
-- **Valor** = número da sequência do HDAT 6 que a CPU vai executar (0 = fica
-  parada ou andando).
+```
+$OPONENTE_CHAO_PERTO:{
+   $VAR_0: { $CPU_NO_CHAO: [  0,   0,   0,   0,   0,   0,   0,  37], $CPU_NO_AR: [  0, …] },
+   …
+},
+…
+$TEMPO_DE_REACAO: { $CPU_NO_CHAO: [ 30, …], $CPU_NO_AR: [ …] },
+```
+
+- Cada lista tem **um valor por nível da CPU** (`CPULevel` 0 a 7; 0 = mais
+  fraca, 7 = mais forte). O nível vem do HDAT 4 do gamedata (arcade) ou do
+  modo treino.
+- `$CPU_NO_CHAO` vale quando a CPU está no chão; `$CPU_NO_AR`, quando ela
+  está no ar.
+- **Valor** = número da sequência do HDAT 6 (`$SEQ_N`) que a CPU executa.
+  A `$SEQ_0` costuma ser "nada por 15 frames".
+- `$VAR_0` a `$VAR_3`: a cada decisão a CPU sorteia uma das 4 variações. Para
+  deixar a CPU previsível, ponha o mesmo valor nas 4.
 
 As 11 situações olham para o **oponente** da CPU:
 
-| Situação | Linhas | Quando |
+| Bloco | Linhas | Quando |
 |---|---|---|
-| 0 / 1 / 2 | 0–3 / 4–7 / 8–11 | oponente no chão, perto / médio / longe |
-| 3 / 4 / 5 | 12–15 / 16–19 / 20–23 | oponente no ar baixo, perto / médio / longe |
-| 6 | 24–27 | um projétil do oponente está chegando (só a CPU do jogador 2) |
-| 7 | 28–31 | o oponente está atacando |
-| 8 / 9 / 10 | 32–35 / 36–39 / 40–43 | oponente no ar alto (80 px ou mais acima do chão), perto / médio / longe |
+| `$OPONENTE_CHAO_PERTO` / `_MEDIO` / `_LONGE` | 0–3 / 4–7 / 8–11 | oponente no chão, perto / médio / longe |
+| `$OPONENTE_AR_BAIXO_PERTO` / `_MEDIO` / `_LONGE` | 12–15 / 16–19 / 20–23 | oponente no ar, a menos de 80 px do chão |
+| `$PROJETIL_CHEGANDO` | 24–27 | um projétil do oponente está chegando (só a CPU do jogador 2) |
+| `$OPONENTE_ATACANDO` | 28–31 | o oponente está atacando (só a CPU do jogador 2) |
+| `$OPONENTE_AR_ALTO_PERTO` / `_MEDIO` / `_LONGE` | 32–35 / 36–39 / 40–43 | oponente a 80 px ou mais acima do chão |
 
-"Perto" e "médio" são as distâncias do HDAT 2 do gamedata.
+O jogo testa nessa ordem: projétil, ataque, depois a distância. "Perto" e
+"médio" são as distâncias do HDAT 2 do gamedata (`$PERTO` e `$MEDIO`, com o
+alvo no chão ou no ar).
 
-A linha 44 é o **tempo de reação**: antes de executar a sequência, a CPU
-espera um número sorteado de 0 até esse valor − 1 frames. Valores altos (ex.:
-30 no nível 0) deixam a CPU lenta; baixos (ex.: 3 no nível 7), rápida.
+`$TEMPO_DE_REACAO` (linha 44): antes de começar cada sequência, a CPU espera
+um número sorteado de 0 até o valor − 1 frames. 0 = sem espera. Valores altos
+(ex.: 30 no nível 0) deixam a CPU lenta; baixos (ex.: 3 no nível 7), rápida.
 
 O jogo também troca a sequência sozinho em alguns casos. Com a barra de fúria
-cheia, a CPU usa a sequência 55 (ativar a fúria). As sequências 7 e 20 só
-valem com a fúria ativa; sem ela, viram a 8. Um número maior que o tamanho do
-HDAT 6 também vira a 8.
+cheia, a CPU do jogador 2 usa a sequência 55 (ativar a fúria). As sequências
+7 e 20 só valem com a fúria ativa; sem ela, viram a 8. Um número maior que o
+último `$SEQ_N` do HDAT 6 também vira a 8.
+
+Como testar: no modo treino, escolha o nível da CPU e mude só a coluna desse
+nível. Ex.: com o nível 7, troque o último valor de cada lista.
+
+O build ainda aceita o formato do extractor antigo (`$PROXIMO_CHAO`,
+`$CHAO:[N0:…]`, `$POOL_DE_SEQUENCIAS`).
 
 ## HDAT 1 — `$REGENERACAO_KI`
 
@@ -291,36 +312,89 @@ jogador ganha esses pontos no placar. Com combo de 2 hits ou mais, os pontos
 ainda são multiplicados pela linha `$PONTOS_POR_COMBO` do HDAT 5 do gamedata e
 arredondados para cima, para a centena. 0 = sem pontos.
 
-## HDAT 6 — sequências da CPU (`$RAW`)
+## HDAT 6 — `$SEQUENCIAS_IA`
 
-O extractor detalhado está desligado, então sai em `$RAW`. É uma tabela de
-byte com 10 colunas: cada linha é uma sequência (o número usado pelo HDAT 0 e
-pelo HDAT 42).
+Tabela de byte, 10 colunas: cada linha é uma sequência de até 4 comandos. A
+CPU executa as sequências escolhidas pelo HDAT 0, e o jogador as escolhidas
+pelos toques (HDAT 42).
 
-| Coluna | O que faz |
+```
+$SEQ_10: { $P1: [ 5,  15], $P2: [ 9,  14], $P3: [ 4,   0], $P4: [ 0,   0], $PROXIMA:  12, $SO_COM_CANCEL: 0 },  // andar p/ frente 15f > pular p/ frente 14f > especial 1 0f > seq 12
+```
+
+| Campo | Colunas | O que faz |
+|---|---|---|
+| `$P1` … `$P4` | 0–7 | Os 4 passos: `[comando, frames]`. O comando fica apertado esses frames (0 = 1 frame). Comando 0 = fim: os passos depois dele não rodam |
+| `$PROXIMA` | 8 | Sequência que começa quando esta acaba (0 = nenhuma). Só vale para a CPU do jogador 2 fora do modo 8; nos toques é ignorada |
+| `$SO_COM_CANCEL` | 9 | 1 = se um passo de golpe acabar sem janela de cancelamento (o golpe não acertou), a sequência para ali |
+
+O comentário no fim de cada linha descreve a sequência em palavras (o build
+ignora). Comandos:
+
+| Valor | Comando |
 |---|---|
-| 0, 2, 4, 6 | Os 4 passos da sequência: comando + 1 (0 = fim da sequência). Comando 1 = defender; comando 24 = levantar voo (só se o personagem voa e está no chão); os outros são combinações de botões/direções da tabela `SeqKey` do `TCBManajer` |
-| 1, 3, 5, 7 | Duração de cada passo, em frames |
-| 8 | Sequência seguinte (encadeia). Vale só para a CPU |
-| 9 | 1 = aborta a sequência se o passo for um ataque e não houver janela de cancelamento |
+| 0 | fim da sequência |
+| 1 | nada: não aperta nada e a CPU escolhe de novo pelo HDAT 0 (se a situação mudou, começa a sequência nova). Use só nas sequências da CPU |
+| 2 | defender (enquanto o oponente ataca ou um projétil chega) |
+| 3 | ataque (ANO 30; pulando, ANO 34) |
+| 4 / 7 / 16 | especial 1 / 2 / 3 (golpes 0/3/6, 1/4/7, 2/5/8) |
+| 5 / 6 | andar (ou mover voando) para frente / para trás |
+| 8 | super especial (golpe 9/10, 1 barra de ki) |
+| 9 / 10 / 11 | pular para frente (ANO 11) / para cima (ANO 10) / para trás (ANO 12) |
+| 12 / 13 | dash para frente (ANO 6; no ar, 8) / para trás (ANO 7; no ar, 9) |
+| 14 / 15 / 18 | ataque + frente (ANO 31) / + baixo (ANO 36) / + trás (ANO 37); pulando: 35 / 38 / 39 |
+| 17 | ativar a fúria (golpe 14/15, precisa da barra de fúria cheia) |
+| 19 | golpe 16/17 (só sai por sequência) |
+| 20 | carregar ki (para sozinho com o ki cheio) |
+| 21 / 22 | ki + trás / ki + frente: golpe 18 ou 19 (depende do lado para onde o personagem está virado) |
+| 23 / 24 | investida para frente (ANO 2) / para trás (ANO 3) |
+| 25 | levantar voo (só quem voa e está no chão) |
+| 26 / 27 | subida rápida (ANO 82) / descida rápida (ANO 83), só quem voa. Quem não voa faz o especial 1 |
+| 28 | especial máximo (golpe 11/12, 2 barras de ki) |
+| 29 / 30 | investida para cima / para baixo (ANO 2) |
+| 31 ou mais | nada |
+
+Os especiais 1–3 não gastam ki, a não ser que cancelem outro especial: aí
+gastam 100. O super gasta 100 e o máximo, 200.
 
 Sequências com papel fixo: 55 = ativar a fúria; 7 e 20 = só com a fúria
-ativa (senão viram a 8); 36 = usada pela CPU num modo especial com 100 de ki.
+ativa (senão viram a 8); 8 = a reserva; 36 = usada pela CPU num modo especial
+com 100 de ki.
+
+Para criar uma sequência nova, adicione um `$SEQ_N` no fim e aumente o
+`$ROW` do `$info` (senão o jogo troca o número novo pela 8).
+
+O build ainda aceita o formato antigo (`{$ACT:…, $ACT_TIME:…}`, `$CONTINUA`,
+`$EXIGE_CANCEL`).
 
 ## HDAT 7 — `$CRESCIMENTO_POR_NIVEL`
 
-Tabela de byte, 99 linhas (níveis 0 a 98) × 22 colunas. O status num nível N
-é a base do HDAT 3 + **a soma das linhas 0 até N**.
+Tabela de byte, 22 colunas × 99 linhas. Diz quanto cada status sobe a cada
+nível. Cada linha é um nível, com o número que o jogo mostra:
 
-| Coluna | Soma em | Aparece na tela de "subiu de nível" como |
-|---|---|---|
-| 0 | HP (`$VIDA_INICIAL`) | — |
-| 1 | ATK (`$ATK_BASE`) | ATK + valor × 1000 |
-| 2 | Ki máximo (`$KI_MAXIMO_BASE` × 100) | Ki + valor |
-| 3 | DEF (`$DEFESA_BASE`) | DEF + valor × 1000 |
-| 21 | Custo de cartas (`$PONTOS_EQUIPAR_CARTAS`) | Custo + valor |
+```
+$NIVEL_2:  { $HP:   0, $ATK:   1, $KI:   0, $DEF:   0, $CUSTO:   8, $NAO_LIDOS: [0, …] },  // soma: HP +0, ATK +1, KI +200, DEF +0, CUSTO +8
+```
 
-As colunas 4–20 não são lidas. O nível máximo é 99 (linha 98).
+O status num nível N = a base do HDAT 3 + **a soma de `$NIVEL_1` até
+`$NIVEL_N`**. O `$NIVEL_1` já vale desde o começo. O comentário de cada linha
+mostra essa soma até ali (sem a base do HDAT 3); o build o ignora.
+
+| Campo | Coluna | Soma em | Na tela de "subiu de nível" |
+|---|---|---|---|
+| `$HP` | 0 | HP (`$VIDA_INICIAL`) | — |
+| `$ATK` | 1 | ATK (`$ATK_BASE`): cada ponto = +1% de dano | ATK + valor × 1000 |
+| `$KI` | 2 | Ki máximo (`$KI_MAXIMO_BASE` × 100; 100 = 1 barra) | Ki + valor |
+| `$DEF` | 3 | DEF (`$DEFESA_BASE`): cada ponto = +1% de redução de dano | DEF + valor × 1000 |
+| `$CUSTO` | 21 | Custo de cartas (`$PONTOS_EQUIPAR_CARTAS`) | Custo + valor |
+| `$NAO_LIDOS` | 4–20 | Não são lidas | — |
+
+Valores de 0 a 255. O nível máximo é 99: linhas além do `$NIVEL_99` não são
+usadas. A tela de "subiu de nível" mostra os ganhos do nível novo; um campo 0
+não aparece.
+
+Como testar: para ver o efeito rápido, ponha valores altos no `$NIVEL_2` (ex.:
+`$ATK: 50`) e suba o personagem do nível 1 para o 2.
 
 ## HDAT 8 a 12 — sem leitura
 
@@ -475,30 +549,47 @@ dificuldade jogada (`$EASY`, `$NORMAL`, `$HARD`). Valores = número + 1;
 
 ## HDAT 42 — `$COMANDOS_TOUCH`
 
-Tabela de short, 3 colunas. Define o que acontece quando o jogador **toca no
-oponente** (a até 48 px dele). O personagem passa a executar sozinho uma
-sequência do HDAT 6. Só vale para o jogador humano, fora de um ataque.
+Tabela de short, 3 colunas × 120 linhas. Define o que acontece quando o
+jogador **toca no oponente** (a até 48 px dele): o personagem passa a executar
+sozinho uma sequência do HDAT 6. Só vale para o jogador humano, fora de um
+ataque.
 
-A linha é escolhida assim:
+As linhas vêm em 24 grupos de 5, um por situação:
 
 ```
-linha = estado + distância + (20 se ki >= 100)
-estado:    0 = no chão, 40 = pulando, 80 = voando
-distância: 0 = menos de 80 px, 5 = 80–159 px, 10 = 160–319 px, 15 = 320 px ou mais
+$CHAO_PERTO:{
+   $TOQUE:   [60, 0, 0],
+   $COMBO_1: [61, 0, 0],
+   $COMBO_2: [62, 0, 0],
+   $COMBO_3: [0, 0, 0],
+   $COMBO_4: [0, 0, 0],
+},
 ```
 
-| Coluna | O que faz |
+O nome do grupo diz a situação: **estado** do personagem + **distância** em X
+até o oponente + `_KI` com 100 de ki ou mais.
+
+| Parte do nome | Quando |
 |---|---|
-| 0 | Número da sequência do HDAT 6 que o personagem executa (0 = o toque não faz nada) |
-| 1 | Nas linhas de continuação: ki exigido, × 100 |
-| 2 | Não é lida |
+| `CHAO_` / `PULO_` / `VOANDO_` | no chão / pulando (ANO 10–12) / voando |
+| `PERTO` / `MEDIO` / `LONGE` / `MUITO_LONGE` | menos de 80 px / 80–159 / 160–319 / 320 px ou mais |
+| `_KI` | com 100 de ki ou mais (sem `_KI`: menos de 100) |
+
+A linha do grupo é `estado (0/40/80) + distância (0/5/10/15) + 20 se ki ≥ 100`.
+
+| Campo | O que faz |
+|---|---|
+| `$TOQUE` | `[sequência, -, -]`: a sequência do HDAT 6 do primeiro toque (0 = o toque não faz nada) |
+| `$COMBO_1` … `$COMBO_4` | `[sequência, ki exigido × 100, -]`: as continuações. Cada uma sai se o jogador tocar de novo a até 88 px do oponente durante a janela da hitbox tipo 2 do DAC, com o oponente apanhando e com o ki pedido. Sequência 0 encerra o combo |
+
+A coluna marcada `-` não é lida.
 
 Antes da tabela, o jogo testa a fúria. Com a barra de fúria cheia (e a fúria
 desligada), o toque ativa a fúria (sequência 55). Com a fúria ativa e 200 de
 ki, ele usa a sequência 7.
 
-Continuação: depois do primeiro toque, as linhas seguintes (N+1, N+2, …, até
-4) são combos. Cada uma sai se o jogador tocar a até 88 px do oponente
-durante a janela da hitbox tipo 2 do DAC, com o oponente em reação de dano e
-com o ki da coluna 1. Uma linha de continuação com coluna 0 = 0 encerra o
-combo.
+Como testar: troque o `$TOQUE` do `$CHAO_PERTO` por uma sequência fácil de
+reconhecer (ex.: a de carregar ki) e toque no oponente de perto, no chão e com
+menos de 100 de ki.
+
+O build ainda aceita o formato de tabela antigo (`$LINHA_N: [...]`).

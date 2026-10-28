@@ -35,14 +35,14 @@ public final class hdatChar {
      */
     public static boolean processExtraction(BufferedWriter w, byte[] data, int hdat, int xsize, int ysize) throws IOException {
         switch (hdat) {
-            // case 0:  exHDAT0(w, data, xsize, ysize); return true; // desativado no BinExtractor original — mantido comentado de propósito
+            case 0:  return exHDAT0(w, data, xsize, ysize);
             case 1:  exHDAT1(w, data, xsize, ysize); return true;
             case 2:  exHDAT2(w, data, xsize, ysize); return true;
             case 3:  exHDAT3(w, data, xsize, ysize); return true;
             case 4:  exHDAT4(w, data, xsize, ysize); return true;
             case 5:  exHDAT5(w, data, xsize, ysize); return true;
-            // case 6:  exHDAT6(w, data, xsize, ysize); return true; // desativado no BinExtractor original — mantido comentado de propósito
-            case 7:  return HdatTabela.escrever(w, "$CRESCIMENTO_POR_NIVEL", DOC_HDAT7, data, xsize, ysize, false, null);
+            case 6:  return exHDAT6(w, data, xsize, ysize);
+            case 7:  return exHDAT7(w, data, xsize, ysize);
             case 13: exHDAT13(w, data, xsize, ysize); return true;
             case 34: exHDAT34(w, data, xsize, ysize); return true;
             case 35: exHDAT35(w, data, xsize, ysize); return true;
@@ -52,7 +52,7 @@ public final class hdatChar {
             case 39: exHDAT39(w, data, xsize, ysize); return true;
             case 40: exHDAT40(w, data, xsize, ysize); return true;
             case 41: exHDAT41(w, data, xsize, ysize); return true;
-            case 42: return HdatTabela.escrever(w, "$COMANDOS_TOUCH", DOC_HDAT42, data, xsize, ysize, true, null);
+            case 42: return exHDAT42(w, data, xsize, ysize);
             // 43-45: mesma estrutura do HDAT 2, nos outros idiomas
             // (TCBManajer.CharData_TextPage = {2, 43, 44, 45}, índice = iLanguage).
             case 43: case 44: case 45: exHDAT2(w, data, xsize, ysize); return true;
@@ -70,13 +70,13 @@ public final class hdatChar {
      *         foi encontrada no bloco.
      */
     public static byte[] processBuild(String block, int xsize, int ysize, ErrorReporter reporter) throws IOException {
-        if (block.contains("$COMPORTAMENTO_IA"))        return bdHDAT0(block, reporter);
+        if (block.contains("$COMPORTAMENTO_IA"))        return bdHDAT0(block, xsize, ysize, reporter);
         if (block.contains("$REGENERACAO_KI"))           return bdHDAT1(block, reporter);
         if (block.contains("$TEXTOS_DO_PERSONAGEM"))     return bdHDAT2(block);
         if (block.contains("$STATUS_BASE_E_FISICA"))     return bdHDAT3(block, reporter);
         if (block.contains("$ATRIBUTOS_DE_GOLPE"))       return bdHDAT4(block, xsize, reporter);
         if (block.contains("$PONTUACAO_POR_GOLPE"))      return bdHDAT5(block, xsize, ysize, reporter);
-        if (block.contains("$SEQUENCIAS_IA"))            return bdHDAT6(block, xsize, reporter);
+        if (block.contains("$SEQUENCIAS_IA"))            return bdHDAT6(block, xsize, ysize, reporter);
         if (block.contains("$ROTEIRO_CUTSCENE"))         return bdHDAT13(block, xsize, ysize, reporter);
         // O extractor (exHDATDano) escreve "$REACAO_DANO_N"; aqui só se
         // procurava "$REACAO_DE_DANO_", então os HDAT 14-33 caíam no fallback
@@ -91,13 +91,13 @@ public final class hdatChar {
         if (block.contains("$CENARIO_PADRAO"))           return bdHDAT39(block, reporter);
         if (block.contains("$PROGRESSAO_CAMPANHA"))      return bdHDAT40(block, xsize, ysize, reporter);
         if (block.contains("$PERSONAGENS_DESBLOQUEAVEIS")) return bdHDAT41(block, xsize, ysize, reporter);
-        if (block.contains("$CRESCIMENTO_POR_NIVEL"))    return HdatTabela.compilar(block, xsize, ysize, false, null, 7, reporter);
-        if (block.contains("$COMANDOS_TOUCH"))           return HdatTabela.compilar(block, xsize, ysize, true, null, 42, reporter);
+        if (block.contains("$CRESCIMENTO_POR_NIVEL"))    return bdHDAT7(block, xsize, ysize, reporter);
+        if (block.contains("$COMANDOS_TOUCH"))           return bdHDAT42(block, xsize, ysize, reporter);
         return null;
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       Tabelas simples (HdatTabela) — layout tirado das leituras do TCBManajer
+       Tabelas simples (HdatTabela) — só para HDAT 7/42 com tamanho fora do padrão
     ══════════════════════════════════════════════════════════════════ */
 
     private static final String[] DOC_HDAT7 = {
@@ -112,129 +112,344 @@ public final class hdatChar {
     };
 
     /* ══════════════════════════════════════════════════════════════════
-       HDAT 0 — $COMPORTAMENTO_IA
+       HDAT 0 — $COMPORTAMENTO_IA   (byte, 16 × 45; TCBManajer.Game7 modo 952)
+
+       linha  = situação × 4 + CPURand % 4   (11 situações × 4 variações = 0-43)
+       coluna = CPULevel (0-7), + 8 quando a CPU está no ar
+       valor  = CPUSeqNo, a sequência do HDAT 6 que a CPU executa
+       linha 44 = tempo de reação: a CPU espera CPURand % valor frames antes
+       de começar a sequência (0 = sem espera).
+
+       A situação olha para o OPONENTE: projétil chegando (iRangeBulletGuard)
+       e "atacando" só para a CPU do jogador 2; depois a distância (iDistNear/
+       iDistMiddle e as versões Air, HDAT 2 do gamedata) e a altura (no chão,
+       no ar a menos de 80 px do chão, ou a 80 px ou mais: y <= 160).
     ══════════════════════════════════════════════════════════════════ */
 
     private static final String[] SITUACOES = {
+        "OPONENTE_CHAO_PERTO", "OPONENTE_CHAO_MEDIO", "OPONENTE_CHAO_LONGE",
+        "OPONENTE_AR_BAIXO_PERTO", "OPONENTE_AR_BAIXO_MEDIO", "OPONENTE_AR_BAIXO_LONGE",
+        "PROJETIL_CHEGANDO", "OPONENTE_ATACANDO",
+        "OPONENTE_AR_ALTO_PERTO", "OPONENTE_AR_ALTO_MEDIO", "OPONENTE_AR_ALTO_LONGE"
+    };
+    /** Nomes do extractor antigo (que ficava desligado) — o build ainda aceita. */
+    private static final String[] SITUACOES_ANTIGAS = {
         "PROXIMO_CHAO", "MEDIO_CHAO", "LONGE_CHAO", "PROXIMO_AR_BAIXO",
         "MEDIO_AR_BAIXO", "LONGE_AR", "PROJETIL_VINDO", "ATAQUE_RECEBIDO",
         "PROXIMO_AR_ALTO", "MEDIO_AR_ALTO", "LONGE_AR_ALTO"
     };
+    private static final String[] SITUACOES_DOC = {
+        "linhas 0-3: oponente no chão, perto",
+        "linhas 4-7: oponente no chão, distância média",
+        "linhas 8-11: oponente no chão, longe",
+        "linhas 12-15: oponente no ar a menos de 80 px do chão, perto",
+        "linhas 16-19: oponente no ar a menos de 80 px do chão, distância média",
+        "linhas 20-23: oponente no ar a menos de 80 px do chão, longe",
+        "linhas 24-27: um projétil do oponente está chegando (só a CPU do jogador 2)",
+        "linhas 28-31: o oponente está atacando (só a CPU do jogador 2)",
+        "linhas 32-35: oponente a 80 px ou mais do chão, perto",
+        "linhas 36-39: oponente a 80 px ou mais do chão, distância média",
+        "linhas 40-43: oponente a 80 px ou mais do chão, longe",
+    };
 
-    private static void exHDAT0(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
+    private static boolean exHDAT0(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
+        if (xsize != 16 || ysize != 45 || data.length != 16 * 45) return false; // layout diferente → $RAW
+
         w.write("      $COMPORTAMENTO_IA:{\n");
+        w.write("         // Decisões da CPU. Ver #HELP/binChar.md (HDAT 0).\n");
+        w.write("         // A cada decisão a CPU vê em que situação está o OPONENTE, sorteia uma das 4\n");
+        w.write("         // variações (VAR_0 a VAR_3) e executa a sequência do HDAT 6 com esse número.\n");
+        w.write("         // Cada lista tem um valor por nível da CPU (0 = mais fraca, 7 = mais forte):\n");
+        w.write("         // CPU_NO_CHAO vale com a CPU no chão; CPU_NO_AR, com a CPU no ar.\n");
+        w.write("         // Perto / médio / longe: distâncias do HDAT 2 do gamedata.\n");
+        w.write("         // O jogo troca a sequência sozinho: barra de fúria cheia = 55; 7 e 20 sem a fúria\n");
+        w.write("         // ativa = 8; número maior que o último SEQ do HDAT 6 = 8.\n\n");
 
-        w.write("      // ─────────────────────────────────────────────────────────────────────────\n");
-        w.write("      //\n");
-        w.write("      //  Tabela de decisão da CPU (HDAT_0). Lida em TCBManajer.Game7, modo 952.\n");
-        w.write("      //\n");
-        w.write("      //  A cada frame, a CPU avalia a situação (distância + posição vertical\n");
-        w.write("      //  do oponente) e escolhe um CPUSeqNo via:\n");
-        w.write("      //\n");
-        w.write("      //      row = situação × 4 + (CPURand % 4)   → variação sorteada\n");
-        w.write("      //      col = CPULevel  (0–7 se CPU no chão, 8–15 se CPU no ar)\n");
-        w.write("      //      valor lido = CPUSeqNo → índice em $SEQUENCIAS_IA (HDAT 6)\n");
-        w.write("      //\n");
-        w.write("      //  Cada $SITUACAO tem 4 variações ($VAR_0 a $VAR_3) sorteadas via CPURand.\n");
-        w.write("      //  Cada variação define um CPUSeqNo por nível de dificuldade:\n");
-        w.write("      //      N0 = mais fácil, N7 = mais difícil.\n");
-        w.write("      //  Separado em $CHAO (CPU no chão, colunas 0–7) e\n");
-        w.write("      //              $AR   (CPU no ar,   colunas 8–15).\n");
-        w.write("      //  Valor 0 = sem ação (CPU fica parada/anda — SeqNo 0).\n");
-        w.write("      //\n");
-        w.write("      //  $POOL_DE_SEQUENCIAS (linha 44, L23200 de TCBManajer):\n");
-        w.write("      //  Limita o sorteio aleatório de CPUSeqNo por nível. A CPU só usa\n");
-        w.write("      //  SeqNos menores que esse valor (via CPURand % POOL).\n");
-        w.write("      //  N0=30 → amplo repertório (nível mais fácil).\n");
-        w.write("      //  N7=3  → CPU usa sempre as mesmas 3 sequências (mais difícil,\n");
-        w.write("      //           pois só as 3 melhores ficam disponíveis).\n");
-        w.write("      //\n");
-        w.write("      // ─────────────────────────────────────────────────────────────────────────\n");
-        w.write("\n\n");
+        char[] h = new char[131];
+        Arrays.fill(h, ' ');
+        poe(h, 12, "// CPU no chão, nível:");
+        poe(h, 77, "no ar, nível:");
+        for (int i = 0; i < 8; i++) {
+            poe(h, 37 + 5 * i, String.format("%3d", i));
+            poe(h, 91 + 5 * i, String.format("%3d", i));
+        }
+        String cab = new String(h).replaceAll("\\s+$", "");
 
         for (int sit = 0; sit < 11; sit++) {
-            String nome = sit < SITUACOES.length ? SITUACOES[sit] : "SITUACAO_" + sit;
-            w.write("         $" + nome + ":{\n");
+            w.write("         // " + SITUACOES_DOC[sit] + "\n");
+            w.write("         $" + SITUACOES[sit] + ":{\n");
+            w.write(cab + "\n");
             for (int var = 0; var < 4; var++) {
                 int row = sit * 4 + var;
-                w.write("            $VAR_" + var + ":{ ");
-                w.write("$CHAO:[");
-                for (int col = 0; col < 8; col++) {
-                    int idx = row * xsize + col;
-                    int val = (idx < data.length) ? data[idx] & 0xFF : 0;
-                    w.write("N" + col + ":" + val + (col < 7 ? ", " : ""));
-                }
-                w.write("], $AR:[");
-                for (int col = 0; col < 8; col++) {
-                    int idx = row * xsize + 8 + col;
-                    int val = (idx < data.length) ? data[idx] & 0xFF : 0;
-                    w.write("N" + col + ":" + val + (col < 7 ? ", " : ""));
-                }
-                w.write("] },\n");
+                w.write("            $VAR_" + var + ": { $CPU_NO_CHAO: " + listaBytes(data, row * 16, 8)
+                        + ", $CPU_NO_AR: " + listaBytes(data, row * 16 + 8, 8) + " },\n");
             }
             w.write("         },\n");
         }
-
-        if (ysize > 44) {
-            w.write("\n         $POOL_DE_SEQUENCIAS:{\n");
-            w.write("            $CHAO:[ ");
-            for (int col = 0; col < 8; col++) {
-                int idx = 44 * xsize + col;
-                int val = (idx < data.length) ? data[idx] & 0xFF : 0;
-                w.write("N" + col + ":" + val + (col < 7 ? ", " : ""));
-            }
-            w.write(" ],\n");
-            w.write("            $AR:[   ");
-            for (int col = 0; col < 8; col++) {
-                int idx = 44 * xsize + 8 + col;
-                int val = (idx < data.length) ? data[idx] & 0xFF : 0;
-                w.write("N" + col + ":" + val + (col < 7 ? ", " : ""));
-            }
-            w.write(" ]\n");
-            w.write("         },\n");
-        }
-
+        w.write("\n         // Tempo de reação (linha 44): antes de cada sequência a CPU espera um número\n");
+        w.write("         // sorteado de 0 até (valor - 1) frames. 0 = sem espera. Maior = CPU mais lenta.\n");
+        w.write("         $TEMPO_DE_REACAO: { $CPU_NO_CHAO: " + listaBytes(data, 44 * 16, 8)
+                + ", $CPU_NO_AR: " + listaBytes(data, 44 * 16 + 8, 8) + " },\n");
         w.write("      },\n");
+        return true;
     }
 
-    private static byte[] bdHDAT0(String block, ErrorReporter reporter) throws IOException {
-        int xsize = 16;
-        int ysize = 45;
+    private static byte[] bdHDAT0(String block, int xsize, int ysize, ErrorReporter reporter) {
+        if (xsize <= 0 || ysize <= 0) { xsize = 16; ysize = 45; }
         byte[] data = new byte[xsize * ysize];
 
         for (int sit = 0; sit < 11; sit++) {
-            String nome = sit < SITUACOES.length ? SITUACOES[sit] : "SITUACAO_" + sit;
+            String nome = SITUACOES[sit];
             String sitBlock = extractBlock(block, "\\$" + nome);
             if (sitBlock == null) {
+                nome = SITUACOES_ANTIGAS[sit];
+                sitBlock = extractBlock(block, "\\$" + nome);
+            }
+            if (sitBlock == null) {
                 ErrorReporter.reportIfPresent(reporter, CompileError.builder()
-                        .fieldTag("$" + nome)
+                        .fieldTag("$" + SITUACOES[sit])
                         .hdatIndex(0)
-                        .message("$COMPORTAMENTO_IA está sem o bloco $" + nome + " — situação ficará zerada"));
+                        .message("$COMPORTAMENTO_IA está sem o bloco $" + SITUACOES[sit] + " — situação ficará zerada"));
                 continue;
             }
             for (int var = 0; var < 4; var++) {
-                int row = sit * 4 + var;
                 String varBlock = extractBlock(sitBlock, "\\$VAR_" + var);
                 if (varBlock == null) continue;
-                String chaoBlock = extractBracket(varBlock, "\\$CHAO");
-                String arBlock   = extractBracket(varBlock, "\\$AR");
-                for (int col = 0; col < 8; col++) {
-                    data[row * xsize + col]     = (byte) extractNivelChecked(chaoBlock, col, "$" + nome + "/$VAR_" + var + "/$CHAO", 0, reporter);
-                    data[row * xsize + 8 + col] = (byte) extractNivelChecked(arBlock,   col, "$" + nome + "/$VAR_" + var + "/$AR",   0, reporter);
+                int row = sit * 4 + var;
+                String path = "$" + nome + "/$VAR_" + var;
+                gravarNiveis(data, row * xsize, varBlock, "CPU_NO_CHAO", "CHAO", path, reporter);
+                gravarNiveis(data, row * xsize + 8, varBlock, "CPU_NO_AR", "AR", path, reporter);
+            }
+        }
+
+        String reacao = extractBlock(block, "\\$TEMPO_DE_REACAO");
+        if (reacao == null) reacao = extractBlock(block, "\\$POOL_DE_SEQUENCIAS"); // nome antigo
+        if (reacao != null && 44 * xsize + 16 <= data.length) {
+            gravarNiveis(data, 44 * xsize, reacao, "CPU_NO_CHAO", "CHAO", "$TEMPO_DE_REACAO", reporter);
+            gravarNiveis(data, 44 * xsize + 8, reacao, "CPU_NO_AR", "AR", "$TEMPO_DE_REACAO", reporter);
+        }
+        return data;
+    }
+
+    /** Grava "$NOME: [v0, ..., v7]" (ou o antigo "$NOME_ANTIGO:[N0:v, ...]") em data[off..off+7]. */
+    private static void gravarNiveis(byte[] data, int off, String src, String nome, String nomeAntigo,
+                                     String path, ErrorReporter reporter) {
+        String lst = extractBracket(src, "\\$" + nome);
+        String usado = nome;
+        if (lst == null) {
+            lst = extractBracket(src, "\\$" + nomeAntigo);
+            usado = nomeAntigo;
+        }
+        if (lst == null) return;
+        String[] partes = lst.split(",");
+        for (int i = 0; i < 8 && i < partes.length; i++) {
+            String p = partes[i].trim();
+            int c = p.indexOf(':');
+            if (c >= 0) p = p.substring(c + 1).trim(); // formato antigo "N3: 5"
+            if (p.length() == 0 || off + i >= data.length) continue;
+            Integer v = checkedRawGroup(p, path + "/$" + usado + "[" + i + "]", 0, 0, 255, reporter, lst);
+            if (v != null) data[off + i] = (byte) (v & 0xFF);
+        }
+    }
+
+    /** "[  1,   2, …]": n bytes sem sinal a partir de off, com 3 casas cada. */
+    private static String listaBytes(byte[] data, int off, int n) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < n; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(String.format("%3d", data[off + i] & 0xFF));
+        }
+        return sb.append(']').toString();
+    }
+
+    private static void poe(char[] linha, int col, String s) {
+        for (int i = 0; i < s.length() && col + i < linha.length; i++) linha[col + i] = s.charAt(i);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       HDAT 7 — $CRESCIMENTO_POR_NIVEL   (byte, 22 × 99)
+
+       GetHP / GetAttack / GetSynchro / GetDeffence / GetCost: stat = base do
+       HDAT 3 + soma das linhas 0..Level (Level limitado a 98). O jogo mostra
+       Level + 1, então a linha N é o ganho ao chegar no nível N + 1 (a linha
+       0 já vale no nível 1). A tela de "subiu de nível" (modo 233) mostra a
+       linha do nível novo: ATK e DEF × 1000, ki e custo como estão.
+       Colunas: 0 HP, 1 ATK, 2 ki máximo, 3 DEF, 21 custo de cartas; 4-20 não
+       são lidas.
+    ══════════════════════════════════════════════════════════════════ */
+
+    private static final int[] H7_COLS = { 0, 1, 2, 3, 21 };
+    private static final String[] H7_NOMES = { "HP", "ATK", "KI", "DEF", "CUSTO" };
+
+    private static boolean exHDAT7(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
+        if (xsize != 22 || ysize <= 0 || data.length != xsize * ysize)
+            return HdatTabela.escrever(w, "$CRESCIMENTO_POR_NIVEL", DOC_HDAT7, data, xsize, ysize, false, null);
+
+        w.write("      $CRESCIMENTO_POR_NIVEL:{\n");
+        w.write("         // Quanto cada stat sobe ao chegar em cada nível (o nível que o jogo mostra).\n");
+        w.write("         // Stat no nível N = base do HDAT 3 + a soma de NIVEL_1 até NIVEL_N.\n");
+        w.write("         // O comentário de cada linha mostra essa soma (sem a base do HDAT 3).\n");
+        w.write("         // HP: soma à vida.  ATK / DEF: cada ponto = +1% de dano / de redução de dano\n");
+        w.write("         // (a tela mostra × 1000).  KI: soma ao ki máximo (100 = 1 barra).\n");
+        w.write("         // CUSTO: soma ao custo máximo das cartas.  NAO_LIDOS: colunas 4-20, o jogo não lê.\n");
+        w.write("         // Valores de 0 a 255. O nível máximo é 99 (linhas além dele não são usadas).\n\n");
+
+        int[] soma = new int[H7_COLS.length];
+        for (int l = 0; l < ysize; l++) {
+            int p = l * xsize;
+            StringBuilder sb = new StringBuilder("         ");
+            sb.append(String.format("%-11s", "$NIVEL_" + (l + 1) + ":")).append("{ ");
+            for (int k = 0; k < H7_COLS.length; k++) {
+                int v = data[p + H7_COLS[k]] & 0xFF;
+                soma[k] += v;
+                sb.append('$').append(H7_NOMES[k]).append(": ").append(String.format("%3d", v)).append(", ");
+            }
+            sb.append("$NAO_LIDOS: [");
+            for (int c = 4; c <= 20; c++) {
+                if (c > 4) sb.append(", ");
+                sb.append(data[p + c] & 0xFF);
+            }
+            sb.append("] },");
+            if (l < 99) {
+                sb.append("  // soma: HP +").append(soma[0]).append(", ATK +").append(soma[1])
+                  .append(", KI +").append(soma[2]).append(", DEF +").append(soma[3])
+                  .append(", CUSTO +").append(soma[4]);
+            } else {
+                sb.append("  // não usado: o nível máximo é 99");
+            }
+            w.write(sb.append('\n').toString());
+        }
+        w.write("      },\n");
+        return true;
+    }
+
+    private static byte[] bdHDAT7(String block, int xsize, int ysize, ErrorReporter reporter) {
+        if (!block.contains("$NIVEL_"))  // formato de tabela ($LINHA_N: [...])
+            return HdatTabela.compilar(block, xsize, ysize, false, null, 7, reporter);
+        if (xsize <= 0 || ysize <= 0) { xsize = 22; ysize = 99; }
+        byte[] data = new byte[xsize * ysize];
+
+        for (int l = 0; l < ysize; l++) {
+            String tag = "$NIVEL_" + (l + 1);
+            Matcher m = Pattern.compile("\\$NIVEL_" + (l + 1) + "\\s*:\\s*\\{([^}]*)\\}").matcher(block);
+            if (!m.find()) {
+                ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                        .severity(CompileError.Severity.WARNING)
+                        .fieldTag(tag).hdatIndex(7)
+                        .message(tag + " não encontrado — o nível fica sem crescimento (linha zerada)"));
+                continue;
+            }
+            String linha = m.group(1);
+            int p = l * xsize;
+            for (int k = 0; k < H7_COLS.length; k++) {
+                if (H7_COLS[k] >= xsize) continue;
+                Integer v = extractOptionalChecked(linha, "\\$" + H7_NOMES[k] + "\\s*:\\s*(-?[\\d.]+)",
+                        tag + "/$" + H7_NOMES[k], 7, 0, 255, reporter);
+                if (v != null) data[p + H7_COLS[k]] = (byte) (v & 0xFF);
+            }
+            String resto = extractBracket(linha, "\\$NAO_LIDOS");
+            if (resto != null) {
+                String[] partes = resto.split(",");
+                for (int c = 4, i = 0; c <= 20 && c < xsize && i < partes.length; c++, i++) {
+                    String raw = partes[i].trim();
+                    if (raw.length() == 0) continue;
+                    Integer v = checkedRawGroup(raw, tag + "/$NAO_LIDOS[" + i + "]", 7, 0, 255, reporter, resto);
+                    if (v != null) data[p + c] = (byte) (v & 0xFF);
                 }
             }
         }
+        return data;
+    }
 
-        String poolBlock = extractBlock(block, "\\$POOL_DE_SEQUENCIAS");
-        if (poolBlock != null) {
-            String chaoBlock = extractBracket(poolBlock, "\\$CHAO");
-            String arBlock   = extractBracket(poolBlock, "\\$AR");
-            for (int col = 0; col < 8; col++) {
-                data[44 * xsize + col]     = (byte) extractNivelChecked(chaoBlock, col, "$POOL_DE_SEQUENCIAS/$CHAO", 0, reporter);
-                data[44 * xsize + 8 + col] = (byte) extractNivelChecked(arBlock,   col, "$POOL_DE_SEQUENCIAS/$AR",   0, reporter);
+    /* ══════════════════════════════════════════════════════════════════
+       HDAT 42 — $COMANDOS_TOUCH   (short, 3 × 120; TCBManajer.Game8 modo 38)
+
+       Toque no oponente (jogador humano). Linha = estado + distância + ki:
+         estado:    0 = no chão, 40 = pulando (ANO 10-12), 80 = voando (PlayerAir)
+         distância: |X| até o oponente: 0 = < 80 px, 5 = < 160, 10 = < 320, 15 = mais
+         + 20 com ki (Synchro) >= 100
+       Col 0 = sequência do HDAT 6 (0 = o toque não faz nada). As 4 linhas
+       seguintes são as continuações do combo (_commandButtonTmp2): col 0 =
+       sequência, col 1 = ki exigido × 100. Col 2 não é lida.
+       Antes da tabela: barra de fúria cheia → ativa a fúria (código 200, seq.
+       55); fúria ativa e ki >= 200 → código 201 (seq. 7).
+    ══════════════════════════════════════════════════════════════════ */
+
+    private static final String[] TOUCH_ESTADOS = { "CHAO", "PULO", "VOANDO" };
+    private static final String[] TOUCH_ESTADOS_DOC = { "no chão", "pulando", "voando" };
+    private static final String[] TOUCH_DIST = { "PERTO", "MEDIO", "LONGE", "MUITO_LONGE" };
+    private static final String[] TOUCH_DIST_DOC = { "menos de 80 px", "80 a 159 px", "160 a 319 px", "320 px ou mais" };
+    private static final String[] TOUCH_LINHAS = { "TOQUE", "COMBO_1", "COMBO_2", "COMBO_3", "COMBO_4" };
+
+    /** Grupo g (0-23) = linhas g*5 .. g*5+4. */
+    private static String grupoTouch(int g) {
+        int base = g * 5, resto = base % 40;
+        return TOUCH_ESTADOS[base / 40] + "_" + TOUCH_DIST[(resto % 20) / 5] + (resto >= 20 ? "_KI" : "");
+    }
+
+    private static boolean exHDAT42(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
+        if (xsize != 3 || ysize != 120 || data.length != 3 * 120 * 2)
+            return HdatTabela.escrever(w, "$COMANDOS_TOUCH", DOC_HDAT42, data, xsize, ysize, true, null);
+
+        w.write("      $COMANDOS_TOUCH:{\n");
+        w.write("         // O que acontece quando o jogador TOCA no oponente (a até 48 px dele).\n");
+        w.write("         // Cada grupo é uma situação: estado do personagem, distância em X até o\n");
+        w.write("         // oponente e ki (_KI = com 100 de ki ou mais).\n");
+        w.write("         // TOQUE: [sequência do HDAT 6, -, -]. 0 = o toque não faz nada.\n");
+        w.write("         // COMBO_1 a COMBO_4: [sequência, ki exigido × 100, -]. Saem tocando de novo\n");
+        w.write("         // (a até 88 px do oponente) durante a janela da hitbox tipo 2 do DAC, com o\n");
+        w.write("         // oponente apanhando. Sequência 0 encerra o combo.\n");
+        w.write("         // As colunas marcadas \"-\" não são lidas pelo jogo.\n");
+        w.write("         // Antes da tabela: barra de fúria cheia = ativa a fúria (sequência 55);\n");
+        w.write("         // fúria ativa e 200 de ki = sequência 7.\n\n");
+
+        for (int g = 0; g < 24; g++) {
+            int base = g * 5, resto = base % 40;
+            w.write("         // linhas " + base + "-" + (base + 4) + ": " + TOUCH_ESTADOS_DOC[base / 40] + ", "
+                    + TOUCH_DIST_DOC[(resto % 20) / 5] + ", ki " + (resto >= 20 ? ">= 100" : "< 100") + "\n");
+            w.write("         $" + grupoTouch(g) + ":{\n");
+            for (int k = 0; k < 5; k++) {
+                int p = (base + k) * 6;
+                w.write("            " + String.format("%-10s", "$" + TOUCH_LINHAS[k] + ":") + "["
+                        + readS16(data, p) + ", " + readS16(data, p + 2) + ", " + readS16(data, p + 4) + "],\n");
+            }
+            w.write("         },\n");
+        }
+        w.write("      },\n");
+        return true;
+    }
+
+    private static byte[] bdHDAT42(String block, int xsize, int ysize, ErrorReporter reporter) {
+        if (!block.contains("$TOQUE"))  // formato de tabela ($LINHA_N: [...])
+            return HdatTabela.compilar(block, xsize, ysize, true, null, 42, reporter);
+        if (xsize <= 0 || ysize <= 0) { xsize = 3; ysize = 120; }
+        byte[] data = new byte[xsize * ysize * 2];
+
+        for (int g = 0; g < 24; g++) {
+            String nome = grupoTouch(g);
+            String grp = extractBlock(block, "\\$" + nome);
+            if (grp == null) {
+                ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                        .severity(CompileError.Severity.WARNING)
+                        .fieldTag("$" + nome).hdatIndex(42)
+                        .message("$" + nome + " não encontrado — o toque nessa situação não faz nada"));
+                continue;
+            }
+            for (int k = 0; k < 5; k++) {
+                int linha = g * 5 + k;
+                if (linha >= ysize) break;
+                String lst = extractBracket(grp, "\\$" + TOUCH_LINHAS[k]);
+                if (lst == null) continue;
+                String[] partes = lst.split(",");
+                for (int c = 0; c < xsize && c < partes.length; c++) {
+                    String raw = partes[c].trim();
+                    if (raw.length() == 0) continue;
+                    Integer v = checkedRawGroup(raw, "$" + nome + "/$" + TOUCH_LINHAS[k] + "[" + c + "]",
+                            42, -32768, 65535, reporter, lst);
+                    writeShortAt(data, (linha * xsize + c) * 2, v);
+                }
             }
         }
-
         return data;
     }
 
@@ -607,82 +822,218 @@ public final class hdatChar {
     }
 
     /* ══════════════════════════════════════════════════════════════════
-       HDAT 6 — $SEQUENCIAS_IA
+       HDAT 6 — $SEQUENCIAS_IA   (byte, 10 colunas; TCBManajer modos 953-960)
+
+       Uma linha por sequência (CPUSeqNo). Executada pela CPU (HDAT 0) e pelos
+       toques do jogador (HDAT 42).
+         col 0/2/4/6 = passo 1-4: comando + 1 (0 = fim da sequência)
+         col 1/3/5/7 = frames com o comando apertado (0 vira 1, menos no "nada")
+         col 8 = sequência seguinte (só a CPU do jogador 2, fora do modo 8)
+         col 9 = 1: depois de um passo de golpe (tecla 16384/32768/65536/524288)
+                 sem janela de cancelamento (CancelTime == 0), a sequência acaba
+       Comando = índice em TCBManajer.SeqKey; o efeito de cada um saiu do
+       CmdCheck (AICtrl) e dos modos 955/959/960/980/981. Comando >= 30 = nada.
     ══════════════════════════════════════════════════════════════════ */
 
-    private static void exHDAT6(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
-        w.write("      $SEQUENCIAS_IA:{\n");
-        w.write("      // Tabela de sequências de input da CPU (HDAT_6).\n\n");
+    /** Nome curto de cada valor de passo (índice = valor gravado = comando + 1). */
+    private static final String[] PASSO_NOMES = {
+        "fim",
+        "nada",
+        "defender",
+        "ataque",
+        "especial 1",
+        "andar p/ frente",
+        "andar p/ trás",
+        "especial 2",
+        "super",
+        "pular p/ frente",
+        "pular",
+        "pular p/ trás",
+        "dash p/ frente",
+        "dash p/ trás",
+        "ataque + frente",
+        "ataque + baixo",
+        "especial 3",
+        "ativar fúria",
+        "ataque + trás",
+        "golpe 16/17",
+        "carregar ki",
+        "ki + trás",
+        "ki + frente",
+        "investida p/ frente",
+        "investida p/ trás",
+        "levantar voo",
+        "subida rápida",
+        "descida rápida",
+        "especial máximo",
+        "investida p/ cima",
+        "investida p/ baixo",
+    };
 
-        for (int i = 0; i < ysize; i++) {
-            int rowStart = i * xsize;
-            if (rowStart >= data.length) break;
+    /** Explicação de cada valor, para o cabeçalho do bloco. */
+    private static final String[] PASSO_DOC = {
+        "fim da sequência",
+        "nada: não aperta nada e a CPU escolhe de novo pelo HDAT 0 (use só na CPU)",
+        "defender (enquanto o oponente ataca ou um projétil chega)",
+        "ataque (ANO 30; pulando, ANO 34)",
+        "especial 1 (golpe 0/3/6)",
+        "andar / mover para frente",
+        "andar / mover para trás",
+        "especial 2 (golpe 1/4/7)",
+        "super especial (golpe 9/10, 1 barra de ki)",
+        "pular para frente (ANO 11)",
+        "pular para cima (ANO 10)",
+        "pular para trás (ANO 12)",
+        "dash para frente (ANO 6; no ar, 8)",
+        "dash para trás (ANO 7; no ar, 9)",
+        "ataque + frente (ANO 31; pulando, 35)",
+        "ataque + baixo (ANO 36; pulando, 38)",
+        "especial 3 (golpe 2/5/8)",
+        "ativar a fúria (golpe 14/15, barra de fúria cheia)",
+        "ataque + trás (ANO 37; pulando, 39)",
+        "golpe 16/17",
+        "carregar ki (para sozinho com o ki cheio)",
+        "ki + trás: golpe 18 virado para a direita, 19 para a esquerda",
+        "ki + frente: golpe 19 virado para a direita, 18 para a esquerda",
+        "investida para frente (ANO 2)",
+        "investida para trás (ANO 3)",
+        "levantar voo (só quem voa e está no chão)",
+        "subida rápida (ANO 82, só quem voa; quem não voa faz o especial 1)",
+        "descida rápida (ANO 83, só quem voa e está no ar; quem não voa faz o especial 1)",
+        "especial máximo (golpe 11/12, 2 barras de ki)",
+        "investida para cima (ANO 2)",
+        "investida para baixo (ANO 2)",
+    };
 
-            w.write("         $SEQ_" + i + ":{\n");
-            for (int step = 0; step < 4; step++) {
-                int pAct  = rowStart + step * 2;
-                int pTime = rowStart + step * 2 + 1;
-                int act   = (pAct  < data.length) ? data[pAct]  & 0xFF : 0;
-                int time  = (pTime < data.length) ? data[pTime] & 0xFF : 0;
-                w.write("            {$ACT:" + act + ", $ACT_TIME:" + time + "}");
-                if (step < 3) w.write(",");
-                w.write("\n");
-            }
-
-            if (xsize >= 10) {
-                int continua = (rowStart + 8 < data.length) ? data[rowStart + 8] & 0xFF : 0;
-                int exigeCan = (rowStart + 9 < data.length) ? data[rowStart + 9] & 0xFF : 0;
-                w.write("            $CONTINUA:" + continua + ", $EXIGE_CANCEL:" + exigeCan + "\n");
-            }
-
-            w.write("         },\n");
-        }
-        w.write("      },\n");
+    private static String nomePasso(int v) {
+        return v < PASSO_NOMES.length ? PASSO_NOMES[v] : "nada";
     }
 
-    private static byte[] bdHDAT6(String block, int xsize, ErrorReporter reporter) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    private static boolean exHDAT6(BufferedWriter w, byte[] data, int xsize, int ysize) throws IOException {
+        if (xsize != 10 || ysize <= 0 || data.length != 10 * ysize) return false; // layout diferente → $RAW
 
-        int maxSeq = 0;
-        Matcher mCount = Pattern.compile("\\$SEQ_(\\d+)").matcher(block);
+        w.write("      $SEQUENCIAS_IA:{\n");
+        w.write("         // Sequências de comandos da CPU (HDAT 0) e dos toques (HDAT 42).\n");
+        w.write("         // Ver #HELP/binChar.md (HDAT 6).\n");
+        w.write("         // P1 a P4 = os 4 passos: [comando, frames]. O passo fica apertado esses\n");
+        w.write("         // frames (0 = 1 frame). Comando 0 = fim: os passos depois dele não rodam.\n");
+        w.write("         // PROXIMA: sequência que começa quando esta acaba (0 = nenhuma). Só vale\n");
+        w.write("         // para a CPU do jogador 2 fora do modo 8; nos toques é ignorada.\n");
+        w.write("         // SO_COM_CANCEL: 1 = se um passo de golpe acabar sem janela de cancelamento\n");
+        w.write("         // (o golpe não acertou), a sequência para ali.\n");
+        w.write("         // Sequências especiais: 55 = ativar a fúria; 7 e 20 = só com a fúria ativa\n");
+        w.write("         // (senão vira a 8); 8 = a reserva; 36 = usada no modo especial com 100 de ki.\n");
+        w.write("         // Golpe N = linha GOLPE_N do HDAT 4. Comandos:\n");
+        for (int v = 0; v < PASSO_DOC.length; v++) {
+            w.write("         //   " + String.format("%2d", v) + " = " + PASSO_DOC[v] + "\n");
+        }
+        w.write("         //   31 ou mais = nada\n\n");
+
+        for (int i = 0; i < ysize; i++) {
+            int p = i * 10;
+            StringBuilder sb = new StringBuilder("         ");
+            sb.append(String.format("%-9s", "$SEQ_" + i + ":")).append("{ ");
+            for (int s = 0; s < 4; s++) {
+                sb.append("$P").append(s + 1).append(": [")
+                  .append(String.format("%2d", data[p + s * 2] & 0xFF)).append(", ")
+                  .append(String.format("%3d", data[p + s * 2 + 1] & 0xFF)).append("], ");
+            }
+            int prox = data[p + 8] & 0xFF, canc = data[p + 9] & 0xFF;
+            sb.append("$PROXIMA: ").append(String.format("%3d", prox))
+              .append(", $SO_COM_CANCEL: ").append(canc).append(" },");
+
+            StringBuilder desc = new StringBuilder();
+            for (int s = 0; s < 4; s++) {
+                int cmd = data[p + s * 2] & 0xFF;
+                if (cmd == 0) break;
+                if (desc.length() > 0) desc.append(" > ");
+                desc.append(nomePasso(cmd)).append(' ').append(data[p + s * 2 + 1] & 0xFF).append('f');
+            }
+            if (desc.length() == 0) desc.append("(vazia)");
+            if (prox != 0) desc.append(" > seq ").append(prox);
+            if (i == 55) desc.append("   [ativar a fúria]");
+            else if (i == 7 || i == 20) desc.append("   [só com a fúria ativa]");
+            else if (i == 8) desc.append("   [reserva]");
+            else if (i == 36) desc.append("   [modo especial]");
+            sb.append("  // ").append(desc);
+            w.write(sb.append('\n').toString());
+        }
+        w.write("      },\n");
+        return true;
+    }
+
+    private static byte[] bdHDAT6(String block, int xsize, int ysize, ErrorReporter reporter) throws IOException {
+        if (xsize <= 0) xsize = 10;
+
+        int maxSeq = -1;
+        Matcher mCount = Pattern.compile("\\$SEQ_(\\d+)\\s*:").matcher(block);
         while (mCount.find()) {
             maxSeq = Math.max(maxSeq, Integer.parseInt(mCount.group(1)));
         }
+        if (ysize > 0 && maxSeq + 1 > ysize) {
+            ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                    .severity(CompileError.Severity.WARNING)
+                    .fieldTag("$SEQ_" + maxSeq).hdatIndex(6)
+                    .message("$SEQ_" + maxSeq + " passa do $ROW (" + ysize + "): aumente o $ROW para " + (maxSeq + 1)
+                            + ", senão o jogo troca essas sequências pela 8"));
+        }
+        int linhas = Math.max(ysize, maxSeq + 1);
 
-        for (int i = 0; i <= maxSeq; i++) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Pattern pStep = Pattern.compile(
+            "\\{\\s*\\$ACT\\s*:\\s*(-?[\\d.]+)\\s*,\\s*\\$ACT_TIME\\s*:\\s*(-?[\\d.]+)\\s*\\}");
+
+        for (int i = 0; i < linhas; i++) {
             byte[] row = new byte[xsize];
-
             String content = extractBlock(block, "\\$SEQ_" + i);
-            if (content != null) {
-                Pattern pStep = Pattern.compile(
-                    "\\{\\s*\\$ACT\\s*:\\s*(-?[\\d.]+)\\s*,\\s*\\$ACT_TIME\\s*:\\s*(-?[\\d.]+)\\s*\\}");
-                Matcher mStep = pStep.matcher(content);
-
-                List<int[]> steps = new ArrayList<int[]>();
-                while (mStep.find() && steps.size() < 4) {
-                    Integer act  = checkedRawGroup(mStep.group(1), "$SEQ_" + i + "/$ACT",      6, 0, 255, reporter, mStep.group());
-                    Integer time = checkedRawGroup(mStep.group(2), "$SEQ_" + i + "/$ACT_TIME", 6, 0, 255, reporter, mStep.group());
-                    steps.add(new int[]{ act != null ? act : 0, time != null ? time : 0 });
+            if (content == null) {
+                if (i <= maxSeq) {
+                    ErrorReporter.reportIfPresent(reporter, CompileError.builder()
+                            .severity(CompileError.Severity.WARNING)
+                            .fieldTag("$SEQ_" + i)
+                            .hdatIndex(6)
+                            .message("$SEQ_" + i + " não encontrado (ou com chaves desbalanceadas) — a sequência fica vazia"));
                 }
+                baos.write(row);
+                continue;
+            }
 
-                for (int step = 0; step < steps.size(); step++) {
-                    row[step * 2]     = (byte) (steps.get(step)[0] & 0xFF);
-                    row[step * 2 + 1] = (byte) (steps.get(step)[1] & 0xFF);
+            String tag = "$SEQ_" + i;
+            if (content.contains("$P1")) {
+                for (int s = 0; s < 4 && s * 2 + 1 < xsize; s++) {
+                    String par = extractBracket(content, "\\$P" + (s + 1));
+                    if (par == null) continue;
+                    String[] v = par.split(",");
+                    Integer cmd = v.length > 0 && v[0].trim().length() > 0
+                            ? checkedRawGroup(v[0].trim(), tag + "/$P" + (s + 1) + "[0]", 6, 0, 255, reporter, par) : null;
+                    Integer fr  = v.length > 1 && v[1].trim().length() > 0
+                            ? checkedRawGroup(v[1].trim(), tag + "/$P" + (s + 1) + "[1]", 6, 0, 255, reporter, par) : null;
+                    if (cmd != null) row[s * 2]     = (byte) (cmd & 0xFF);
+                    if (fr  != null) row[s * 2 + 1] = (byte) (fr & 0xFF);
                 }
-
                 if (xsize >= 10) {
-                    Integer cont = extractOptionalChecked(content, "\\$CONTINUA\\s*:\\s*(-?[\\d.]+)", "$SEQ_" + i + "/$CONTINUA", 6, 0, 255, reporter);
-                    row[8] = (byte) ((cont != null ? cont : 0) & 0xFF);
-
-                    Integer canc = extractOptionalChecked(content, "\\$EXIGE_CANCEL\\s*:\\s*(-?[\\d.]+)", "$SEQ_" + i + "/$EXIGE_CANCEL", 6, 0, 1, reporter);
-                    row[9] = (byte) ((canc != null ? canc : 0) & 0xFF);
+                    Integer prox = extractOptionalChecked(content, "\\$PROXIMA\\s*:\\s*(-?[\\d.]+)", tag + "/$PROXIMA", 6, 0, 255, reporter);
+                    if (prox != null) row[8] = (byte) (prox & 0xFF);
+                    Integer canc = extractOptionalChecked(content, "\\$SO_COM_CANCEL\\s*:\\s*(-?[\\d.]+)", tag + "/$SO_COM_CANCEL", 6, 0, 255, reporter);
+                    if (canc != null) row[9] = (byte) (canc & 0xFF);
                 }
             } else {
-                ErrorReporter.reportIfPresent(reporter, CompileError.builder()
-                        .severity(CompileError.Severity.WARNING)
-                        .fieldTag("$SEQ_" + i)
-                        .hdatIndex(6)
-                        .message("$SEQ_" + i + " foi referenciado, mas o bloco correspondente não foi encontrado (chaves desbalanceadas?)"));
+                // Formato antigo: {$ACT:a, $ACT_TIME:t} × 4, $CONTINUA, $EXIGE_CANCEL.
+                Matcher mStep = pStep.matcher(content);
+                int s = 0;
+                while (mStep.find() && s < 4 && s * 2 + 1 < xsize) {
+                    Integer act  = checkedRawGroup(mStep.group(1), tag + "/$ACT",      6, 0, 255, reporter, mStep.group());
+                    Integer time = checkedRawGroup(mStep.group(2), tag + "/$ACT_TIME", 6, 0, 255, reporter, mStep.group());
+                    row[s * 2]     = (byte) ((act != null ? act : 0) & 0xFF);
+                    row[s * 2 + 1] = (byte) ((time != null ? time : 0) & 0xFF);
+                    s++;
+                }
+                if (xsize >= 10) {
+                    Integer cont = extractOptionalChecked(content, "\\$CONTINUA\\s*:\\s*(-?[\\d.]+)", tag + "/$CONTINUA", 6, 0, 255, reporter);
+                    row[8] = (byte) ((cont != null ? cont : 0) & 0xFF);
+                    Integer canc = extractOptionalChecked(content, "\\$EXIGE_CANCEL\\s*:\\s*(-?[\\d.]+)", tag + "/$EXIGE_CANCEL", 6, 0, 255, reporter);
+                    row[9] = (byte) ((canc != null ? canc : 0) & 0xFF);
+                }
             }
             baos.write(row);
         }
@@ -1193,16 +1544,6 @@ public final class hdatChar {
     }
 
     /* ── Família de validação: parse + range check, reportando erro sem abortar ── */
-
-    /** Variante "Nx" usada por $CHAO/$AR (hdat0) — mantém 0 como fallback em vez de null, já era o comportamento original. */
-    private static int extractNivelChecked(String src, int n, String fieldPath, int hdatIndex, ErrorReporter reporter) {
-        if (src == null) return 0;
-        Pattern p = Pattern.compile("N" + n + "\\s*:\\s*(-?[\\d.]+)");
-        Matcher m = p.matcher(src);
-        if (!m.find()) return 0;
-        Integer v = checkedRawGroup(m.group(1), fieldPath + "/N" + n, hdatIndex, 0, 255, reporter, m.group());
-        return (v != null) ? v : 0;
-    }
 
     /** Busca uma tag opcional; se ausente, retorna null (não reporta erro — ausência é normal). Se presente mas inválida, reporta. */
     private static Integer extractOptionalChecked(String src, String regex, String fieldTag, int hdatIndex, int min, int max, ErrorReporter reporter) {

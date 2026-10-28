@@ -87,14 +87,14 @@ as que usam índice de HDAT em variável.
 
 | HDAT | Função (onde é lido) | Layout | Extractor |
 |---|---|---|---|
-| 0 | Decisão da CPU (Game7 modo 952): linha = situação×4 + `CPURand%4`, col = `CPULevel` (chão 0–7 / ar 8–15); linha 44 = tempo de reação (rand(0..v−1) frames) | byte, 16 × 45 | `$COMPORTAMENTO_IA` (desligado no extractor; com a verificação pode ser ligado) |
+| 0 | Decisão da CPU (Game7 modo 952): linha = situação×4 + `CPURand%4`, col = `CPULevel` (chão 0–7 / ar 8–15); linha 44 = tempo de reação (rand(0..v−1) frames) | byte, 16 × 45 | `$COMPORTAMENTO_IA` **(ligado)**: `$OPONENTE_*` / `$VAR_N` / `$CPU_NO_CHAO`, `$CPU_NO_AR`, `$TEMPO_DE_REACAO` |
 | 1 | Regeneração de ki (`DamageChange`): pares divisor/bônus | byte, 8 | `$REGENERACAO_KI` |
 | 2 | Textos do idioma 0 (`CharData_TextPage[0]`) | texto | `$TEXTOS_DO_PERSONAGEM` |
 | 3 | Status base: [0]/[1] velocidade (também recuo no empurrão), [3] largura (o jogo usa /2), [8] ki ×100, [9] afinidade, [11] HP, [12] ATK ×10, [14] DEF ×10, [17] custo | byte, 18 | `$STATUS_BASE_E_FISICA` |
 | 4 | Atributos de golpe: 1 linha por golpe, 1 short por coluna (o jogo lê os offsets 0–42; o resto sai como `$DESCONHECIDO_N`) | short, `$COL` col (char01 = 23) | `$ATRIBUTOS_DE_GOLPE` |
 | 5 | Pontos por golpe especial (ANO 27–66) | short, 40 | `$PONTUACAO_POR_GOLPE` |
-| 6 | Sequências da CPU: pares ação/tempo, [8] continua, [9] exige cancel | byte, 10 col | `$SEQUENCIAS_IA` (desligado; idem HDAT 0) |
-| 7 | **Crescimento por nível** (linha = nível 0–98; stat = base do HDAT 3 + soma até o nível): col 0 HP, 1 ATK, 2 ki/Synchro, 3 DEF, 21 custo — `GetHP/GetAttack/GetSynchro/GetDeffence/GetCost` | byte, 22 col | `$CRESCIMENTO_POR_NIVEL` **(novo)** |
+| 6 | Sequências da CPU e dos toques (modos 953–960): 4 passos [comando + 1, frames] (comando = índice em `SeqKey`), [8] próxima sequência (só CPU do jogador 2), [9] para sem janela de cancel | byte, 10 col | `$SEQUENCIAS_IA` **(ligado)**: `$P1`–`$P4`, `$PROXIMA`, `$SO_COM_CANCEL` |
+| 7 | **Crescimento por nível** (linha = nível 0–98; stat = base do HDAT 3 + soma até o nível): col 0 HP, 1 ATK, 2 ki/Synchro, 3 DEF, 21 custo — `GetHP/GetAttack/GetSynchro/GetDeffence/GetCost` | byte, 22 col | `$CRESCIMENTO_POR_NIVEL`: `$NIVEL_N` (nível mostrado = linha + 1) com `$HP`, `$ATK`, `$KI`, `$DEF`, `$CUSTO`, `$NAO_LIDOS` |
 | 13 | Roteiro de cutscene (modo 996), 8 shorts com sinal | short, 8 col | `$ROTEIRO_CUTSCENE` |
 | 14–33 | Reação aérea/agarre (modo 877), do char do **atacante** | byte, 14 col | `$REACAO_DANO_N` |
 | 34 | Disputa de poder: linha 0 animação gatilho, linha 1 cutscene | byte | `$DISPUTA_DE_PODER` |
@@ -105,7 +105,7 @@ as que usam índice de HDAT em variável.
 | 39 | Cenário padrão | byte | `$CENARIO_PADRAO` |
 | 40 | Campanha: linha 0 oponentes do arcade, 1 candidatos a chefe (`GetBOSS`), 3 oponentes antes da missão inicial | byte | `$PROGRESSAO_CAMPANHA` |
 | 41 | Chars desbloqueados por dificuldade | byte | `$PERSONAGENS_DESBLOQUEAVEIS` |
-| 42 | **Comandos de toque** (Game8 modo 38): linha = situação (+20 com Synchro ≥ 100), col 0 golpe, col 1 custo de Synchro ×100; linha+1 = continuação | short | `$COMANDOS_TOUCH` **(novo)** |
+| 42 | **Comandos de toque** (Game8 modo 38): linha = estado (0/40/80) + distância (0/5/10/15) + 20 com Synchro ≥ 100; col 0 = sequência do HDAT 6; linhas +1..+4 = combo, col 1 = ki ×100 | short, 3 × 120 | `$COMANDOS_TOUCH`: 24 grupos (`$CHAO_PERTO`, …, `$VOANDO_MUITO_LONGE_KI`) com `$TOQUE`, `$COMBO_1`–`$COMBO_4` |
 | 43–45 | Textos dos idiomas 1–3 (`CharData_TextPage`) | texto | `$TEXTOS_DO_PERSONAGEM` **(novo)** |
 
 **Sem leitura:** 8–12. `backNN.pac` = `ChrGameData[1]` (HDAT 0 e 2, ver `hdatBack`).
@@ -117,6 +117,7 @@ as que usam índice de HDAT em variável.
 - **HDAT 50:** a col 0 se chamava `$CARD_ID`, mas é o índice do HDAT de efeito.
 - **text00:** só o HDAT 0 era extraído/compilado; os outros idiomas sumiam do `.pac`.
 - **Sem extractor (iam em `$RAW`):** gamedata 0, 2, 4, 5, 8, 9, 41, 42, 271–279; char 7, 42, 43–45.
+- **char 0 e 6:** o extractor ficava desligado (iam em `$RAW`). Agora saem detalhados, com as situações da CPU e o nome de cada comando conferidos no `TCBManajer` (`Game7` 952–960, `CmdCheck`, `SeqKey`). O 7 e o 42 deixaram de ser tabelas `$LINHA_N`: saem por nível (`$NIVEL_N`) e por situação de toque. Os formatos antigos continuam compilando.
 
 > Pastas de `gamedata` extraídas pela versão antiga têm 53/54/efeitos já
 > perdidos no texto: apague a pasta e extraia de novo do `.pac` original.
