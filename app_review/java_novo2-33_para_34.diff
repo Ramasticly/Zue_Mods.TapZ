@@ -187,7 +187,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-28 13:37:35.976739190 +0000
++++ b/AiHelpDoc.java	2026-10-28 13:45:56.088967763 +0000
 @@ -0,0 +1,844 @@
 +package com.zue.attackeditor;
 +
@@ -422,7 +422,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "Move indexes: moves **0, 3 and 6** are special slots; when transplanting a move to another character, 0/3/6 can only replace 0/3/6 and the others only the non-special ones. Grabs only work in moves 0..12. Move text fields are 16-bit: **ANO numbers above 255 are normal** (up to 32767).\n" +
 +        "\n" +
 +        "### 5.6 Sounds\n" +
-+        "Sound id `SE`: 0..79 = common game sounds (the app's sound list plays them); **80, 81, … = the character's own `*.wav` files in sorted file-name order** (first wav = 80). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.\n" +
++        "Sound id `SE` (an **unsigned byte, 0–255**; values above 127 only work in a `TCBManajer` patched for that): 0 = none; 1..79 = common game sounds `se_00`..`se_78` (file = id − 1; the app's sound list plays them); **80..99 = the character's own `*.wav` files in sorted file-name order** (first wav = 80, at most 20); 100..255 = new common sounds `se_99`..`se_254` (file names have 3 digits from `se_100.ogg`). Files `se_79`..`se_99` are silent filler (the game loads the `se_` files in sequence, never delete one); the first new global sound after `se_78` is `se_100` (id 101). The app adds global sounds as **Opus inside .ogg** (Android 10+). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.\n" +
 +        "\n" +
 +        "### 5.7 Sprites and the CNV\n" +
 +        "Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.\n" +
@@ -556,7 +556,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "### 11.5 Importing what you cannot generate\n" +
 +        "- Images: `SPRITES` → add/replace → pick the file; then set the frame's `Imagem`.\n" +
-+        "- Sounds: put the `.wav` in `Tap Battle/assets/charNN/` (ids are in file-name order, from 80) or use the frame's `Som` page.\n" +
++        "- Sounds: put the `.wav` in `Tap Battle/assets/charNN/` (ids are in file-name order, from 80) or use the frame's `Som` page. The `+` of the sound list also adds a **global game sound** (`Tap Battle/assets/se_NN.ogg`, `se_NNN.ogg` from 100): same tools as the wavs (play, `Cortar`, `Mais...`, `Substituir...`, silence — never delete); the first one after `se_78` creates silent filler `se_79`..`se_99` and becomes `se_100`.\n" +
 +        "\n" +
 +        "## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)\n" +
 +        "\n" +
@@ -1424,7 +1424,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-28 13:28:30.846490632 +0000
++++ b/AttackView.java	2026-10-28 13:40:47.821356960 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1665,6 +1665,19 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Edita o golpe (HDAT 4) em runtime: executa a mudanca, empilha o desfazer e reconstroi a simulacao. */
      public void editMove(Runnable change) {
          if (data == null) return;
+@@ -1010,9 +1122,9 @@
+     public void previewSe(int se) {
+         if (sound == null || data == null || se < 0) return;
+         sound.stopAll();
+-        int id = se < 80 ? se - 1 : se;
+-        if (id < 0) return;
+-        if (id < 80) sound.playCommon(id); else sound.playChar(data.attacker.dir, id - 80);
++        if (SoundIds.isCharId(se)) { sound.playChar(data.attacker.dir, se - SoundIds.CHAR_FIRST); return; }
++        int n = SoundIds.commonOf(se);
++        if (n >= 0) sound.playCommon(n);
+     }
+ 
+     private long lastUndoMs;
 @@ -1069,7 +1181,8 @@
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
@@ -1801,7 +1814,7 @@ diff -ruN a/AttackView.java b/AttackView.java
  
 diff -ruN a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-10-28 13:30:37.648632678 +0000
++++ b/BattleSim.java	2026-10-28 13:40:47.823411487 +0000
 @@ -25,6 +25,8 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -2379,20 +2392,17 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-+            }
+             }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-             }
-         }
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++            }
++        }
++    }
++
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -2417,14 +2427,17 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-+        }
+         }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
 +        if (setX) pendAX = x;
 +        if (setY) pendAY = y;
-+    }
-+
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    /** _SetXY do PlayerTail (inicio do tick, depois do hit-detect do tick anterior): o atacante vai para a posicao logica. */
 +    private void applyPendingMoves() {
 +        if (!pendA) return;
@@ -3474,16 +3487,42 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,7 +2449,7 @@
+@@ -1919,9 +2449,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
 -            if (owner == 1 && atkWavCount > 0) se += atkWavCount;
-+            if (owner == 1 && atkWavCount > 0 && se >= 80) se += atkWavCount;
-             if (se < 80) pushRaw(se - 1);
-             else pushRaw(se);
+-            if (se < 80) pushRaw(se - 1);
+-            else pushRaw(se);
++            pushSe(se, owner);
          }
-@@ -1979,55 +2509,47 @@
+         AttackSim.Obj[] ch = s.children();
+         for (int i = 0; i < ch.length; i++) {
+@@ -1929,8 +2457,22 @@
+             if (c == null || c.pendingSe < 0) continue;
+             int se = c.pendingSe;
+             c.pendingSe = -1;
+-            if (se < 80) pushRaw(se - 1);
++            int cn = SoundIds.commonOf(se);
++            if (cn >= 0) sounds.add(new Snd(true, cn, 0));      // links so tocam sons globais
++        }
++    }
++
++    /** SE do frame (byte sem sinal): 1..79 e 100..255 = global se_(id-1); 80..99 = audio do personagem (o jogador 1 soma os audios do jogador 0). */
++    private void pushSe(int se, int owner) {
++        if (SoundIds.isCharId(se)) {
++            int idx = se - SoundIds.CHAR_FIRST;
++            if (owner == 1 && atkWavCount > 0) idx += atkWavCount;
++            if (idx < atkWavCount) sounds.add(new Snd(false, idx, 0));
++            else sounds.add(new Snd(false, idx - atkWavCount, 1));
++            return;
+         }
++        int cn = SoundIds.commonOf(se);
++        if (cn >= 0) sounds.add(new Snd(true, cn, 0));
+     }
+ 
+     /** PushSE: < 80 = se_NN comum; >= 80 = audio de personagem na lista [atacante..., defensor...]. */
+@@ -1979,55 +2521,47 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -3562,7 +3601,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-@@ -2040,6 +2562,31 @@
+@@ -2040,6 +2574,31 @@
      public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
  
      public boolean defenderInDamage() { return inDamage; }
@@ -3882,7 +3921,7 @@ diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 +}
 diff -ruN a/Dac.java b/Dac.java
 --- a/Dac.java	2026-10-20 10:46:55.000000000 +0000
-+++ b/Dac.java	2026-10-24 21:48:20.029992256 +0000
++++ b/Dac.java	2026-10-28 13:40:47.813780004 +0000
 @@ -10,7 +10,7 @@
   * Uma ANO quebrada nao derruba o arquivo inteiro: ela vira "ausente" e entra em getWarnings().
   */
@@ -3908,10 +3947,32 @@ diff -ruN a/Dac.java b/Dac.java
      /** Copia rasa (so a tabela de ANOs) com a ANO {@code index} trocada: serve para previas sem mexer no DAC real. */
      public Dac copyWith(int index, Ano a) {
          Ano[] c = anos.clone();
+@@ -129,7 +138,7 @@
+ 
+         if ((f & 0x02) != 0) m.wActFlag = r.u16();
+ 
+-        if ((f & 0x08) != 0) m.se = r.s8();
++        if ((f & 0x08) != 0) m.se = r.u8();           // id do SE: byte sem sinal (0..255)
+ 
+         m.hasMove = (f & 0x04) != 0;
+         if (m.hasMove) {
 diff -ruN a/DacText.java b/DacText.java
 --- a/DacText.java	2026-10-13 10:43:29.000000000 +0000
-+++ b/DacText.java	2026-10-24 21:48:20.032855017 +0000
-@@ -418,7 +418,7 @@
++++ b/DacText.java	2026-10-28 13:41:06.911765472 +0000
+@@ -271,7 +271,11 @@
+                 m.hasMid = true; m.midX = (int) k.nums[0]; m.midY = (int) k.nums[1]; f |= 1;
+             }
+             else if (key.equals("WACTFLAG")) { m.wActFlag = req(n, "WACTFLAG", true, 0) & 0xFFFF; f |= 2; }
+-            else if (key.equals("SE")) { m.se = req(n, "SE", true, 0); f |= 8; }
++            else if (key.equals("SE")) {
++                m.se = req(n, "SE", true, 0);
++                if (m.se < 0 || m.se > SoundIds.MAX_ID) throw new ParseError(n.key + ": $SE precisa estar entre 0 e " + SoundIds.MAX_ID + " (e " + m.se + ")");
++                f |= 8;
++            }
+             else if (key.equals("MOVE")) {
+                 if (k.kids == null) throw new ParseError("$MOVE precisa de { }");
+                 m.hasMove = true; f |= 4;
+@@ -418,7 +422,7 @@
                  default: m.unk46 = v; break;
              }
          }
@@ -4248,8 +4309,8 @@ diff -ruN a/FrameOps.java b/FrameOps.java
          base.wActFlag &= ~3;
 diff -ruN a/FrameTools.java b/FrameTools.java
 --- a/FrameTools.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/FrameTools.java	2026-10-24 21:48:20.043535889 +0000
-@@ -0,0 +1,220 @@
++++ b/FrameTools.java	2026-10-28 13:40:47.814331877 +0000
+@@ -0,0 +1,215 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -4434,14 +4495,9 @@ diff -ruN a/FrameTools.java b/FrameTools.java
 +        return FrameOps.setMoveRun(out, newHead, last);
 +    }
 +
-+    // ---- sons: ids validos 0 -> se_max -> 80 -> 80 + wav - 1 ----
++    // ---- sons: ids validos 0 -> 79 (globais) -> 80..99 (personagem) -> 100..255 (globais novos) ----
 +
-+    static List<Integer> soundIds(int seMax, int wavCount) {
-+        List<Integer> l = new ArrayList<Integer>();
-+        for (int i = 0; i <= Math.min(79, Math.max(0, seMax)); i++) l.add(Integer.valueOf(i));
-+        for (int i = 0; i < wavCount; i++) l.add(Integer.valueOf(80 + i));
-+        return l;
-+    }
++    static List<Integer> soundIds(int seMax, int wavCount) { return SoundIds.frameIds(seMax, wavCount); }
 +
 +    /** Proximo id valido na direcao dir (+1/-1); se o atual nao e valido, vai para o mais proximo na direcao; nas pontas fica. */
 +    static int stepSound(int cur, int dir, int seMax, int wavCount) {
@@ -4982,8 +5038,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-28 13:37:29.199670651 +0000
-@@ -0,0 +1,629 @@
++++ b/HelpText.java	2026-10-28 13:45:35.178967385 +0000
+@@ -0,0 +1,630 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -5343,7 +5399,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +
 +        Chapter sn = new Chapter("sons", "Sons, sprites e CNV", "Ids de som, a lista de sprites e como as imagens são recortadas.");
 +        sn.add("Sons",
-+                "Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs).");
++                "Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs)."
++                + " O id do SE vai de 0 a 255 (valores acima de 127 só valem no TCBManajer com o patch do byte sem sinal): 1 a 79 = sons comuns se_00 a se_78, 80 a 99 = áudios do personagem e 100 a 255 = sons comuns novos (se_99 a se_254; o arquivo é se_NNN.ogg a partir do 100). O + da lista também adiciona um SOM GLOBAL (OGG, precisa do Android 10 ou mais novo): ele vira o próximo se_; depois do se_78 o primeiro novo é o se_100 e o app cria arquivos silenciosos se_79 a se_99 para não deixar buraco. Os sons comuns têm as mesmas ferramentas dos WAV (ouvir, cortar, ajustar, substituir e silenciar — nunca se apaga um se_). O .ogg gravado usa o codec Opus.");
 +        sn.add("Sprites e CNV",
 +                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). "
 +                + "As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber."
@@ -5879,7 +5936,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-28 13:37:00.061492159 +0000
++++ b/I18nCatalog.java	2026-10-28 13:46:54.807548223 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -5893,7 +5950,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-28 13:37:00.039965994 +0000
++++ b/I18nCatalog0.java	2026-10-28 13:46:54.800630882 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6166,7 +6223,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-28 13:37:00.044222100 +0000
++++ b/I18nCatalog1.java	2026-10-28 13:46:54.802062168 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6439,7 +6496,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-28 13:37:00.054938839 +0000
++++ b/I18nCatalog2.java	2026-10-28 13:46:54.803443840 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6712,7 +6769,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-28 13:37:00.057432071 +0000
++++ b/I18nCatalog3.java	2026-10-28 13:46:54.804833326 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6985,7 +7042,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-28 13:37:00.059485851 +0000
++++ b/I18nCatalog4.java	2026-10-28 13:46:54.806071378 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7258,8 +7315,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-28 13:37:00.060851922 +0000
-@@ -0,0 +1,52 @@
++++ b/I18nCatalog5.java	2026-10-28 13:46:54.806995283 +0000
+@@ -0,0 +1,77 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -7310,6 +7367,31 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"NENHUMA", "NONE", "NINGUNA"},
 +        {"marque pelo menos uma sprite", "check at least one sprite", "marca al menos un sprite"},
 +        {" pasta(s)/imagem(ns)/CNV", " folder(s)/image(s)/CNV", " carpeta(s)/imagen(es)/CNV"},
++        {": $SE precisa estar entre 0 e ", ": $SE must be between 0 and ", ": $SE debe estar entre 0 y "},
++        {"− e + passam só pelos sons que existem: 0 → sons comuns (1 a {0}) → sons do personagem (80 a {1}). O som toca uma vez, quando o frame começa.", "− and + only step through sounds that exist: 0 → common sounds (1 to {0}) → character sounds (80 to {1}). The sound plays once, when the frame starts.", "− y + solo pasan por los sonidos que existen: 0 → sonidos comunes (1 a {0}) → sonidos del personaje (80 a {1}). El sonido suena una vez, cuando empieza el frame."},
++        {"− e + passam só pelos sons que existem: 0 → sons comuns (1 a 79) → sons do personagem (80 a {0}) → sons comuns novos (100 a {1}). O som toca uma vez, quando o frame começa.", "− and + only step through sounds that exist: 0 → common sounds (1 to 79) → character sounds (80 to {0}) → new common sounds (100 to {1}). The sound plays once, when the frame starts.", "− y + solo pasan por los sonidos que existen: 0 → sonidos comunes (1 a 79) → sonidos del personaje (80 a {0}) → sonidos comunes nuevos (100 a {1}). El sonido suena una vez, cuando empieza el frame."},
++        {"Nao da para gravar OGG: {0}", "Cannot write OGG: {0}", "No se puede grabar OGG: {0}"},
++        {"Som do personagem (WAV)", "Character sound (WAV)", "Sonido del personaje (WAV)"},
++        {"Som global do jogo (OGG)", "Game global sound (OGG)", "Sonido global del juego (OGG)"},
++        {"Adicionar som global", "Add global sound", "Agregar sonido global"},
++        {"Abrindo o som...", "Opening the sound...", "Abriendo el sonido..."},
++        {"Excluir (silenciar)", "Delete (silence)", "Eliminar (silenciar)"},
++        {"Silenciar som?", "Silence the sound?", "¿Silenciar el sonido?"},
++        {"O arquivo vira silencio e continua na pasta (o jogo carrega os se_ em sequencia, nunca apague um). Os usos nas animacoes ficam, mas sem som.", "The file becomes silence and stays in the folder (the game loads the se_ files in sequence, never delete one). The uses in the animations stay, but silent.", "El archivo pasa a ser silencio y sigue en la carpeta (el juego carga los se_ en secuencia, nunca borres uno). Los usos en las animaciones se mantienen, pero sin sonido."},
++        {"SILENCIAR", "SILENCE", "SILENCIAR"},
++        {"Convertendo...", "Converting...", "Convirtiendo..."},
++        {"Acabaram os ids de som: o ultimo som global e o se_{0} (id {1}).", "Out of sound ids: the last global sound is se_{0} (id {1}).", "Se acabaron los ids de sonido: el último sonido global es se_{0} (id {1})."},
++        {"Som global adicionado: {0} (id {1}).", "Global sound added: {0} (id {1}).", "Sonido global agregado: {0} (id {1})."},
++        {"Arquivos de preenchimento", "Filler files", "Archivos de relleno"},
++        {"O novo som global sera o {0} (id {1} no frame). O jogo carrega os se_ em sequencia, entao o app cria {2} arquivo(s) silencioso(s) ({3} a {4}) para nao ficar buraco. Eles nao aparecem na lista. Continuar?", "The new global sound will be {0} (id {1} in the frame). The game loads the se_ files in sequence, so the app creates {2} silent file(s) ({3} to {4}) to leave no gap. They do not show in the list. Continue?", "El nuevo sonido global será {0} (id {1} en el frame). El juego carga los se_ en secuencia, así que la app crea {2} archivo(s) silencioso(s) ({3} a {4}) para no dejar huecos. No aparecen en la lista. ¿Continuar?"},
++        {"Precisa do Android 10 ou mais novo (o aparelho tem a API {0}).", "Needs Android 10 or newer (this device has API {0}).", "Requiere Android 10 o más nuevo (el dispositivo tiene la API {0})."},
++        {"Este aparelho nao tem codificador Opus.", "This device has no Opus encoder.", "Este dispositivo no tiene codificador Opus."},
++        {"falha ao gravar OGG: {0}", "failed to write OGG: {0}", "falló al grabar OGG: {0}"},
++        {"o codificador nao produziu audio", "the encoder produced no audio", "el codificador no produjo audio"},
++        {"o codificador nao terminou", "the encoder did not finish", "el codificador no terminó"},
++        {"nao consegui trocar {0}", "could not replace {0}", "no pude reemplazar {0}"},
++        {"nao consegui gravar {0}", "could not write {0}", "no pude grabar {0}"},
++        {"Som silenciado.", "Sound silenced.", "Sonido silenciado."},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -7359,7 +7441,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-28 13:37:35.943033721 +0000
++++ b/I18nHelpCatalog.java	2026-10-28 13:45:56.054483736 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -7373,7 +7455,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-28 13:37:35.941166354 +0000
++++ b/I18nHelpCatalog0.java	2026-10-28 13:45:56.053433055 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7458,7 +7540,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-28 13:37:35.941295864 +0000
++++ b/I18nHelpCatalog1.java	2026-10-28 13:45:56.053591470 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7543,7 +7625,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-28 13:37:35.941451685 +0000
++++ b/I18nHelpCatalog2.java	2026-10-28 13:45:56.053743528 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7628,7 +7710,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-28 13:37:35.941829721 +0000
++++ b/I18nHelpCatalog3.java	2026-10-28 13:45:56.053853005 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7713,7 +7795,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-28 13:37:35.941949478 +0000
++++ b/I18nHelpCatalog4.java	2026-10-28 13:45:56.053946692 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7798,7 +7880,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-28 13:37:35.942253122 +0000
++++ b/I18nHelpCatalog5.java	2026-10-28 13:45:56.054089199 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7883,7 +7965,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-28 13:37:35.942454230 +0000
++++ b/I18nHelpCatalog6.java	2026-10-28 13:45:56.054231473 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7968,7 +8050,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-28 13:37:35.942813158 +0000
++++ b/I18nHelpCatalog7.java	2026-10-28 13:45:56.054345085 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8046,14 +8128,14 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +        {"Sons",
 +         "Sounds",
 +         "Sonidos"},
-+        {"Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs).",
-+         "The frame's sounds (SE) use ids: from 0 up to the game's last common sound, and from 80 on the character's audios (NNN.wav files in its folder). The sound list lets you play, swap, trim (audios longer than 20 s suggest trimming), adjust the volume and remove (the sound becomes silence and the uses are taken out of the ANOs).",
-+         "Los sonidos del frame (SE) usan ids: de 0 hasta el último sonido común del juego, y a partir del 80 los audios del personaje (archivos NNN.wav de su carpeta). La lista de sonidos permite reproducir, cambiar, cortar (audios de más de 20 s sugieren cortar), ajustar el volumen y quitar (el sonido pasa a silencio y los usos se retiran de los ANOs)."},
++        {"Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs). O id do SE vai de 0 a 255 (valores acima de 127 só valem no TCBManajer com o patch do byte sem sinal): 1 a 79 = sons comuns se_00 a se_78, 80 a 99 = áudios do personagem e 100 a 255 = sons comuns novos (se_99 a se_254; o arquivo é se_NNN.ogg a partir do 100). O + da lista também adiciona um SOM GLOBAL (OGG, precisa do Android 10 ou mais novo): ele vira o próximo se_; depois do se_78 o primeiro novo é o se_100 e o app cria arquivos silenciosos se_79 a se_99 para não deixar buraco. Os sons comuns têm as mesmas ferramentas dos WAV (ouvir, cortar, ajustar, substituir e silenciar — nunca se apaga um se_). O .ogg gravado usa o codec Opus.",
++         "The frame's sounds (SE) use ids: from 0 up to the game's last common sound, and from 80 on the character's audios (NNN.wav files in its folder). The sound list lets you play, swap, trim (audios longer than 20 s suggest trimming), adjust the volume and remove (the sound becomes silence and the uses are taken out of the ANOs). The SE id goes from 0 to 255 (values above 127 only work in the TCBManajer with the unsigned-byte patch): 1 to 79 = common sounds se_00 to se_78, 80 to 99 = character audios and 100 to 255 = new common sounds (se_99 to se_254; the file is se_NNN.ogg from 100 on). The + in the list also adds a GLOBAL SOUND (OGG, needs Android 10 or newer): it becomes the next se_; after se_78 the first new one is se_100 and the app creates silent files se_79 to se_99 to leave no gap. Common sounds have the same tools as the WAVs (play, trim, adjust, replace and silence — a se_ is never deleted). The written .ogg uses the Opus codec.",
++         "Los sonidos del frame (SE) usan ids: de 0 hasta el último sonido común del juego, y a partir del 80 los audios del personaje (archivos NNN.wav de su carpeta). La lista de sonidos permite reproducir, cambiar, cortar (audios de más de 20 s sugieren cortar), ajustar el volumen y quitar (el sonido pasa a silencio y los usos se retiran de los ANOs). El id del SE va de 0 a 255 (los valores por encima de 127 solo valen en el TCBManajer con el parche del byte sin signo): 1 a 79 = sonidos comunes se_00 a se_78, 80 a 99 = audios del personaje y 100 a 255 = sonidos comunes nuevos (se_99 a se_254; el archivo es se_NNN.ogg desde el 100). El + de la lista también agrega un SONIDO GLOBAL (OGG, requiere Android 10 o más nuevo): pasa a ser el siguiente se_; después del se_78 el primero nuevo es el se_100 y la app crea archivos silenciosos se_79 a se_99 para no dejar huecos. Los sonidos comunes tienen las mismas herramientas que los WAV (reproducir, cortar, ajustar, reemplazar y silenciar — nunca se borra un se_). El .ogg grabado usa el códec Opus."},
 +    };
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-28 13:37:35.942980010 +0000
++++ b/I18nHelpCatalog8.java	2026-10-28 13:45:56.054438300 +0000
 @@ -0,0 +1,69 @@
 +package com.zue.attackeditor;
 +
@@ -10079,7 +10161,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          }
 diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 --- a/MoveTransplant.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/MoveTransplant.java	2026-10-24 21:48:20.090840633 +0000
++++ b/MoveTransplant.java	2026-10-28 13:40:47.815408843 +0000
 @@ -0,0 +1,265 @@
 +package com.zue.attackeditor;
 +
@@ -10213,7 +10295,7 @@ diff -ruN a/MoveTransplant.java b/MoveTransplant.java
 +                        if (nt != null) c.optData[1] = (v / 50) * 50 + 30 + nt.intValue();
 +                    }
 +                }
-+                if ((c.flags & 8) != 0 && c.se >= 80) soundFrames++;
++                if ((c.flags & 8) != 0 && SoundIds.isCharId(c.se)) soundFrames++;
 +                for (int h = 0; h < c.hits.length; h++) {
 +                    int f = c.hits[h].flag;
 +                    if (f == 20 || (f >= 41 && f <= 125)) { charFlagFrames++; break; }
@@ -10501,6 +10583,176 @@ diff -ruN a/ObjModel.java b/ObjModel.java
      /** Liga/desliga a flag (hit sem coordenadas, ex.: 38) em todos os frames [f0, f1]. */
      static Ano.Mpt[] setFlagRange(Ano.Mpt[] m, int f0, int f1, int flag, boolean on) {
          Ano.Mpt[] out = m.clone();
+diff -ruN a/OggEncode.java b/OggEncode.java
+--- a/OggEncode.java	1970-01-01 00:00:00.000000000 +0000
++++ b/OggEncode.java	2026-10-28 13:43:12.509030517 +0000
+@@ -0,0 +1,128 @@
++package com.zue.attackeditor;
++
++import android.media.MediaCodec;
++import android.media.MediaCodecInfo;
++import android.media.MediaCodecList;
++import android.media.MediaFormat;
++import android.media.MediaMuxer;
++import android.os.Build;
++import java.io.File;
++import java.io.IOException;
++import java.nio.ByteBuffer;
++
++/**
++ * Grava um som global (se_NN.ogg) a partir de PCM: Opus dentro de um contentor Ogg, feito so com a API do Android
++ * (MediaCodec "audio/opus" + MediaMuxer MUXER_OUTPUT_OGG, Android 10 / API 29 ou mais novo). O arquivo se chama .ogg mas o codec e Opus,
++ * nao Vorbis: o SoundPool do Android le; o jogo precisa abrir o arquivo com o mesmo decodificador.
++ */
++final class OggEncode {
++    private OggEncode() { }
++
++    static final String MIME = "audio/opus";
++
++    /** O aparelho tem codificador Opus e muxer OGG? */
++    static boolean supported() {
++        if (Build.VERSION.SDK_INT < 29) return false;
++        try {
++            for (MediaCodecInfo i : new MediaCodecList(MediaCodecList.ALL_CODECS).getCodecInfos()) {
++                if (!i.isEncoder()) continue;
++                for (String t : i.getSupportedTypes()) if (MIME.equalsIgnoreCase(t)) return true;
++            }
++        } catch (Throwable t) { /* sem lista de codecs */ }
++        return false;
++    }
++
++    /** Motivo de nao dar para gravar OGG neste aparelho. */
++    static String why() {
++        return Build.VERSION.SDK_INT < 29 ? "Precisa do Android 10 ou mais novo (o aparelho tem a API " + Build.VERSION.SDK_INT + ")."
++                : "Este aparelho nao tem codificador Opus.";
++    }
++
++    /** WAV do jogo (22050 Hz, mono, 16 bits) -> {@code out}. */
++    static void encodeWav(byte[] wav, File out) throws IOException {
++        encode(OggPcm.to48k(AudioConvert.pcmOf(wav), AudioConvert.RATE), out);
++    }
++
++    /** Silencio curto (placeholder de preenchimento ou som "excluido"). */
++    static void silence(File out) throws IOException { encode(OggPcm.silence(100), out); }
++
++    /** PCM mono 16 bits a 48 kHz -> arquivo .ogg (Opus). Grava num temporario e troca no fim (o arquivo antigo so some se deu certo). */
++    static void encode(short[] pcm48k, File out) throws IOException {
++        if (!supported()) throw new IOException(why());
++        short[] pcm = OggPcm.padTo20ms(pcm48k);
++        File tmp = new File(out.getPath() + ".tmp");
++        tmp.delete();
++        MediaCodec codec = null;
++        MediaMuxer muxer = null;
++        boolean started = false;
++        try {
++            MediaFormat fmt = MediaFormat.createAudioFormat(MIME, OggPcm.RATE, 1);
++            fmt.setInteger(MediaFormat.KEY_BIT_RATE, 48000);
++            fmt.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 960 * 2 * 8);
++            codec = MediaCodec.createEncoderByType(MIME);
++            codec.configure(fmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
++            codec.start();
++            muxer = new MediaMuxer(tmp.getPath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_OGG);
++            int track = -1;
++            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
++            ByteBuffer pcmBytes = ByteBuffer.allocate(pcm.length * 2).order(java.nio.ByteOrder.LITTLE_ENDIAN);
++            for (short s : pcm) pcmBytes.putShort(s);
++            pcmBytes.flip();
++            boolean inDone = false, outDone = false;
++            long sent = 0;
++            int guard = 0;
++            while (!outDone) {
++                if (++guard > 200000) throw new IOException("o codificador nao terminou");
++                if (!inDone) {
++                    int ii = codec.dequeueInputBuffer(10000);
++                    if (ii >= 0) {
++                        ByteBuffer ib = codec.getInputBuffer(ii);
++                        ib.clear();
++                        int n = Math.min(ib.remaining(), pcmBytes.remaining());
++                        long ptsUs = sent * 1000000L / (OggPcm.RATE * 2L);
++                        if (n <= 0) {
++                            codec.queueInputBuffer(ii, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
++                            inDone = true;
++                        } else {
++                            byte[] chunk = new byte[n];
++                            pcmBytes.get(chunk);
++                            ib.put(chunk);
++                            codec.queueInputBuffer(ii, 0, n, ptsUs, 0);
++                            sent += n;
++                        }
++                    }
++                }
++                int oi = codec.dequeueOutputBuffer(info, 10000);
++                if (oi == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
++                    track = muxer.addTrack(codec.getOutputFormat());     // traz csd-0/1/2 (OpusHead, pre-skip, seek preroll)
++                    muxer.start();
++                    started = true;
++                } else if (oi >= 0) {
++                    ByteBuffer ob = codec.getOutputBuffer(oi);
++                    if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) info.size = 0;
++                    if (info.size > 0 && started) {
++                        ob.position(info.offset);
++                        ob.limit(info.offset + info.size);
++                        muxer.writeSampleData(track, ob, info);
++                    }
++                    codec.releaseOutputBuffer(oi, false);
++                    if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) outDone = true;
++                }
++            }
++            if (!started) throw new IOException("o codificador nao produziu audio");
++            muxer.stop();
++            started = false;
++        } catch (IOException e) {
++            tmp.delete();
++            throw e;
++        } catch (Throwable t) {
++            tmp.delete();
++            throw new IOException("falha ao gravar OGG: " + (t.getMessage() == null ? t.toString() : t.getMessage()));
++        } finally {
++            try { if (codec != null) { codec.stop(); codec.release(); } } catch (Throwable ignored) { }
++            try { if (muxer != null) muxer.release(); } catch (Throwable ignored) { }
++        }
++        if (out.exists() && !out.delete()) { tmp.delete(); throw new IOException("nao consegui trocar " + out.getName()); }
++        if (!tmp.renameTo(out)) { tmp.delete(); throw new IOException("nao consegui gravar " + out.getName()); }
++    }
++}
+diff -ruN a/OggPcm.java b/OggPcm.java
+--- a/OggPcm.java	1970-01-01 00:00:00.000000000 +0000
++++ b/OggPcm.java	2026-10-28 13:43:12.503058355 +0000
+@@ -0,0 +1,34 @@
++package com.zue.attackeditor;
++
++/** PCM para o codificador OGG (Opus so aceita 8/12/16/24/48 kHz): reamostragem linear e silencio. Java puro. */
++final class OggPcm {
++    private OggPcm() { }
++
++    static final int RATE = 48000;
++
++    /** Reamostra (mono, 16 bits) de {@code rate} para 48 kHz por interpolacao linear. */
++    static short[] to48k(short[] in, int rate) {
++        if (in == null || in.length == 0 || rate <= 0) return new short[0];
++        if (rate == RATE) return in.clone();
++        int n = (int) Math.max(1, Math.round(in.length * (double) RATE / rate));
++        short[] out = new short[n];
++        for (int i = 0; i < n; i++) {
++            double pos = i * (double) rate / RATE;
++            int a = (int) pos;
++            int b = Math.min(in.length - 1, a + 1);
++            a = Math.min(in.length - 1, a);
++            double f = pos - (int) pos;
++            out[i] = (short) Math.round(in[a] * (1 - f) + in[b] * f);
++        }
++        return out;
++    }
++
++    /** Silencio de {@code ms} milissegundos a 48 kHz (no minimo 1 quadro de 20 ms). */
++    static short[] silence(int ms) { return new short[Math.max(960, ms * RATE / 1000)]; }
++
++    /** Arredonda para cima ate um multiplo de 20 ms (960 amostras): o Opus trabalha em quadros de 20 ms. */
++    static short[] padTo20ms(short[] in) {
++        int n = (in.length + 959) / 960 * 960;
++        return n == in.length ? in : java.util.Arrays.copyOf(in, Math.max(960, n));
++    }
++}
 diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 --- a/PacSpritePicker.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/PacSpritePicker.java	2026-10-28 13:36:04.447032910 +0000
@@ -14072,8 +14324,8 @@ diff -ruN a/SoundAdjust.java b/SoundAdjust.java
                  });
 diff -ruN a/SoundDialog.java b/SoundDialog.java
 --- a/SoundDialog.java	2026-10-18 13:50:55.000000000 +0000
-+++ b/SoundDialog.java	2026-10-24 21:48:20.138924770 +0000
-@@ -54,10 +54,84 @@
++++ b/SoundDialog.java	2026-10-28 13:44:04.911884427 +0000
+@@ -54,10 +54,85 @@
          new SoundDialog(a, view, dir, currentSe, choose).open();
      }
  
@@ -14110,8 +14362,8 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
 +        File[] wavs = CharSounds.list(dir);
 +        LinearLayout row = row(false);
 +        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-+        if (se >= 80 && se - 80 < wavs.length) {
-+            final int idx = se - 80;
++        if (SoundIds.isCharId(se) && se - SoundIds.CHAR_FIRST < wavs.length) {
++            final int idx = se - SoundIds.CHAR_FIRST;
 +            final File f = wavs[idx];
 +            boolean muted = CharSounds.isEmpty(f);
 +            row.addView(playBtn("c" + idx, f), playLp());
@@ -14125,7 +14377,8 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
 +            SoundPlayer sp = view.soundPlayer();
 +            File[] commons = sp == null ? new File[0] : sp.commonFiles();
 +            File hit = null;
-+            for (File f : commons) if (SoundPlayer.commonNumber(f) + 1 == se) hit = f;
++            int wantN = SoundIds.commonOf(se);
++            for (File f : commons) if (wantN >= 0 && SoundPlayer.commonNumber(f) == wantN) hit = f;
 +            if (hit != null) {
 +                final File f = hit;
 +                final int fse = se;
@@ -14159,7 +14412,7 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
          t.setText(s);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
          t.setTextColor(color);
-@@ -219,6 +293,7 @@
+@@ -219,6 +294,7 @@
      }
  
      private void refill() {
@@ -14167,21 +14420,39 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
          list.removeAllViews();
          btns.clear();
          final File[] wavs = CharSounds.list(dir);
-@@ -267,11 +342,11 @@
+@@ -250,7 +326,8 @@
+         File[] commons = sp == null ? new File[0] : sp.commonFiles();
+         if (commons.length > 0) section("SONS COMUNS DO JOGO (se_)");
+         for (final File f : commons) {
+-            final int se = SoundPlayer.commonNumber(f) + 1;
++            if (!SoundIds.selectable(SoundPlayer.commonNumber(f))) continue;       // se_79..se_98: so preenchimento (silencio), ninguem os toca
++            final int se = SoundIds.idOfCommon(SoundPlayer.commonNumber(f));
+             LinearLayout row = row(currentSe == se);
+             row.addView(playBtn("s" + se, f), playLp());
+             LinearLayout col = new LinearLayout(a);
+@@ -266,13 +343,17 @@
+     }
  
      private void commonOptions(final int se, final File f) {
-         String[] items = {"Usar este som", "Ouvir / parar"};
+-        String[] items = {"Usar este som", "Ouvir / parar"};
 -        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++        String[] items = {"Usar este som", "Ouvir / parar", "Cortar...", "Mais... (volume, tom, velocidade)", "Substituir...", "Excluir (silenciar)"};
 +        android.app.AlertDialog.Builder b = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                  .setTitle("Som " + se + " (" + f.getName() + ")");
          b.setItems(items, new android.content.DialogInterface.OnClickListener() {
              @Override public void onClick(android.content.DialogInterface x, int which) {
 -                if (which == 0) { dlg.dismiss(); choose.on(se); }
+-                else play("s" + se, f, true);
 +                if (which == 0) { close(); choose.on(se); }
-                 else play("s" + se, f, true);
++                else if (which == 1) play("s" + se, f, true);
++                else if (which == 2) editCommon(f, 0);
++                else if (which == 3) editCommon(f, 1);
++                else if (which == 4) replaceCommon(f);
++                else muteCommon(f);
              }
          });
-@@ -282,13 +357,13 @@
+         android.app.AlertDialog ad = b.create();
+@@ -282,13 +363,13 @@
  
      private void options(final int idx, final File f) {
          String[] items = {"Usar este som", "Ouvir", "Cortar...", "Mais... (volume, tom, velocidade)", "Substituir...", "Excluir (mutar)"};
@@ -14197,7 +14468,7 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
                  }
                  else if (which == 1) play("c" + idx, f, true);
                  else if (which == 2) trimExisting(f);
-@@ -313,7 +388,7 @@
+@@ -313,7 +394,7 @@
      }
  
      private void mute(final File f) {
@@ -14206,7 +14477,188 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
                  .setTitle("Excluir som?")
                  .setMessage("O som vira silencio (vazio) e todos os usos dele nas animacoes sao retirados. O arquivo continua na pasta para os proximos sons nao mudarem de numero.")
                  .setNegativeButton("CANCELAR", null)
-@@ -396,7 +471,7 @@
+@@ -339,12 +420,180 @@
+     }
+ 
+     private void add() {
++        if (embedded) { addCharSound(); return; }
++        if (CharSounds.list(dir).length >= CharSounds.MAX) { addCommonSound(); return; }
++        String[] items = {"Som do personagem (WAV)", "Som global do jogo (OGG)"};
++        android.app.AlertDialog ad = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Adicionar som")
++                .setItems(items, new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int which) {
++                        if (which == 0) addCharSound(); else addCommonSound();
++                    }
++                }).create();
++        ad.show();
++        style(ad);
++    }
++
++    private void addCharSound() {
+         if (CharSounds.list(dir).length >= CharSounds.MAX) { toast("Limite de " + CharSounds.MAX + " sons por personagem."); return; }
+         FilePicker.show(a, "Adicionar som", false, FilePicker.AUDIO, new FilePicker.Listener() {
+             @Override public void onPicked(List<File> files) { convert(files.get(0), null); }
+         });
+     }
+ 
++    // ---- sons globais do jogo (assets/se_NN.ogg, se_NNN.ogg): mesmas ferramentas dos WAV, gravando OGG (Opus) ----
++
++    private void addCommonSound() {
++        if (!OggEncode.supported()) { toast("Nao da para gravar OGG: " + OggEncode.why()); return; }
++        FilePicker.show(a, "Adicionar som global", false, FilePicker.AUDIO, new FilePicker.Listener() {
++            @Override public void onPicked(List<File> files) { convertCommon(files.get(0), null); }
++        });
++    }
++
++    private void replaceCommon(final File f) {
++        if (!OggEncode.supported()) { toast("Nao da para gravar OGG: " + OggEncode.why()); return; }
++        FilePicker.show(a, "Substituir o som " + f.getName(), false, FilePicker.AUDIO, new FilePicker.Listener() {
++            @Override public void onPicked(List<File> files) { convertCommon(files.get(0), f); }
++        });
++    }
++
++    /** mode 0 = cortar, 1 = volume/tom/velocidade; decodifica o OGG para o WAV do jogo, edita e grava OGG de novo. */
++    private void editCommon(final File f, final int mode) {
++        if (!OggEncode.supported()) { toast("Nao da para gravar OGG: " + OggEncode.why()); return; }
++        stopPlay();
++        toast("Abrindo o som...");
++        new Thread(new Runnable() {
++            @Override public void run() {
++                byte[] w = null;
++                String err = null;
++                try { w = AudioConvert.toGameWav(f); } catch (Exception e) { err = e.getMessage() == null ? e.toString() : e.getMessage(); }
++                final byte[] fw = w;
++                final String fe = err;
++                ui.post(new Runnable() {
++                    @Override public void run() {
++                        if (fe != null) { toast("Nao deu: " + fe); return; }
++                        if (mode == 0) TrimDialog.show(a, fw, 0, Integer.MAX_VALUE, new TrimDialog.Done() { @Override public void on(byte[] cut) { commitCommon(cut, f); } });
++                        else SoundAdjust.show(a, fw, 0, new SoundAdjust.Done() { @Override public void on(byte[] out) { commitCommon(out, f); } });
++                    }
++                });
++            }
++        }).start();
++    }
++
++    private void muteCommon(final File f) {
++        if (!OggEncode.supported()) { toast("Nao da para gravar OGG: " + OggEncode.why()); return; }
++        android.app.AlertDialog ad = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Silenciar som?")
++                .setMessage("O arquivo vira silencio e continua na pasta (o jogo carrega os se_ em sequencia, nunca apague um). Os usos nas animacoes ficam, mas sem som.")
++                .setNegativeButton("CANCELAR", null)
++                .setPositiveButton("SILENCIAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int w) {
++                        stopPlay();
++                        encodeThen(new Job() { public void run() throws IOException { OggEncode.silence(f); } }, f, "Som silenciado.");
++                    }
++                }).create();
++        ad.show();
++        style(ad);
++    }
++
++    private void convertCommon(final File src, final File target) {
++        stopPlay();
++        toast("Convertendo...");
++        new Thread(new Runnable() {
++            @Override public void run() {
++                byte[] w = null;
++                String err = null;
++                try { w = AudioConvert.toGameWav(src); }
++                catch (Exception e) { err = e.getMessage() == null ? e.toString() : e.getMessage(); }
++                final byte[] fw = w;
++                final String fe = err;
++                ui.post(new Runnable() {
++                    @Override public void run() {
++                        if (fe != null) { toast("Nao deu: " + fe); return; }
++                        final double secs = AudioConvert.seconds(fw.length);
++                        if (secs <= LONG_SECONDS) { commitCommon(fw, target); return; }
++                        final int max = (int) (LONG_SECONDS * AudioConvert.RATE);
++                        android.app.AlertDialog ad = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                                .setTitle("Audio longo")
++                                .setMessage(String.format(Locale.US, "Este audio tem %.1f s (mais de 20 s). Quer cortar?", secs))
++                                .setPositiveButton("CORTAR EM 20 S", new android.content.DialogInterface.OnClickListener() {
++                                    @Override public void onClick(android.content.DialogInterface x, int w2) { commitCommon(AudioConvert.slice(fw, 0, max), target); }
++                                })
++                                .setNeutralButton("ESCOLHER TRECHO", new android.content.DialogInterface.OnClickListener() {
++                                    @Override public void onClick(android.content.DialogInterface x, int w2) {
++                                        TrimDialog.show(a, fw, 0, max, new TrimDialog.Done() { @Override public void on(byte[] cut) { commitCommon(cut, target); } });
++                                    }
++                                })
++                                .setNegativeButton("MANTER INTEIRO", new android.content.DialogInterface.OnClickListener() {
++                                    @Override public void onClick(android.content.DialogInterface x, int w2) { commitCommon(fw, target); }
++                                }).create();
++                        ad.show();
++                        style(ad);
++                    }
++                });
++            }
++        }).start();
++    }
++
++    private interface Job { void run() throws IOException; }
++
++    /** Roda a gravacao do OGG fora da UI e depois invalida o som, atualiza a lista e avisa. */
++    private void encodeThen(final Job job, final File changed, final String done) {
++        new Thread(new Runnable() {
++            @Override public void run() {
++                String err = null;
++                try { job.run(); } catch (Exception e) { err = e.getMessage() == null ? e.toString() : e.getMessage(); }
++                final String fe = err;
++                ui.post(new Runnable() {
++                    @Override public void run() {
++                        SoundPlayer sp = view.soundPlayer();
++                        if (sp != null && changed != null) sp.invalidate(changed);
++                        refill();
++                        toast(fe != null ? "Nao deu: " + fe : done);
++                    }
++                });
++            }
++        }).start();
++    }
++
++    /** Grava o WAV pronto como OGG: troca o arquivo {@code target}; target == null cria o proximo som global (com os preenchimentos que faltarem). */
++    private void commitCommon(final byte[] wav, final File target) {
++        if (!OggEncode.supported()) { toast("Nao da para gravar OGG: " + OggEncode.why()); return; }
++        final SoundPlayer sp = view.soundPlayer();
++        if (sp == null) return;
++        if (target != null) {
++            encodeThen(new Job() { public void run() throws IOException { OggEncode.encodeWav(wav, target); } }, target, "Som atualizado.");
++            return;
++        }
++        final java.util.HashSet<Integer> existing = new java.util.HashSet<Integer>();
++        int max = -1;
++        for (File f : sp.commonFiles()) { int n = SoundPlayer.commonNumber(f); existing.add(Integer.valueOf(n)); max = Math.max(max, n); }
++        final int n = SoundIds.nextNew(max);
++        if (n < 0) { toast("Acabaram os ids de som: o ultimo som global e o se_" + SoundIds.MAX_COMMON + " (id " + SoundIds.MAX_ID + ")."); return; }
++        final List<Integer> ph = SoundIds.placeholders(existing, n);
++        final Runnable go = new Runnable() {
++            @Override public void run() {
++                final File out = sp.commonFile(n);
++                encodeThen(new Job() { public void run() throws IOException {
++                    for (Integer p : ph) OggEncode.silence(sp.commonFile(p.intValue()));
++                    OggEncode.encodeWav(wav, out);
++                } }, out, "Som global adicionado: " + out.getName() + " (id " + SoundIds.idOfCommon(n) + ").");
++            }
++        };
++        if (ph.isEmpty()) { go.run(); return; }
++        android.app.AlertDialog ad = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle("Arquivos de preenchimento")
++                .setMessage("O novo som global sera o " + SoundIds.fileName(n) + " (id " + SoundIds.idOfCommon(n) + " no frame). O jogo carrega os se_ em sequencia, entao o app cria "
++                        + ph.size() + " arquivo(s) silencioso(s) (" + SoundIds.fileName(ph.get(0).intValue()) + " a " + SoundIds.fileName(ph.get(ph.size() - 1).intValue())
++                        + ") para nao ficar buraco. Eles nao aparecem na lista. Continuar?")
++                .setNegativeButton("CANCELAR", null)
++                .setPositiveButton("CONTINUAR", new android.content.DialogInterface.OnClickListener() {
++                    @Override public void onClick(android.content.DialogInterface x, int w) { go.run(); }
++                }).create();
++        ad.show();
++        style(ad);
++    }
++
+     /** Volume, tom e velocidade do som (e igualar o volume pela media dos outros). */
+     private void adjust(final File f) {
+         if (CharSounds.isEmpty(f)) { toast("Som vazio: nada para ajustar."); return; }
+@@ -396,7 +645,7 @@
          final double secs = AudioConvert.seconds(wav.length);
          if (secs <= LONG_SECONDS) { commit(wav, target); return; }
          final int max = (int) (LONG_SECONDS * AudioConvert.RATE);
@@ -14215,13 +14667,135 @@ diff -ruN a/SoundDialog.java b/SoundDialog.java
                  .setTitle("Audio longo")
                  .setMessage(String.format(Locale.US, "Este audio tem %.1f s (mais de 20 s). Quer cortar?", secs))
                  .setPositiveButton("CORTAR EM 20 S", new android.content.DialogInterface.OnClickListener() {
-@@ -428,5 +503,5 @@
+@@ -428,5 +677,5 @@
          }
      }
  
 -    private void toast(String s) { Toast.makeText(a, s, Toast.LENGTH_SHORT).show(); }
 +    private void toast(String s) { I18nUi.toast(a, s, Toast.LENGTH_SHORT).show(); }
  }
+diff -ruN a/SoundIds.java b/SoundIds.java
+--- a/SoundIds.java	1970-01-01 00:00:00.000000000 +0000
++++ b/SoundIds.java	2026-10-28 13:40:47.787049753 +0000
+@@ -0,0 +1,74 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Locale;
++import java.util.Set;
++
++/**
++ * Ids do campo SE do frame (agora um byte SEM sinal, 0 a 255) e os arquivos de som global (assets/se_NN.ogg, se_NNN.ogg). Java puro.
++ *
++ * <pre>
++ *  id 0          nenhum som
++ *  id 1..79      global se_(id-1)  -> se_00 .. se_78 (os sons do jogo)
++ *  id 80..99     audio do personagem (NNN.wav, ate 20 por personagem)
++ *  id 100..255   global se_(id-1)  -> se_99 .. se_254
++ * </pre>
++ * Os arquivos se_79 .. se_99 existem so como silencio (o jogo carrega os se_ em sequencia, sem buracos): o primeiro som global novo depois do
++ * se_78 e o se_100 (id 101).
++ */
++final class SoundIds {
++    private SoundIds() { }
++
++    static final int CHAR_FIRST = 80, CHAR_LAST = 99, MAX_ID = 255, LAST_ORIGINAL = 78, FIRST_NEW = 100, MAX_COMMON = MAX_ID - 1;
++
++    static boolean isCharId(int id) { return id >= CHAR_FIRST && id <= CHAR_LAST; }
++
++    /** O id toca um som global (se_*)? */
++    static boolean isCommonId(int id) { return (id >= 1 && id < CHAR_FIRST) || (id > CHAR_LAST && id <= MAX_ID); }
++
++    /** Numero do arquivo se_N que o id toca, ou -1 (sem som, audio de personagem, fora de 0..255). */
++    static int commonOf(int id) { return isCommonId(id) ? id - 1 : -1; }
++
++    /** Id do frame que toca o arquivo se_N. */
++    static int idOfCommon(int n) { return n + 1; }
++
++    /** Arquivo de som global que alguem pode escolher num frame (os de 79 a 98 so existem como silencio de preenchimento). */
++    static boolean selectable(int n) { return (n >= 0 && n <= LAST_ORIGINAL) || (n >= CHAR_LAST && n <= MAX_COMMON); }
++
++    static String fileName(int n) { return String.format(Locale.US, n < 100 ? "se_%02d.ogg" : "se_%03d.ogg", n); }
++
++    static boolean isFileName(String name) { return name.matches("se_\\d{2,3}\\.ogg"); }
++
++    /** 7 para "se_07.ogg", 100 para "se_100.ogg"; -1 se nao for nome de som global. */
++    static int numberOf(String name) {
++        if (!isFileName(name)) return -1;
++        return Integer.parseInt(name.substring(3, name.indexOf('.')));
++    }
++
++    /**
++     * Numero do proximo som global novo, dado o maior se_N que existe (-1 se nao ha nenhum): o seguinte, mas depois do se_78 pula os
++     * de preenchimento (79..99) e comeca em 100. Acima de se_254 nao ha mais ids: devolve -1.
++     */
++    static int nextNew(int maxExisting) {
++        int n = maxExisting + 1;
++        if (n > LAST_ORIGINAL && n < FIRST_NEW) n = FIRST_NEW;
++        return n > MAX_COMMON ? -1 : n;
++    }
++
++    /** Arquivos de preenchimento (silencio) que faltam para o se_{newN} ficar sem buracos antes dele. */
++    static List<Integer> placeholders(Set<Integer> existing, int newN) {
++        List<Integer> out = new ArrayList<Integer>();
++        for (int n = 0; n < newN; n++) if (!existing.contains(Integer.valueOf(n))) out.add(Integer.valueOf(n));
++        return out;
++    }
++
++    /** Ids validos num frame, em ordem: 0, globais de 1 a 79 que existem, audios do personagem (80..) e globais novos (100..) que existem. */
++    static List<Integer> frameIds(int maxCommonId, int wavCount) {
++        List<Integer> l = new ArrayList<Integer>();
++        for (int i = 0; i <= Math.min(CHAR_FIRST - 1, Math.max(0, maxCommonId)); i++) l.add(Integer.valueOf(i));
++        for (int i = 0; i < Math.min(wavCount, CHAR_LAST - CHAR_FIRST + 1); i++) l.add(Integer.valueOf(CHAR_FIRST + i));
++        for (int i = CHAR_LAST + 1; i <= Math.min(MAX_ID, maxCommonId); i++) l.add(Integer.valueOf(i));
++        return l;
++    }
++}
+diff -ruN a/SoundPlayer.java b/SoundPlayer.java
+--- a/SoundPlayer.java	2026-10-19 16:09:08.000000000 +0000
++++ b/SoundPlayer.java	2026-10-28 13:40:47.821791939 +0000
+@@ -38,7 +38,7 @@
+         File[] fs = root.listFiles();
+         if (fs == null) return new File[0];
+         java.util.ArrayList<File> out = new java.util.ArrayList<File>();
+-        for (File f : fs) if (f.isFile() && f.getName().matches("se_\\d+\\.ogg")) out.add(f);
++        for (File f : fs) if (f.isFile() && SoundIds.isFileName(f.getName())) out.add(f);
+         File[] a = out.toArray(new File[0]);
+         java.util.Arrays.sort(a, new java.util.Comparator<File>() {
+             @Override public int compare(File x, File y) { return commonNumber(x) - commonNumber(y); }
+@@ -48,13 +48,18 @@
+ 
+     /** 7 para se_07.ogg. */
+     public static int commonNumber(File f) {
+-        String n = f.getName();
+-        try { return Integer.parseInt(n.substring(3, n.indexOf('.'))); } catch (Exception e) { return 0; }
++        int n = SoundIds.numberOf(f.getName());
++        return n < 0 ? 0 : n;
+     }
+ 
++    /** Pasta de assets onde ficam os se_*.ogg. */
++    public File root() { return root; }
++
++    /** Arquivo do som global N (pode nao existir). */
++    public File commonFile(int n) { return new File(root, SoundIds.fileName(n)); }
++
+     public void playCommon(int n) {
+-        String name = String.format(java.util.Locale.US, "se_%02d.ogg", n);
+-        play(new File(root, name), 0.6f);
++        play(commonFile(n), 0.6f);
+     }
+ 
+     /** Audio do personagem: o id-esimo WAV na ordem dos nomes (a mesma ordem em que o jogo carrega). */
+@@ -189,7 +194,7 @@
+     }
+ 
+     public void playCommonFrom(int n, int elapsedMs, int limitMs) {
+-        playFrom(new File(root, String.format(java.util.Locale.US, "se_%02d.ogg", n)), 0.6f, elapsedMs, limitMs);
++        playFrom(commonFile(n), 0.6f, elapsedMs, limitMs);
+     }
+ 
+     private void playFrom(File f, float vol, int elapsedMs, int limitMs) {
 diff -ruN a/SpriteBoxEditor.java b/SpriteBoxEditor.java
 --- a/SpriteBoxEditor.java	2026-10-20 10:46:55.000000000 +0000
 +++ b/SpriteBoxEditor.java	2026-10-24 21:48:20.146152078 +0000
@@ -14903,7 +15477,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          apply(n, FrameOps.starts(n)[frame]);
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-28 13:29:58.294115037 +0000
++++ b/TimelineTools.java	2026-10-28 13:41:50.144651652 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -15186,7 +15760,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          if (idx < 0 || idx >= a.mpts.length) return;
          title.setTextColor(C_SPRITE);
          title.setText("SPRITE " + (idx + 1) + "/" + a.mpts.length + "  ·  " + ObjModel.seconds(FrameOps.span(a.mpts[idx])));
-@@ -414,34 +502,494 @@
+@@ -414,34 +502,500 @@
  
      // ---- sprite ----
  
@@ -15511,7 +16085,10 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 +        final int cur = (m.flags & 8) != 0 ? m.se : -1;
 +        SoundPlayer sp = view.soundPlayer();
 +        int seMax = 0;
-+        if (sp != null) for (java.io.File f : sp.commonFiles()) seMax = Math.max(seMax, SoundPlayer.commonNumber(f) + 1);
++        if (sp != null) for (java.io.File f : sp.commonFiles()) {
++            int cn = SoundPlayer.commonNumber(f);
++            if (SoundIds.selectable(cn)) seMax = Math.max(seMax, SoundIds.idOfCommon(cn));
++        }
 +        final int sm = seMax, wc = CharSounds.list(ad.attacker.dir).length;
 +        stopSoundCard();
 +        soundCard = SoundDialog.embed((android.app.Activity) c, view, ad.attacker.dir, cur, new Runnable() { public void run() {
@@ -15527,7 +16104,10 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 +        cp.setMargins(dp(6), 0, dp(6), 0);
 +        row.addView(soundCard.cardView(), cp);
 +        row.addView(plus, new LinearLayout.LayoutParams(dp(48), dp(52)));
-+        note("− e + passam só pelos sons que existem: 0 → sons comuns (1 a " + sm + ") → 80 → sons do personagem (80 a " + (80 + Math.max(0, wc - 1)) + "). O som toca uma vez, quando o frame começa.");
++        int lastChar = 80 + Math.max(0, Math.min(20, wc) - 1);
++        note(sm >= 100
++                ? "− e + passam só pelos sons que existem: 0 → sons comuns (1 a 79) → sons do personagem (80 a " + lastChar + ") → sons comuns novos (100 a " + sm + "). O som toca uma vez, quando o frame começa."
++                : "− e + passam só pelos sons que existem: 0 → sons comuns (1 a " + Math.min(79, sm) + ") → sons do personagem (80 a " + lastChar + "). O som toca uma vez, quando o frame começa.");
 +        wide("ESCOLHER", C_BLUE, new View.OnClickListener() { public void onClick(View v) { pickSound(cur); } });
 +        wide("REMOVER ÁUDIO", C_RED, new View.OnClickListener() { public void onClick(View v) {
 +            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, false); n.se = -1; } });
@@ -15535,7 +16115,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 +    }
 +
 +    private void setSound(final int id) {
-+        editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, true); n.se = Math.max(-128, Math.min(127, id)); } });
++        editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, true); n.se = Math.max(0, Math.min(SoundIds.MAX_ID, id)); } });
 +        view.previewSe(id);
 +    }
 +
@@ -15703,7 +16283,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      /** Abre a lista de sprites do personagem do atacante para trocar a imagem do frame (com "+ ADICIONAR" na propria lista). */
      private void chooseImage() {
          AttackData ad = view.attackData();
-@@ -461,7 +1009,7 @@
+@@ -461,7 +1015,7 @@
                  replaceMptsBusy(FrameOps.insertSprites(an.mpts, idx, images, ticks), idx + 1, "Adicionando " + nIns + " quadros", new Runnable() {
                      @Override public void run() {
                          tl.select(TimelineView.T_SPRITE, idx, -1, -1);
@@ -15712,7 +16292,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                      }
                  });
              }
-@@ -550,7 +1098,7 @@
+@@ -550,7 +1104,7 @@
          if (n == 0) return;
          final int nAp = n;
          replaceMptsBusy(FrameOps.applyAll(an.mpts, idx, t[0], t[1], allMask), idx, "Aplicando em " + n + " frame(s)", new Runnable() {
@@ -15721,7 +16301,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          });
      }
  
-@@ -576,7 +1124,7 @@
+@@ -576,7 +1130,7 @@
                  out.add(new Ano(oa.index, true, oa.flags, oa.priority, oa.links, FrameOps.applySprite(oa.mpts, skip, src, allMask)));
              }
          }
@@ -15730,7 +16310,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          final int nf = frames, na = out.size();
          if (!(c instanceof android.app.Activity)) { view.replaceAnosAsync(out, null); return; }
          final BusyDialog busy = BusyDialog.show((android.app.Activity) c, "Aplicando em " + nf + " frame(s)");
-@@ -585,141 +1133,18 @@
+@@ -585,141 +1139,18 @@
              show(type, idx, flag, occ);
              onChanged.run();
              busy.dismiss();
@@ -15873,7 +16453,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
  
      private void refreshTitle() {
          Ano a = cur();
-@@ -727,25 +1152,6 @@
+@@ -727,25 +1158,6 @@
          title.setText("SPRITE " + (idx + 1) + "/" + a.mpts.length + "  ·  " + ObjModel.seconds(FrameOps.span(a.mpts[idx])));
      }
  
@@ -15899,7 +16479,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
  
      private interface DurSet { void apply(int frames); }
  
-@@ -762,126 +1168,8 @@
+@@ -762,126 +1174,8 @@
                  + ". O tempo de cada frame se muda na sprite.");
      }
  
@@ -16026,7 +16606,13 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
  
      private TextView styleChip(String label, final int bitMask, Ano.Mpt m) {
          final boolean on = ObjModel.spriteBit(m, bitMask);
-@@ -903,30 +1191,6 @@
+@@ -898,35 +1192,11 @@
+         AttackData ad = view.attackData();
+         if (ad == null || !(c instanceof android.app.Activity)) return;
+         SoundDialog.show((android.app.Activity) c, view, ad.attacker.dir, currentSe, new SoundDialog.Choose() { public void on(final int se) {
+-            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, true); n.se = Math.max(-128, Math.min(127, se)); } });
++            editAndRebuild(new Mut() { public void apply(Ano.Mpt n) { bit(n, 8, true); n.se = Math.max(0, Math.min(SoundIds.MAX_ID, se)); } });
+             view.previewSe(se);
          } });
      }
  
@@ -16057,7 +16643,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
  
  
      private void setOpt(int field, int value) {
-@@ -975,21 +1239,43 @@
+@@ -975,21 +1245,43 @@
  
      private int patIn(ObjModel.Obj o) { return Math.max(o.f0, Math.min(o.f1, view.currentPat())); }
  
@@ -16110,7 +16696,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          switch (o.kind) {
              case ObjModel.HITBOX: case ObjModel.HURTBOX: box(a, o, pat); break;
              case ObjModel.PROJ: projectile(a, o, pat); break;
-@@ -1054,7 +1340,7 @@
+@@ -1054,7 +1346,7 @@
              }
              if (pick == null) return false;
              focusOn = true; focusFlag = pick.flag; focusOcc = pick.occ;
@@ -16119,7 +16705,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              tl.select(TimelineView.T_OBJ, -1, pick.flag, pick.occ);
              show(TimelineView.T_OBJ, -1, pick.flag, pick.occ);
              return true;
-@@ -1062,7 +1348,7 @@
+@@ -1062,7 +1354,7 @@
          for (ObjModel.Obj o : ObjModel.objects(a.mpts)) {
              if (o.kind != ObjModel.HITBOX || m.pat < o.f0 || m.pat > o.f1) continue;
              focusOn = true; focusFlag = o.flag; focusOcc = o.occ;
@@ -16128,7 +16714,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              tl.select(TimelineView.T_OBJ, -1, o.flag, o.occ);
              show(TimelineView.T_OBJ, -1, o.flag, o.occ);
              return true;
-@@ -1078,7 +1364,7 @@
+@@ -1078,7 +1370,7 @@
       */
      private void transitionBlock(Ano a, final ObjModel.Obj hitObj) {
          AttackData ad = view.attackData();
@@ -16137,7 +16723,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          if (ad == null || ad.move == null || ad.move.generic) { note("Este ataque não tem dados de golpe (HDAT 4): sem transição."); return; }
          final CharData.Move mv = ad.move;
          final int cur = a.index;
-@@ -1097,18 +1383,23 @@
+@@ -1097,18 +1389,23 @@
          String nm = kind == SeqMark.SEQ ? "Seq" : "End";
          int vg = kind == SeqMark.SEQ ? mv.animSeqChao : mv.animEndChao, va = kind == SeqMark.SEQ ? mv.animSeqAr : mv.animEndAr;
          String st = "";
@@ -16164,7 +16750,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              final Ano ca = cur();
              final boolean blk = ca != null && ObjModel.hasFlagRange(ca.mpts, hitObj.f0, hitObj.f1, 38);
              note("Bloquear sequência (flag 38) impede a SEQ de disparar quando este hit conecta.");
-@@ -1130,7 +1421,7 @@
+@@ -1130,7 +1427,7 @@
          android.widget.EditText e = new android.widget.EditText(c);
          e.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
          e.setText(v == 0 ? "" : String.valueOf(v));
@@ -16173,7 +16759,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          e.setTextColor(LayoutManager.TEXT);
          e.setHintTextColor(LayoutManager.DIM);
          e.setSingleLine(true);
-@@ -1143,9 +1434,9 @@
+@@ -1143,9 +1440,9 @@
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
@@ -16186,7 +16772,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setTextColor(LayoutManager.DIM);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
          col.addView(info);
-@@ -1153,7 +1444,7 @@
+@@ -1153,7 +1450,7 @@
          final android.widget.EditText ea = ano255(kind == SeqMark.SEQ ? mv.animSeqAr : mv.animEndAr);
          if (wantGround) { col.addView(tvLabel(nm + " Chão")); col.addView(eg); }
          if (wantAir) { col.addView(tvLabel(nm + " Ar")); col.addView(ea); }
@@ -16195,7 +16781,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  .setTitle(kind == SeqMark.SEQ ? "Transição (SEQ)" : "Transição (END)").setView(col)
                  .setNegativeButton("CANCELAR", null).setPositiveButton("SALVAR", null).create();
          dlg.show();
-@@ -1163,7 +1454,7 @@
+@@ -1163,7 +1460,7 @@
              pos.setTextColor(LayoutManager.ACCENT);
              pos.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
                  int g = wantGround ? parse255(eg) : -1, ar = wantAir ? parse255(ea) : -1;
@@ -16204,7 +16790,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  if (wantGround && wantAir && ((g == 0) != (ar == 0))) {
                      // so um dos dois definido: pergunta o que fazer com o outro
                      dlg.dismiss();
-@@ -1177,7 +1468,7 @@
+@@ -1177,7 +1474,7 @@
      }
  
      private TextView tvLabel(String s) {
@@ -16213,7 +16799,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          t.setText(s);
          t.setTextColor(LayoutManager.TEXT);
          t.setTypeface(Typeface.DEFAULT_BOLD);
-@@ -1196,7 +1487,7 @@
+@@ -1196,7 +1493,7 @@
          final boolean groundSet = g != 0;
          final String set = groundSet ? "chão" : "ar", other = groundSet ? "ar" : "chão";
          final int v = groundSet ? g : ar;
@@ -16222,7 +16808,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  .setTitle("Só " + nm + " " + set + " definida")
                  .setMessage("Você definiu " + nm + " " + set + " (ANO " + v + "), mas não definiu " + nm + " " + other + ". "
                          + "Quando o atacante estiver no " + other + ", o hit não vai trocar de ANO.\n\nQuer usar a mesma ANO no " + other + " também?")
-@@ -1224,27 +1515,150 @@
+@@ -1224,27 +1521,150 @@
          onChanged.run();
      }
  
@@ -16381,7 +16967,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private static final String[] GROUPS = {"normal (efeito 0, som 3, empurra)", "som alternativo (efeito 0, som 4, empurra)",
              "forte (efeito 1, som 6, empurra)", "leve (meio hitstop, sem empurrar)", "sem efeito, som nem hitstop"};
  
-@@ -1262,7 +1676,7 @@
+@@ -1262,7 +1682,7 @@
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          l.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -16390,7 +16976,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setText(op.valid ? (op.fromChar ? "reacao do personagem " + op.type : "reacao do jogo " + op.type) + "\n" + GROUPS[op.group] : "valor invalido (" + value + ")");
          info.setTextColor(LayoutManager.TEXT);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-@@ -1274,12 +1688,12 @@
+@@ -1274,12 +1694,12 @@
          r1.addView(btn("ESCOLHER", true, new View.OnClickListener() { public void onClick(View v) { pickReaction(pat, value); } }));
          col.addView(r1);
          LinearLayout r2 = new LinearLayout(c);
@@ -16406,7 +16992,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  public void onClick(android.content.DialogInterface dlg, int which) {
                      applyReaction(pat, which * 50 + (value >= 0 ? value % 50 : 0));
                  }
-@@ -1315,7 +1729,8 @@
+@@ -1315,7 +1735,8 @@
          LinearLayout row = null;
          int n = 0;
          for (int i = 0; i < 50; i++) {
@@ -16416,7 +17002,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              if (n % 3 == 0) { row = new LinearLayout(c); col.addView(row); }
              n++;
              final int index = i;
-@@ -1324,20 +1739,37 @@
+@@ -1324,20 +1745,37 @@
              cell.setGravity(Gravity.CENTER_HORIZONTAL);
              cell.setPadding(dp(2), dp(2), dp(2), dp(4));
              GradientDrawable g = new GradientDrawable();
@@ -16460,7 +17046,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  dlg[0].dismiss();
                  applyReaction(pat, group * 50 + index);
              } });
-@@ -1345,11 +1777,167 @@
+@@ -1345,11 +1783,167 @@
          }
          ScrollView sv = new ScrollView(c);
          sv.addView(col);
@@ -16629,7 +17215,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private Setter optSetter(final int pat, final int field) {
          return new Setter() { public void set(double v) {
              Ano a = cur();
-@@ -1382,40 +1970,60 @@
+@@ -1382,40 +1976,60 @@
          return false;
      }
  
@@ -16718,7 +17304,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          final Ano pa = view.anoAt(mv.projNormal);
          if (pa != null && pa.present) {
              AnimPreview pv = new AnimPreview(c);
-@@ -1428,53 +2036,71 @@
+@@ -1428,53 +2042,71 @@
              col.addView(btn("✎ EDITAR ANIMACAO", true, new View.OnClickListener() { public void onClick(View v) {
                  if (nav != null) nav.openAno(mv.projNormal, true);
              } }));
@@ -16820,7 +17406,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          projSeqBlock(mv);
          if (focusOn) scrollBodyToEnd();
      }
-@@ -1483,7 +2109,7 @@
+@@ -1483,7 +2115,7 @@
      private void projSeqBlock(final CharData.Move mv) {
          head("Sequência do projétil (SEQ_PROJETIL)");
          note("SEQ_PROJETIL: " + anoText(mv.animAoAcertar));
@@ -16829,7 +17415,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          LinearLayout r = line();
          final boolean any = mv.animAoAcertar != 0;
          r.addView(btn(any ? "✎ Editar SEQ_PROJETIL" : "+ SEQ_PROJETIL", true, new View.OnClickListener() { public void onClick(View v) { projSeqDialog(mv); } }));
-@@ -1496,15 +2122,15 @@
+@@ -1496,15 +2128,15 @@
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
@@ -16848,7 +17434,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  .setTitle("SEQ_PROJETIL").setView(col)
                  .setNegativeButton("CANCELAR", null).setPositiveButton("SALVAR", null).create();
          dlg.show();
-@@ -1515,7 +2141,7 @@
+@@ -1515,7 +2147,7 @@
              pos.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
                  final int val = parse255(e);
                  dlg.dismiss();
@@ -16857,7 +17443,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  show(type, idx, flag, occ);
                  onChanged.run();
              } });
-@@ -1563,7 +2189,7 @@
+@@ -1563,7 +2195,7 @@
          LinearLayout grid = animGrid(dac, view.packSprites(2), 0, dac.size() - 1, "ANO ", mv.projNormal, new AnimPick() { public void on(int ano) {
              chosen[0] = ano;
              dlg[0].dismiss();
@@ -16866,7 +17452,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              show(type, idx, flag, occ);
              onChanged.run();
          } });
-@@ -1577,7 +2203,7 @@
+@@ -1577,7 +2209,7 @@
      private android.app.AlertDialog dialog(String title, View content) {
          ScrollView sv = new ScrollView(c);
          sv.addView(content);
@@ -16875,7 +17461,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  .setTitle(title).setView(sv).setNegativeButton("FECHAR", null).create();
          dlg.show();
          styleDialog(dlg);
-@@ -1625,7 +2251,7 @@
+@@ -1625,7 +2257,7 @@
              AnimPreview pv = new AnimPreview(c);
              pv.set(dac, sp, a);
              cell.addView(pv, new LinearLayout.LayoutParams(dp(68), dp(68)));
@@ -16884,7 +17470,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              lab.setText(prefix + a);
              lab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
              lab.setTextColor(LayoutManager.DIM);
-@@ -1636,7 +2262,7 @@
+@@ -1636,7 +2268,7 @@
              row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
          }
          if (n == 0) {
@@ -16893,7 +17479,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              none.setText("Nenhuma animacao disponivel neste pacote.");
              none.setTextColor(LayoutManager.DIM);
              col.addView(none);
-@@ -1654,7 +2280,7 @@
+@@ -1654,7 +2286,7 @@
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          l.addView(col, new LinearLayout.LayoutParams(-2, -2));
@@ -16902,7 +17488,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          nm.setText(ObjModel.fxPackName(pack, ano) + " · " + ano);
          nm.setTextColor(LayoutManager.TEXT);
          nm.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-@@ -1662,7 +2288,7 @@
+@@ -1662,7 +2294,7 @@
          col.addView(nm);
          col.addView(btn("TROCAR EFEITO", true, new View.OnClickListener() { public void onClick(View v) { pickEffect(o); } }));
          if (pack == 2) col.addView(btn("✎ EDITAR EFEITO", false, new View.OnClickListener() { public void onClick(View v) {
@@ -16911,7 +17497,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } }));
          Ano.Hit h = ObjModel.find(a.mpts[pat], o.flag, o.occ);
          num(line(), "x", h.x, 1, coord(o, pat, 0));
-@@ -1688,7 +2314,7 @@
+@@ -1688,7 +2320,7 @@
              all.addView(h);
              Dac dac = view.packDac(pk);
              if (dac == null) {
@@ -16920,7 +17506,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  none.setText("pacote nao carregado");
                  none.setTextColor(LayoutManager.DIM);
                  none.setPadding(dp(6), 0, 0, dp(6));
-@@ -1716,20 +2342,20 @@
+@@ -1716,20 +2348,20 @@
      private String describe(int f) {
          switch (f) {
              case 3: case 4: case 5: return "Faz o fundo tremer enquanto o objeto existe. Escolha a intensidade.";
@@ -16945,7 +17531,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              case ObjModel.VF_WALL: return "Impacto na parede: toca o som 6, zera o cancelamento do oponente e cria a poeira de impacto na borda da tela. Precisa ter um ataque que jogue o oponente na parede (o jogo ignora o frame se o personagem nao estiver batendo na parede). Disponivel so nas ANOs de reacao do gamedata com velocidade/aceleracao X.";
              default:
                  if (ObjModel.isDust(f)) return "Poeira / fumaca: cria um efeito de fumaca na posicao do personagem (vira para o lado em que ele olha). Escolha o tipo abaixo (1 a 15). Tipos 1-5: pacote bobj ANOs 10-14; 6-7: effect ANOs 78-79; 8-15: effect ANOs 70-77. Cada frame com a flag cria um novo efeito.";
-@@ -1759,6 +2385,8 @@
+@@ -1759,6 +2391,8 @@
              AttackData wd = view.attackData();
              if (wd != null && wd.move != null && ObjModel.windowUseOf(wd.move, wd.moveIndex) == ObjModel.WIN_REPEAT)
                  projField("Quantidade máxima de repetições", wd.move, 8);
@@ -16954,7 +17540,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              return;
          }
          if (f == ObjModel.VF_SCENE || f == ObjModel.VF_WALL) return;
-@@ -1780,6 +2408,8 @@
+@@ -1780,6 +2414,8 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -16963,7 +17549,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
-@@ -1794,7 +2424,7 @@
+@@ -1794,7 +2430,7 @@
          line().addView(btn("trocar acao", false, new View.OnClickListener() { public void onClick(View v) {
              final String[] names = new String[ObjModel.ACTION_FLAGS.length];
              for (int i = 0; i < names.length; i++) names[i] = ObjModel.actionName(ObjModel.ACTION_FLAGS[i]);
@@ -16972,7 +17558,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  public void onClick(android.content.DialogInterface dlg, int which) { convertAction(o, ObjModel.ACTION_FLAGS[which]).onClick(null); }
              }).show();
          } }));
-@@ -1831,6 +2461,25 @@
+@@ -1831,6 +2467,25 @@
          } });
      }
  
@@ -16998,7 +17584,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private void seqPanel(final Ano a) {
          java.util.List<SeqMark> ms = view.sequenceMarks();
          if (idx < 0 || idx >= ms.size() || view.attackData() == null) { title.setText("TRANSICAO"); note("Sem marcador aqui."); return; }
-@@ -1838,7 +2487,7 @@
+@@ -1838,7 +2493,7 @@
          final int kind = m.kind;
          if (m.incoming) {
              title.setText("ENTRADA  ·  " + m.label().substring(2));
@@ -17007,7 +17593,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                      + ", vinda da ANO " + m.fromAno + " (frame " + (m.fromPat + 1) + "). A causa está na timeline daquela ANO.");
              final int fa = m.fromAno;
              LinearLayout rl = line();
-@@ -1846,12 +2495,13 @@
+@@ -1846,12 +2501,13 @@
              return;
          }
          title.setTextColor(TimelineView.markColor(m));
@@ -17026,7 +17612,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +2568,7 @@
+@@ -1918,7 +2574,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -19049,8 +19635,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-28 13:37:00.235122477 +0000
-@@ -0,0 +1,498 @@
++++ b/test/I18nIgnored.java	2026-10-28 13:46:54.944498709 +0000
+@@ -0,0 +1,513 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -19098,6 +19684,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " HDATs; ",
 +        " HITS",
 +        " MPT ",
++        " arquivo(s) silencioso(s) (",
 +        " bytes; ",
 +        " done=",
 +        " flags=",
@@ -19110,6 +19697,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " hold=",
 +        " life=",
 +        " map=",
++        " no frame). O jogo carrega os se_ em sequencia, entao o app cria ",
 +        " não existe mais; abrindo ",
 +        " passo ",
 +        " pat=",
@@ -19177,6 +19765,9 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "(\\$ROW\\s*:\\s*)\\d+",
 +        "(\\$SZ\\s*:\\s*&)[0-9A-Fa-f]+",
 +        "(\\d{3})\\.(png|wav)",
++        ") para nao ficar buraco. Eles nao aparecem na lista. Continuar?",
++        ") → sons comuns novos (100 a ",
++        ") → sons do personagem (80 a ",
 +        "+ SEQ_PROJETIL",
 +        ", $ALPHA: ",
 +        ", $COORDS: [",
@@ -19257,6 +19848,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "ANO_",
 +        "APNG",
 +        "ATK_FLAGS",
++        "Acabaram os ids de som: o ultimo som global e o se_",
 +        "Agarrão (flag 8 ou 128 do GOLPE SET): no fim do ANO inicial — ou no 1º frame com a janela 512 (\"Tentar agarrão\") — o atacante vai para o lado do oponente e segue para o ANO ",
 +        "Alpha",
 +        "Ano ",
@@ -19331,6 +19923,8 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "MPTS",
 +        "NOT",
 +        "Nao abriu o CNV: ",
++        "Nao da para gravar OGG: ",
++        "O novo som global sera o ",
 +        "OPONENTE_ANIM_SENDO_AGARRADO",
 +        "OPT",
 +        "OPT 1 = ",
@@ -19351,6 +19945,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "PROJETIL_COLISAO_CHAO",
 +        "Pastas recarregadas: ",
 +        "Pictures",
++        "Precisa do Android 10 ou mais novo (o aparelho tem a API ",
 +        "RAZ",
 +        "REACAO_DANO_",
 +        "ROT",
@@ -19370,6 +19965,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "SUBPROJETIL_COLISAO_CHAO",
 +        "SYNC",
 +        "Seq",
++        "Som global adicionado: ",
 +        "Sprite",
 +        "Sprite ",
 +        "Sprites de ",
@@ -19430,6 +20026,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "aplicado",
 +        "assets",
 +        "audio/",
++        "audio/opus",
 +        "base x",
 +        "base y",
 +        "bobj",
@@ -19454,6 +20051,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "endAnim; ",
 +        "errar",
 +        "evento",
++        "falha ao gravar OGG: ",
 +        "fcTL",
 +        "fdAT",
 +        "flag ",
@@ -19497,6 +20095,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "medio",
 +        "metade",
 +        "move",
++        "nao consegui trocar ",
 +        "nenhum",
 +        "nenhuma",
 +        "normal",
@@ -19519,7 +20118,8 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "save",
 +        "scr",
 +        "se_%02d.ogg",
-+        "se_\\d+\\.ogg",
++        "se_%03d.ogg",
++        "se_\\d{2,3}\\.ogg",
 +        "sem",
 +        "sheet",
 +        "som ",
@@ -19545,6 +20145,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "↔ Flip X",
 +        "↕ Flip Y",
 +        "↻ LOOP",
++        "− e + passam só pelos sons que existem: 0 → sons comuns (1 a 79) → sons do personagem (80 a ",
 +        "▼  GIF  ",
 +        "✎ EDITAR ANO ",
 +    };
@@ -20699,6 +21300,124 @@ diff -ruN a/test/SaverCopyTest.java b/test/SaverCopyTest.java
 +
 +        Saver.deleteTree(tb);
 +        System.out.println("SaverCopyTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/SoundIdsTest.java b/test/SoundIdsTest.java
+--- a/test/SoundIdsTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/SoundIdsTest.java	2026-10-28 13:45:11.429730065 +0000
+@@ -0,0 +1,114 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.Set;
++
++/** Ids do SE (byte sem sinal) x arquivos de som global (se_NN / se_NNN), placeholders e limites. */
++public class SoundIdsTest {
++    static Set<Integer> set(int... a) { Set<Integer> s = new HashSet<Integer>(); for (int x : a) s.add(Integer.valueOf(x)); return s; }
++
++    public static void main(String[] args) throws Exception {
++        check("id 0 nao toca nada", SoundIds.commonOf(0), -1);
++        check("id 1 = se_00", SoundIds.commonOf(1), 0);
++        check("id 79 = se_78", SoundIds.commonOf(79), 78);
++        check("id 80 e do personagem", SoundIds.isCharId(80) && SoundIds.commonOf(80) == -1, true);
++        check("id 99 e do personagem (o 20o)", SoundIds.isCharId(99) && SoundIds.commonOf(99) == -1, true);
++        check("id 100 = se_99", SoundIds.commonOf(100), 99);
++        check("id 101 = se_100", SoundIds.commonOf(101), 100);
++        check("id 255 = se_254 (o ultimo)", SoundIds.commonOf(255), 254);
++        check("id 256 nao existe", SoundIds.commonOf(256), -1);
++        check("id negativo nao existe", SoundIds.commonOf(-1), -1);
++        check("idOfCommon", SoundIds.idOfCommon(100), 101);
++
++        check("nome com 2 digitos", SoundIds.fileName(7), "se_07.ogg");
++        check("nome de 99", SoundIds.fileName(99), "se_99.ogg");
++        check("nome com 3 digitos a partir do 100", SoundIds.fileName(100), "se_100.ogg");
++        check("nome 254", SoundIds.fileName(254), "se_254.ogg");
++        check("reconhece se_07.ogg", SoundIds.isFileName("se_07.ogg"), true);
++        check("reconhece se_100.ogg", SoundIds.isFileName("se_100.ogg"), true);
++        check("nao reconhece se_7.ogg", SoundIds.isFileName("se_7.ogg"), false);
++        check("nao reconhece se_1000.ogg", SoundIds.isFileName("se_1000.ogg"), false);
++        check("nao reconhece bgm_01.ogg", SoundIds.isFileName("bgm_01.ogg"), false);
++        check("numero de se_07", SoundIds.numberOf("se_07.ogg"), 7);
++        check("numero de se_100", SoundIds.numberOf("se_100.ogg"), 100);
++        check("numero de nome invalido", SoundIds.numberOf("x.ogg"), -1);
++
++        check("selecionaveis: 0..78 e 99..254, nao os de preenchimento 79..98", SoundIds.selectable(78) && !SoundIds.selectable(79) && !SoundIds.selectable(98)
++                && SoundIds.selectable(99) && SoundIds.selectable(254) && !SoundIds.selectable(255), true);
++
++        check("primeiro som global do app sem nenhum", SoundIds.nextNew(-1), 0);
++        check("depois do se_50 vem o se_51", SoundIds.nextNew(50), 51);
++        check("depois do se_77 vem o se_78", SoundIds.nextNew(77), 78);
++        check("depois do se_78 pula para o se_100", SoundIds.nextNew(78), 100);
++        check("com preenchimento ate o 90 tambem vai ao 100", SoundIds.nextNew(90), 100);
++        check("com o se_99 vai ao 100", SoundIds.nextNew(99), 100);
++        check("depois do se_100 vem o 101", SoundIds.nextNew(100), 101);
++        check("depois do se_253 vem o 254", SoundIds.nextNew(253), 254);
++        check("depois do se_254 acabou (255 ids)", SoundIds.nextNew(254), -1);
++
++        Set<Integer> orig = new HashSet<Integer>();
++        for (int i = 0; i <= 78; i++) orig.add(Integer.valueOf(i));
++        check("novo se_100 com os 79 originais: 21 preenchimentos (79..99)", SoundIds.placeholders(orig, 100).size(), 21);
++        check("o primeiro e o ultimo preenchimento", SoundIds.placeholders(orig, 100).get(0) + ".." + SoundIds.placeholders(orig, 100).get(20), "79..99");
++        orig.addAll(SoundIds.placeholders(orig, 100));
++        orig.add(Integer.valueOf(100));
++        check("o proximo (se_101) nao precisa de preenchimento", SoundIds.placeholders(orig, 101).size(), 0);
++        check("buraco abaixo do novo tambem e preenchido", SoundIds.placeholders(set(0, 1, 3), 4).toString(), "[2]");
++
++        // lista de ids do stepper do frame
++        check("sem sons novos: 0..seMax e os audios do personagem", SoundIds.frameIds(5, 2).toString(), "[0, 1, 2, 3, 4, 5, 80, 81]");
++        check("com sons novos: 0..79, personagem, 100..seMax", SoundIds.frameIds(102, 1).size(), 80 + 1 + 3);
++        check("os audios do personagem param em 20", SoundIds.frameIds(0, 30).size(), 1 + 20);
++        check("teto 255", SoundIds.frameIds(400, 0).get(SoundIds.frameIds(400, 0).size() - 1), 255);
++        check("FrameTools.stepSound passa de 79 para o primeiro audio do personagem", FrameTools.stepSound(79, 1, 102, 2), 80);
++        check("e do ultimo audio do personagem para o 100", FrameTools.stepSound(81, 1, 102, 2), 100);
++        check("e volta do 100 para o audio do personagem", FrameTools.stepSound(100, -1, 102, 2), 81);
++
++        // $SE e byte sem sinal: 200 sobrevive ao DAC em texto
++        Ano.Mpt m = new Ano.Mpt();
++        m.hasTime = true; m.time = 5; m.flags = 0x28; m.se = 200; m.image = 1;
++        Ano an = new Ano(40, true, 0, 0, new Ano.Link[0], new Ano.Mpt[]{m});
++        String txt = DacText.ano(an, -1);
++        check("$SE: 200 sai no texto", txt.contains("$SE: 200"), true);
++        Ano back = DacText.parseAno(txt, 40, null);
++        check("$SE: 200 volta do texto", back.mpts[0].se, 200);
++        boolean bad = false;
++        try { DacText.parseAno(txt.replace("$SE: 200", "$SE: 300"), 40, null); } catch (Exception e) { bad = true; }
++        check("$SE: 300 e recusado", bad, true);
++        bad = false;
++        try { DacText.parseAno(txt.replace("$SE: 200", "$SE: -2"), 40, null); } catch (Exception e) { bad = true; }
++        check("$SE negativo e recusado", bad, true);
++        // o simulador toca o arquivo certo para cada id
++        A[] aa = SpawnDiagTest.anos();
++        aa[40] = new A().mpt(new M().time(3).se(150)).mpt(new M().time(3).se(85)).mpt(new M().time(3).se(100)).mpt(new M().time(3).se(8)).mpt(new M().time(3).se(255));
++        CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++        BattleSim bs = SpawnDiagTest.sim(dac(aa), ch, ch.moves[0], 200, 0, 0);
++        java.util.List<BattleSim.Snd> got = new java.util.ArrayList<BattleSim.Snd>(bs.drainSounds());
++        for (int i = 0; i < 20; i++) { bs.step(); got.addAll(bs.drainSounds()); }
++        StringBuilder sb = new StringBuilder();
++        for (BattleSim.Snd x : got) sb.append(x.common ? "c" : "p").append(x.id).append(' ');
++        check("SE 150 -> se_149; 85 -> audio do personagem; 100 -> se_99; 8 -> se_07; 255 -> se_254", sb.toString().trim(), "c149 p5 c99 c7 c254");
++        // PCM para o codificador OGG
++        short[] one = new short[22050];
++        for (int i = 0; i < one.length; i++) one[i] = (short) (i % 100 * 100);
++        short[] up = OggPcm.to48k(one, 22050);
++        check("1 s a 22050 Hz vira 1 s a 48 kHz", up.length, 48000);
++        check("o comeco da onda e preservado", up[0], one[0]);
++        check("interpolacao linear entre amostras", Math.abs(up[1] - (one[0] + (one[1] - one[0]) * (22050.0 / 48000))) <= 1, true);
++        check("48 kHz entra como esta", OggPcm.to48k(new short[]{1, 2, 3}, 48000).length, 3);
++        check("PCM vazio", OggPcm.to48k(new short[0], 22050).length, 0);
++        check("silencio de 100 ms a 48 kHz", OggPcm.silence(100).length, 4800);
++        check("silencio minimo e 1 quadro de 20 ms", OggPcm.silence(1).length, 960);
++        check("padTo20ms arredonda para cima", OggPcm.padTo20ms(new short[961]).length, 1920);
++        check("padTo20ms nao mexe no que ja e multiplo", OggPcm.padTo20ms(new short[960]).length, 960);
++        // textos da gravacao de som global
++        check("aviso de preenchimento EN", I18n.trTo("O novo som global sera o se_100.ogg (id 101 no frame). O jogo carrega os se_ em sequencia, entao o app cria 21 arquivo(s) silencioso(s) (se_79.ogg a se_99.ogg) para nao ficar buraco. Eles nao aparecem na lista. Continuar?", I18n.EN),
++                "The new global sound will be se_100.ogg (id 101 in the frame). The game loads the se_ files in sequence, so the app creates 21 silent file(s) (se_79.ogg to se_99.ogg) to leave no gap. They do not show in the list. Continue?");
++        check("som adicionado ES", I18n.trTo("Som global adicionado: se_100.ogg (id 101).", I18n.ES), "Sonido global agregado: se_100.ogg (id 101).");
++        check("erro de Android antigo EN", I18n.trTo("Nao da para gravar OGG: Precisa do Android 10 ou mais novo (o aparelho tem a API 28).", I18n.EN), "Cannot write OGG: Needs Android 10 or newer (this device has API 28).");
++        System.out.println("SoundIdsTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java

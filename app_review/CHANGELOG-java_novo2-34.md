@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1160 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1221 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -227,7 +227,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
 
-### 3.1za Idioma: catálogo da interface (1 334 entradas PT/EN/ES)
+### 3.1za Idioma: catálogo da interface (1 361 entradas PT/EN/ES)
 - Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
 - Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
 - **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
@@ -288,6 +288,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Escala**: o personagem usa escala 2 e efeito/charf/bobj escala 1; sprites de pacs de escala 1 entram **ampliadas 2x sem suavizar** (pixel art) para manter o tamanho na tela. Recortes repetidos (várias entradas apontando para a mesma região) entram uma vez só; entradas vazias são ignoradas; o CNV do próprio personagem é recusado.
 - Lógica pura em `SpriteImportPlan` (sprites distintas, fator de escala, nomes de arquivo) com `SpriteImportPlanTest` (27). A AJUDA (PT/EN/ES) descreve o recurso. Só compilado e revisado (não rodado num aparelho).
 
+### 3.1zk Sons globais em OGG (`se_NN` / `se_NNN`) e SE de 0 a 255
+- **`$SE` agora é um byte sem sinal (0–255)** (patch do `TCBManajer`): `Dac` lê `u8` (antes `s8`), o `$SE` do texto é validado de 0 a 255, o seletor da página Som anda pelos ids certos e o simulador toca o arquivo certo (`SoundIds`, `BattleSim.pushSe`): id 0 nada · **1–79 = se_00…se_78** (comuns do jogo) · **80–99 = áudios do personagem** (até 20) · **100–255 = comuns novos se_99…se_254**. Nomes de arquivo com 3 dígitos a partir do `se_100.ogg` (`SoundPlayer.commonFiles` aceita `se_NN` e `se_NNN`).
+- **Adicionar som global**: o ＋ da lista de sons pergunta se é do personagem (WAV) ou global (OGG). O novo global é o próximo `se_`: depois do `se_78` o app cria **arquivos silenciosos `se_79…se_99`** (preenchimento, escondidos da lista, com aviso antes) e o novo vira **`se_100`** (id 101); depois `se_101`… até `se_254` (id 255). Nunca apaga um `se_`: “excluir” = silenciar.
+- **Mesma edição dos WAV** nos globais: usar, ouvir, **cortar**, **mais (volume, tom, velocidade)**, **substituir** e **silenciar**. O áudio é decodificado para o formato do jogo, editado e gravado de novo como OGG.
+- **Conversor OGG** (`OggEncode`): sem biblioteca extra, **Opus dentro de contêiner Ogg** com `MediaCodec` (`audio/opus`) + `MediaMuxer` (`MUXER_OUTPUT_OGG`), **Android 10 / API 29 ou mais novo** — em aparelho sem isso o app avisa e não grava. O codec é Opus (não Vorbis): o `SoundPool` do Android lê; o jogo precisa abrir o arquivo com o mesmo decodificador.
+- Testes puros: `SoundIdsTest` (61: ids↔arquivos, 3 dígitos, preenchimento, limite 254, `$SE` 200 no texto, o simulador tocando 150/85/100/8/255, reamostragem para 48 kHz). **O codificador OGG só foi compilado** (não roda na JVM): precisa ser conferido num aparelho com Android 10+ e no jogo patchado.
+- AJUDA (PT/EN/ES) e MD atualizados (ids, `se_NNN`, preenchimento, Opus).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -345,6 +353,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HurtboxAllTest (novo)** | 8 |
 | **RootKindTest (novo)** | 18 |
 | **SpriteImportPlanTest (novo)** | 27 |
+| **SoundIdsTest (novo)** | 61 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
