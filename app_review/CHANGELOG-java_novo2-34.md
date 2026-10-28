@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1093 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1133 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -227,7 +227,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
 
-### 3.1za Idioma: catálogo da interface (1 319 entradas PT/EN/ES)
+### 3.1za Idioma: catálogo da interface (1 334 entradas PT/EN/ES)
 - Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
 - Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
 - **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
@@ -275,6 +275,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Velocidade X e Y em faixas separadas** ("Velocidade X" / "Velocidade Y"): cada trecho aparece na faixa do eixo que usa (speed ou accel); o menu é o mesmo, tocar numa célula vazia cria a velocidade daquele eixo; o resumo (timeline fechada) continua uma linha.
 - AJUDA (PT/EN/ES): faixas, ponteiro/clique/loop e DIVIDIR atualizados.
 - Testes: `TimelineEditTest` (41): duplicar/inserir/apagar/dividir com loop (duração antes/depois via `BattleSim.measureLength`), frame sem TIME, `clipTarget`, eixos, `splitMove` com e sem accel. Gestos da timeline só compilados e revisados (não rodados num aparelho).
+
+### 3.1zi Agarrão na transição, Hurtbox em massa, POSE e projétil/efeito sem pouso de personagem
+- **Tentar agarrão** (md 882 do jogo: o agarrão dispara no fim do ANO inicial ou no 1º frame com a janela 512, com `ATK_FLAGS` 8 ou 128 sem sequência): ganhou uma **marca na faixa de transições** (`SeqMark.GRAB`, "AGARRAR → ANO+1") no fim do ANO inicial (ou no 1º frame com a janela), mesmo sem o bit 512 em nenhum frame; o objeto "Tentar agarrão" continua editável. **Menu com a distância do agarrão** (HDAT 3, byte 5) nos dois lugares: `CharData.setPullDistance`, leitura/gravação de `$DISTANCIA_AGARRE` no `000.bin.txt` (`CharAssets.applyBinTxt`, `Saver.patchBody`), com desfazer.
+- **Hurtbox**: dois botões no menu — "Aplicar a todas as Hurtboxes (neste ANO)" e "(todos os ANOs)" — copiam posição e tamanho para todas as outras hurtboxes (flag 1) sem mexer em hitbox, `cut` nem frames sem hurtbox (`ObjModel.setAllCoords`); "todos os ANOs" pede confirmação, usa um único desfazer (`replaceAnosAsync`) e lembra de gravar com SALVAR > todos os ANOs.
+- **POSE** (menu TELA, abaixo de FR-PREVIEW SET; desligado por padrão): desenha o **ANO 0** do atacante por baixo, na mesma âncora do golpe, para comparar altura e tamanho.
+- **Bug corrigido — projétil/efeito aberto sozinho era tratado como personagem** (pousava no ANO 13 ao tocar o chão): `CharData.Move.rootKind` (personagem, projétil, efeito) definido ao abrir o ANO (projétil = referenciado pelo golpe, efeito = ANO 201–255 ou "✎ EDITAR EFEITO"). Projétil: segue o md 971 — no chão troca para `PROJETIL_COLISAO_CHAO` (`SUBPROJETIL_COLISAO_CHAO` no sub-projétil) se existir, senão continua; `y` preso ao chão sem zerar a velocidade, sem som de pouso, sem POUSO/QUEDA, sem sombra. Efeito: sem chão, pouso, queda nem sombra. ANOs de personagem seguem iguais.
+- AJUDA (PT/EN/ES) e MD atualizados. Testes: `GrabEditTest` (12), `HurtboxAllTest` (8), `RootKindTest` (18), POSE em `TimelineEditTest`. POSE, botões e a marca do agarrão só compilados e revisados (não rodados num aparelho).
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -328,7 +335,10 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HelpI18nTest (novo)** | 25 |
 | **ReloadTest (novo)** | 20 |
 | **TimelineLabelsTest (novo)** | 2 |
-| **TimelineEditTest (novo)** | 41 |
+| **TimelineEditTest (novo)** | 43 |
+| **GrabEditTest (novo)** | 12 |
+| **HurtboxAllTest (novo)** | 8 |
+| **RootKindTest (novo)** | 18 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 
