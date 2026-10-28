@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1052 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1093 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -227,7 +227,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ganchos mecânicos: `new TextView` → `I18nTextView` (guarda o original; `getText()` devolve o original, a lógica não vê a tradução; `retranslate()`), `CheckBox` → `I18nCheckBox`, `AlertDialog.Builder` → `I18nBuilder` (título, mensagem, botões, listas), `Toast.makeText` → `I18nUi.toast`, `Canvas.drawText` → `I18nUi.drawText` (timelines e prévias desenhadas à mão), `clip()` das timelines e o adaptador dos seletores.
 - Testes: `I18nTest` (28). Só compilado e revisado na tela.
 
-### 3.1za Idioma: catálogo da interface (1 309 entradas PT/EN/ES)
+### 3.1za Idioma: catálogo da interface (1 319 entradas PT/EN/ES)
 - Catálogo gerado de tabelas (`I18nCatalog0..4`): menus, botões, timeline, gaveta, reações, sprites, links, som, salvar, diálogos, avisos e toasts. Textos com números viram modelos `{0}` (os `%d`/`%s` do código são convertidos). Palavras em português são traduzidas; DAC, CNV, ANO, MPT, HDAT, OPT, SEQ, END e `$KEYS` ficam como estão.
 - Dados não são traduzidos: o painel **DADOS** e os nomes de arquivo do seletor (`noTranslate`).
 - **Teste de cobertura** (`I18nCoverageTest`, 5): o catálogo não tem entradas vazias, os `{n}` batem nas 3 colunas e as 2 243 literais de UI dos 77 arquivos de tela estão no catálogo ou na lista de ignoradas (`I18nIgnored`). Textos montados em tempo de execução sem modelo no catálogo continuam em PT até serem adicionados.
@@ -266,6 +266,15 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Os rótulos do gutter eram traduzidos **duas vezes** (em `clip` e de novo em `drawText`); agora uma vez só, medindo a largura do texto já traduzido (EN/ES são mais longos) — `TimelineView` e `ReactionTimelineView`.
 - Catálogo: faltavam `vel` (→ `spd`/`vel`), `acel` (→ `accel`/`acel`) e `+ estilo` (→ `+ style`/`+ estilo`) nas dicas e no resumo de movimento da faixa.
 - Teste novo `TimelineLabelsTest`: percorre os rótulos do gutter das duas timelines (nomes de objetos e ações, janelas 512, filtros `#`, PASSOS/SPEED/VOZ/EFEITOS/SEQ/CURVA, REAÇÃO/JOGO n, passo n, chips de parede/voz/SEQ, marcas de transição…) e exige EN e ES diferentes do PT (exceto cognatos/termos neutros listados) com os números preservados. Repintura na troca só compilada e revisada (não rodada num aparelho).
+
+### 3.1zh Timeline: loop do ANO, duração, ponteiro, clique no clipe, DIVIDIR e velocidade X/Y
+- **Adicionar/duplicar sprite não era alcançado** (a duração e o ponteiro travavam no último sprite antigo): dois motivos. (1) O **loop** ficava no frame antigo e o simulador dava a volta ali; (2) um frame **sem TIME** segura para sempre no jogo, então nada depois dele é alcançado. Agora, ao pôr um sprite depois de um frame sem TIME, este passa a durar 3 ticks (o que a timeline mostrava) e o sprite novo é quem segura (`FrameOps.timed`); no meio da ANO a cópia dura o mesmo que o original.
+- **O loop é do ANO**: `FrameOps.normalizeLoop` leva o bit de loop para o novo último frame depois de qualquer edição (adicionar, duplicar, dividir, excluir o último, remover frame na página Tempo, apagar sprites em massa). Aplicado no `AttackView.replaceAno`/`replaceAnoAsync`/`SpriteMass.deleteFrames`; só desliga quando o usuário desliga (`AttackView.setLoop`). Loop num frame do meio (ANO importado) não é mexido.
+- **Clique num clipe não leva o ponteiro ao início**: sprite, som, velocidade, estilo, objetos (hitbox, hurtbox, projétil, efeito, ação) e transições só movem o ponteiro se ele estava fora do clipe (antes → início; depois → último tick); dentro, só seleciona (`FrameOps.clipTarget`, `TimelineOps.seekIntoClip`, novo `TimelineView.Listener.onClip`). Editar no inspetor também mantém o ponteiro quando ele já está no frame (`AttackView.seekToPatKeep`), então dá para ficar no meio de um frame.
+- **DIVIDIR**: um trecho de **velocidade** agora se divide no ponteiro (o frame do corte vira a cabeça de um 2º trecho com a velocidade já acumulada, 16.16 exato, deslocamento total igual — `FrameOps.splitMove`); um **objeto** (hitbox etc.) se divide exatamente no ponteiro, mesmo no meio de um frame (antes só na divisa mais próxima e recusava objetos de 1 frame); mensagens claras quando o ponteiro está fora/no início.
+- **Velocidade X e Y em faixas separadas** ("Velocidade X" / "Velocidade Y"): cada trecho aparece na faixa do eixo que usa (speed ou accel); o menu é o mesmo, tocar numa célula vazia cria a velocidade daquele eixo; o resumo (timeline fechada) continua uma linha.
+- AJUDA (PT/EN/ES): faixas, ponteiro/clique/loop e DIVIDIR atualizados.
+- Testes: `TimelineEditTest` (41): duplicar/inserir/apagar/dividir com loop (duração antes/depois via `BattleSim.measureLength`), frame sem TIME, `clipTarget`, eixos, `splitMove` com e sem accel. Gestos da timeline só compilados e revisados (não rodados num aparelho).
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -319,6 +328,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HelpI18nTest (novo)** | 25 |
 | **ReloadTest (novo)** | 20 |
 | **TimelineLabelsTest (novo)** | 2 |
+| **TimelineEditTest (novo)** | 41 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
 

@@ -187,7 +187,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-24 23:27:08.408192868 +0000
++++ b/AiHelpDoc.java	2026-10-28 13:23:17.662987330 +0000
 @@ -0,0 +1,844 @@
 +package com.zue.attackeditor;
 +
@@ -1424,7 +1424,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-24 21:48:43.040152186 +0000
++++ b/AttackView.java	2026-10-28 13:19:52.658733604 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1453,7 +1453,15 @@ diff -ruN a/AttackView.java b/AttackView.java
                          anoEnd = fend;
                          loops = sim.loops();
                          stopSounds();
-@@ -304,6 +308,31 @@
+@@ -255,6 +259,7 @@
+     public void replaceAnoAsync(Ano na, Runnable done) {
+         final Ano old = currentAno();
+         if (old == null || data == null) { if (done != null) done.run(); return; }
++        na = withLoopKept(old, na);
+         final Dac dac = data.attacker.dac;
+         final int idx = old.index;
+         dac.setAno(idx, na);
+@@ -304,6 +309,31 @@
  
      private boolean noticeVisible() { return notice != null && SystemClock.uptimeMillis() < noticeUntil; }
  
@@ -1485,7 +1493,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      // aviso de pouso
  
      private static final String LAND_MSG = "Animação/golpe acabou antes por causa do pouso. Experimente mudar a posição do personagem para ver o movimento completo.";
-@@ -352,18 +381,21 @@
+@@ -352,18 +382,21 @@
          warnText.setTextAlign(Paint.Align.LEFT);
          float maxW = (noticeExpanded ? w - 2 * margin : w * 0.8f) - 2 * pad - xs;
          java.util.ArrayList<String> lines = new java.util.ArrayList<String>();
@@ -1517,7 +1525,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
          float lh = warnText.getFontSpacing();
          float btnH = lh + pad, gap = 6f * density;
-@@ -381,14 +413,14 @@
+@@ -381,14 +414,14 @@
          warnBg.setColor(noticeExpanded ? (n.color & 0x00FFFFFF) | 0xE6000000 : n.color);
          c.drawRoundRect(noticeBox, 8f * density, 8f * density, warnBg);
          float base = y + pad - warnText.ascent();
@@ -1534,7 +1542,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          warnText.setTextAlign(al);
          float by = y + bh - pad - btnH;
          drawRow(c, n.left, x + pad, by, btnH, pad, gap, n.buttonColor);
-@@ -409,7 +441,7 @@
+@@ -409,7 +442,7 @@
              android.graphics.RectF r = new android.graphics.RectF(x, y, x + bw, y + h);
              warnBg.setColor(color);
              c.drawRoundRect(r, 6f * density, 6f * density, warnBg);
@@ -1543,7 +1551,53 @@ diff -ruN a/AttackView.java b/AttackView.java
              noticeRects.add(r);
              noticeActs.add(a);
              x += bw + gap;
-@@ -947,6 +979,33 @@
+@@ -726,6 +759,12 @@
+     }
+ 
+ 
++    /** Como seekToPat, mas se o ponteiro ja esta dentro do frame ele fica onde esta. */
++    public boolean seekToPatKeep(int pat) {
++        if (currentPat() == pat) return true;
++        return seekToPat(pat);
++    }
++
+     /** Vai para o primeiro tick em que o frame {@code pat} da ANO atual aparece (pausa). */
+     public boolean seekToPat(int pat) {
+         if (sim == null) return false;
+@@ -842,6 +881,24 @@
+         rebuild(frame);
+     }
+ 
++    /** true enquanto o usuario liga/desliga o loop: ai a normalizacao do loop nao pode desfazer o gesto. */
++    private boolean rawLoopEdit;
++
++    /** O loop e do ANO: se estava no ultimo frame, acompanha o novo ultimo frame depois de qualquer edicao. */
++    private Ano withLoopKept(Ano old, Ano na) {
++        if (rawLoopEdit || old == null || na == null) return na;
++        Ano.Mpt[] fixed = FrameOps.normalizeLoop(old.mpts, na.mpts);
++        return fixed == na.mpts ? na : new Ano(na.index, na.present, na.flags, na.priority, na.links, fixed);
++    }
++
++    /** Liga/desliga o loop da ANO atual (unico caminho que pode desligar o loop). */
++    public void setLoop(boolean on) {
++        Ano old = currentAno();
++        if (old == null) return;
++        rawLoopEdit = true;
++        try { replaceMpts(ObjModel.setLoop(old.mpts, on)); } finally { rawLoopEdit = false; }
++    }
++
+     /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
+     public void replaceMpts(Ano.Mpt[] mp) {
+         Ano old = currentAno();
+@@ -862,6 +919,7 @@
+     public void replaceAno(Ano na, String undoKey) {
+         final Ano old = currentAno();
+         if (old == null || data == null) return;
++        na = withLoopKept(old, na);
+         final Dac dac = data.attacker.dac;
+         final int idx = old.index;
+         dac.setAno(idx, na);
+@@ -947,6 +1005,33 @@
          rebuild(frame);
      }
  
@@ -1577,7 +1631,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Edita o golpe (HDAT 4) em runtime: executa a mudanca, empilha o desfazer e reconstroi a simulacao. */
      public void editMove(Runnable change) {
          if (data == null) return;
-@@ -1127,7 +1186,7 @@
+@@ -1127,7 +1212,7 @@
  
      public interface MoveEdit { void apply(CharData.Move m); }
  
@@ -1586,7 +1640,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void editMove(MoveEdit e) {
          if (data == null || data.move == null) return;
          final CharData.Move mv = data.move;
-@@ -1139,6 +1198,40 @@
+@@ -1139,6 +1224,40 @@
          rebuild(frame);
      }
  
@@ -1627,7 +1681,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1291,11 +1384,11 @@
+@@ -1291,11 +1410,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -1641,7 +1695,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1407,7 @@
+@@ -1314,7 +1433,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -1650,7 +1704,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1442,7 @@
+@@ -1349,6 +1468,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -3782,6 +3836,163 @@ diff -ruN a/FolderReload.java b/FolderReload.java
 +        return index < 0 ? 0 : Math.min(index, size - 1);
 +    }
 +}
+diff -ruN a/FrameOps.java b/FrameOps.java
+--- a/FrameOps.java	2026-10-20 03:56:45.000000000 +0000
++++ b/FrameOps.java	2026-10-28 13:20:30.641227514 +0000
+@@ -150,6 +150,49 @@
+         return r;
+     }
+ 
++    // ---- loop do ANO ----
++
++    private static boolean loopBit(Ano.Mpt m) { return (m.flags & 2) != 0 && (m.wActFlag & ObjModel.LOOP) != 0; }
++
++    /**
++     * O loop e do ANO, nao de um frame: se estava ligado no ultimo frame de {@code before}, depois de uma edicao
++     * (apagar, adicionar, duplicar, dividir...) ele fica so no ultimo frame de {@code after}. Quem desliga o loop e o usuario
++     * (ObjModel.setLoop), que nao passa por aqui. O bit 2 (fim) acompanha. Devolve {@code after} se nada muda.
++     */
++    static Ano.Mpt[] normalizeLoop(Ano.Mpt[] before, Ano.Mpt[] after) {
++        if (before == null || after == null || before.length == 0 || after.length == 0) return after;
++        Ano.Mpt oldLast = before[before.length - 1];
++        if (!loopBit(oldLast)) return after;
++        int last = after.length - 1;
++        boolean ok = loopBit(after[last]);
++        for (int i = 0; i < last && ok; i++) if (loopBit(after[i])) ok = false;
++        if (ok) return after;
++        Ano.Mpt[] out = after.clone();
++        int bits = ObjModel.LOOP | (oldLast.wActFlag & 2);
++        for (int i = 0; i < out.length; i++) {
++            if (i == last || !loopBit(out[i])) continue;
++            Ano.Mpt c = out[i].copy();
++            c.wActFlag &= ~bits;
++            if (c.wActFlag == 0) c.flags &= ~2;
++            c.normalize();
++            out[i] = c;
++        }
++        Ano.Mpt c = out[last].copy();
++        c.flags |= 2;
++        c.wActFlag |= bits;
++        c.normalize();
++        out[last] = c;
++        return out;
++    }
++
++    /** Onde o ponteiro fica ao clicar num clipe [t0, t1): dentro dele, onde esta; antes, no inicio; depois, no ultimo tick do clipe. */
++    static int clipTarget(int tick, int t0, int t1) {
++        if (t1 <= t0) return t0;
++        if (tick < t0) return t0;
++        if (tick >= t1) return t1 - 1;
++        return tick;
++    }
++
+     /** Hits que disparam uma unica vez ao entrar no frame (projetil, cutscene, dano em si, teleportes). */
+     static boolean oneShot(int flag) { return flag == 0 || flag == 20 || flag == 32 || flag == 39 || flag == 40; }
+ 
+@@ -157,7 +200,9 @@
+     static Ano.Mpt[] duplicate(Ano.Mpt[] m, int i) {
+         Ano.Mpt[] out = new Ano.Mpt[m.length + 1];
+         System.arraycopy(m, 0, out, 0, i + 1);
++        out[i] = timed(m[i]);
+         Ano.Mpt c = m[i].copy();
++        if (i < m.length - 1) { c.flags |= 0x20; c.time = out[i].time; }      // no meio da ANO a copia nao pode travar a animacao
+         // a copia nao repete som, fim, hits (hitbox, hurtbox, efeitos, acoes), velocidade nem opcoes
+         c.flags &= ~8; c.se = -1;
+         c.wActFlag &= ~3;
+@@ -171,6 +216,19 @@
+         return out;
+     }
+ 
++    /**
++     * Frame sem TIME fica parado para sempre no jogo: nada depois dele e alcancado (nem o ponteiro da timeline chega la).
++     * Ao colocar um sprite depois dele, o frame passa a durar o que a timeline mostra (3 ticks) e o sprite novo vira o que segura.
++     */
++    static Ano.Mpt timed(Ano.Mpt m) {
++        if (m.hasTime && m.time > 0) return m;
++        Ano.Mpt c = m.copy();
++        c.flags |= 0x20;
++        c.time = span(m);
++        c.normalize();
++        return c;
++    }
++
+     static Ano.Mpt[] delete(Ano.Mpt[] m, int i) {
+         if (m.length <= 1) return null;
+         Ano.Mpt[] out = new Ano.Mpt[m.length - 1];
+@@ -254,6 +312,24 @@
+         return k >= 0 && isMoveHead(m[k]) ? k : -1;
+     }
+ 
++    /** Eixos que o trecho de velocidade da cabeca {@code head} usa: bit 0 = X (speed/accel X), bit 1 = Y. */
++    static int moveAxes(Ano.Mpt[] m, int head) {
++        if (head < 0 || head >= m.length || (m[head].flags & 4) == 0) return 0;
++        int mk = m[head].moveMask;
++        return ((mk & 5) != 0 ? 1 : 0) | ((mk & 10) != 0 ? 2 : 0);
++    }
++
++    /** Velocidade nova no eixo (0 = X, 1 = Y) para uma celula vazia da faixa daquele eixo. */
++    static void defaultsMove(Ano.Mpt m, int axis) {
++        m.flags |= 4;
++        m.moveMask = axis == 0 ? 1 : 2;
++        m.speedX = 0;
++        m.speedY = 0;
++        m.accelX = 0;
++        m.accelY = 0;
++        m.normalize();
++    }
++
+     static int moveRunEnd(Ano.Mpt[] m, int head) {
+         int j = head;
+         while (j + 1 < m.length && isMoveCont(m[j + 1])) j++;
+@@ -299,6 +375,40 @@
+         return out;
+     }
+ 
++    /**
++     * DIVIDIR um trecho de velocidade no tick: o frame e cortado no tick (se preciso) e o frame do corte vira a CABECA de um novo
++     * trecho, com a velocidade que o movimento ja tem ali (speed inicial + accel x ticks), em inteiros 16.16. Fisicamente nada muda.
++     * null: tick fora de um trecho de velocidade, ou exatamente no inicio dele (nao ha o que dividir).
++     */
++    static Split splitMove(Ano.Mpt[] m, int tick) {
++        int f = frameAt(m, tick);
++        if (f < 0) return null;
++        int head = moveHeadOf(m, f);
++        if (head < 0) return null;
++        int[] st = starts(m);
++        if (f == head && st[f] == tick) return null;
++        Split s = splitAt(m, tick);
++        if (s == null) return null;
++        Ano.Mpt[] out = s.mpts == m ? m.clone() : s.mpts;
++        int k = s.index;
++        if (isMoveHead(out[k])) return null;
++        double[] v = FrameTools.startSpeed(out, k);
++        Ano.Mpt h = out[head];
++        Ano.Mpt c = out[k].copy();
++        boolean x = (h.flags & 4) != 0 && (h.moveMask & 1) != 0 || v[0] != 0, y = (h.flags & 4) != 0 && (h.moveMask & 2) != 0 || v[1] != 0;
++        if (!x && !y) x = true;
++        c.flags |= 4 | 2;
++        c.wActFlag |= 64;
++        if (x) { c.moveMask |= 1; c.speedX = (int) Math.round(v[0] * FrameTools.ONE); }
++        if (y) { c.moveMask |= 2; c.speedY = (int) Math.round(v[1] * FrameTools.ONE); }
++        c.normalize();
++        out[k] = c;
++        s.mpts = out;
++        s.index = k;
++        s.changed = true;
++        return s;
++    }
++
+     /** Assinatura do estilo (espelhar, manter velocidade, transformacao) do frame; 0 = sem estilo. */
+     static long styleSig(Ano.Mpt m) {
+         long s = 0;
+@@ -549,6 +659,7 @@
+         int n = images.length;
+         Ano.Mpt[] out = new Ano.Mpt[m.length + n];
+         System.arraycopy(m, 0, out, 0, after + 1);
++        out[after] = timed(m[after]);
+         Ano.Mpt base = m[after].copy();
+         base.flags &= ~8; base.se = -1;
+         base.wActFlag &= ~3;
 diff -ruN a/FrameTools.java b/FrameTools.java
 --- a/FrameTools.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/FrameTools.java	2026-10-24 21:48:20.043535889 +0000
@@ -4518,8 +4729,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-24 23:26:56.207917351 +0000
-@@ -0,0 +1,623 @@
++++ b/HelpText.java	2026-10-28 13:23:10.852122343 +0000
+@@ -0,0 +1,624 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -4725,18 +4936,19 @@ diff -ruN a/HelpText.java b/HelpText.java
 +
 +        Chapter tl = new Chapter("timeline", "Timeline e ferramentas", "As faixas, o ＋ e o #, DIVIDIR/DUPLICAR/EXCLUIR, arrastar duração e a altura da gaveta (Y e T).");
 +        tl.add("Faixas da timeline",
-+                "A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE, ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). "
++                "A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE X e VELOCIDADE Y (uma faixa por eixo; o menu continua o mesmo), ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). "
 +                + "Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. "
 +                + "Tocar no nome da faixa de sprites abre ou recolhe o resumo.");
 +        tl.add("＋ e #",
 +                "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). "
 +                + "O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO).");
 +        tl.add("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
-+                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto na divisa de frames mais próxima; "
++                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto exatamente no ponteiro, ou, com um trecho de VELOCIDADE selecionado, começa um segundo trecho no ponteiro (a velocidade segue a mesma); "
 +                + "DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição.");
 +        tl.add("Arrastar, ponteiro e zoom",
 +                "O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, "
-+                + "puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar.");
++                + "puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar."
++                + " Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga.");
 +        tl.add("Altura da gaveta: Y e T",
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; isso vale só para aquela abertura. "
 +                + "Y (na borda, à direita) grava a altura atual como a nova altura padrão. T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela, o menu superior some e a timeline mostra de 6 a 2 faixas conforme o menu sobe; "
@@ -5409,7 +5621,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-24 23:58:56.173373181 +0000
++++ b/I18nCatalog.java	2026-10-28 13:21:59.423801192 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -5423,7 +5635,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-24 23:58:56.169685323 +0000
++++ b/I18nCatalog0.java	2026-10-28 13:21:59.417030916 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -5696,7 +5908,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-24 23:58:56.170522045 +0000
++++ b/I18nCatalog1.java	2026-10-28 13:21:59.418167643 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -5969,7 +6181,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-24 23:58:56.171345338 +0000
++++ b/I18nCatalog2.java	2026-10-28 13:21:59.419516068 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6242,7 +6454,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-24 23:58:56.172019757 +0000
++++ b/I18nCatalog3.java	2026-10-28 13:21:59.420960585 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6515,7 +6727,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-24 23:58:56.172846995 +0000
++++ b/I18nCatalog4.java	2026-10-28 13:21:59.422168040 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6788,8 +7000,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-24 23:58:56.173166832 +0000
-@@ -0,0 +1,18 @@
++++ b/I18nCatalog5.java	2026-10-28 13:21:59.423161920 +0000
+@@ -0,0 +1,28 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -6806,6 +7018,16 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"Pastas recarregadas: {0} personagens", "Folders reloaded: {0} characters", "Carpetas recargadas: {0} personajes"},
 +        {"vel", "spd", "vel"},
 +        {"acel", "accel", "acel"},
++        {"Velocidade X", "Speed X", "Velocidad X"},
++        {"Velocidade Y", "Speed Y", "Velocidad Y"},
++        {"+ velocidade X", "+ speed X", "+ velocidad X"},
++        {"+ velocidade Y", "+ speed Y", "+ velocidad Y"},
++        {"o ponteiro esta fora de um trecho de velocidade", "the pointer is outside a speed block", "el puntero está fuera de un tramo de velocidad"},
++        {"o ponteiro esta no inicio do trecho de velocidade: mova o ponteiro para dentro dele", "the pointer is at the start of the speed block: move the pointer inside it", "el puntero está al inicio del tramo de velocidad: muévelo hacia dentro"},
++        {"nao da para dividir a velocidade aqui", "cannot split the speed here", "no se puede dividir la velocidad aquí"},
++        {"o ponteiro esta fora do objeto", "the pointer is outside the object", "el puntero está fuera del objeto"},
++        {"o ponteiro esta no inicio do objeto: mova o ponteiro para dentro dele", "the pointer is at the start of the object: move the pointer inside it", "el puntero está al inicio del objeto: muévelo hacia dentro"},
++        {"esta acao dispara uma vez por frame: divida na divisa de um frame", "this action fires once per frame: split at a frame boundary", "esta acción se dispara una vez por frame: divide en el límite de un frame"},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -6855,7 +7077,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-24 23:27:08.369493793 +0000
++++ b/I18nHelpCatalog.java	2026-10-28 13:23:17.623531712 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6869,7 +7091,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-24 23:27:08.367750322 +0000
++++ b/I18nHelpCatalog0.java	2026-10-28 13:23:17.622522934 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -6954,7 +7176,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-24 23:27:08.367995117 +0000
++++ b/I18nHelpCatalog1.java	2026-10-28 13:23:17.622669249 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7039,7 +7261,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-24 23:27:08.368197551 +0000
++++ b/I18nHelpCatalog2.java	2026-10-28 13:23:17.622838295 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7117,14 +7339,14 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +        {"Faixas da timeline",
 +         "Timeline lanes",
 +         "Pistas de la timeline"},
-+        {"A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE, ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. Tocar no nome da faixa de sprites abre ou recolhe o resumo.",
-+         "The timeline shows, per frame: SPRITES (the images), and below them the lanes of hitbox (red), hurtbox (green), projectile, effect, special action, SOUND (blue), SPEED, STYLE (flip/transform), linked animations (links) and transitions (SEQ/END). Only lanes in use appear: with no sound, speed or style in the ANO, the lane disappears. Equal items in different frames share the same lane; equal items in the same frame (two equal hitboxes, two transitions) go in different lanes. Tapping the name of the sprites lane opens or collapses the summary.",
-+         "La timeline muestra, por frame: SPRITES (las imágenes), y debajo las pistas de hitbox (roja), hurtbox (verde), proyectil, efecto, acción especial, SONIDO (azul), VELOCIDAD, ESTILO (espejar/transformar), animaciones ligadas (links) y transiciones (SEQ/END). Solo aparecen las pistas en uso: sin sonido, velocidad o estilo en el ANO, la pista desaparece. Elementos iguales en frames distintos comparten la misma pista; elementos iguales en el mismo frame (dos hitboxes iguales, dos transiciones) van en pistas distintas. Tocar el nombre de la pista de sprites abre o contrae el resumen."},
++        {"A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE X e VELOCIDADE Y (uma faixa por eixo; o menu continua o mesmo), ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. Tocar no nome da faixa de sprites abre ou recolhe o resumo.",
++         "The timeline shows, per frame: SPRITES (the images), and below them the lanes of hitbox (red), hurtbox (green), projectile, effect, special action, SOUND (blue), SPEED X and SPEED Y (one lane per axis; the menu stays the same), STYLE (flip/transform), linked animations (links) and transitions (SEQ/END). Only lanes in use appear: with no sound, speed or style in the ANO, the lane disappears. Equal items in different frames share the same lane; equal items in the same frame (two equal hitboxes, two transitions) go in different lanes. Tapping the name of the sprites lane opens or collapses the summary.",
++         "La timeline muestra, por frame: SPRITES (las imágenes), y debajo las pistas de hitbox (roja), hurtbox (verde), proyectil, efecto, acción especial, SONIDO (azul), VELOCIDAD X y VELOCIDAD Y (una pista por eje; el menú sigue igual), ESTILO (espejar/transformar), animaciones ligadas (links) y transiciones (SEQ/END). Solo aparecen las pistas en uso: sin sonido, velocidad o estilo en el ANO, la pista desaparece. Elementos iguales en frames distintos comparten la misma pista; elementos iguales en el mismo frame (dos hitboxes iguales, dos transiciones) van en pistas distintas. Tocar el nombre de la pista de sprites abre o contrae el resumen."},
 +    };
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-24 23:27:08.368410194 +0000
++++ b/I18nHelpCatalog3.java	2026-10-28 13:23:17.622991792 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7148,18 +7370,18 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
 +         "SPLIT / DUPLICATE / DELETE / UNDO",
 +         "DIVIDIR / DUPLICAR / ELIMINAR / DESHACER"},
-+        {"Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto na divisa de frames mais próxima; DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição.",
-+         "They edit the item selected on the timeline: SPLIT cuts the sprite under the pointer in two (the visual result stays the same) or, with an object selected, separates the object at the nearest frame boundary; DUPLICATE copies the sprite or object to the next frame; DELETE removes the selected sprite, object or link; UNDO reverts the last edit.",
-+         "Editan el elemento seleccionado en la timeline: DIVIDIR corta el sprite bajo el puntero en dos (el resultado visual sigue igual) o, con un objeto seleccionado, separa el objeto en el límite de frames más cercano; DUPLICAR copia el sprite o el objeto al frame siguiente; ELIMINAR quita el sprite, objeto o link seleccionado; DESHACER revierte la última edición."},
++        {"Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto exatamente no ponteiro, ou, com um trecho de VELOCIDADE selecionado, começa um segundo trecho no ponteiro (a velocidade segue a mesma); DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição.",
++         "They edit the item selected on the timeline: SPLIT cuts the sprite under the pointer in two (the visual result stays the same) or, with an object selected, separates the object exactly at the pointer, or, with a SPEED block selected, starts a second block at the pointer (the speed stays the same); DUPLICATE copies the sprite or object to the next frame; DELETE removes the selected sprite, object or link; UNDO reverts the last edit.",
++         "Editan el elemento seleccionado en la timeline: DIVIDIR corta el sprite bajo el puntero en dos (el resultado visual sigue igual) o, con un objeto seleccionado, separa el objeto exactamente en el puntero, o, con un tramo de VELOCIDAD seleccionado, empieza un segundo tramo en el puntero (la velocidad sigue igual); DUPLICAR copia el sprite o el objeto al frame siguiente; ELIMINAR quita el sprite, objeto o link seleccionado; DESHACER revierte la última edición."},
 +        {"dividir duplicar excluir apagar remover desfazer undo cortar",
 +         "split duplicate delete erase remove undo cut",
 +         "dividir duplicar eliminar borrar quitar deshacer undo cortar"},
 +        {"Arrastar, ponteiro e zoom",
 +         "Dragging, pointer and zoom",
 +         "Arrastrar, puntero y zoom"},
-+        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar.",
-+         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them.",
-+         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos."},
++        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga.",
++         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off.",
++         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas."},
 +        {"Altura da gaveta: Y e T",
 +         "Drawer height: Y and T",
 +         "Altura del cajón: Y y T"},
@@ -7209,7 +7431,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-24 23:27:08.368577041 +0000
++++ b/I18nHelpCatalog4.java	2026-10-28 13:23:17.623087206 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7294,7 +7516,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-24 23:27:08.368731104 +0000
++++ b/I18nHelpCatalog5.java	2026-10-28 13:23:17.623172872 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7379,7 +7601,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-24 23:27:08.368973497 +0000
++++ b/I18nHelpCatalog6.java	2026-10-28 13:23:17.623304852 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7464,7 +7686,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-24 23:27:08.369194039 +0000
++++ b/I18nHelpCatalog7.java	2026-10-28 13:23:17.623407434 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7549,7 +7771,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-24 23:27:08.369349303 +0000
++++ b/I18nHelpCatalog8.java	2026-10-28 13:23:17.623490794 +0000
 @@ -0,0 +1,69 @@
 +package com.zue.attackeditor;
 +
@@ -13501,6 +13723,18 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          t.setText(s);
          t.setTextSize(sp);
          t.setTextColor(color);
+diff -ruN a/SpriteMass.java b/SpriteMass.java
+--- a/SpriteMass.java	2026-10-20 11:36:09.000000000 +0000
++++ b/SpriteMass.java	2026-10-28 13:17:50.626298037 +0000
+@@ -66,7 +66,7 @@
+             removed += a.mpts.length - keep.size();
+             lastChanged.add(Integer.valueOf(i));
+             if (keep.isEmpty()) { dac.setAno(i, new Ano(i, false, 0, 0, new Ano.Link[0], new Ano.Mpt[0])); emptied.add(Integer.valueOf(i)); }
+-            else dac.setAno(i, new Ano(i, true, a.flags, a.priority, a.links, keep.toArray(new Ano.Mpt[0])));
++            else dac.setAno(i, new Ano(i, true, a.flags, a.priority, a.links, FrameOps.normalizeLoop(a.mpts, keep.toArray(new Ano.Mpt[0]))));
+         }
+         // ANO vazia nao faz sentido como link: tira os links que apontam para as que ficaram vazias
+         if (!emptied.isEmpty()) {
 diff -ruN a/SpriteMassDialogs.java b/SpriteMassDialogs.java
 --- a/SpriteMassDialogs.java	2026-10-20 12:14:43.000000000 +0000
 +++ b/SpriteMassDialogs.java	2026-10-24 21:48:20.161466082 +0000
@@ -13800,9 +14034,140 @@ diff -ruN a/ThumbView.java b/ThumbView.java
 +        cv.drawBitmap(sp.bitmap, sp.src, dst, bmp);
 +    }
 +}
+diff -ruN a/TimelineOps.java b/TimelineOps.java
+--- a/TimelineOps.java	2026-10-20 00:25:45.000000000 +0000
++++ b/TimelineOps.java	2026-10-28 13:20:30.646572234 +0000
+@@ -130,6 +130,7 @@
+         if (mp == null) return;
+         int tick = tl.playheadTick();
+         if (tl.selectedType() == TimelineView.T_OBJ) { splitObject(mp, tick); return; }
++        if (tl.selectedType() == TimelineView.T_MOVE) { splitMoveRun(mp, tick); return; }
+         FrameOps.Split s = FrameOps.splitAt(mp, tick);
+         if (s == null) { host.toast("nao da para dividir aqui"); return; }
+         if (!s.changed) { host.toast("o ponteiro ja esta no inicio de um sprite"); return; }
+@@ -137,22 +138,39 @@
+         host.closeTools();          // so divide: nenhum dos dois pedacos fica selecionado nem abre a edicao
+     }
+ 
+-    /** DIVIDIR com um objeto selecionado: separa na divisa de frames mais proxima do ponteiro (ficam dois objetos independentes). */
++    /** DIVIDIR com um trecho de velocidade selecionado: o ponteiro vira o inicio de um segundo trecho (a velocidade continua a mesma). */
++    private void splitMoveRun(Ano.Mpt[] mp, int tick) {
++        int f = FrameOps.frameAt(mp, tick);
++        int head = f < 0 ? -1 : FrameOps.moveHeadOf(mp, f);
++        if (head < 0) { host.toast("o ponteiro esta fora de um trecho de velocidade"); return; }
++        if (f == head && FrameOps.starts(mp)[f] == tick) { host.toast("o ponteiro esta no inicio do trecho de velocidade: mova o ponteiro para dentro dele"); return; }
++        FrameOps.Split s = FrameOps.splitMove(mp, tick);
++        if (s == null) { host.toast("nao da para dividir a velocidade aqui"); return; }
++        apply(s.mpts, tick);
++        host.closeTools();
++    }
++
++    /** DIVIDIR com um objeto selecionado: corta exatamente no ponteiro (ficam dois objetos independentes). */
+     private void splitObject(Ano.Mpt[] mp, int tick) {
+         ObjModel.Obj o = tl.selectedObj();
+         if (o == null) return;
+-        if (o.f1 <= o.f0) { host.toast("o objeto tem um so frame: nao ha divisa para dividir"); return; }
+         int[] st = FrameOps.starts(mp);
+-        int bf = -1, bd = Integer.MAX_VALUE;
+-        for (int f = o.f0 + 1; f <= o.f1; f++) {
+-            int dd = Math.abs(st[f] - tick);
+-            if (dd < bd) { bd = dd; bf = f; }
++        int fr = FrameOps.frameAt(mp, tick);
++        if (fr < o.f0 || fr > o.f1) { host.toast("o ponteiro esta fora do objeto"); return; }
++        if (st[fr] == tick && fr == o.f0) { host.toast("o ponteiro esta no inicio do objeto: mova o ponteiro para dentro dele"); return; }
++        Ano.Mpt[] base = mp;
++        int bf = fr;
++        if (st[fr] != tick) {                 // no meio de um frame: corta o frame no ponteiro
++            if (FrameOps.oneShot(o.flag)) { host.toast("esta acao dispara uma vez por frame: divida na divisa de um frame"); return; }
++            FrameOps.Split s = FrameOps.splitAt(mp, tick);
++            if (s == null || !s.changed) { host.toast("nao da para dividir aqui"); return; }
++            base = s.mpts;
++            bf = s.index;
+         }
+-        if (bf < 0) return;
+-        Ano.Mpt[] out = mp.clone();
+-        Ano.Mpt c = mp[bf].copy();
++        Ano.Mpt[] out = base.clone();
++        Ano.Mpt c = base[bf].copy();
+         Ano.Hit h = ObjModel.find(c, o.flag, o.occ);
+-        if (h == null) return;
++        if (h == null) { host.toast("nao da para dividir aqui"); return; }
+         h.cut = true;
+         out[bf] = c;
+         apply(out, tick);
+@@ -225,13 +243,40 @@
+ 
+     @Override public void onSelect(int type, int idx, int flag, int occ) {
+         if (type == TimelineView.T_NONE) { host.cancelTools(); return; }
++        Ano.Mpt[] mp = mpts();
+         if (type == TimelineView.T_SEQ) {
+             java.util.List<SeqMark> ms = v.sequenceMarks();
+-            if (idx >= 0 && idx < ms.size()) v.seekToPat(ms.get(idx).pat);
+-        } else if (type != TimelineView.T_OBJ && type != TimelineView.T_LINK) v.seekToPat(idx);
++            if (idx >= 0 && idx < ms.size()) seekIntoFrames(ms.get(idx).pat, ms.get(idx).pat);
++        } else if (mp != null && idx >= 0 && idx < mp.length) {
++            if (type == TimelineView.T_SPRITE || type == TimelineView.T_SOUND) seekIntoFrames(idx, idx);
++            else if (type == TimelineView.T_MOVE) seekIntoFrames(idx, FrameOps.moveRunEnd(mp, idx));
++            else if (type == TimelineView.T_STYLE) seekIntoFrames(FrameOps.styleRunStart(mp, idx), FrameOps.styleRunEnd(mp, idx));
++        }
+         host.show(type, idx, flag, occ);
+     }
+ 
++    /** O ponteiro so vai para o clipe se estiver fora dele: antes, no inicio; depois, no ultimo tick. Dentro, fica onde esta. */
++    private void seekIntoFrames(int f0, int f1) {
++        Ano.Mpt[] mp = mpts();
++        if (mp == null || f0 < 0 || f0 >= mp.length) return;
++        f1 = Math.max(f0, Math.min(f1, mp.length - 1));
++        int[] st = FrameOps.starts(mp);
++        seekIntoClip(st[f0], st[f1] + FrameOps.span(mp[f1]));
++    }
++
++    private void seekIntoClip(int t0, int t1) {
++        Ano.Mpt[] mp = mpts();
++        if (mp == null) return;
++        int tick = tl.playheadTick();
++        int target = FrameOps.clipTarget(tick, t0, t1);
++        if (target == tick) return;
++        int fr = FrameOps.frameAt(mp, target);
++        if (fr < 0) return;
++        v.seekToPatTick(fr, target - FrameOps.starts(mp)[fr]);
++    }
++
++    @Override public void onClip(int t0, int t1) { seekIntoClip(t0, t1); }
++
+     @Override public void onScrub(int pat, int elapsed) { v.seekToPatTick(pat, elapsed); }
+ 
+     @Override public void onResize(int frame, int newTime) {
+@@ -271,7 +316,7 @@
+     @Override public void onLoop(boolean on) {
+         Ano.Mpt[] mp = mpts();
+         if (mp == null) return;
+-        apply(ObjModel.setLoop(mp, on), tl.playheadTick());
++        v.setLoop(on);
+         host.toast(on ? "loop ligado: a animacao repete" : "loop desligado");
+     }
+ 
+@@ -281,14 +326,14 @@
+         addSpriteAfter(mp.length - 1);
+     }
+ 
+-    @Override public void onEmpty(int type, int frame) {
++    @Override public void onEmpty(int type, int frame, int axis) {
+         Ano.Mpt[] mp = mpts();
+         if (mp == null || frame < 0 || frame >= mp.length) return;
+-        v.seekToPat(frame);
++        seekIntoFrames(frame, frame);
+         if (type == TimelineView.T_STYLE) { host.show(type, frame, -1, -1); return; }
+         int track = type == TimelineView.T_SOUND ? FrameOps.SOM : FrameOps.MOV;
+         Ano.Mpt c = mp[frame].copy();
+-        FrameOps.defaults(track, c);
++        if (track == FrameOps.MOV) FrameOps.defaultsMove(c, axis); else FrameOps.defaults(track, c);
+         Ano.Mpt[] n = mp.clone();
+         n[frame] = c;
+         apply(n, FrameOps.starts(n)[frame]);
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-24 21:48:56.250604962 +0000
++++ b/TimelineTools.java	2026-10-28 13:19:56.995585098 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -14038,7 +14403,23 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      }
  
      private Ano cur() { return view.currentAno(); }
-@@ -377,7 +463,7 @@
+@@ -357,7 +443,7 @@
+             @Override public void run() {
+                 busy.set("Atualizando a linha do tempo...", 0, 0);
+                 idx = Math.max(0, Math.min(mp.length - 1, newIdx));
+-                view.seekToPat(idx);
++                view.seekToPatKeep(idx);
+                 show(type, idx, flag, occ);
+                 onChanged.run();
+                 if (after != null) after.run();
+@@ -371,13 +457,13 @@
+         if (a == null) return;
+         view.replaceAno(new Ano(a.index, true, a.flags, a.priority, a.links, mp));
+         idx = Math.max(0, Math.min(mp.length - 1, newIdx));
+-        view.seekToPat(idx);
++        view.seekToPatKeep(idx);
+         show(type, idx, flag, occ);
+         onChanged.run();
      }
  
      private TextView head(String s) {
@@ -14991,6 +15372,24 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          switch (o.kind) {
              case ObjModel.HITBOX: case ObjModel.HURTBOX: box(a, o, pat); break;
              case ObjModel.PROJ: projectile(a, o, pat); break;
+@@ -1054,7 +1340,7 @@
+             }
+             if (pick == null) return false;
+             focusOn = true; focusFlag = pick.flag; focusOcc = pick.occ;
+-            view.seekToPat(m.pat);
++            view.seekToPatKeep(m.pat);
+             tl.select(TimelineView.T_OBJ, -1, pick.flag, pick.occ);
+             show(TimelineView.T_OBJ, -1, pick.flag, pick.occ);
+             return true;
+@@ -1062,7 +1348,7 @@
+         for (ObjModel.Obj o : ObjModel.objects(a.mpts)) {
+             if (o.kind != ObjModel.HITBOX || m.pat < o.f0 || m.pat > o.f1) continue;
+             focusOn = true; focusFlag = o.flag; focusOcc = o.occ;
+-            view.seekToPat(m.pat);
++            view.seekToPatKeep(m.pat);
+             tl.select(TimelineView.T_OBJ, -1, o.flag, o.occ);
+             show(TimelineView.T_OBJ, -1, o.flag, o.occ);
+             return true;
 @@ -1078,7 +1364,7 @@
       */
      private void transitionBlock(Ano a, final ObjModel.Obj hitObj) {
@@ -15789,8 +16188,8 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      }
 diff -ruN a/TimelineView.java b/TimelineView.java
 --- a/TimelineView.java	2026-10-20 01:14:59.000000000 +0000
-+++ b/TimelineView.java	2026-10-24 23:58:06.036736312 +0000
-@@ -25,7 +25,7 @@
++++ b/TimelineView.java	2026-10-28 13:20:30.645386553 +0000
+@@ -25,13 +25,15 @@
      public static final int T_NONE = -1, T_SPRITE = 0, T_OBJ = 1, T_SOUND = 2, T_MOVE = 3, T_STYLE = 4, T_LINK = 5, T_SEQ = 6;
  
      private static final int R_SPRITE = 0, R_SUMMARY = 1, R_AUDIO = 2, R_MOVE = 3, R_STYLE = 4, R_OBJ = 5, R_LINK = 6, R_SEQ = 7;
@@ -15799,7 +16198,20 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      private static final float VIEW_DP = 188, RULER_DP = 14, SPRITE_DP = 40, ROW_DP = 22, SUM_DP = 10;
  
      public interface Listener {
-@@ -46,7 +46,7 @@
+         /** type: T_*; idx: sprite/som/link/velocidade/estilo; flag/occ: objeto. */
+         void onSelect(int type, int idx, int flag, int occ);
+         void onScrub(int pat, int elapsed);
++        /** Toque num clipe [t0, t1): o ponteiro so se mexe se estiver antes (vai ao inicio) ou depois (vai ao fim) dele. */
++        void onClip(int t0, int t1);
+         /** Aparou o fim do sprite: nova duracao em ticks. */
+         void onResize(int frame, int newTime);
+         /**
+@@ -42,11 +44,11 @@
+         void onLoop(boolean on);
+         void onAddSprite();
+         /** Toque numa celula vazia (som, velocidade, estilo) de um sprite. */
+-        void onEmpty(int type, int frame);
++        void onEmpty(int type, int frame, int axis);
      }
  
      private static final class Row {
@@ -15808,7 +16220,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          float h;
          String label;
          int color;
-@@ -84,17 +84,41 @@
+@@ -84,17 +86,41 @@
          switch (m.kind) { case SeqMark.SEQ: return C_SEQ; case SeqMark.END: return C_END; case SeqMark.HIT: return C_HIT; case SeqMark.LAND: return C_LAND; default: return C_FALL; }
      }
  
@@ -15856,7 +16268,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
  
      /** Altura maxima permitida pela area visivel da pagina (0 = sem limite): evita linhas escondidas fora da tela. */
      private int maxHeightPx;
-@@ -107,9 +131,30 @@
+@@ -107,9 +133,30 @@
      private float cap() {
          float c = VIEW_DP * d;
          if (maxHeightPx > 0) c = Math.min(c, Math.max(maxHeightPx, 96f * d));
@@ -15887,7 +16299,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      public boolean isShown(int cat) { return show[cat]; }
      public void setShown(int cat, boolean on) {
          if (show[cat] == on) return;
-@@ -242,8 +287,14 @@
+@@ -242,8 +289,14 @@
          rows.clear();
          if (ano == null) return;
          row(R_SPRITE, show[0] ? SPRITE_DP : 0, "SPRITES", C_SPRITE);
@@ -15904,7 +16316,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          sawSound = anySound;
          if (!expanded) {
              for (int k = 0; k < 5; k++) {
-@@ -256,9 +307,10 @@
+@@ -256,9 +309,13 @@
              if (ano.links.length > 0 && show[9]) { Row r = row(R_SUMMARY, SUM_DP, "Links", C_LINK); r.kind = 7; }
              if (!seqMarks.isEmpty() && show[10]) { Row r = row(R_SUMMARY, SUM_DP, "Transicoes", C_SEQ); r.kind = 8; }
          } else {
@@ -15913,12 +16325,15 @@ diff -ruN a/TimelineView.java b/TimelineView.java
 -            if (show[8]) row(R_STYLE, ROW_DP, "Estilo", C_STYLE);
 +            // so faixas com uso; sons, velocidades e estilos nao coexistem no mesmo frame, entao uma faixa de cada basta
 +            if (anySound && show[6]) row(R_AUDIO, ROW_DP, "Audio", C_AUDIO);
-+            if (anyMove && show[7]) row(R_MOVE, ROW_DP, "Velocidade", C_MOVE);
++            if (anyMove && show[7]) {          // uma faixa por eixo (so a visualizacao; o menu continua o mesmo)
++                row(R_MOVE, ROW_DP, "Velocidade X", C_MOVE).lane = 0;
++                row(R_MOVE, ROW_DP, "Velocidade Y", C_MOVE).lane = 1;
++            }
 +            if (anyStyle && show[8]) row(R_STYLE, ROW_DP, "Estilo", C_STYLE);
              java.util.Map<Integer, Row> objRows = new java.util.HashMap<Integer, Row>();
              for (ObjModel.Obj o : objs) {
                  if (!show[o.kind + 1]) continue;
-@@ -270,7 +322,7 @@
+@@ -270,7 +327,7 @@
                  }
                  r.group.add(o);    // objetos separados (valores diferentes) da mesma flag dividem a linha
              }
@@ -15927,7 +16342,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              for (int i = 0; show[9] && i < ano.links.length; i++) {
                  Row r = row(R_LINK, ROW_DP, "Link " + (i + 1), C_LINK);
                  r.link = i;
-@@ -328,7 +380,7 @@
+@@ -328,7 +385,7 @@
          float g = gutter();
          if (ano == null || rows.isEmpty()) {
              t.setColor(0xFF4A505E);
@@ -15936,7 +16351,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              return;
          }
          float W = getWidth(), H = getHeight();
-@@ -397,10 +449,10 @@
+@@ -397,10 +454,10 @@
          Row f = rows.get(0);
          if (show[0]) {
              t.setColor(C_SPRITE);
@@ -15949,7 +16364,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              t.setTextSize(9.5f * d);
          }
          drawTip(c);
-@@ -430,11 +482,12 @@
+@@ -430,11 +487,12 @@
          p.setColor(0xEE000000);
          c.drawRoundRect(rf, 5 * d, 5 * d, p);
          t.setColor(0xFFFFFFFF);
@@ -15963,7 +16378,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          if (t.measureText(s) <= w) return s;
          while (s.length() > 1 && t.measureText(s + "..") > w) s = s.substring(0, s.length() - 1);
          return s + "..";
-@@ -451,7 +504,7 @@
+@@ -451,7 +509,7 @@
          for (int tk = t0; tk <= Math.min(t1, total + 600); tk += step) {
              float x = xOf(tk);
              c.drawLine(x, RULER_DP * d - 4 * d, x, H, p);
@@ -15972,7 +16387,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          }
          // fim da ANO
          p.setColor(0xFF58606E);
-@@ -508,10 +561,10 @@
+@@ -508,10 +566,10 @@
                  else if (mode == M_RESIZE && i == resizeFrame) shown = Math.max(1, Math.round(span(i) + dw / ppt));
                  String tt = timeText(shown);
                  if (rf.right - tx < t.measureText(tt) + 4 * d) tt = sec(shown);
@@ -15985,7 +16400,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                  t.setTextSize(9.5f * d);
              }
              c.restore();
-@@ -534,7 +587,7 @@
+@@ -534,7 +592,7 @@
          c.drawRoundRect(rf, 6 * d, 6 * d, p);
          t.setColor(loop ? 0xFFFFFFFF : 0xFF9AA3B2);
          t.setFakeBoldText(true);
@@ -15994,7 +16409,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          t.setFakeBoldText(false);
          rf.set(x + 62 * d, y, x + 62 * d + h, y + h);
          p.setColor(0xFF3A3416);
-@@ -602,7 +655,7 @@
+@@ -602,7 +660,7 @@
              c.save();
              c.clipRect(rf);
              t.setColor(0xFF2B0507);
@@ -16003,16 +16418,43 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              c.restore();
              if (sel) outline(c, rf.left, rf.top, rf.right, rf.bottom);
          }
-@@ -630,7 +683,7 @@
+@@ -618,6 +676,7 @@
+         for (int i = 0; i < ano.mpts.length; i++) {
+             Ano.Mpt m = ano.mpts[i];
+             if (!FrameOps.isMoveHead(m)) continue;
++            if ((FrameOps.moveAxes(ano.mpts, i) & (1 << r.lane)) == 0) continue;      // este trecho nao mexe neste eixo
+             int j = FrameOps.moveRunEnd(ano.mpts, i);
+             boolean sel = selType == T_MOVE && selIdx == i;
+             float x0 = xOf(start[i]), x1 = xOf(start[j] + span(j));
+@@ -630,21 +689,21 @@
              c.save();
              c.clipRect(rf);
              t.setColor(0xFF03210F);
 -            c.drawText(moveLabel(m), Math.max(rf.left, gutter()) + 3 * d, r.top + r.h / 2f + 3.5f * d, t);
-+            I18nUi.drawText(c, moveLabel(m), Math.max(rf.left, gutter()) + 3 * d, r.top + r.h / 2f + 3.5f * d, t);
++            I18nUi.drawText(c, moveLabel(m, r.lane), Math.max(rf.left, gutter()) + 3 * d, r.top + r.h / 2f + 3.5f * d, t);
              c.restore();
              if (sel) {
                  outline(c, rf.left, rf.top, rf.right, rf.bottom);
-@@ -670,7 +723,7 @@
+                 handle(c, rf.right - 3.5f * d, rf.top, rf.bottom);
+             }
+         }
+-        hintCurrent(c, r, "+ velocidade");
++        hintCurrent(c, r, r.lane == 0 ? "+ velocidade X" : "+ velocidade Y");
+     }
+ 
+-    private String moveLabel(Ano.Mpt m) {
++    private String moveLabel(Ano.Mpt m, int axis) {
+         StringBuilder b = new StringBuilder();
+-        if ((m.moveMask & 1) != 0) b.append("x ").append(DacText.fix(m.speedX)).append(' ');
+-        if ((m.moveMask & 2) != 0) b.append("y ").append(DacText.fix(m.speedY)).append(' ');
+-        if ((m.moveMask & 12) != 0) b.append("acel");
++        if (axis == 0 && (m.moveMask & 1) != 0) b.append("x ").append(DacText.fix(m.speedX)).append(' ');
++        if (axis == 1 && (m.moveMask & 2) != 0) b.append("y ").append(DacText.fix(m.speedY)).append(' ');
++        if ((m.moveMask & (axis == 0 ? 4 : 8)) != 0) b.append("acel");
+         return b.length() == 0 ? "vel" : b.toString().trim();
+     }
+ 
+@@ -670,7 +729,7 @@
              c.save();
              c.clipRect(rf);
              t.setColor(0xFF2A1400);
@@ -16021,7 +16463,16 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              c.restore();
              if (sel) {
                  outline(c, rf.left, rf.top, rf.right, rf.bottom);
-@@ -691,7 +744,7 @@
+@@ -684,14 +743,15 @@
+     private void hintCurrent(Canvas c, Row r, String text) {
+         if (pat < 0 || pat >= ano.mpts.length) return;
+         Ano.Mpt m = ano.mpts[pat];
+-        boolean has = r.type == R_AUDIO ? (m.flags & 8) != 0 : r.type == R_MOVE ? FrameOps.moveHeadOf(ano.mpts, pat) >= 0
++        boolean has = r.type == R_AUDIO ? (m.flags & 8) != 0
++                : r.type == R_MOVE ? (FrameOps.moveAxes(ano.mpts, FrameOps.moveHeadOf(ano.mpts, pat)) & (1 << r.lane)) != 0
+                 : FrameOps.styleSig(m) != 0;
+         if (has) return;
+         float x0 = xOf(start[pat]), x1 = xOf(start[pat] + span(pat));
          t.setColor(0xFF5E6676);
          c.save();
          c.clipRect(x0, r.top, x1, r.top + r.h);
@@ -16030,7 +16481,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          c.restore();
      }
  
-@@ -724,7 +777,7 @@
+@@ -724,7 +784,7 @@
          c.save();
          c.clipRect(rf);
          t.setColor(0xFF081018);
@@ -16039,7 +16490,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          c.restore();
          if (sel) {
              outline(c, rf.left, rf.top, rf.right, rf.bottom);
-@@ -742,7 +795,7 @@
+@@ -742,7 +802,7 @@
          stripe(c, r);
          for (int i = 0; i < seqMarks.size(); i++) {
              SeqMark m = seqMarks.get(i);
@@ -16048,7 +16499,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              boolean sel = selType == T_SEQ && selIdx == i;
              p.setColor(m.blocked ? 0xFF5E6676 : markColor(m));
              p.setAlpha(sel ? 255 : 210);
-@@ -753,7 +806,7 @@
+@@ -753,7 +813,7 @@
              c.clipRect(rf);
              t.setColor(0xFF1A0A10);
              t.setFakeBoldText(true);
@@ -16057,7 +16508,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              t.setFakeBoldText(false);
              c.restore();
              if (sel || m.real) outline(c, rf.left, rf.top, rf.right, rf.bottom);
-@@ -772,7 +825,7 @@
+@@ -772,7 +832,7 @@
          c.save();
          c.clipRect(rf);
          t.setColor(0xFF06222A);
@@ -16066,7 +16517,42 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          c.restore();
          if (sel) outline(c, rf.left, rf.top, rf.right, rf.bottom);
      }
-@@ -1030,7 +1083,7 @@
+@@ -996,7 +1056,7 @@
+                 }
+                 if (!expanded) {      // fechada: leva o ponteiro ate o sprite e expande, sem abrir a edicao
+                     setExpanded(true);
+-                    if (listener != null) listener.onScrub(f, 0);
++                    if (listener != null) listener.onClip(start[f], start[f] + span(f));
+                     return;
+                 }
+                 send(T_SPRITE, f, -1, -1);
+@@ -1006,7 +1066,7 @@
+                 if (f < 0) return;
+                 if (!expanded) {
+                     setExpanded(true);
+-                    if (listener != null) listener.onScrub(f, 0);
++                    if (listener != null) listener.onClip(start[f], start[f] + span(f));
+                     return;
+                 }
+                 send(T_SPRITE, f, -1, -1);
+@@ -1019,10 +1079,14 @@
+                 int sendIdx = f;
+                 boolean has;
+                 if (r.type == R_AUDIO) has = (mp.flags & 8) != 0;
+-                else if (r.type == R_MOVE) { sendIdx = FrameOps.moveHeadOf(ano.mpts, f); has = sendIdx >= 0; }
++                else if (r.type == R_MOVE) {
++                    sendIdx = FrameOps.moveHeadOf(ano.mpts, f);
++                    has = sendIdx >= 0 && (FrameOps.moveAxes(ano.mpts, sendIdx) & (1 << r.lane)) != 0;
++                    if (!has && sendIdx >= 0) has = true;      // o trecho existe mas nao usa este eixo: abre o menu dele (la se liga o eixo)
++                }
+                 else has = FrameOps.styleSig(mp) != 0;
+                 if (has) send(type, sendIdx, -1, -1);
+-                else if (listener != null) listener.onEmpty(type, f);
++                else if (listener != null) listener.onEmpty(type, f, r.type == R_MOVE ? r.lane : 0);
+                 return;
+             }
+             case R_SEQ: {
+@@ -1030,7 +1094,7 @@
                  RectF mr = new RectF();
                  int first = -1;
                  for (int i = 0; i < seqMarks.size(); i++) {
@@ -16075,6 +16561,15 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                      if (first < 0) first = i;
                      markRect(i, -1e6f, 1e6f, mr);
                      if (x >= mr.left && x <= mr.right) { send(T_SEQ, i, -1, -1); return; }
+@@ -1042,7 +1106,7 @@
+                 ObjModel.Obj o = f < 0 ? null : objAt(r, f);
+                 if (o == null) return;
+                 send(T_OBJ, -1, o.flag, o.occ);
+-                if (listener != null) listener.onScrub(f, 0);
++                if (listener != null) listener.onClip(start[o.f0], start[o.f1] + span(o.f1));
+                 return;
+             }
+             default:
 diff -ruN a/ToolbarOrder.java b/ToolbarOrder.java
 --- a/ToolbarOrder.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ToolbarOrder.java	2026-10-24 21:48:20.176835478 +0000
@@ -17616,7 +18111,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-24 23:58:56.280971566 +0000
++++ b/test/I18nIgnored.java	2026-10-28 13:21:59.551313525 +0000
 @@ -0,0 +1,478 @@
 +package com.zue.attackeditor;
 +
@@ -19393,9 +19888,135 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +        System.out.println("SpawnDiagTest fails=" + BattleTest.fails);
 +    }
 +}
+diff -ruN a/test/TimelineEditTest.java b/test/TimelineEditTest.java
+--- a/test/TimelineEditTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/TimelineEditTest.java	2026-10-28 13:21:43.236176380 +0000
+@@ -0,0 +1,122 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Edicao na timeline: o loop e do ANO (acompanha o ultimo frame), frame sem TIME, clique dentro do clipe e divisao de velocidade. */
++public class TimelineEditTest {
++    static Dac with(Dac d, int idx, Ano.Mpt[] mp) {
++        d.setAno(idx, new Ano(idx, true, 0, 0, new Ano.Link[0], mp));
++        return d;
++    }
++
++    static int len(Dac d) throws Exception {
++        CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++        return SpawnDiagTest.sim(d, ch, ch.moves[0], 200, 0, 0).measureLength();
++    }
++
++    static boolean loopBit(Ano.Mpt m) { return (m.flags & 2) != 0 && (m.wActFlag & 1) != 0; }
++
++    static int loopCount(Ano.Mpt[] m) { int n = 0; for (Ano.Mpt x : m) if (loopBit(x)) n++; return n; }
++
++    public static void main(String[] args) throws Exception {
++        A[] a = SpawnDiagTest.anos();
++        a[40] = new A().mpt(new M().time(4)).mpt(new M().time(4)).mpt(new M().time(4).act(1));
++        Dac d = dac(a);
++        Ano.Mpt[] mp = d.getAno(40).mpts;
++        check("ANO com loop no ultimo frame: 12 ticks", len(d), 12);
++
++        // ---- adicionar / duplicar no fim: o loop vai para o novo ultimo frame e a duracao cresce
++        Ano.Mpt[] dup = FrameOps.duplicate(mp, 2);
++        check("duplicar o ultimo: sem normalizar o loop ficaria no antigo (bug)", loopBit(dup[2]) && !loopBit(dup[3]), true);
++        Ano.Mpt[] fixed = FrameOps.normalizeLoop(mp, dup);
++        check("duplicar o ultimo: loop so no novo ultimo", loopBit(fixed[3]) && loopCount(fixed) == 1, true);
++        check("duplicar o ultimo: duracao 16 ticks", len(with(dac(a), 40, fixed)), 16);
++        check("duplicar o ultimo sem normalizar travava em 12", len(with(dac(a), 40, dup)), 12);
++
++        Ano.Mpt[] ins = FrameOps.insertSprites(mp, 2, new int[]{7, 8}, new int[]{3, 3});
++        Ano.Mpt[] insFixed = FrameOps.normalizeLoop(mp, ins);
++        check("inserir sprites no fim: loop no ultimo", loopBit(insFixed[4]) && loopCount(insFixed) == 1, true);
++        check("inserir sprites no fim: duracao 18", len(with(dac(a), 40, insFixed)), 18);
++
++        // ---- apagar o ultimo: o loop passa para o novo ultimo
++        Ano.Mpt[] del = FrameOps.delete(mp, 2);
++        check("apagar o ultimo perde o loop sem normalizar", loopCount(del), 0);
++        Ano.Mpt[] delFixed = FrameOps.normalizeLoop(mp, del);
++        check("apagar o ultimo: loop no novo ultimo", loopBit(delFixed[1]) && loopCount(delFixed) == 1, true);
++        // dividir o ultimo frame: a metade final continua com o loop
++        FrameOps.Split sp = FrameOps.splitAt(mp, 10);
++        check("dividir o ultimo: loop na metade final", loopBit(sp.mpts[3]) && !loopBit(sp.mpts[2]), true);
++
++        // ---- so o usuario desliga
++        Ano.Mpt[] off = ObjModel.setLoop(mp, false);
++        check("setLoop(false) desliga", ObjModel.loops(off), false);
++        check("depois de desligado, editar nao liga de novo", ObjModel.loops(FrameOps.normalizeLoop(off, FrameOps.duplicate(off, 2))), false);
++        // loop no meio (ANO importado) nao e mexido
++        Ano.Mpt[] mid = mp.clone();
++        mid[2] = mp[2].copy(); mid[2].wActFlag = 0; mid[2].flags &= ~2;
++        mid[1] = mp[1].copy(); mid[1].flags |= 2; mid[1].wActFlag |= 1;
++        Ano.Mpt[] midDup = FrameOps.duplicate(mid, 2);
++        check("loop no meio fica onde esta", FrameOps.normalizeLoop(mid, midDup) == midDup, true);
++        check("sem mudanca: devolve o mesmo array", FrameOps.normalizeLoop(mp, mp) == mp, true);
++
++        // ---- frame sem TIME segura para sempre: ao por um sprite depois dele, ele passa a durar o que a timeline mostra
++        A[] b = SpawnDiagTest.anos();
++        b[40] = new A().mpt(new M().time(4)).mpt(new M());
++        Ano.Mpt[] hold = dac(b).getAno(40).mpts;
++        check("frame sem TIME e segurado", hold[1].hasTime, false);
++        Ano.Mpt[] dh = FrameOps.duplicate(hold, 1);
++        check("duplicar o frame que segura: ele ganha 3 ticks", dh[1].hasTime && dh[1].time == 3, true);
++        check("duplicar o frame que segura: o novo ultimo e quem segura", !dh[2].hasTime, true);
++        Ano.Mpt[] dm = FrameOps.duplicate(hold, 0);
++        check("duplicar no meio: a copia dura o mesmo que o original", dm[1].hasTime && dm[1].time == 4, true);
++        Ano.Mpt[] ih = FrameOps.insertSprites(hold, 1, new int[]{9}, new int[]{5});
++        check("inserir depois do frame que segura", ih[1].hasTime && ih[1].time == 3 && ih[2].time == 5, true);
++        check("a ANO com sprite depois do frame que segura agora chega ao novo frame (total 12 ticks)", FrameOps.total(ih), 4 + 3 + 5);
++
++        // ---- clique num clipe: dentro nao mexe, antes vai ao inicio, depois ao ultimo tick
++        check("clipTarget dentro", FrameOps.clipTarget(7, 4, 12), 7);
++        check("clipTarget no inicio", FrameOps.clipTarget(4, 4, 12), 4);
++        check("clipTarget antes", FrameOps.clipTarget(2, 4, 12), 4);
++        check("clipTarget depois", FrameOps.clipTarget(12, 4, 12), 11);
++        check("clipTarget bem depois", FrameOps.clipTarget(30, 4, 12), 11);
++        check("clipTarget vazio", FrameOps.clipTarget(30, 4, 4), 4);
++
++        // ---- velocidade: eixos e divisao do trecho
++        A[] c = SpawnDiagTest.anos();
++        c[40] = new A().mpt(new M().time(10).speedX(2 << 16)).mpt(new M().time(10)).mpt(new M().time(10)).mpt(new M().time(10));
++        Ano.Mpt[] sp0 = dac(c).getAno(40).mpts;
++        Ano.Mpt[] run = FrameOps.setMoveRun(sp0, 0, 2);
++        check("eixos: so X", FrameOps.moveAxes(run, 0), 1);
++        Ano.Mpt yOnly = FrameTools.setSpeed(sp0[3], 1, 1.5, true);
++        check("eixos: so Y", FrameOps.moveAxes(new Ano.Mpt[]{yOnly}, 0), 2);
++        Ano.Mpt both = FrameTools.setAccel(FrameTools.setSpeed(sp0[3], 1, 1.0, true), 0, 0.25);
++        check("eixos: speed Y + accel X = X e Y", FrameOps.moveAxes(new Ano.Mpt[]{both}, 0), 3);
++        check("sem velocidade: nenhum eixo", FrameOps.moveAxes(sp0, 1), 0);
++        Ano.Mpt e = sp0[1].copy();
++        FrameOps.defaultsMove(e, 1);
++        check("celula vazia na faixa Y cria speed Y", e.moveMask, 2);
++
++        double[] before = FrameTools.totalPixels(run, 0, 2);
++        check("dividir no meio do 2o frame do trecho", FrameOps.splitMove(run, 15) != null, true);
++        FrameOps.Split sm = FrameOps.splitMove(run, 15);
++        check("dividir velocidade: um frame a mais e o corte vira cabeca", sm.mpts.length == 5 && FrameOps.isMoveHead(sm.mpts[2]) && sm.index == 2, true);
++        check("a cabeca nova mantem a velocidade (2 px/tick) e o bit 64", sm.mpts[2].speedX == (2 << 16) && (sm.mpts[2].wActFlag & 64) != 0, true);
++        double[] after = FrameTools.totalPixels(sm.mpts, 0, 3);
++        check("dividir velocidade nao muda o deslocamento (" + before[0] + ")", before[0] == after[0] && before[1] == after[1], true);
++        check("agora sao dois trechos", FrameOps.moveHeadOf(sm.mpts, 1) == 0 && FrameOps.moveHeadOf(sm.mpts, 3) == 2 && FrameOps.moveHeadOf(sm.mpts, 2) == 2, true);
++        check("dividir no inicio da cabeca: nao ha o que dividir", FrameOps.splitMove(run, 0), null);
++        check("dividir fora do trecho (frame sem velocidade)", FrameOps.splitMove(run, 35), null);
++        check("dividir exatamente no inicio de um frame de continuacao", FrameOps.splitMove(run, 10) != null && FrameOps.splitMove(run, 10).mpts.length == 4, true);
++
++        // com aceleracao: o 2o trecho comeca com a velocidade ja acumulada e a deslocamento total e igual
++        Ano.Mpt acc = FrameTools.setAccel(sp0[0], 0, 0.25);
++        Ano.Mpt[] ar = FrameOps.setMoveRun(new Ano.Mpt[]{acc, sp0[1], sp0[2], sp0[3]}, 0, 2);
++        double[] ab = FrameTools.totalPixels(ar, 0, 2);
++        FrameOps.Split as = FrameOps.splitMove(ar, 13);
++        double[] aa = FrameTools.totalPixels(as.mpts, 0, 3);
++        check("accel: deslocamento igual depois de dividir", Math.abs(ab[0] - aa[0]) < 1e-9, true);
++        check("accel: o 2o trecho comeca em 4.5 + 0.25*3 = 5.25 px/tick", as.mpts[as.index].speedX, (int) Math.round(5.25 * 65536.0));
++
++        System.out.println("TimelineEditTest fails=" + fails);
++    }
++}
 diff -ruN a/test/TimelineLabelsTest.java b/test/TimelineLabelsTest.java
 --- a/test/TimelineLabelsTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/TimelineLabelsTest.java	2026-10-24 23:58:56.121054234 +0000
++++ b/test/TimelineLabelsTest.java	2026-10-28 13:21:59.341059047 +0000
 @@ -0,0 +1,70 @@
 +package com.zue.attackeditor;
 +
@@ -19425,7 +20046,7 @@ diff -ruN a/test/TimelineLabelsTest.java b/test/TimelineLabelsTest.java
 +        l.addAll(Arrays.asList(ReactionLayout.NAMES));
 +        l.addAll(Arrays.asList(ReactionLayout.FILTER_NAMES));
 +        // fixos da timeline principal
-+        l.addAll(Arrays.asList("SPRITES", "Audio", "Velocidade", "Links", "Transicoes", "Estilo", "sem ANO", "toque p/ abrir", "toque p/ fechar", "+ som", "+ velocidade", "+ estilo", "↻ LOOP"));
++        l.addAll(Arrays.asList("SPRITES", "Audio", "Velocidade", "Links", "Transicoes", "Estilo", "sem ANO", "toque p/ abrir", "toque p/ fechar", "+ som", "+ velocidade", "+ velocidade X", "+ velocidade Y", "Velocidade X", "Velocidade Y", "+ estilo", "↻ LOOP"));
 +        // dinamicos
 +        l.addAll(Arrays.asList("Link 2", "Transicoes 2", "Efeito 1.2", "animação ligada: ANO 7", "som 12", "img 3", "vel", "x 1.5 y 2 acel", "acel",
 +                "0.5s/30 ticks", "0.02s/1 tick", "ANO 5"));
