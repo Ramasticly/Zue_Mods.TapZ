@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1262 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1269 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -309,6 +309,8 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes: `SpriteImportPlanTest` 27 → 38 (amostra do usuário em personagem e em effect, BOM e comentário, `.cnv.txt` ao lado vence, binário continua, arquivo pequeno dá erro, plano e ampliação 1→2). AJUDA (PT/EN/ES) e MD atualizados. 
 - **Seletor de sprites de outro pac** (`PacSpritePicker`): uma linha de diagnóstico mostra como o arquivo foi entendido (`.cnv.txt` coordenadas finais ÷2 / `.cnv` texto coordenadas originais / binário) e o recorte da 1ª sprite (ex.: `SPR_0: 0,18 240x60 → recorte 0,36 480x120`); o botão **ESCALA: AUTO (2) / 1 / 2** força a escala do pac quando a pasta não é reconhecida. Pasta de personagem agora é `char` + número com qualquer sufixo/maiúscula (`char05_copia`, `Char5`); `charf`/`chara` continuam escala 1. Só compilado/revisado, não rodado num aparelho.
 
+- **Escala do pac deduzida (corrige `.cnv` em texto que aparecia como “escala 1 → 2” e saía com recorte pela metade)**: a escala 2 não depende mais só do nome da pasta. Agora vale personagem se a pasta é `char`+número **ou tem `000.bin`**; e, se ainda assim sobrar escala 1 (e o arquivo não é `.cnv.txt`), o app compara os recortes com o tamanho dos PNG (`SpriteImportPlan.guessScale`): se todos só cabem nas folhas multiplicados por 2 e, multiplicados, quase enchem alguma folha (≥ 85 %), é pac de escala 2 e o CNV é relido assim — a linha de diagnóstico avisa “escala 2 deduzida do tamanho das folhas”. Só promove 1 → 2, nunca o contrário; o botão ESCALA continua mandando.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -365,7 +367,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **GrabEditTest (novo)** | 12 |
 | **HurtboxAllTest (novo)** | 8 |
 | **RootKindTest (novo)** | 18 |
-| **SpriteImportPlanTest (novo)** | 43 |
+| **SpriteImportPlanTest (novo)** | 50 |
 | **SoundIdsTest (novo)** | 61 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
