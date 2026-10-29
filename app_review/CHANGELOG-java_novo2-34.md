@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1302 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1361 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -328,6 +328,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Na lista de sprites do personagem e no seletor de outro CNV, a sprite com problema mostra o motivo em **vermelho** e há uma faixa “N sprite(s) com problema de recorte — toque para ver”.
 - `SpriteLib.cutProblem/cutProblems`, `SpriteCache.errors()`, `AttackView.spriteProblems()`. Testes: `CropProblemTest` (11). Telas e alertas só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zq + do fim da timeline (CAMADA / Adicionar Sprite), thumb 1:1, SPEEDLINE e Teleportar atrás do oponente
+- **Erro de recorte**: o alerta deixou de abrir sozinho (preview e seletor de CNV). Ficam o motivo vermelho em cada sprite, a faixa “N sprite(s) com problema de recorte — toque para ver” (abre o alerta copiável) e o alerta depois de adicionar/substituir que falhou.
+- **+ do fim da faixa de sprites** abre um menu: **CAMADA** (− N +; **maior = a ANO aparece mais em cima**; no jogo o `iActPrio` maior fica mais atrás, então o app grava o `$PRIO` invertido — `LayerOps`) e **Adicionar Sprite** (cria depois do ponteiro e abre a gaveta direto na página **Imagem**).
+- **Thumb da sprite** no menu Imagem: quadrada (1:1), metade da largura da tela.
+- **Botão SPEEDLINE** (menu superior, depois de HITBOX; 16 botões): pontos e linhas **verdes** com a trajetória do movimento — um ponto no início de cada Frame que se move, um no fim do último, um extra onde a altura muda de sentido dentro de um Frame; marcador amarelo que anda pelo Frame atual e destaque no ponto do Frame atual. **Arrastar** um ponto muda só a speed do Frame anterior (o TIME nunca muda); **tocar** abre: *Remover este ponto* (o Frame perde a speed própria e continua com a do anterior; no primeiro ponto ou num movimento de 1 Frame tira a speed toda, com aviso e confirmação), *Zerar Speed* (sem manter e sem speed) e *Aceleração…* (prévia da velocidade por tick, accel x/y por Frame, velocidade do movimento em % mantendo o padrão e presets: começar devagar e acelerar rápido, acelerar até o fim, desacelerar rápido, desacelerar até parar, acelerar e desacelerar, constante — todos preservam o deslocamento total). Modelo puro `SpeedLine`/`AccelPresets`, conferido contra o `AttackSim`.
+- **Teleportar atrás do oponente** (ações especiais do ＋): Puxar oponente (flag 40) com **x = −120** + **Flip X** no sprite, reconhecidos pela combinação (flag 40 com x < 0 + Flip X) como **um item só**: nome próprio, apagar/esticar/mover leva o Flip X junto, o **x do Teleportar atrás é sempre < 0** (o Puxar oponente comum continua sem limite) e o Puxar oponente comum não aparece (nem na faixa nem para adicionar) num Frame que já tem Teleportar atrás.
+- Testes: `LayerOpsTest` (11), `SpeedLineTest` (38), `TeleportBehindTest` (17, inclui a simulação: o oponente vai para trás do atacante), `ToolbarTest` (84). Menu do +, thumb, SPEEDLINE (desenho, arrastar, toque, diálogo) e a gaveta do Teleportar atrás **só compilados/revisados, não rodados num aparelho**. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -365,7 +373,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpawnDiagTest (novo)** | 50 |
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 47 |
-| **ToolbarTest (novo)** | 81 |
+| **ToolbarTest (novo)** | 84 |
 | **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 37 |
 | **ReactionSlotsTest (novo)** | 20 |
@@ -389,6 +397,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **FilePickerTest (novo)** | 5 |
 | **SheetFilesTest (novo)** | 17 |
 | **CropProblemTest (novo)** | 11 |
+| **LayerOpsTest (novo)** | 11 |
+| **TeleportBehindTest (novo)** | 17 |
+| **SpeedLineTest (novo)** | 38 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
