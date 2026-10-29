@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1361 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1403 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -336,6 +336,16 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Teleportar atrás do oponente** (ações especiais do ＋): Puxar oponente (flag 40) com **x = −120** + **Flip X** no sprite, reconhecidos pela combinação (flag 40 com x < 0 + Flip X) como **um item só**: nome próprio, apagar/esticar/mover leva o Flip X junto, o **x do Teleportar atrás é sempre < 0** (o Puxar oponente comum continua sem limite) e o Puxar oponente comum não aparece (nem na faixa nem para adicionar) num Frame que já tem Teleportar atrás.
 - Testes: `LayerOpsTest` (11), `SpeedLineTest` (38), `TeleportBehindTest` (17, inclui a simulação: o oponente vai para trás do atacante), `ToolbarTest` (84). Menu do +, thumb, SPEEDLINE (desenho, arrastar, toque, diálogo) e a gaveta do Teleportar atrás **só compilados/revisados, não rodados num aparelho**. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zr Prévia do menu de sprite a 30% e desfazer/refazer por hierarquias
+- **Menu de sprite (página Imagem)**: a prévia fica 1:1 com **30% da largura da tela** e o **− N +** vai para a frente dela, em **x = 65% da largura** e centrado na altura da prévia (y + h/2); em tela estreita o x é limitado para o − N + caber inteiro.
+- **Desfazer / refazer em dois níveis** (`UndoHistory`, Java puro; antes era uma pilha única sem refazer):
+  1. **Dentro de um menu** (gaveta aberta = sessão): cada campo/botão alterado é um passo (o − + segurado continua fundindo em 4 s); **desfazer** vai do último passo até o original, **refazer** repõe tudo; mudança nova depois de desfazer **apaga o refazer**. Só enxerga o que foi feito naquele menu.
+  2. **Depois de APLICAR**: o menu inteiro vira **um único passo** na pilha da timeline — o desfazer da barra desfaz o menu todo de uma vez e o refazer repõe tudo; ação nova apaga o refazer. Ações fora de gaveta (DIVIDIR, DUPLICAR, EXCLUIR, arrastar clipe, arrastar ponto da SPEEDLINE…) seguem como um passo cada.
+  3. Fechar sem aplicar (✕/tocar fora) desfaz o que sobrou na sessão e a descarta.
+- **Botões**: o “↶ DESFAZER” da barra virou **duas setas ↶ ↷ de larguras iguais** que somam a largura antiga; a gaveta ganhou o **↷** ao lado do ↶. Com menu aberto os botões da barra agem no menu; sem menu, nas ações/menus já aplicados. Esmaecem quando não há o que desfazer/refazer.
+- **Como**: cada ponto de `pushUndo` do `AttackView` (ANOs, frames, golpe, reações, agarrão, silenciar sons…) passou a registrar uma `Edit` (`UndoEdits.swapAno/swapAnos/swapMpts/swapMove/swapReaction/swapPull`) que, ao reverter, lê o estado atual e devolve a edição inversa — por isso refazer funciona sem reescrever cada edição. O editor de reações e o diálogo “Editar…” seguem na pilha externa (sem botão de refazer novo).
+- Testes: `UndoHistoryTest` (32: sessão passo a passo até o original e de volta, refazer apagado por mudança nova e por fusão de chave, commit = uma entrada, sessão vazia, discard, ordem do grupo) e `UndoEditsTest` (10: ida e volta com DAC/golpe/agarrão reais). **A gaveta (prévia 30%), os botões ↶ ↷ e o fluxo APLICAR/✕ só compilados e revisados, não rodados num aparelho.** AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -400,6 +410,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **LayerOpsTest (novo)** | 11 |
 | **TeleportBehindTest (novo)** | 17 |
 | **SpeedLineTest (novo)** | 38 |
+| **UndoHistoryTest (novo)** | 32 |
+| **UndoEditsTest (novo)** | 10 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
