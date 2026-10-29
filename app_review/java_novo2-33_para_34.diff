@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-29 15:35:02.964044841 +0000
++++ b/AiHelpDoc.java	2026-10-29 16:20:18.269596593 +0000
 @@ -0,0 +1,847 @@
 +package com.zue.attackeditor;
 +
@@ -647,7 +647,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "- `VIRAR` — flip sides. `HIDE-EFF` — hide effects/auras/scenes/projectiles. `FR-PREVIEW` — previous/next frame ghost (settings in `TELA` > FR‑PREVIEW SET). `TELA` — grid, sounds, cutscenes, \"lock\" (cinematic), yellow box of all sprites, `FR-PREVIEW SET` and `POSE` (toggle, off by default: draws ANO 0, the idle character, underneath at the same anchor to compare the move's height and size).\n" +
 +        "\n" +
 +        "### 11.2 Timeline\n" +
-+        "Tap a sprite clip to open its drawer. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE (green), ESTILO (orange: flip/transform), LINKS, TRANSIÇÕES (SEQ/END/landing marks). The `＋` at the end of the sprite lane opens a menu: `CAMADA` (− N +, higher = the ANO draws on top; stored as the inverted `$PRIO`) and `Adicionar Sprite`. Special actions include `Teleportar atras do oponente` (= action 40 with a negative x, default −120, plus Flip X on the sprite, handled as one item). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a sprite or speed clip at the pointer (an object — hitbox, hurtbox, projectile, effect, action — belongs to its frame, so it splits at the frame boundary nearest to the pointer and the pointer moves there), `DUPLICAR`, `EXCLUIR`, `↶`/`↷` (undo/redo, two levels: with an edit drawer open they act only on that menu — every changed field/button is a step, back to the original and forth again; after `APLICAR` the whole menu is ONE step of the bar's undo/redo; a new change after undoing clears the redo). Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes.\n" +
++        "Tap a sprite clip to open its drawer. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE (green), ESTILO (orange: flip/transform), LINKS, TRANSIÇÕES (SEQ/END/landing marks). The `＋` at the end of the sprite lane opens a menu: `CAMADA` (− N +, higher = the ANO draws on top; stored as the inverted `$PRIO`) and `Adicionar Sprite`. Special actions include `Teleportar atras do oponente` (= action 40 with a negative x, default −120, plus Flip X on the sprite, handled as one item). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a sprite or speed clip at the pointer (an object — hitbox, hurtbox, projectile, effect, action — belongs to its frame, so it splits at the frame boundary nearest to the pointer and the pointer moves there), `DUPLICAR`, `EXCLUIR`, `↶`/`↷` (undo/redo, two levels: with an edit drawer open they act only on that menu — every changed field/button is a step, back to the original and forth again; after `APLICAR` the whole menu is ONE step of the bar's undo/redo; a new change after undoing clears the redo). Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes. When a hitbox connects the game freezes the attacker a fixed number of ticks (hitstop: 10 normally, half for OPT1 group 3, none for group 4; the hitspark is not awaited, it plays in parallel at normal speed). The tick step button then locks the tick number and shows a yellow notice with the ticks left; timeline, progress bar and playback ignore it.\n" +
 +        "\n" +
 +        "### 11.3 Edit drawer pages\n" +
 +        "Sprite grid → `Imagem` (sprite picker, position, zoom, rotation, alpha, \"move links together\"), `Tempo` (ticks), `Som` (sound id list with preview), `Movimento` (two sections, `SPEED X` and `SPEED Y`: speed/accel, received speed, total pixels and `REMOVER SPEED` per axis; the stretch's start frame/duration and `MANTER VELOCIDADE` show in both and one updates the other), `Efeitos` (flip X/Y, interpolation), `Copiar` (apply this frame's properties to other frames: next N, previous N, all, this sprite in ANO / in all ANOs). Hitbox/hurtbox menu: type switch, start frame & duration, preview, x/y/w/h (a hurtbox also has `Aplicar a todas as Hurtboxes (neste ANO)` / `(todos os ANOs)`, which copy its position and size to every other hurtbox of the ANO / of the whole character; the other ANOs still need `SALVAR` → all ANOs), and (hitbox) `DANO`, `REAÇÃO` (◀ ▶, `ESCOLHER`, `EDITAR REAÇÃO`), transition (SEQ/END, `MUDAR ANO DESTINO`, `BLOQUEAR SEQUÊNCIA`). Projectile screen: start & duration, branching tree, projectile ANO, position/speed, homing, sequence.\n" +
@@ -1526,7 +1526,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-29 15:34:30.813497267 +0000
++++ b/AttackView.java	2026-10-29 16:18:36.383613537 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1668,7 +1668,61 @@ diff -ruN a/AttackView.java b/AttackView.java
              noticeRects.add(r);
              noticeActs.add(a);
              x += bw + gap;
-@@ -726,6 +759,12 @@
+@@ -450,6 +483,7 @@
+     public void play() {
+         if (playing) return;
+         if (atLandStop()) seekTo(0);       // parado no pouso: recomeca
++        clearHitstopNotice();
+         playing = true;
+         if (sound != null) sound.resumeAll();
+         hideNotice();
+@@ -476,6 +510,28 @@
+ 
+     public void restart() { seekTo(0); }
+ 
++    // ---- hitstop ao avancar tick pelo botao: o numero do tick trava e um aviso amarelo diz por quantos ticks ----
++    private final HitstopNotice hsNotice = new HitstopNotice();
++    private QuickNotice hsNoticeObj;
++
++    /** Tick a mostrar no contador: travado enquanto o botao de tick passa pelo hitstop. */
++    public int displayTick(int realTick) { return hsNotice.shownTick(realTick); }
++
++    private void updateHitstopNotice() {
++        if (hsNotice.active()) {
++            hsNoticeObj = new QuickNotice(hsNotice.text()).colors(QuickNotice.AMBER, QuickNotice.AMBER_BTN).duration(0);
++            showNotice(hsNoticeObj);
++        } else clearHitstopNotice();
++    }
++
++    private void clearHitstopNotice() {
++        hsNotice.clear();
++        if (hsNoticeObj != null) {
++            if (notice == hsNoticeObj) hideNotice();
++            hsNoticeObj = null;
++        }
++    }
++
+     public void stepForward() {
+         pause();
+         if (sim == null) return;
+@@ -483,6 +539,8 @@
+         stopSounds();
+         liveStep();
+         frame++;
++        hsNotice.afterStep(frame, sim.hitstopAttacker());
++        updateHitstopNotice();
+         watchLanding();
+         playSounds();
+         notifyUi();
+@@ -506,6 +564,7 @@
+     }
+ 
+     private void seekInternal(int target) {
++        clearHitstopNotice();                      // timeline, barra de progresso e voltar tick ignoram o aviso
+         stopSounds();
+         sim.reset();
+         seekSnd.clear();
+@@ -726,6 +785,12 @@
      }
  
  
@@ -1681,7 +1735,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Vai para o primeiro tick em que o frame {@code pat} da ANO atual aparece (pausa). */
      public boolean seekToPat(int pat) {
          if (sim == null) return false;
-@@ -746,6 +785,33 @@
+@@ -746,6 +811,33 @@
      private BattleSim ghostSim;
      private String ghostKey = "";
  
@@ -1715,7 +1769,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -785,6 +851,156 @@
+@@ -785,6 +877,156 @@
          return ghostSim;
      }
  
@@ -1872,7 +1926,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Arrastar a timeline: vai para {@code elapsed} ticks dentro do frame {@code pat} da ANO atual (pausa). */
      public void seekToPatTick(int pat, int elapsed) {
          Ano a = currentAno();
-@@ -820,7 +1036,7 @@
+@@ -820,7 +1062,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -1881,7 +1935,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1051,29 @@
+@@ -835,13 +1077,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -1914,7 +1968,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1094,11 @@
+@@ -862,10 +1120,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -1927,7 +1981,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -903,7 +1136,7 @@
+@@ -903,7 +1162,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -1936,7 +1990,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -942,18 +1175,45 @@
+@@ -942,18 +1201,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -1984,7 +2038,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1258,7 @@
+@@ -998,7 +1284,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -1993,7 +2047,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1270,48 @@
+@@ -1010,39 +1296,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -2065,7 +2119,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1069,7 +1338,8 @@
+@@ -1069,7 +1364,8 @@
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
                  + ":" + mv.animSeqChao + ":" + mv.animSeqAr + ":" + mv.animEndChao + ":" + mv.animEndAr
@@ -2075,7 +2129,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1387,14 @@
+@@ -1117,6 +1413,14 @@
                  break;
              }
          }
@@ -2090,7 +2144,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1403,65 @@
+@@ -1125,20 +1429,65 @@
          return out;
      }
  
@@ -2158,7 +2212,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1492,7 @@
+@@ -1169,7 +1518,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -2167,7 +2221,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1504,16 @@
+@@ -1181,16 +1530,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -2187,7 +2241,7 @@ diff -ruN a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1524,15 @@
+@@ -1201,6 +1550,15 @@
          return null;
      }
  
@@ -2203,7 +2257,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1566,14 @@
+@@ -1234,6 +1592,14 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -2218,7 +2272,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1266,6 +1606,7 @@
+@@ -1266,6 +1632,7 @@
                  if (ls.get(i).kind == 2 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawGlobalAnchor(c, ls.get(i).sim, opts); }
              for (int i = 0; i < ls.size(); i++)
                  if (ls.get(i).kind == 3 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawProjectileAnchor(c, ls.get(i).sim, opts); }
@@ -2226,7 +2280,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              if (bodyOn) {
                  drawBodyBox(c, sim.attackerX(), sim.attackerY(), data.attacker.data, true);
                  drawBodyBox(c, sim.opponentX(), sim.opponentY(), data.opponent.data, false);
-@@ -1291,11 +1632,11 @@
+@@ -1291,11 +1658,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -2240,7 +2294,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1655,7 @@
+@@ -1314,7 +1681,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -2249,7 +2303,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1690,7 @@
+@@ -1349,6 +1716,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -2257,7 +2311,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1404,8 +1746,52 @@
+@@ -1404,8 +1772,52 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -5889,8 +5943,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-29 15:34:53.107651026 +0000
-@@ -0,0 +1,643 @@
++++ b/HelpText.java	2026-10-29 16:20:09.737719451 +0000
+@@ -0,0 +1,644 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -6119,7 +6173,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        tl.add("Arrastar, ponteiro e zoom",
 +                "O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, "
 +                + "puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar."
-+                + " Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga.");
++                + " Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga."
++                + " Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Na timeline, na barra de progresso e na reprodução os ticks passam normalmente.");
 +        tl.add("Altura da gaveta: Y e T",
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; isso vale só para aquela abertura. "
 +                + "Y (na borda, à direita) grava a altura atual como a nova altura padrão. T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela, o menu superior some e a timeline mostra de 6 a 2 faixas conforme o menu sobe; "
@@ -6534,6 +6589,46 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        return (a > 0 ? "… " : "") + body.substring(a, z).trim() + (z < body.length() ? " …" : "");
 +    }
 +}
+diff -ruN a/HitstopNotice.java b/HitstopNotice.java
+--- a/HitstopNotice.java	1970-01-01 00:00:00.000000000 +0000
++++ b/HitstopNotice.java	2026-10-29 16:18:36.325111352 +0000
+@@ -0,0 +1,36 @@
++package com.zue.attackeditor;
++
++/**
++ * Estado do aviso de hitstop ao avancar tick pelo botao (Java puro). O acerto congela o atacante por N ticks (o jogo grava um contador fixo,
++ * nao espera o hitspark): enquanto isso o contador de tick mostrado fica travado e um aviso diz quantos ticks faltam. Quando o tick e
++ * liberado o aviso some. Timeline, barra de progresso e reproducao nao usam isto.
++ */
++final class HitstopNotice {
++    private int left;
++    private int locked = -1;
++
++    /** Depois de um passo do botao: {@code tick} = tick da simulacao agora, {@code hsLeft} = ticks de hitstop do atacante que ainda faltam. */
++    void afterStep(int tick, int hsLeft) {
++        if (hsLeft > 0) {
++            if (left == 0) locked = tick;          // entrou no congelamento: o numero do tick fica neste
++            left = hsLeft;
++        } else {
++            left = 0;
++            locked = -1;
++        }
++    }
++
++    void clear() { left = 0; locked = -1; }
++
++    boolean active() { return left > 0; }
++    int left() { return left; }
++
++    /** Tick a mostrar: o travado durante o hitstop, o real no resto. */
++    int shownTick(int realTick) { return active() ? locked : realTick; }
++
++    /** Texto do aviso amarelo. */
++    String text() {
++        return "Hitstop: o acerto congela o Frame por mais " + left + (left == 1 ? " tick" : " ticks")
++                + " (o hitspark continua tocando). O tick libera depois disso.";
++    }
++}
 diff -ruN a/I18n.java b/I18n.java
 --- a/I18n.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/I18n.java	2026-10-24 22:21:54.510991426 +0000
@@ -6800,7 +6895,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-29 15:35:03.042801924 +0000
++++ b/I18nCatalog.java	2026-10-29 16:20:18.321068526 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6814,7 +6909,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-29 15:35:03.035302999 +0000
++++ b/I18nCatalog0.java	2026-10-29 16:20:18.315673637 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7087,7 +7182,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-29 15:35:03.036770286 +0000
++++ b/I18nCatalog1.java	2026-10-29 16:20:18.316738996 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7360,7 +7455,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-29 15:35:03.038101344 +0000
++++ b/I18nCatalog2.java	2026-10-29 16:20:18.317739499 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7633,7 +7728,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-29 15:35:03.039532289 +0000
++++ b/I18nCatalog3.java	2026-10-29 16:20:18.318719486 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7906,7 +8001,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-29 15:35:03.041188565 +0000
++++ b/I18nCatalog4.java	2026-10-29 16:20:18.319997670 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -8179,8 +8274,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-29 15:35:03.042309088 +0000
-@@ -0,0 +1,154 @@
++++ b/I18nCatalog5.java	2026-10-29 16:20:18.320698677 +0000
+@@ -0,0 +1,156 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -8262,6 +8357,8 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"binario", "binary", "binario"},
 +        {"recorte", "crop", "recorte"},
 +        {"SUBSTITUIR", "REPLACE", "REEMPLAZAR"},
++        {"Hitstop: o acerto congela o Frame por mais ", "Hitstop: the hit freezes the Frame for ", "Hitstop: el golpe congela el Frame por "},
++        {" (o hitspark continua tocando). O tick libera depois disso.", " more (the hitspark keeps playing). The tick is released after that.", " más (el hitspark sigue sonando). El tick se libera después de eso."},
 +        {"nada para refazer", "nothing to redo", "nada que rehacer"},
 +        {"Acelerar ate o fim", "Accelerate to the end", "Acelerar hasta el final"},
 +        {"Acelerar e desacelerar", "Accelerate and decelerate", "Acelerar y desacelerar"},
@@ -8382,7 +8479,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-29 15:35:02.923178964 +0000
++++ b/I18nHelpCatalog.java	2026-10-29 16:20:18.220397757 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -8396,7 +8493,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-29 15:35:02.920403799 +0000
++++ b/I18nHelpCatalog0.java	2026-10-29 16:20:18.219221211 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8481,7 +8578,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-29 15:35:02.920645018 +0000
++++ b/I18nHelpCatalog1.java	2026-10-29 16:20:18.219361212 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8566,7 +8663,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-29 15:35:02.921503217 +0000
++++ b/I18nHelpCatalog2.java	2026-10-29 16:20:18.219493037 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8651,7 +8748,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-29 15:35:02.921795323 +0000
++++ b/I18nHelpCatalog3.java	2026-10-29 16:20:18.219629259 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8702,9 +8799,9 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"Arrastar, ponteiro e zoom",
 +         "Dragging, pointer and zoom",
 +         "Arrastrar, puntero y zoom"},
-+        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga.",
-+         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off.",
-+         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas."},
++        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga. Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Na timeline, na barra de progresso e na reprodução os ticks passam normalmente.",
++         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off. With a Hitbox that connects, the game freezes the attacker for a fixed number of ticks (hitstop: normally 10; half for group 3 reactions and none for group 4; it does not wait for the hitspark, which plays in parallel at normal speed). When advancing a tick with the button, the tick number locks and a yellow notice says how many ticks the Frame stays still; when the tick is released the notice goes away. On the timeline, the progress bar and playback the ticks pass normally.",
++         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas. Con una Hitbox que acierta, el juego congela al atacante por un número fijo de ticks (hitstop: normalmente 10; la mitad en reacciones del grupo 3 y ninguno en el grupo 4; no espera al hitspark, que suena en paralelo a velocidad normal). Al avanzar un tick con el botón, el número del tick se bloquea y un aviso amarillo dice cuántos ticks queda quieto el Frame; cuando se libera el tick el aviso desaparece. En la timeline, la barra de progreso y la reproducción los ticks pasan con normalidad."},
 +        {"Altura da gaveta: Y e T",
 +         "Drawer height: Y and T",
 +         "Altura del cajón: Y y T"},
@@ -8736,7 +8833,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-29 15:35:02.922021834 +0000
++++ b/I18nHelpCatalog4.java	2026-10-29 16:20:18.219729116 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8821,7 +8918,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-29 15:35:02.922203715 +0000
++++ b/I18nHelpCatalog5.java	2026-10-29 16:20:18.219824812 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8906,7 +9003,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-29 15:35:02.922467810 +0000
++++ b/I18nHelpCatalog6.java	2026-10-29 16:20:18.219919833 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8991,7 +9088,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-29 15:35:02.922776562 +0000
++++ b/I18nHelpCatalog7.java	2026-10-29 16:20:18.220105234 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9076,7 +9173,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-29 15:35:02.923030323 +0000
++++ b/I18nHelpCatalog8.java	2026-10-29 16:20:18.220230524 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9161,7 +9258,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-29 15:35:02.923117358 +0000
++++ b/I18nHelpCatalog9.java	2026-10-29 16:20:18.220357696 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -9431,7 +9528,7 @@ diff -ruN a/LayerOps.java b/LayerOps.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-29 14:56:14.983406393 +0000
++++ b/LayoutManager.java	2026-10-29 16:18:36.385200803 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -10640,6 +10737,15 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
+@@ -1403,7 +1926,7 @@
+         seek.setMax(Math.max(1, length - 1));
+         if (seek instanceof ExtSeekBar) ((ExtSeekBar) seek).setAnoEnd(attackView.getAnoEnd() - 1);
+         seek.setProgress(frame);
+-        frameLabel.setText((frame + 1) + "/" + length);
++        frameLabel.setText((attackView.displayTick(frame) + 1) + "/" + length);
+         btnPlay.setText(playing ? "PAUSAR" : "TOCAR");
+         if (timelineRef != null) {
+             timelineRef.setSprites(attackView.attackerSprites());
 @@ -1416,6 +1939,7 @@
              statusLine.setText(attackView.status());
              refreshInfo(false);
@@ -22501,6 +22607,61 @@ diff -ruN a/test/HelpSearchTest.java b/test/HelpSearchTest.java
 +        if (fails > 0) System.exit(1);
 +    }
 +}
+diff -ruN a/test/HitstopNoticeTest.java b/test/HitstopNoticeTest.java
+--- a/test/HitstopNoticeTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/HitstopNoticeTest.java	2026-10-29 16:18:59.052428436 +0000
+@@ -0,0 +1,51 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Aviso de hitstop do botao de tick: quanto falta, tick travado, some ao liberar; e o hitstop real do BattleSim. */
++public class HitstopNoticeTest {
++    public static void main(String[] args) throws Exception {
++        HitstopNotice n = new HitstopNotice();
++        check("sem hitstop: inativo e mostra o tick real", n.active() + ":" + n.shownTick(7), "false:7");
++        n.afterStep(12, 10);
++        check("entrou no congelamento: aviso com N e tick travado", n.active() + ":" + n.left() + ":" + n.shownTick(12), "true:10:12");
++        n.afterStep(13, 9);
++        check("proximo passo: N cai e o tick continua travado no primeiro", n.left() + ":" + n.shownTick(13), "9:12");
++        n.afterStep(14, 1);
++        check("ultimo tick congelado", n.left() + ":" + n.text().contains("mais 1 tick ") , "1:true");
++        n.afterStep(15, 0);
++        check("liberou: aviso some e o tick real volta", n.active() + ":" + n.shownTick(15), "false:15");
++        n.afterStep(16, 5);
++        n.clear();
++        check("clear (timeline/barra/play) apaga o aviso", n.active() + ":" + n.shownTick(20), "false:20");
++
++        // o hitstop real: golpe que acerta congela o atacante 10 ticks; o ponteiro (pat/time) nao anda neles
++        A[] a = new A[45];
++        for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++        a[40] = new A().mpt(new M().time(30).hit(2, -40, -40, 400, 100)).mpt(new M().time(5));
++        CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++        BattleSim.edgeMode = 1;
++        BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, CutsceneTest.defDac(), CutsceneTest.fxDac(), gd(new byte[][] {}), 20, 0, 0);
++        // passo a passo (como o botao de tick): o que o aviso diria (hitstopAttacker depois do passo) e se o ponteiro andou
++        StringBuilder trace = new StringBuilder();
++        int firstLeft = -1, stalled = 0, afterRelease = -1;
++        int prevTime = s.attacker().root().time;
++        boolean hit = false;
++        for (int t = 0; t < 60 && afterRelease < 0; t++) {
++            s.step();
++            int hs = s.hitstopAttacker(), time = s.attacker().root().time;
++            boolean moved = time != prevTime;
++            prevTime = time;
++            if (!hit && hs > 0) { hit = true; firstLeft = hs; trace.append("hit:").append(hs).append(moved ? "m " : "s "); continue; }
++            if (hit) {
++                trace.append(hs).append(moved ? "m " : "s ");
++                if (!moved) stalled++;
++                else afterRelease = hs;
++            }
++        }
++        System.out.println("INFO " + trace);
++        check("o aviso mostra os ticks que faltam: iguais aos passos em que o ponteiro nao anda", firstLeft, stalled);
++        check("liberou: o ponteiro volta a andar e o hitstop zerou", afterRelease, 0);
++        System.out.println("HitstopNoticeTest fails=" + fails);
++    }
++}
 diff -ruN a/test/HurtboxAllTest.java b/test/HurtboxAllTest.java
 --- a/test/HurtboxAllTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/HurtboxAllTest.java	2026-10-28 13:27:28.634450554 +0000
@@ -22657,7 +22818,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-29 15:35:03.175526608 +0000
++++ b/test/I18nIgnored.java	2026-10-29 16:20:18.504383783 +0000
 @@ -0,0 +1,533 @@
 +package com.zue.attackeditor;
 +

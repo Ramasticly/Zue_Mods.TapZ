@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1407 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1415 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -349,6 +349,10 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 ### 3.1zs SPEEDLINE: número do Frame e tick nos pontos
 - Cada ponto da SPEEDLINE mostra o **número do Frame** (base 1, o ponto final mostra o Frame seguinte, onde o personagem estará); o **ponto de tick** (onde a altura muda de sentido dentro de um Frame) mostra o **tick dentro do Frame** (`t3`). Texto claro com contorno escuro; o do Frame atual em branco e maior; pontos muito próximos empilham o texto. `SpeedLine.label` testado (`SpeedLineTest` 42); o desenho do texto só compilado/revisado, não rodado num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zt Aviso de hitstop ao avançar tick pelo botão
+- **Por que o ponteiro “trava” com Hitbox**: o acerto congela o atacante por um **contador fixo de ticks** (`iHitStop`; no jogo `PlayerHitStop` = 10, ou 6 no golpe do tipo 12; **grupo 3 do OPT1 = metade, grupo 4 = nenhum**; projétil: defensor cheio, projétil metade, atacante nada). Não espera o hitspark: o hitspark (md 966) chama `_ActReq` todo tick **sem olhar o hitstop**, toca em paralelo na velocidade normal. Congelados: `time` do Frame, speed, aceleração e links; o defensor treme e a simulação segue. (O app usa 10 fixo: o golpe do tipo 12 fica 4 ticks mais longo que no jogo — lacuna conhecida, não alterada.)
+- **Mantido o comportamento**; agora o **botão de avançar tick** trava o número do tick durante o hitstop e mostra um **aviso amarelo** (“Hitstop: o acerto congela o Frame por mais N ticks…”) que conta N a cada toque e some quando o tick é liberado. Timeline, barra de progresso, voltar tick e reprodução ignoram o aviso (os ticks passam normalmente). `HitstopNotice` puro + `HitstopNoticeTest` (8, inclui o hitstop real do `BattleSim`: aviso = passos parados). O aviso na tela só compilado/revisado. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -415,6 +419,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpeedLineTest (novo)** | 42 |
 | **UndoHistoryTest (novo)** | 32 |
 | **UndoEditsTest (novo)** | 10 |
+| **HitstopNoticeTest (novo)** | 8 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
