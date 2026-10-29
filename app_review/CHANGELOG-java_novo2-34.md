@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1452 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1474 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -373,6 +373,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Câmera**: antes o centro era fixo e o oponente lançado saía da área. `ReactionCamera` (puro) faz o centro seguir o x do oponente (suavizado, 25% por quadro, mantendo o deslocamento de 30 px para o lado do atacante) e, quando ele sobe além do que cabe (corpo de ~100 px acima do chão), **desce o cenário** o suficiente para o corpo continuar visível; volta ao chão quando ele pousa. Ao buscar na linha do tempo a câmera vai direto ao alvo (sem “correr atrás”). Vale para todas as prévias de reação; a linha do chão acompanha.
 - `ReactionCameraTest` (14: alvo de x/y, suavização, lançamento de 400 px de altura com o corpo sempre na área, volta ao chão, snap, voz da coluna 13 sai do `drainSounds` como se_4 e reação sem voz não toca). Som e câmera na tela só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) atualizada.
 
+### 3.1zy DEF: o oponente defende (simulação)
+- Novo  (estático, **desligado por padrão**; o botão entra na próxima entrega). Ligado, o hit do corpo a corpo e do projétil segue o ramo de defesa do  (var15 == 2, md 908 do ): **sem dano nem reação**, o oponente entra em guarda (**ANO 4** em pé, **81** no ar) e fica nela por  ticks (GuardCancelTime) e até o empurrão acabar; **empurrão de 13 px/2 por tick** (GuardHitBack = 13, decai 2 por tick; o hit normal usa 0); **hitstop do OPT 1** (cheio / metade / nenhum, como no hit); **efeito de defesa ANO 2** e **SE 8** nos grupos 0–3 (grupo 4: nada); o combo não conta e zera.
+- **Arranhão**: o jogo só tira vida de quem defende quando o ANO do golpe é **≥ 40** e o dano não é 0: 2 de vida (o  nunca é preenchido, então vale o mínimo 2). Se o arranhão zerar a vida, segue a reação de KO.
+- **Não defende**: golpe com a **flag 26** (“inimigo não defende”), **agarrões** (caminho próprio), defensor já em reação de dano, e defensor em ANO que não permite guarda (6–9, 82, 83 e 20 em diante, exceto 13, 25, 80 e 81).
+- Conferido no md 882: o hit defendido **também confirma o golpe** (), então ANIM_SEQ/ANIM_END e o resto acontecem como num acerto.
+-  (22: DEF desligado = igual a antes, arranhão só com ANO ≥ 40 e dano ≠ 0, ANO 4/81, SE 8, empurrão ≈ 24 px, volta ao idle, flag 26, grupo 4, projétil, confirmação da SEQ, lista de ANOs que defendem).  testado; sem UI ainda.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -444,6 +451,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **TickMapTest (novo)** | 6 |
 | **HitboxPerFrameTest (novo)** | 9 |
 | **ReactionCameraTest (novo)** | 14 |
+| **GuardTest (novo)** | 22 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
