@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1429 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1438 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -363,6 +363,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Não mudou**: o botão de tick (trava o número e avisa o hitstop), a barra de progresso e a reprodução continuam em ticks da simulação (hitstop visível, como o jogo).
 - `TickMapTest` (6: tabela completa e crescente, salto do hitstop, `copyAt` no tick mapeado cai no Frame/tick pedidos, sem acerto = início do Frame + tick). A navegação na tela só compilada/revisada. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zw Hitbox: sempre uma por Frame
+- A **Hitbox (flag 2) nunca une Frames**: como o hit se repete a cada Frame (o contador de acertos reinicia), cada Frame com hitbox tem o **seu próprio objeto**, mesmo com x/y/largura/altura iguais. Antes, Frames seguidos iguais viravam um objeto só (“frames conectados”). Hurtbox, projétil, efeito e ações continuam unindo como antes.
+- Efeitos: na timeline cada Frame tem o seu clipe de Hitbox na mesma linha; mexer em x/y/largura/altura, **mover**, **apagar** ou **esticar** só afeta aquele Frame (esticar copia a hitbox, o dano e a reação para os Frames novos, cada um como objeto próprio). O menu da Hitbox perdeu o campo **DURAÇÃO** (não há mais duração) e passou a explicar a regra; o dano e a reação (OPT) já eram por Frame.
+- `HitboxPerFrameTest` (9: 3 Frames iguais = 3 objetos, hurtbox igual = 1, ação igual = 1, apagar/mover/esticar/editar um Frame). `BattleTest` e `ObjMoveTest` adaptados (os casos de “objeto de vários Frames” passaram a usar a hurtbox). Menu só compilado/revisado, não rodado num aparelho. AJUDA (PT/EN/ES) atualizada.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -432,6 +437,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HitstopNoticeTest (novo)** | 8 |
 | **Opt1GroupsTest (novo)** | 8 |
 | **TickMapTest (novo)** | 6 |
+| **HitboxPerFrameTest (novo)** | 9 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
