@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1438 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1452 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -368,6 +368,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Efeitos: na timeline cada Frame tem o seu clipe de Hitbox na mesma linha; mexer em x/y/largura/altura, **mover**, **apagar** ou **esticar** só afeta aquele Frame (esticar copia a hitbox, o dano e a reação para os Frames novos, cada um como objeto próprio). O menu da Hitbox perdeu o campo **DURAÇÃO** (não há mais duração) e passou a explicar a regra; o dano e a reação (OPT) já eram por Frame.
 - `HitboxPerFrameTest` (9: 3 Frames iguais = 3 objetos, hurtbox igual = 1, ação igual = 1, apagar/mover/esticar/editar um Frame). `BattleTest` e `ObjMoveTest` adaptados (os casos de “objeto de vários Frames” passaram a usar a hurtbox). Menu só compilado/revisado, não rodado num aparelho. AJUDA (PT/EN/ES) atualizada.
 
+### 3.1zx Prévia da reação: voz do personagem e câmera que segue o voo
+- **Voz**: a simulação já empilhava a voz do passo (coluna 13 da tabela da reação), mas a prévia nunca tirava os sons. Agora, a cada passo da simulação, a `ReactionPreview` esvazia `drainSounds()` e toca pelo mesmo caminho da tela principal (`AttackView.playSounds(List)`, público: som comum ou do personagem do dono, respeita o botão de som). Tocam a prévia do menu “Reação do oponente”, o jogador da candidata (slot vazio) e a tela do editor de reações — esta **só ao reproduzir** (arrastar a barra de tempo ou andar tick a tick fica mudo). As prévias pequenas das grades (reação, efeito/som) ficam **mudas**.
+- **Câmera**: antes o centro era fixo e o oponente lançado saía da área. `ReactionCamera` (puro) faz o centro seguir o x do oponente (suavizado, 25% por quadro, mantendo o deslocamento de 30 px para o lado do atacante) e, quando ele sobe além do que cabe (corpo de ~100 px acima do chão), **desce o cenário** o suficiente para o corpo continuar visível; volta ao chão quando ele pousa. Ao buscar na linha do tempo a câmera vai direto ao alvo (sem “correr atrás”). Vale para todas as prévias de reação; a linha do chão acompanha.
+- `ReactionCameraTest` (14: alvo de x/y, suavização, lançamento de 400 px de altura com o corpo sempre na área, volta ao chão, snap, voz da coluna 13 sai do `drainSounds` como se_4 e reação sem voz não toca). Som e câmera na tela só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) atualizada.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -438,6 +443,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **Opt1GroupsTest (novo)** | 8 |
 | **TickMapTest (novo)** | 6 |
 | **HitboxPerFrameTest (novo)** | 9 |
+| **ReactionCameraTest (novo)** | 14 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

@@ -1526,7 +1526,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-29 16:30:07.660384139 +0000
++++ b/AttackView.java	2026-10-29 17:17:27.232128921 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1722,7 +1722,20 @@ diff -ruN a/AttackView.java b/AttackView.java
          stopSounds();
          sim.reset();
          seekSnd.clear();
-@@ -726,6 +785,12 @@
+@@ -539,7 +598,11 @@
+     }
+ 
+     private void playSounds() {
+-        java.util.List<BattleSim.Snd> l = sim.drainSounds();
++        playSounds(sim.drainSounds());
++    }
++
++    /** Toca sons ja tirados de uma simulacao (a previa da reacao usa o mesmo mapeamento: comum / do personagem do dono). */
++    public void playSounds(java.util.List<BattleSim.Snd> l) {
+         if (sound == null || !soundOn || data == null) return;
+         for (int i = 0; i < l.size(); i++) {
+             BattleSim.Snd s = l.get(i);
+@@ -726,6 +789,12 @@
      }
  
  
@@ -1735,7 +1748,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Vai para o primeiro tick em que o frame {@code pat} da ANO atual aparece (pausa). */
      public boolean seekToPat(int pat) {
          if (sim == null) return false;
-@@ -746,6 +811,33 @@
+@@ -746,6 +815,33 @@
      private BattleSim ghostSim;
      private String ghostKey = "";
  
@@ -1769,7 +1782,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -769,6 +861,21 @@
+@@ -769,6 +865,21 @@
          return tickTable;
      }
  
@@ -1791,7 +1804,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Combate parado no primeiro tick do frame vizinho do atual, ou null. */
      private BattleSim ghost() {
          Ano a = currentAno();
-@@ -785,6 +892,156 @@
+@@ -785,6 +896,156 @@
          return ghostSim;
      }
  
@@ -1948,7 +1961,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Arrastar a timeline: vai para {@code elapsed} ticks dentro do frame {@code pat} da ANO atual (pausa). */
      public void seekToPatTick(int pat, int elapsed) {
          Ano a = currentAno();
-@@ -792,7 +1049,9 @@
+@@ -792,7 +1053,9 @@
          int base = tickTableFor(a)[pat];
          int tt = transitionTick(a);
          int limit = tt < 0 ? Integer.MAX_VALUE : tt - 1;     // arrastar nunca faz a troca: trava no ultimo tick antes dela
@@ -1959,7 +1972,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (target == Integer.MAX_VALUE || target < 0) return;
          pause();
          seekTo(target);
-@@ -820,7 +1079,7 @@
+@@ -820,7 +1083,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -1968,7 +1981,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1094,29 @@
+@@ -835,13 +1098,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -2001,7 +2014,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1137,11 @@
+@@ -862,10 +1141,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -2014,7 +2027,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -903,7 +1179,7 @@
+@@ -903,7 +1183,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -2023,7 +2036,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -942,18 +1218,45 @@
+@@ -942,18 +1222,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -2071,7 +2084,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1301,7 @@
+@@ -998,7 +1305,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -2080,7 +2093,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1313,48 @@
+@@ -1010,39 +1317,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -2152,7 +2165,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1069,7 +1381,8 @@
+@@ -1069,7 +1385,8 @@
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
                  + ":" + mv.animSeqChao + ":" + mv.animSeqAr + ":" + mv.animEndChao + ":" + mv.animEndAr
@@ -2162,7 +2175,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1430,14 @@
+@@ -1117,6 +1434,14 @@
                  break;
              }
          }
@@ -2177,7 +2190,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1446,65 @@
+@@ -1125,20 +1450,65 @@
          return out;
      }
  
@@ -2204,10 +2217,10 @@ diff -ruN a/AttackView.java b/AttackView.java
          mv.clamp();
 -        pushUndo(null, new Runnable() { public void run() { mv.copyFrom(before); } });
 +        pushUndo(null, UndoEdits.swapMove(mv, before, null));
-+        editVersion++;
-+        rebuild(frame);
-+    }
-+
+         editVersion++;
+         rebuild(frame);
+     }
+ 
 +    /**
 +     * Golpe real do HDAT 4 que "dono" do ANO aberto no modo ANO (o golpe da tela e so uma copia generica); null no modo golpe
 +     * (ai o golpe da tela e o proprio) ou se nenhum golpe usa o ANO.
@@ -2229,10 +2242,10 @@ diff -ruN a/AttackView.java b/AttackView.java
 +        target.clamp();
 +        if (shown != target && shown.generic) syncGeneric(shown, target);
 +        pushUndo(null, UndoEdits.swapMove(target, before, new Runnable() { public void run() { if (shown != target && shown.generic) syncGeneric(shown, target); } }));
-         editVersion++;
-         rebuild(frame);
-     }
- 
++        editVersion++;
++        rebuild(frame);
++    }
++
 +    /** Campos que o golpe generico (modo ANO) herda do dono: os mesmos de {@link CharData#genericFrom}. */
 +    private static void syncGeneric(CharData.Move g, CharData.Move src) {
 +        g.flags = src.flags;
@@ -2245,7 +2258,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1535,7 @@
+@@ -1169,7 +1539,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -2254,7 +2267,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1547,16 @@
+@@ -1181,16 +1551,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -2274,7 +2287,7 @@ diff -ruN a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1567,15 @@
+@@ -1201,6 +1571,15 @@
          return null;
      }
  
@@ -2290,7 +2303,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1609,14 @@
+@@ -1234,6 +1613,14 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -2305,7 +2318,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1266,6 +1649,7 @@
+@@ -1266,6 +1653,7 @@
                  if (ls.get(i).kind == 2 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawGlobalAnchor(c, ls.get(i).sim, opts); }
              for (int i = 0; i < ls.size(); i++)
                  if (ls.get(i).kind == 3 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawProjectileAnchor(c, ls.get(i).sim, opts); }
@@ -2313,7 +2326,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              if (bodyOn) {
                  drawBodyBox(c, sim.attackerX(), sim.attackerY(), data.attacker.data, true);
                  drawBodyBox(c, sim.opponentX(), sim.opponentY(), data.opponent.data, false);
-@@ -1291,11 +1675,11 @@
+@@ -1291,11 +1679,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -2327,7 +2340,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1698,7 @@
+@@ -1314,7 +1702,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -2336,7 +2349,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1733,7 @@
+@@ -1349,6 +1737,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -2344,7 +2357,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1404,8 +1789,52 @@
+@@ -1404,8 +1793,52 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -6006,8 +6019,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-29 17:13:48.653249920 +0000
-@@ -0,0 +1,646 @@
++++ b/HelpText.java	2026-10-29 17:18:28.772449957 +0000
+@@ -0,0 +1,647 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -6341,7 +6354,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "Tocar em PASSOS (ou no cabeçalho dela) abre e fecha as faixas: SPEED em blocos, como no ANO (um bloco por velocidade própria, cobrindo os passos seguintes que a mantêm com −1; ARRASTE a borda direita do bloco para estender ou encurtar), "
 +                + "VOZ (♪), EFEITOS (parede), SEQ (próxima reação) e CURVA (x e y em px/tick, só leitura). Fechada, cada faixa com dados vira uma linha fina de resumo. A aba # escolhe quais faixas aparecem; arrastar na vertical rola as faixas. "
 +                + "Tocar num passo abre a grade de páginas (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL); tocar num item de faixa abre a página dele direto, e numa célula vazia (＋) abre para adicionar. ◀ volta à grade, ✕ fecha. "
-+                + "Digitar no campo vale na hora, e segurar − ou + muda continuamente. Tudo vem da simulação do jogo, a mesma da prévia.");
++                + "Digitar no campo vale na hora, e segurar − ou + muda continuamente. Tudo vem da simulação do jogo, a mesma da prévia."
++                + " A câmera da prévia segue o oponente (acompanha o voo e sobe o cenário para o corpo não sair da área) e, ao tocar (não ao arrastar a barra de tempo), toca a voz do passo e os sons da reação; as prévias pequenas das grades ficam mudas.");
 +        rc.add("Barra de ferramentas da reação",
 +                "A aba ＋ (colada na borda da timeline) cria no passo selecionado: passo novo (depois dele), speed, voz, efeito de parede ou próxima reação (SEQ); também move o passo (◀ ▶) e mostra o total (Σ). "
 +                + "DIVIDIR parte o passo onde está o ponteiro em dois: a duração é repartida, o 2º passo mantém a velocidade (com aceleração, já parte da velocidade em que o 1º terminou) "
@@ -6960,7 +6974,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-29 17:14:56.047008771 +0000
++++ b/I18nCatalog.java	2026-10-29 17:18:28.939830673 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6974,7 +6988,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-29 17:14:56.040777276 +0000
++++ b/I18nCatalog0.java	2026-10-29 17:18:28.932185870 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7247,7 +7261,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-29 17:14:56.042146209 +0000
++++ b/I18nCatalog1.java	2026-10-29 17:18:28.934039368 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7520,7 +7534,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-29 17:14:56.043261856 +0000
++++ b/I18nCatalog2.java	2026-10-29 17:18:28.935366350 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7793,7 +7807,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-29 17:14:56.044499086 +0000
++++ b/I18nCatalog3.java	2026-10-29 17:18:28.936732333 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -8066,7 +8080,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-29 17:14:56.045767828 +0000
++++ b/I18nCatalog4.java	2026-10-29 17:18:28.938266827 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -8339,7 +8353,7 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-29 17:14:56.046657703 +0000
++++ b/I18nCatalog5.java	2026-10-29 17:18:28.939403914 +0000
 @@ -0,0 +1,169 @@
 +package com.zue.attackeditor;
 +
@@ -8557,7 +8571,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-29 17:14:47.585826808 +0000
++++ b/I18nHelpCatalog.java	2026-10-29 17:18:28.865341152 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -8571,7 +8585,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-29 17:14:47.584674003 +0000
++++ b/I18nHelpCatalog0.java	2026-10-29 17:18:28.863364031 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8656,7 +8670,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-29 17:14:47.584811400 +0000
++++ b/I18nHelpCatalog1.java	2026-10-29 17:18:28.863582081 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8741,7 +8755,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-29 17:14:47.584941199 +0000
++++ b/I18nHelpCatalog2.java	2026-10-29 17:18:28.863806102 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8826,7 +8840,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-29 17:14:47.585070348 +0000
++++ b/I18nHelpCatalog3.java	2026-10-29 17:18:28.864101668 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8911,7 +8925,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-29 17:14:47.585172771 +0000
++++ b/I18nHelpCatalog4.java	2026-10-29 17:18:28.864314445 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8996,7 +9010,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-29 17:14:47.585263481 +0000
++++ b/I18nHelpCatalog5.java	2026-10-29 17:18:28.864481117 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9081,7 +9095,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-29 17:14:47.585354846 +0000
++++ b/I18nHelpCatalog6.java	2026-10-29 17:18:28.864648628 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9166,7 +9180,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-29 17:14:47.585497685 +0000
++++ b/I18nHelpCatalog7.java	2026-10-29 17:18:28.864906129 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9184,9 +9198,9 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +        {"Editor de reações",
 +         "Reaction editor",
 +         "Editor de reacciones"},
-+        {"EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela com o mesmo layout da tela principal: no topo o cabeçalho (CHÃO | AR escolhe o cenário simulado: oponente no chão, ou a 60 px do chão), a prévia quadrada do oponente recebendo a reação, abaixo (numa área que rola) a barra de tempo, os botões DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER e a timeline, e na base o transporte (INICIO, −1, TOCAR, +1, velocidade). A edição é na própria timeline; a gaveta de edição sobe por cima (arraste a alça para mudar a altura; Y grava a altura padrão) e só abre ao tocar num passo ou num item. Timeline: a faixa PASSOS tem um clipe amarelo por passo (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra escura da borda direita para mudar a duração do cenário atual). Tocar em PASSOS (ou no cabeçalho dela) abre e fecha as faixas: SPEED em blocos, como no ANO (um bloco por velocidade própria, cobrindo os passos seguintes que a mantêm com −1; ARRASTE a borda direita do bloco para estender ou encurtar), VOZ (♪), EFEITOS (parede), SEQ (próxima reação) e CURVA (x e y em px/tick, só leitura). Fechada, cada faixa com dados vira uma linha fina de resumo. A aba # escolhe quais faixas aparecem; arrastar na vertical rola as faixas. Tocar num passo abre a grade de páginas (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL); tocar num item de faixa abre a página dele direto, e numa célula vazia (＋) abre para adicionar. ◀ volta à grade, ✕ fecha. Digitar no campo vale na hora, e segurar − ou + muda continuamente. Tudo vem da simulação do jogo, a mesma da prévia.",
-+         "EDIT REACTION (character) or VIEW REACTION (game, read-only) opens a screen with the same layout as the main screen: at the top the header (GROUND | AIR picks the simulated scenario: opponent on the ground, or 60 px off the ground), the square preview of the opponent receiving the reaction, below (in a scrolling area) the time bar, the SPLIT · DUPLICATE · DELETE · UNDO buttons and the timeline, and at the bottom the transport (START, −1, PLAY, +1, speed). Editing happens on the timeline itself; the edit drawer slides up over it (drag the handle to change the height; Y saves the default height) and only opens when you tap a step or an item. Timeline: the STEPS lane has one yellow clip per step (thumbnail of the opponent's ANO, ⇄ if mirrored, duration; the following reactions appear in gray; DRAG the dark bar on the right edge to change the duration of the current scenario). Tapping STEPS (or its header) opens and closes the lanes: SPEED in blocks, as in the ANO (one block per own speed, covering the following steps that keep it with −1; DRAG the right edge of the block to extend or shorten), VOICE (♪), EFFECTS (wall), SEQ (next reaction) and CURVE (x and y in px/tick, read-only). When closed, each lane with data becomes a thin summary line. The # tab chooses which lanes appear; dragging vertically scrolls the lanes. Tapping a step opens the page grid (ANIMATION, TIME, SPEED, VOICE, EFFECTS, SEQ, TOTAL); tapping a lane item opens its page directly, and an empty cell (＋) opens it to add. ◀ goes back to the grid, ✕ closes. Typing in the field takes effect immediately, and holding − or + changes continuously. Everything comes from the game's simulation, the same one as the preview.",
-+         "EDITAR REACCIÓN (del personaje) o VER REACCIÓN (del juego, solo lectura) abre una pantalla con el mismo diseño de la pantalla principal: arriba el encabezado (SUELO | AIRE elige el escenario simulado: oponente en el suelo, o a 60 px del suelo), la vista previa cuadrada del oponente recibiendo la reacción, debajo (en un área que se desplaza) la barra de tiempo, los botones DIVIDIR · DUPLICAR · ELIMINAR · DESHACER y la timeline, y en la base el transporte (INICIO, −1, REPRODUCIR, +1, velocidad). La edición se hace en la propia timeline; el cajón de edición sube por encima (arrastra el asa para cambiar la altura; Y guarda la altura predeterminada) y solo abre al tocar un paso o un elemento. Timeline: la pista PASOS tiene un clip amarillo por paso (miniatura del ANO del oponente, ⇄ si está espejado, duración; las reacciones siguientes aparecen en gris; ARRASTRA la barra oscura del borde derecho para cambiar la duración del escenario actual). Tocar PASOS (o su encabezado) abre y cierra las pistas: SPEED en bloques, como en el ANO (un bloque por velocidad propia, cubriendo los pasos siguientes que la mantienen con −1; ARRASTRA el borde derecho del bloque para extender o acortar), VOZ (♪), EFECTOS (pared), SEQ (siguiente reacción) y CURVA (x e y en px/tick, solo lectura). Cerrada, cada pista con datos se vuelve una línea fina de resumen. La pestaña # elige qué pistas aparecen; arrastrar en vertical desplaza las pistas. Tocar un paso abre la cuadrícula de páginas (ANIMACIÓN, TIEMPO, SPEED, VOZ, EFECTOS, SEQ, TOTAL); tocar un elemento de una pista abre su página directamente, y una celda vacía (＋) abre para agregar. ◀ vuelve a la cuadrícula, ✕ cierra. Escribir en el campo vale al instante, y mantener − o + cambia de forma continua. Todo viene de la simulación del juego, la misma de la vista previa."},
++        {"EDITAR REAÇÃO (do personagem) ou VER REAÇÃO (do jogo, só leitura) abre uma tela com o mesmo layout da tela principal: no topo o cabeçalho (CHÃO | AR escolhe o cenário simulado: oponente no chão, ou a 60 px do chão), a prévia quadrada do oponente recebendo a reação, abaixo (numa área que rola) a barra de tempo, os botões DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER e a timeline, e na base o transporte (INICIO, −1, TOCAR, +1, velocidade). A edição é na própria timeline; a gaveta de edição sobe por cima (arraste a alça para mudar a altura; Y grava a altura padrão) e só abre ao tocar num passo ou num item. Timeline: a faixa PASSOS tem um clipe amarelo por passo (miniatura do ANO do oponente, ⇄ se espelhado, duração; as reações seguintes aparecem em cinza; ARRASTE a barra escura da borda direita para mudar a duração do cenário atual). Tocar em PASSOS (ou no cabeçalho dela) abre e fecha as faixas: SPEED em blocos, como no ANO (um bloco por velocidade própria, cobrindo os passos seguintes que a mantêm com −1; ARRASTE a borda direita do bloco para estender ou encurtar), VOZ (♪), EFEITOS (parede), SEQ (próxima reação) e CURVA (x e y em px/tick, só leitura). Fechada, cada faixa com dados vira uma linha fina de resumo. A aba # escolhe quais faixas aparecem; arrastar na vertical rola as faixas. Tocar num passo abre a grade de páginas (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL); tocar num item de faixa abre a página dele direto, e numa célula vazia (＋) abre para adicionar. ◀ volta à grade, ✕ fecha. Digitar no campo vale na hora, e segurar − ou + muda continuamente. Tudo vem da simulação do jogo, a mesma da prévia. A câmera da prévia segue o oponente (acompanha o voo e sobe o cenário para o corpo não sair da área) e, ao tocar (não ao arrastar a barra de tempo), toca a voz do passo e os sons da reação; as prévias pequenas das grades ficam mudas.",
++         "EDIT REACTION (character) or VIEW REACTION (game, read-only) opens a screen with the same layout as the main screen: at the top the header (GROUND | AIR picks the simulated scenario: opponent on the ground, or 60 px off the ground), the square preview of the opponent receiving the reaction, below (in a scrolling area) the time bar, the SPLIT · DUPLICATE · DELETE · UNDO buttons and the timeline, and at the bottom the transport (START, −1, PLAY, +1, speed). Editing happens on the timeline itself; the edit drawer slides up over it (drag the handle to change the height; Y saves the default height) and only opens when you tap a step or an item. Timeline: the STEPS lane has one yellow clip per step (thumbnail of the opponent's ANO, ⇄ if mirrored, duration; the following reactions appear in gray; DRAG the dark bar on the right edge to change the duration of the current scenario). Tapping STEPS (or its header) opens and closes the lanes: SPEED in blocks, as in the ANO (one block per own speed, covering the following steps that keep it with −1; DRAG the right edge of the block to extend or shorten), VOICE (♪), EFFECTS (wall), SEQ (next reaction) and CURVE (x and y in px/tick, read-only). When closed, each lane with data becomes a thin summary line. The # tab chooses which lanes appear; dragging vertically scrolls the lanes. Tapping a step opens the page grid (ANIMATION, TIME, SPEED, VOICE, EFFECTS, SEQ, TOTAL); tapping a lane item opens its page directly, and an empty cell (＋) opens it to add. ◀ goes back to the grid, ✕ closes. Typing in the field takes effect immediately, and holding − or + changes continuously. Everything comes from the game's simulation, the same one as the preview. The preview camera follows the opponent (it tracks the flight and shifts the scene so the body does not leave the area) and, when playing (not when dragging the time bar), plays the step's voice and the reaction sounds; the small previews in the grids stay muted.",
++         "EDITAR REACCIÓN (del personaje) o VER REACCIÓN (del juego, solo lectura) abre una pantalla con el mismo diseño de la pantalla principal: arriba el encabezado (SUELO | AIRE elige el escenario simulado: oponente en el suelo, o a 60 px del suelo), la vista previa cuadrada del oponente recibiendo la reacción, debajo (en un área que se desplaza) la barra de tiempo, los botones DIVIDIR · DUPLICAR · ELIMINAR · DESHACER y la timeline, y en la base el transporte (INICIO, −1, REPRODUCIR, +1, velocidad). La edición se hace en la propia timeline; el cajón de edición sube por encima (arrastra el asa para cambiar la altura; Y guarda la altura predeterminada) y solo abre al tocar un paso o un elemento. Timeline: la pista PASOS tiene un clip amarillo por paso (miniatura del ANO del oponente, ⇄ si está espejado, duración; las reacciones siguientes aparecen en gris; ARRASTRA la barra oscura del borde derecho para cambiar la duración del escenario actual). Tocar PASOS (o su encabezado) abre y cierra las pistas: SPEED en bloques, como en el ANO (un bloque por velocidad propia, cubriendo los pasos siguientes que la mantienen con −1; ARRASTRA el borde derecho del bloque para extender o acortar), VOZ (♪), EFECTOS (pared), SEQ (siguiente reacción) y CURVA (x e y en px/tick, solo lectura). Cerrada, cada pista con datos se vuelve una línea fina de resumen. La pestaña # elige qué pistas aparecen; arrastrar en vertical desplaza las pistas. Tocar un paso abre la cuadrícula de páginas (ANIMACIÓN, TIEMPO, SPEED, VOZ, EFECTOS, SEQ, TOTAL); tocar un elemento de una pista abre su página directamente, y una celda vacía (＋) abre para agregar. ◀ vuelve a la cuadrícula, ✕ cierra. Escribir en el campo vale al instante, y mantener − o + cambia de forma continua. Todo viene de la simulación del juego, la misma de la vista previa. La cámara de la vista previa sigue al oponente (acompaña el vuelo y desplaza la escena para que el cuerpo no salga del área) y, al reproducir (no al arrastrar la barra de tiempo), reproduce la voz del paso y los sonidos de la reacción; las vistas previas pequeñas de las cuadrículas quedan mudas."},
 +        {"reacao reacoes editor timeline passo passos speed velocidade voz efeitos parede seq dividir knockback empurrao hitstun duracao ano oponente",
 +         "reaction reactions editor timeline step steps speed velocity voice effects wall seq split knockback pushback hitstun duration ano opponent",
 +         "reaccion reacciones editor timeline paso pasos speed velocidad voz efectos pared seq dividir knockback empuje hitstun duracion ano oponente"},
@@ -9251,7 +9265,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-29 17:14:47.585712604 +0000
++++ b/I18nHelpCatalog8.java	2026-10-29 17:18:28.865196049 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9336,7 +9350,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-29 17:14:47.585788137 +0000
++++ b/I18nHelpCatalog9.java	2026-10-29 17:18:28.865281222 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -12705,6 +12719,58 @@ diff -ruN a/QuickNotice.java b/QuickNotice.java
      QuickNotice colors(int bg, int btn) { color = bg; buttonColor = btn; return this; }
      QuickNotice duration(long ms) { durationMs = ms; return this; }
      QuickNotice left(String label, Runnable run) { left.add(new Action(label, true, run)); return this; }
+diff -ruN a/ReactionCamera.java b/ReactionCamera.java
+--- a/ReactionCamera.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ReactionCamera.java	2026-10-29 17:18:06.229887677 +0000
+@@ -0,0 +1,48 @@
++package com.zue.attackeditor;
++
++/**
++ * Camera da previa de reacao: segue o oponente (x) e sobe/desce o cenario quando ele voa, para o corpo nao sair da area.
++ * O mundo mostrado tem {@link #VIEW_W} px de largura; o chao fica a {@link #GROUND_FRAC} da altura da previa.
++ * Coordenadas do jogo: y negativo = acima do chao.
++ */
++final class ReactionCamera {
++    static final float VIEW_W = 250f, GROUND_FRAC = 0.8f, BODY = 100f, MARGIN = 12f, EASE = 0.25f;
++
++    /** Centro horizontal do mundo mostrado e deslocamento vertical (px do mundo; > 0 = cenario desce, camera sobe). */
++    float x, y;
++    private final float lead;
++    private boolean placed;
++
++    /** {@code lead}: deslocamento fixo do centro em relacao ao oponente (para mostrar um pouco do lado do atacante). */
++    ReactionCamera(float lead) { this.lead = lead; }
++
++    /** Alvo de x: o oponente (mais o {@code lead}). */
++    static float targetX(float oppX, float lead) { return oppX + lead; }
++
++    /** Alvo do deslocamento vertical: 0 enquanto o corpo cabe acima do chao, senao o quanto falta para ele caber. {@code viewH} em px do mundo. */
++    static float targetY(float oppY, float viewH) {
++        float above = GROUND_FRAC * viewH;
++        return Math.max(0f, -oppY + BODY + MARGIN - above);
++    }
++
++    /** Um passo de suavizacao (para quando chega muito perto). */
++    static float ease(float cur, float tgt) {
++        float d = tgt - cur;
++        return Math.abs(d) < 0.25f ? tgt : cur + d * EASE;
++    }
++
++    /** Segue o oponente; {@code snap} vai direto ao alvo (primeiro quadro e busca na linha do tempo). */
++    void follow(float oppX, float oppY, float viewH, boolean snap) {
++        float tx = targetX(oppX, lead), ty = targetY(oppY, viewH);
++        if (snap || !placed) { x = tx; y = ty; placed = true; return; }
++        x = ease(x, tx);
++        y = ease(y, ty);
++    }
++
++    /** O corpo (de {@code oppY - BODY} ate {@code oppY}) esta dentro da area visivel? */
++    boolean contains(float oppY, float viewH) {
++        float top = -GROUND_FRAC * viewH - y;           // o cenario desce y: o que se ve em cima vai mais alto no mundo
++        float bottom = (1f - GROUND_FRAC) * viewH - y;
++        return oppY - BODY >= top && oppY <= bottom;
++    }
++}
 diff -ruN a/ReactionEdit.java b/ReactionEdit.java
 --- a/ReactionEdit.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/ReactionEdit.java	2026-10-24 21:48:20.106573004 +0000
@@ -13157,8 +13223,18 @@ diff -ruN a/ReactionLayout.java b/ReactionLayout.java
 +}
 diff -ruN a/ReactionPreview.java b/ReactionPreview.java
 --- a/ReactionPreview.java	2026-10-13 21:46:10.000000000 +0000
-+++ b/ReactionPreview.java	2026-10-24 21:48:43.046099609 +0000
-@@ -32,15 +32,68 @@
++++ b/ReactionPreview.java	2026-10-29 17:17:27.207657158 +0000
+@@ -17,7 +17,8 @@
+     private long last;
+     private double acc;
+     private int age, idle;
+-    private int centerX;
++    private ReactionCamera cam = new ReactionCamera(0);
++    private boolean sound, snapCam = true;
+ 
+     ReactionPreview(Context c, AttackView av) {
+         super(c);
+@@ -32,17 +33,79 @@
          invalidate();
      }
  
@@ -13167,6 +13243,14 @@ diff -ruN a/ReactionPreview.java b/ReactionPreview.java
 +    private ReactionTable ovTable;
 +    private boolean paused;
 +    private float speed = 1f;
++
++    /** Liga o som da previa (voz e sons da reacao); as pequenas das grades ficam mudas. */
++    void setSound(boolean on) { sound = on; }
++
++    private void playSounds() {
++        List<BattleSim.Snd> l = sim.drainSounds();
++        if (sound && isShown() && !l.isEmpty()) av.playSounds(l);
++    }
 +
 +    /** Velocidade da reproducao (1 = normal). */
 +    void setSpeed(float s) { speed = s; }
@@ -13227,9 +13311,13 @@ diff -ruN a/ReactionPreview.java b/ReactionPreview.java
          if (sim == null) return;
 +        if (ovTable != null) sim.overrideCharReaction(ovSlot, ovTable);
          sim.forceHit(value);
-         centerX = sim.opponentX() + (sim.attackerX() < sim.opponentX() ? 30 : -30);
+-        centerX = sim.opponentX() + (sim.attackerX() < sim.opponentX() ? 30 : -30);
++        cam = new ReactionCamera(sim.attackerX() < sim.opponentX() ? 30 : -30);
++        snapCam = true;
      }
-@@ -50,14 +103,28 @@
+ 
+     @Override protected void onDraw(Canvas c) {
+@@ -50,28 +113,56 @@
          if (sim == null) build();
          if (sim == null) {
              p.setColor(0xFF4A505E);
@@ -13251,7 +13339,13 @@ diff -ruN a/ReactionPreview.java b/ReactionPreview.java
 +            } else acc = 0;
 +            if (target < tick) { build(); if (sim == null) return; }
 +            int guard = 0;
-+            while (tick < target && guard++ < 600) { sim.step(); tick++; }
++            boolean snap = !playing;
++            while (tick < target && guard++ < 600) {
++                sim.step();
++                tick++;
++                if (playing) playSounds(); else sim.drainSounds();      // so toca andando; ao buscar na linha do tempo fica mudo
++            }
++            snapCam = snapCam || snap;
 +            drawWorld(c);
 +            if (playing) postInvalidateOnAnimation();
 +            return;
@@ -13260,19 +13354,32 @@ diff -ruN a/ReactionPreview.java b/ReactionPreview.java
          while (acc >= 1 && steps < 6) {
              acc -= 1;
              steps++;
-@@ -66,6 +133,11 @@
+             sim.step();
++            playSounds();
+             age++;
              if (!sim.defenderInDamage()) idle++;
              if (idle > 30 || age > 420) { build(); break; }
          }
+-        float s = getWidth() / 250f;
 +        drawWorld(c);
 +        postInvalidateOnAnimation();
 +    }
 +
 +    private void drawWorld(Canvas c) {
-         float s = getWidth() / 250f;
++        float s = getWidth() / ReactionCamera.VIEW_W;
++        cam.follow(sim.opponentX(), sim.opponentY(), getHeight() / s, snapCam);
++        snapCam = false;
          c.save();
-         c.translate(getWidth() / 2f - centerX * s, getHeight() * 0.8f);
-@@ -79,6 +151,5 @@
+-        c.translate(getWidth() / 2f - centerX * s, getHeight() * 0.8f);
++        c.translate(getWidth() / 2f - cam.x * s, getHeight() * ReactionCamera.GROUND_FRAC + cam.y * s);
+         c.scale(s, s);
+         p.setColor(0xFF2A3A55);
+-        c.drawRect(centerX - 400, 0, centerX + 400, 2 / s, p);
++        c.drawRect(cam.x - 400, 0, cam.x + 400, 2 / s, p);
+         List<BattleSim.Layer> ls = sim.layers();
+         for (int i = 0; i < ls.size(); i++) {
+             BattleSim.Layer l = ls.get(i);
+@@ -79,6 +170,5 @@
              renderer.drawLayer(c, l, av.spritesForOwner(l.owner));
          }
          c.restore();
@@ -13377,8 +13484,8 @@ diff -ruN a/ReactionRuns.java b/ReactionRuns.java
 +}
 diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 --- a/ReactionScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/ReactionScreen.java	2026-10-24 21:48:20.116187456 +0000
-@@ -0,0 +1,921 @@
++++ b/ReactionScreen.java	2026-10-29 17:17:27.238892926 +0000
+@@ -0,0 +1,922 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -13484,6 +13591,7 @@ diff -ruN a/ReactionScreen.java b/ReactionScreen.java
 +        // previa quadrada de largura cheia
 +        preview = new ReactionPreview(c, view);
 +        preview.setControlled(true);
++        preview.setSound(true);
 +        preview.setValue(optValue);
 +        preview.setOnTick(new Runnable() { public void run() { onPlayTick(); } });
 +        preview.setBackground(round(0xFF0D0F13, 10));
@@ -18174,7 +18282,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          apply(n, FrameOps.starts(n)[frame]);
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-29 17:10:31.184654032 +0000
++++ b/TimelineTools.java	2026-10-29 17:17:27.236128921 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -19787,7 +19895,12 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private static final String[] GROUPS = {"normal (efeito 0, som 3, empurra)", "som alternativo (efeito 0, som 4, empurra)",
              "forte (efeito 1, som 6, empurra)", "leve (meio hitstop, sem empurrar)", "sem efeito, som nem hitstop"};
  
-@@ -1262,7 +1720,7 @@
+@@ -1258,11 +1716,12 @@
+         LinearLayout l = line();
+         ReactionPreview rp = new ReactionPreview(c, view);
+         rp.setValue(value);
++        rp.setSound(true);
+         l.addView(rp, new LinearLayout.LayoutParams(dp(112), dp(112)));
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          l.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -19796,7 +19909,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          info.setText(op.valid ? (op.fromChar ? "reacao do personagem " + op.type : "reacao do jogo " + op.type) + "\n" + GROUPS[op.group] : "valor invalido (" + value + ")");
          info.setTextColor(LayoutManager.TEXT);
          info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-@@ -1274,21 +1732,91 @@
+@@ -1274,21 +1733,91 @@
          r1.addView(btn("ESCOLHER", true, new View.OnClickListener() { public void onClick(View v) { pickReaction(pat, value); } }));
          col.addView(r1);
          LinearLayout r2 = new LinearLayout(c);
@@ -19897,7 +20010,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private void applyReaction(int pat, int value) {
          Ano a = cur();
          if (a == null) return;
-@@ -1315,7 +1843,8 @@
+@@ -1315,7 +1844,8 @@
          LinearLayout row = null;
          int n = 0;
          for (int i = 0; i < 50; i++) {
@@ -19907,7 +20020,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              if (n % 3 == 0) { row = new LinearLayout(c); col.addView(row); }
              n++;
              final int index = i;
-@@ -1324,20 +1853,37 @@
+@@ -1324,20 +1854,37 @@
              cell.setGravity(Gravity.CENTER_HORIZONTAL);
              cell.setPadding(dp(2), dp(2), dp(2), dp(4));
              GradientDrawable g = new GradientDrawable();
@@ -19951,7 +20064,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  dlg[0].dismiss();
                  applyReaction(pat, group * 50 + index);
              } });
-@@ -1345,11 +1891,167 @@
+@@ -1345,11 +1892,168 @@
          }
          ScrollView sv = new ScrollView(c);
          sv.addView(col);
@@ -20086,6 +20199,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
 +        final ReactionPreview rp = new ReactionPreview(c, view);
 +        rp.setValue(30 + slot);
 +        rp.setOverride(slot, src);
++        rp.setSound(true);
 +        LinearLayout box = new LinearLayout(c);
 +        box.setOrientation(LinearLayout.VERTICAL);
 +        box.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -20120,7 +20234,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private Setter optSetter(final int pat, final int field) {
          return new Setter() { public void set(double v) {
              Ano a = cur();
-@@ -1382,40 +2084,60 @@
+@@ -1382,40 +2086,60 @@
          return false;
      }
  
@@ -20209,7 +20323,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          final Ano pa = view.anoAt(mv.projNormal);
          if (pa != null && pa.present) {
              AnimPreview pv = new AnimPreview(c);
-@@ -1428,53 +2150,71 @@
+@@ -1428,53 +2152,71 @@
              col.addView(btn("✎ EDITAR ANIMACAO", true, new View.OnClickListener() { public void onClick(View v) {
                  if (nav != null) nav.openAno(mv.projNormal, true);
              } }));
@@ -20311,7 +20425,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          projSeqBlock(mv);
          if (focusOn) scrollBodyToEnd();
      }
-@@ -1483,7 +2223,7 @@
+@@ -1483,7 +2225,7 @@
      private void projSeqBlock(final CharData.Move mv) {
          head("Sequência do projétil (SEQ_PROJETIL)");
          note("SEQ_PROJETIL: " + anoText(mv.animAoAcertar));
@@ -20320,7 +20434,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          LinearLayout r = line();
          final boolean any = mv.animAoAcertar != 0;
          r.addView(btn(any ? "✎ Editar SEQ_PROJETIL" : "+ SEQ_PROJETIL", true, new View.OnClickListener() { public void onClick(View v) { projSeqDialog(mv); } }));
-@@ -1496,15 +2236,15 @@
+@@ -1496,15 +2238,15 @@
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(dp(16), dp(8), dp(16), dp(4));
@@ -20339,7 +20453,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  .setTitle("SEQ_PROJETIL").setView(col)
                  .setNegativeButton("CANCELAR", null).setPositiveButton("SALVAR", null).create();
          dlg.show();
-@@ -1515,7 +2255,7 @@
+@@ -1515,7 +2257,7 @@
              pos.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
                  final int val = parse255(e);
                  dlg.dismiss();
@@ -20348,7 +20462,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  show(type, idx, flag, occ);
                  onChanged.run();
              } });
-@@ -1563,7 +2303,7 @@
+@@ -1563,7 +2305,7 @@
          LinearLayout grid = animGrid(dac, view.packSprites(2), 0, dac.size() - 1, "ANO ", mv.projNormal, new AnimPick() { public void on(int ano) {
              chosen[0] = ano;
              dlg[0].dismiss();
@@ -20357,7 +20471,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              show(type, idx, flag, occ);
              onChanged.run();
          } });
-@@ -1577,7 +2317,7 @@
+@@ -1577,7 +2319,7 @@
      private android.app.AlertDialog dialog(String title, View content) {
          ScrollView sv = new ScrollView(c);
          sv.addView(content);
@@ -20366,7 +20480,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  .setTitle(title).setView(sv).setNegativeButton("FECHAR", null).create();
          dlg.show();
          styleDialog(dlg);
-@@ -1625,7 +2365,7 @@
+@@ -1625,7 +2367,7 @@
              AnimPreview pv = new AnimPreview(c);
              pv.set(dac, sp, a);
              cell.addView(pv, new LinearLayout.LayoutParams(dp(68), dp(68)));
@@ -20375,7 +20489,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              lab.setText(prefix + a);
              lab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
              lab.setTextColor(LayoutManager.DIM);
-@@ -1636,7 +2376,7 @@
+@@ -1636,7 +2378,7 @@
              row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
          }
          if (n == 0) {
@@ -20384,7 +20498,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              none.setText("Nenhuma animacao disponivel neste pacote.");
              none.setTextColor(LayoutManager.DIM);
              col.addView(none);
-@@ -1654,7 +2394,7 @@
+@@ -1654,7 +2396,7 @@
          LinearLayout col = new LinearLayout(c);
          col.setOrientation(LinearLayout.VERTICAL);
          l.addView(col, new LinearLayout.LayoutParams(-2, -2));
@@ -20393,7 +20507,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          nm.setText(ObjModel.fxPackName(pack, ano) + " · " + ano);
          nm.setTextColor(LayoutManager.TEXT);
          nm.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-@@ -1662,7 +2402,7 @@
+@@ -1662,7 +2404,7 @@
          col.addView(nm);
          col.addView(btn("TROCAR EFEITO", true, new View.OnClickListener() { public void onClick(View v) { pickEffect(o); } }));
          if (pack == 2) col.addView(btn("✎ EDITAR EFEITO", false, new View.OnClickListener() { public void onClick(View v) {
@@ -20402,7 +20516,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } }));
          Ano.Hit h = ObjModel.find(a.mpts[pat], o.flag, o.occ);
          num(line(), "x", h.x, 1, coord(o, pat, 0));
-@@ -1688,7 +2428,7 @@
+@@ -1688,7 +2430,7 @@
              all.addView(h);
              Dac dac = view.packDac(pk);
              if (dac == null) {
@@ -20411,7 +20525,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  none.setText("pacote nao carregado");
                  none.setTextColor(LayoutManager.DIM);
                  none.setPadding(dp(6), 0, 0, dp(6));
-@@ -1716,20 +2456,20 @@
+@@ -1716,20 +2458,20 @@
      private String describe(int f) {
          switch (f) {
              case 3: case 4: case 5: return "Faz o fundo tremer enquanto o objeto existe. Escolha a intensidade.";
@@ -20436,7 +20550,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              case ObjModel.VF_WALL: return "Impacto na parede: toca o som 6, zera o cancelamento do oponente e cria a poeira de impacto na borda da tela. Precisa ter um ataque que jogue o oponente na parede (o jogo ignora o frame se o personagem nao estiver batendo na parede). Disponivel so nas ANOs de reacao do gamedata com velocidade/aceleracao X.";
              default:
                  if (ObjModel.isDust(f)) return "Poeira / fumaca: cria um efeito de fumaca na posicao do personagem (vira para o lado em que ele olha). Escolha o tipo abaixo (1 a 15). Tipos 1-5: pacote bobj ANOs 10-14; 6-7: effect ANOs 78-79; 8-15: effect ANOs 70-77. Cada frame com a flag cria um novo efeito.";
-@@ -1753,12 +2493,15 @@
+@@ -1753,12 +2495,15 @@
      }
  
      private void action(Ano a, final ObjModel.Obj o, int pat) {
@@ -20453,7 +20567,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              return;
          }
          if (f == ObjModel.VF_SCENE || f == ObjModel.VF_WALL) return;
-@@ -1780,6 +2523,8 @@
+@@ -1780,6 +2525,8 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -20462,7 +20576,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
-@@ -1788,13 +2533,20 @@
+@@ -1788,13 +2535,20 @@
          } else if (f == 32 || f == 34) {
              num(line(), "quantidade", ObjModel.optField(a.mpts[pat], 0), 1, optSetter(pat, 0));
          } else if (f == 40) {
@@ -20485,7 +20599,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                  public void onClick(android.content.DialogInterface dlg, int which) { convertAction(o, ObjModel.ACTION_FLAGS[which]).onClick(null); }
              }).show();
          } }));
-@@ -1831,6 +2583,25 @@
+@@ -1831,6 +2585,25 @@
          } });
      }
  
@@ -20511,7 +20625,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private void seqPanel(final Ano a) {
          java.util.List<SeqMark> ms = view.sequenceMarks();
          if (idx < 0 || idx >= ms.size() || view.attackData() == null) { title.setText("TRANSICAO"); note("Sem marcador aqui."); return; }
-@@ -1838,7 +2609,7 @@
+@@ -1838,7 +2611,7 @@
          final int kind = m.kind;
          if (m.incoming) {
              title.setText("ENTRADA  ·  " + m.label().substring(2));
@@ -20520,7 +20634,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                      + ", vinda da ANO " + m.fromAno + " (frame " + (m.fromPat + 1) + "). A causa está na timeline daquela ANO.");
              final int fa = m.fromAno;
              LinearLayout rl = line();
-@@ -1846,12 +2617,13 @@
+@@ -1846,12 +2619,13 @@
              return;
          }
          title.setTextColor(TimelineView.markColor(m));
@@ -20539,7 +20653,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +2690,7 @@
+@@ -1918,7 +2692,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -23141,7 +23255,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-29 17:14:56.169675315 +0000
++++ b/test/I18nIgnored.java	2026-10-29 17:18:29.055718710 +0000
 @@ -0,0 +1,531 @@
 +package com.zue.attackeditor;
 +
@@ -24335,6 +24449,77 @@ diff -ruN a/test/Opt1GroupsTest.java b/test/Opt1GroupsTest.java
 +        check("5 titulos", Opt1.GROUP_TITLES.length, 5);
 +        check("o som do grupo vira o id do frame (se_03 = id 4)", SoundIds.idOfCommon(new Opt1(3 * 0 + 5).sound), 4);
 +        System.out.println("Opt1GroupsTest fails=" + fails);
++    }
++}
+diff -ruN a/test/ReactionCameraTest.java b/test/ReactionCameraTest.java
+--- a/test/ReactionCameraTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ReactionCameraTest.java	2026-10-29 17:18:06.230147481 +0000
+@@ -0,0 +1,67 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++import java.util.List;
++
++/** Previa da reacao: a camera segue o oponente que voa e a voz da reacao (coluna 13) sai do drainSounds da simulacao. */
++public class ReactionCameraTest {
++    public static void main(String[] args) throws Exception {
++        float viewH = 250f;
++        // no chao: sem deslocamento
++        check("no chao a camera nao sobe", ReactionCamera.targetY(0, viewH), 0f);
++        check("ate ~90 px de altura o corpo cabe: sem deslocamento", ReactionCamera.targetY(-60, viewH), 0f);
++        check("mais alto: o cenario desce o que falta", ReactionCamera.targetY(-300, viewH), 300f + ReactionCamera.BODY + ReactionCamera.MARGIN - 200f);
++        check("x segue o oponente mais o lead", ReactionCamera.targetX(400, 30), 430f);
++        check("suavizacao anda uma fracao", ReactionCamera.ease(0, 100), 25f);
++        check("suavizacao encaixa quando chega perto", ReactionCamera.ease(99.9f, 100), 100f);
++
++        // lancamento: sobe a 400 px e cai, indo para a direita; a camera tem que manter o corpo na area
++        ReactionCamera cam = new ReactionCamera(30);
++        cam.follow(100, 0, viewH, true);
++        check("primeiro quadro: centrada no oponente", cam.x, 130f);
++        boolean always = true, followedX = true;
++        float maxY = 0, maxLag = 0;
++        for (int t = 0; t < 120; t++) {
++            float ox = 100 + t * 6f, oy = -(400f * 4 * t * (120 - t) / (120f * 120f));
++            cam.follow(ox, oy, viewH, false);
++            maxY = Math.max(maxY, cam.y);
++            maxLag = Math.max(maxLag, Math.abs(cam.x - (ox + 30)));
++            // tolera a defasagem da suavizacao: o corpo inteiro (100 px) cabe com folga na area de 250
++            if (!(oy - ReactionCamera.BODY >= -ReactionCamera.GROUND_FRAC * viewH - cam.y - 60 && oy <= (1 - ReactionCamera.GROUND_FRAC) * viewH - cam.y + 60)) always = false;
++        }
++        check("lancamento: o corpo fica na area visivel o tempo todo", always, true);
++        check("lancamento: o cenario desceu bastante no topo da trajetoria", maxY > 250f, true);
++        check("lancamento: x defasa pouco (suavizacao)", maxLag < 30f, true);
++        // depois de pousar volta ao chao
++        for (int i = 0; i < 40; i++) cam.follow(820, 0, viewH, false);
++        check("pousou: a camera volta ao chao e ao x", cam.y + ":" + (int) cam.x, "0.0:850");
++        // snap (buscar na linha do tempo) vai direto
++        cam.follow(0, -300, viewH, true);
++        check("snap: direto ao alvo e o corpo cabe", cam.y == ReactionCamera.targetY(-300, viewH) && cam.contains(-300, viewH), true);
++
++        // ---- voz: coluna 13 da tabela do personagem
++        byte[][] rs = new byte[2][];
++        rs[0] = react(new int[]{4, 4, 3, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 5});        // voz 5 = se_4 comum
++        rs[1] = react(new int[]{4, 4, 3, 10, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0});        // sem voz
++        BattleSim v = ReactionTraceTest.sim(rs, 0);
++        v.forceHit(30);
++        v.drainSounds();
++        boolean heard = false;
++        for (int i = 0; i < 4 && !heard; i++) {
++            v.step();
++            for (BattleSim.Snd s : v.drainSounds()) if (s.common && s.id == 4) heard = true;
++        }
++        check("a voz da reacao (coluna 13 = 5) sai do drainSounds como se_4", heard, true);
++        BattleSim q = ReactionTraceTest.sim(rs, 0);
++        q.forceHit(31);
++        q.drainSounds();
++        boolean other = false;
++        for (int i = 0; i < 4; i++) {
++            q.step();
++            for (BattleSim.Snd s : q.drainSounds()) if (s.id == 4 && s.common) other = true;
++        }
++        check("reacao sem voz nao toca a voz", other, false);
++        System.out.println("ReactionCameraTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/ReactionEditTest.java b/test/ReactionEditTest.java
