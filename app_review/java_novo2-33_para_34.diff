@@ -187,7 +187,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-28 23:33:12.066791579 +0000
++++ b/AiHelpDoc.java	2026-10-29 10:48:15.783252733 +0000
 @@ -0,0 +1,845 @@
 +package com.zue.attackeditor;
 +
@@ -556,7 +556,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "`EDITAR REAÇÃO` (character) / `VER REAÇÃO` (game, read-only). Same layout as the main screen: header (`CHÃO | AR` scenario), square preview, time bar, buttons `DIVIDIR · DUPLICAR · EXCLUIR · DESFAZER`, timeline (PASSOS clips + lanes SPEED blocks, VOZ, EFEITOS, SEQ, CURVA; tabs `＋` and `#`), transport, drawer with a page grid (ANIMAÇÃO, TEMPO, SPEED, VOZ, EFEITOS, SEQ, TOTAL). Drag a step's right edge = duration; drag a SPEED block's right edge = how many steps keep that speed. `DIVIDIR` splits a step at the pointer (the defender's animation restarts in the 2nd half). The collapsed `▲ DADOS / EDITAR` panel (text tabs and a pencil) exists, but it is **not** a way to teach: do not instruct the user to use it; teach the timeline and drawer functions instead.\n" +
 +        "\n" +
 +        "### 11.5 Importing what you cannot generate\n" +
-+        "- Images: `SPRITES` → add/replace → pick the file; then set the frame's `Imagem`. In the file picker, tapping a `.cnv` of another pac opens its sprites (add several, or — when replacing — pick just one); `VOLTAR` there returns to the folder of that file, and the first row `...↑` of every folder (except the root) goes up one level.\n" +
++        "- Images: `SPRITES` → add/replace → pick the file; then set the frame's `Imagem`. In the file picker, tapping a `.cnv` of another pac opens its sprites (add several, or — when replacing — pick just one); `VOLTAR` there returns to the folder of that file, and the first row `...↑` of every folder (except the root) goes up one level. When a sprite crop fails (sheet index that does not exist, unreadable PNG, crop outside the sheet…) the app shows an alert with the exact reason per sprite (selectable text and a `COPIAR` button) — ask the user to paste that text.\n" +
 +        "- Sounds: put the `.wav` in `Tap Battle/assets/charNN/` (ids are in file-name order, from 80) or use the frame's `Som` page. The `+` of the sound list also adds a **global game sound** (`Tap Battle/assets/se_NN.ogg`, `se_NNN.ogg` from 100): same tools as the wavs (play, `Cortar`, `Mais...`, `Substituir...`, silence — never delete); the first one after `se_78` creates silent filler `se_79`..`se_99` and becomes `se_100`.\n" +
 +        "\n" +
 +        "## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)\n" +
@@ -674,9 +674,9 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "10. **`DamageChange`** (jogo:3466-4041) applies guard/damage/reaction (see 15.4, 15.5). The reaction runs in **md 876** (gamedata table, jogo:20983) or **md 877** (attacker's character table, jogo:21259) until `DamageEnd` (jogo:4043) and md 864.\n" +
 +        "11. **Attacker side**: md 935 sets `tcbPlayer[att].wFlag |= 1` (jogo:23467); next tick md 882 sees it (jogo:21889) and arms SEQ/END switching; when the ANO finishes (`wActFlag & 2`) md 883 → md 864, which calls **`AttackEnd`** (jogo:901-925; call at jogo:20747).\n" +
 +        "\n" +
++        "",
 +        "**What `Run`, `Init`, `_ActReqMain` and `CheckOptFlag` are [CODE].** `Run` (jogo:29937): scheduler pass over the task list, then `Draw`. `Init` (jogo:28611): engine start, calls `InitGameData` (jogo:29127). `_ActReqMain` (jogo:31772-32047): the **ANO interpreter** (one pattern per call, see 15.8) — it is **not** an attack function. `CheckOptFlag` (jogo:2112): per-tick processor of the **hit-box action flags** and `wOptFlag` bits (shake, cutscene, teleport, heal, dust…); it does not decide attacks.\n" +
 +        "\n" +
-+        "",
 +        "**Names in the questions vs. the real code [CODE].**\n" +
 +        "\n" +
 +        "| Question says | Real name |\n" +
@@ -1425,7 +1425,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-28 13:40:47.821356960 +0000
++++ b/AttackView.java	2026-10-29 10:45:35.899009436 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1767,7 +1767,23 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1234,6 +1400,14 @@
+@@ -1201,6 +1367,15 @@
+         return null;
+     }
+ 
++    /** Todas as falhas de recorte/folha das pastas em uso (atacante, oponente, efeitos, charf, bobj), "pasta  SPR_n: motivo". */
++    public java.util.List<String> spriteProblems() {
++        java.util.ArrayList<String> out = new java.util.ArrayList<String>();
++        if (data == null) return out;
++        CharAssets[] all = {data.attacker, data.opponent, data.effects, data.charf, data.bobj};
++        for (CharAssets c : all) if (c != null && c.sprites != null) out.addAll(c.sprites.errors());
++        return out;
++    }
++
+     public String spriteProblem() {
+         if (data == null) return "";
+         int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
+@@ -1234,6 +1409,14 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -1782,7 +1798,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1291,11 +1465,11 @@
+@@ -1291,11 +1474,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -1796,7 +1812,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1488,7 @@
+@@ -1314,7 +1497,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -1805,7 +1821,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1523,7 @@
+@@ -1349,6 +1532,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -3892,6 +3908,52 @@ diff -ruN a/Cnv.java b/Cnv.java
              byte[] e = encode(src, x, y, w, h);
              out.write(e, 0, e.length);
          }
+diff -ruN a/CropProblem.java b/CropProblem.java
+--- a/CropProblem.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CropProblem.java	2026-10-29 10:44:55.495036401 +0000
+@@ -0,0 +1,42 @@
++package com.zue.attackeditor;
++
++/**
++ * Por que um recorte do CNV nao funciona (Java puro, testado sem Android). {@link #check} devolve null se o recorte esta certo;
++ * {@code fatal} = nao da para desenhar; senao e so aviso (passa da borda da folha e o app desenha o que existe).
++ */
++final class CropProblem {
++    final String text;
++    final boolean fatal;
++
++    private CropProblem(String text, boolean fatal) { this.text = text; this.fatal = fatal; }
++
++    /**
++     * @param e          entrada do CNV (coordenadas logicas)
++     * @param scale      escala do pac (2 em personagem)
++     * @param sheetName  nome do arquivo da folha de indice {@code e.source}, ou null se essa folha nao existe
++     * @param sheetCount quantas folhas PNG a pasta tem
++     * @param sheetW     largura do PNG (0 = ilegivel)
++     * @param sheetH     altura do PNG (0 = ilegivel)
++     */
++    static CropProblem check(Cnv.Entry e, int scale, String sheetName, int sheetCount, int sheetW, int sheetH) {
++        if (e == null) return new CropProblem("sem entrada no CNV", true);
++        if (e.width <= 0 || e.height <= 0) return new CropProblem("recorte vazio (largura ou altura 0)", true);
++        if (e.x < 0 || e.y < 0) return new CropProblem("coordenada negativa (x " + e.x + ", y " + e.y + ")", true);
++        if (sheetName == null) {
++            return new CropProblem("folha $src:" + e.source + " nao existe (a pasta tem " + sheetCount + " folha(s) PNG"
++                    + (sheetCount > 0 ? ", indices 0 a " + (sheetCount - 1) : "") + "); o $src e o indice na lista dos PNG, nao o numero do arquivo", true);
++        }
++        if (sheetW <= 0 || sheetH <= 0) return new CropProblem("PNG ilegivel: " + sheetName, true);
++        int s = Math.max(1, scale);
++        long l = (long) e.x * s, t = (long) e.y * s, r = l + (long) e.width * s, b = t + (long) e.height * s;
++        String where = "folha " + sheetName + " (" + sheetW + "x" + sheetH + "): x " + l + ".." + r + ", y " + t + ".." + b + (s > 1 ? " (CNV x" + s + ")" : "");
++        if (l >= sheetW || t >= sheetH) return new CropProblem("recorte fora da " + where, true);
++        if (r > sheetW || b > sheetH) return new CropProblem("recorte passa da borda da " + where, false);
++        return null;
++    }
++
++    static String reason(Cnv.Entry e, int scale, String sheetName, int sheetCount, int sheetW, int sheetH) {
++        CropProblem p = check(e, scale, sheetName, sheetCount, sheetW, sheetH);
++        return p == null ? null : p.text;
++    }
++}
 diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 --- a/CutsceneInfo.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/CutsceneInfo.java	2026-10-24 21:48:20.027333776 +0000
@@ -4038,6 +4100,68 @@ diff -ruN a/DacText.java b/DacText.java
          dst.copyFrom(m);
      }
  }
+diff -ruN a/ErrorListDialog.java b/ErrorListDialog.java
+--- a/ErrorListDialog.java	1970-01-01 00:00:00.000000000 +0000
++++ b/ErrorListDialog.java	2026-10-29 10:44:55.497517171 +0000
+@@ -0,0 +1,58 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.app.AlertDialog;
++import android.content.ClipData;
++import android.content.ClipboardManager;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.util.TypedValue;
++import android.widget.ScrollView;
++import android.widget.TextView;
++import java.util.List;
++
++/** Alerta com a lista de erros: texto selecionavel e botao COPIAR (como o registro de erro do app), para mandar o motivo exato. */
++final class ErrorListDialog {
++    private ErrorListDialog() { }
++
++    static String join(List<String> lines) {
++        StringBuilder b = new StringBuilder();
++        for (String s : lines) b.append(s).append('\n');
++        return b.toString().trim();
++    }
++
++    static void show(final Activity a, String title, List<String> lines) {
++        final String text = join(lines);
++        TextView tv = new I18nTextView(a).noTranslate();       // motivos de recorte: dado (ja traduzido na origem)
++        tv.setText(text);
++        tv.setTextColor(0xFFE6E8EC);
++        tv.setTypeface(Typeface.MONOSPACE);
++        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
++        tv.setTextIsSelectable(true);
++        int p = (int) (14 * a.getResources().getDisplayMetrics().density);
++        tv.setPadding(p, p / 2, p, p / 2);
++        ScrollView sv = new ScrollView(a);
++        sv.addView(tv);
++        AlertDialog ad = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                .setTitle(title)
++                .setView(sv)
++                .setNeutralButton("COPIAR", null)
++                .setPositiveButton("FECHAR", null)
++                .create();
++        ad.show();
++        GradientDrawable bg = new GradientDrawable();
++        bg.setColor(LayoutManager.PANEL);
++        bg.setCornerRadius(p);
++        ad.getWindow().setBackgroundDrawable(bg);
++        // COPIAR nao fecha o alerta: o usuario copia e continua lendo
++        ad.getButton(DialogInterface.BUTTON_NEUTRAL).setOnClickListener(new android.view.View.OnClickListener() {
++            @Override public void onClick(android.view.View v) {
++                ClipboardManager cm = (ClipboardManager) a.getSystemService(Context.CLIPBOARD_SERVICE);
++                if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("erros de recorte", text));
++                I18nUi.toast(a, "Copiado", android.widget.Toast.LENGTH_SHORT).show();
++            }
++        });
++    }
++}
 diff -ruN a/FilePicker.java b/FilePicker.java
 --- a/FilePicker.java	2026-10-18 13:41:09.000000000 +0000
 +++ b/FilePicker.java	2026-10-28 23:16:09.530790447 +0000
@@ -5284,8 +5408,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-28 23:33:04.748751106 +0000
-@@ -0,0 +1,636 @@
++++ b/HelpText.java	2026-10-29 10:48:06.577011047 +0000
+@@ -0,0 +1,637 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -5656,7 +5780,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + " Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só."
 +                + " O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto)."
 +                + " Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível."
-+                + " A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png.");
++                + " A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png."
++                + " Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV.");
 +        c.add(sn);
 +
 +        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
@@ -6188,7 +6313,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-28 23:33:12.113373937 +0000
++++ b/I18nCatalog.java	2026-10-29 10:48:15.830015874 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6202,7 +6327,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-28 23:33:12.108668598 +0000
++++ b/I18nCatalog0.java	2026-10-29 10:48:15.823427504 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6475,7 +6600,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-28 23:33:12.109777934 +0000
++++ b/I18nCatalog1.java	2026-10-29 10:48:15.824821292 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -6748,7 +6873,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-28 23:33:12.110592454 +0000
++++ b/I18nCatalog2.java	2026-10-29 10:48:15.827366362 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7021,7 +7146,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-28 23:33:12.111444950 +0000
++++ b/I18nCatalog3.java	2026-10-29 10:48:15.828317941 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7294,7 +7419,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-28 23:33:12.112692078 +0000
++++ b/I18nCatalog4.java	2026-10-29 10:48:15.829275166 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7567,8 +7692,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-28 23:33:12.113157719 +0000
-@@ -0,0 +1,100 @@
++++ b/I18nCatalog5.java	2026-10-29 10:48:15.829776809 +0000
+@@ -0,0 +1,124 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -7650,6 +7775,30 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"binario", "binary", "binario"},
 +        {"recorte", "crop", "recorte"},
 +        {"SUBSTITUIR", "REPLACE", "REEMPLAZAR"},
++        {" folha(s) PNG", " PNG sheet(s)", " hoja(s) PNG"},
++        {"); o $src e o indice na lista dos PNG, nao o numero do arquivo", "); $src is the index in the list of PNGs, not the file number", "); el $src es el índice en la lista de PNG, no el número del archivo"},
++        {", indices 0 a ", ", indices 0 to ", ", índices 0 a "},
++        {"PNG ilegivel: ", "Unreadable PNG: ", "PNG ilegible: "},
++        {"coordenada negativa (x ", "negative coordinate (x ", "coordenada negativa (x "},
++        {"recorte fora da ", "crop outside ", "recorte fuera de la "},
++        {"recorte passa da borda da ", "crop runs past the edge of ", "recorte pasa del borde de la "},
++        {"recorte vazio (largura ou altura 0)", "empty crop (width or height 0)", "recorte vacío (ancho o alto 0)"},
++        {"sem entrada no CNV", "no entry in the CNV", "sin entrada en el CNV"},
++        {"Copiado", "Copied", "Copiado"},
++        {"erros de recorte", "crop errors", "errores de recorte"},
++        {"Erro de recorte", "Crop error", "Error de recorte"},
++        {"Erro de recorte de sprite", "Sprite crop error", "Error de recorte de sprite"},
++        {"Erro ao adicionar sprites", "Error adding sprites", "Error al agregar sprites"},
++        {"Erro ao substituir a sprite", "Error replacing the sprite", "Error al reemplazar el sprite"},
++        {" sprite(s) com problema de recorte — toque para ver", " sprite(s) with a crop problem — tap to see", " sprite(s) con problema de recorte — toca para ver"},
++        {"o recorte nao gerou imagem", "the crop produced no image", "el recorte no generó imagen"},
++        {"gravar as folhas: ", "write the sheets: ", "grabar las hojas: "},
++        {"folhas PNG da pasta (indice = posicao): ", "PNG sheets of the folder (index = position): ", "hojas PNG de la carpeta (índice = posición): "},
++        {"nenhuma", "none", "ninguna"},
++        {"cnv texto", "text cnv", "cnv texto"},
++        {"cnv binario", "binary cnv", "cnv binario"},
++        {"  (escala ", "  (scale ", "  (escala "},
++        {", escala ", ", scale ", ", escala "},
 +        {"folha $src:", "sheet $src:", "hoja $src:"},
 +        {" nao existe (a pasta tem ", " does not exist (the folder has ", " no existe (la carpeta tiene "},
 +        {" folha(s) PNG)", " PNG sheet(s))", " hoja(s) PNG)"},
@@ -7716,7 +7865,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-28 23:33:12.030304546 +0000
++++ b/I18nHelpCatalog.java	2026-10-29 10:48:15.748276169 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -7730,7 +7879,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-28 23:33:12.029236467 +0000
++++ b/I18nHelpCatalog0.java	2026-10-29 10:48:15.746251857 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7815,7 +7964,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-28 23:33:12.029357746 +0000
++++ b/I18nHelpCatalog1.java	2026-10-29 10:48:15.746558557 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7900,7 +8049,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-28 23:33:12.029486054 +0000
++++ b/I18nHelpCatalog2.java	2026-10-29 10:48:15.746705996 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -7985,7 +8134,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-28 23:33:12.029665148 +0000
++++ b/I18nHelpCatalog3.java	2026-10-29 10:48:15.746928733 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8070,7 +8219,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-28 23:33:12.029764279 +0000
++++ b/I18nHelpCatalog4.java	2026-10-29 10:48:15.747104920 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8155,7 +8304,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-28 23:33:12.029916437 +0000
++++ b/I18nHelpCatalog5.java	2026-10-29 10:48:15.747287067 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8240,7 +8389,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-28 23:33:12.030023334 +0000
++++ b/I18nHelpCatalog6.java	2026-10-29 10:48:15.747455017 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8325,7 +8474,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-28 23:33:12.030147198 +0000
++++ b/I18nHelpCatalog7.java	2026-10-29 10:48:15.747673236 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8410,7 +8559,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-28 23:33:12.030252102 +0000
++++ b/I18nHelpCatalog8.java	2026-10-29 10:48:15.748112547 +0000
 @@ -0,0 +1,78 @@
 +package com.zue.attackeditor;
 +
@@ -8431,9 +8580,9 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
-+        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png.",
-+         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png.",
-+         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png."},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV.",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV.",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV."},
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
@@ -8715,7 +8864,7 @@ diff -ruN a/IconView.java b/IconView.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-28 15:06:29.929678752 +0000
++++ b/LayoutManager.java	2026-10-29 10:45:35.901008798 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -9782,7 +9931,26 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1528,7 +1963,7 @@
+@@ -1421,8 +1856,18 @@
+             warning.setTextColor(WARN);
+             setWarning(problem);
+         }
++        // recorte que falhou: alerta com o motivo exato de cada sprite, selecionavel e com COPIAR (uma vez por conjunto de erros)
++        java.util.List<String> sp = attackView.spriteProblems();
++        String key = ErrorListDialog.join(sp);
++        if (sp.isEmpty()) spriteAlertKey = "";
++        else if (!key.equals(spriteAlertKey) && warning.getContext() instanceof Activity && !((Activity) warning.getContext()).isFinishing()) {
++            spriteAlertKey = key;
++            ErrorListDialog.show((Activity) warning.getContext(), "Erro de recorte de sprite", sp);
++        }
+     }
+ 
++    private String spriteAlertKey = "";
++
+     // ---- aviso piscando: transicao travada + play ----
+     private boolean lockTrans, blinking, blinkOn, landBeforeLock = true;
+     private final Runnable blinkRun = new Runnable() {
+@@ -1528,7 +1973,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -9791,7 +9959,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1544,7 +1979,7 @@
+@@ -1544,7 +1989,7 @@
          et.setText(attackView.editText(tab));
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(et);
@@ -9800,7 +9968,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +1994,7 @@
+@@ -1559,7 +2004,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -9809,7 +9977,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +2002,9 @@
+@@ -1567,9 +2012,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -9821,7 +9989,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2035,7 @@
+@@ -1600,7 +2045,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -9830,7 +9998,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2049,7 @@
+@@ -1614,7 +2059,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -9839,7 +10007,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1662,7 +2097,7 @@
+@@ -1662,7 +2107,7 @@
              LinearLayout box = new LinearLayout(c);
              box.setOrientation(LinearLayout.VERTICAL);
              box.setBackgroundColor(PANEL);
@@ -9848,7 +10016,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              top.setText("\u25A6  ABRIR LISTA (com pr\u00E9vias)");
              top.setTextColor(0xFF4C8DFF);
              top.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-@@ -1766,12 +2201,13 @@
+@@ -1766,12 +2211,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -11108,8 +11276,8 @@ diff -ruN a/OggPcm.java b/OggPcm.java
 +}
 diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 --- a/PacSpritePicker.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/PacSpritePicker.java	2026-10-28 23:31:50.786263841 +0000
-@@ -0,0 +1,298 @@
++++ b/PacSpritePicker.java	2026-10-29 10:46:19.190898572 +0000
+@@ -0,0 +1,325 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -11220,6 +11388,25 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                + (guessed ? "  ·  " + "escala 2 deduzida do tamanho das folhas" : ""), 10, DIM, false);
 +        diag.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 6));
 +        root.addView(diag);
++        // recorte que nao funciona: motivo exato por sprite (linha vermelha), faixa com a contagem e alerta copiavel
++        final String[] why = new String[items.size()];
++        final java.util.ArrayList<String> problems = new java.util.ArrayList<String>();
++        for (int k = 0; k < why.length; k++) {
++            why[k] = src.cutProblem(items.get(k).index);
++            if (why[k] != null) problems.add("SPR_" + items.get(k).index + ": " + why[k]);
++        }
++        final java.util.ArrayList<String> report = new java.util.ArrayList<String>();
++        report.add(cnvF.getPath() + "  (" + (CharAssets.KIND_TXT.equals(kind) ? "cnv.txt" : CharAssets.KIND_TEXT.equals(kind) ? "cnv texto" : "cnv binario") + ", escala " + src.scale + ")");
++        StringBuilder sheetNames = new StringBuilder();
++        for (File sf : SheetFiles.list(dir)) sheetNames.append(sheetNames.length() > 0 ? " " : "").append(sf.getName());
++        report.add("folhas PNG da pasta (indice = posicao): " + (sheetNames.length() == 0 ? "nenhuma" : sheetNames));
++        report.addAll(problems);
++        if (!problems.isEmpty()) {
++            TextView bad = SpriteListScreen.text(a, problems.size() + " sprite(s) com problema de recorte \u2014 toque para ver", 11, 0xFFFF6B6B, true);
++            bad.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 6));
++            bad.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { ErrorListDialog.show(a, "Erro de recorte", report); } });
++            root.addView(bad);
++        }
 +
 +        final boolean[] on = new boolean[items.size()];
 +        final Map<Integer, Bitmap> thumbs = new HashMap<Integer, Bitmap>();
@@ -11254,8 +11441,8 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                TextView t = new I18nTextView(a).noTranslate();       // nome/numero de sprite: dado
 +                t.setTextSize(13);
 +                t.setPadding(SpriteListScreen.dp(a, 12), 0, 0, 0);
-+                t.setText((on[i] ? "✓  " : "") + SpriteImportPlan.describe(it));
-+                t.setTextColor(on[i] ? OK : TEXT);
++                t.setText((on[i] ? "✓  " : "") + SpriteImportPlan.describe(it) + (why[i] != null ? "\n\u26A0 " + why[i] : ""));
++                t.setTextColor(why[i] != null ? 0xFFFF6B6B : on[i] ? OK : TEXT);
 +                row.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
 +                return row;
 +            }
@@ -11307,6 +11494,7 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +            }
 +        });
 +        d.show();
++        if (!problems.isEmpty()) ErrorListDialog.show(a, "Erro de recorte", report);       // abre ja mostrando o que falha
 +    }
 +
 +    private static Bitmap thumb(SpriteLib lib, Map<Integer, Bitmap> thumbs, int i) {
@@ -11333,7 +11521,7 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                Bitmap b = null;
 +                try {
 +                    b = src.cut(srcIdx);
-+                    if (b == null) err = "recorte fora da folha";
++                    if (b == null) { String why = src.cutProblem(srcIdx); err = why != null ? why : "o recorte nao gerou imagem"; }
 +                    else {
 +                        if (factor > 1) {
 +                            Bitmap big = Bitmap.createScaledBitmap(b, b.getWidth() * factor, b.getHeight() * factor, false);
@@ -11355,7 +11543,11 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                a.runOnUiThread(new Runnable() {
 +                    @Override public void run() {
 +                        uiOnly.run();
-+                        SpriteListScreen.toast(a, fe != null ? "Erro: " + fe : "SPR_" + dstIdx + " substituida");
++                        if (fe != null) {
++                            java.util.ArrayList<String> l = new java.util.ArrayList<String>();
++                            l.add("SPR_" + srcIdx + " -> SPR_" + dstIdx + ": " + fe);
++                            ErrorListDialog.show(a, "Erro ao substituir a sprite", l);
++                        } else SpriteListScreen.toast(a, "SPR_" + dstIdx + " substituida");
 +                    }
 +                });
 +            }
@@ -11369,6 +11561,7 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +        new Thread(new Runnable() {
 +            @Override public void run() {
 +                int added = 0, bad = 0;
++                final java.util.ArrayList<String> fails = new java.util.ArrayList<String>();
 +                final int total = chosen.size();
 +                for (int k = 0; k < total; k++) {
 +                    int idx = chosen.get(k).intValue();
@@ -11376,7 +11569,7 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                    Bitmap b = null;
 +                    try {
 +                        b = src.cut(idx);
-+                        if (b == null) { bad++; continue; }
++                        if (b == null) { bad++; String why = src.cutProblem(idx); fails.add("SPR_" + idx + ": " + (why != null ? why : "o recorte nao gerou imagem")); continue; }
 +                        if (factor > 1) {
 +                            Bitmap big = Bitmap.createScaledBitmap(b, b.getWidth() * factor, b.getHeight() * factor, false);   // sem suavizar: pixel art
 +                            b.recycle();
@@ -11386,13 +11579,14 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                        added++;
 +                    } catch (Throwable t) {
 +                        bad++;
++                        fails.add("SPR_" + idx + ": " + (t.getMessage() != null ? t.getMessage() : t.toString()));
 +                    } finally {
 +                        if (b != null && !b.isRecycled()) b.recycle();
 +                    }
 +                }
 +                src.release();
 +                busy.set("Gravando as folhas de sprites...", 0, 0);
-+                try { target.commit(); } catch (Exception ex) { /* a tela mostra o que ficou */ }
++                try { target.commit(); } catch (Exception ex) { fails.add("gravar as folhas: " + (ex.getMessage() != null ? ex.getMessage() : ex.toString())); }
 +                busy.dismiss();
 +                final int fa = added, fb = bad;
 +                a.runOnUiThread(new Runnable() {
@@ -11402,6 +11596,7 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                                + (fb > 0 ? ", " + fb + " falharam" : "")
 +                                + (target.downscaled > 0 ? ". " + target.downscaled + " reduzida(s) para no maximo " + SpriteLib.MAX_SIDE + " px" : ""));
 +                        target.downscaled = 0;
++                        if (!fails.isEmpty()) ErrorListDialog.show(a, "Erro ao adicionar sprites", fails);
 +                    }
 +                });
 +            }
@@ -15339,17 +15534,40 @@ diff -ruN a/SpriteBoxEditor.java b/SpriteBoxEditor.java
          dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ACCENT);
 diff -ruN a/SpriteCache.java b/SpriteCache.java
 --- a/SpriteCache.java	2026-10-18 12:39:53.000000000 +0000
-+++ b/SpriteCache.java	2026-10-28 23:31:50.784654968 +0000
-@@ -80,7 +80,7 @@
++++ b/SpriteCache.java	2026-10-29 10:45:10.050668961 +0000
+@@ -44,6 +44,8 @@
+     private Sprite[] sprites;
+     private boolean[] failed;
+     private final java.util.Set<Integer> outOfRange = new java.util.HashSet<Integer>();
++    private final java.util.Set<Integer> warned = new java.util.HashSet<Integer>();
++    private final java.util.ArrayList<String> errors = new java.util.ArrayList<String>();
+     private int errorCount;
+     private String lastError = "";
+ 
+@@ -73,15 +75,15 @@
+         Cnv.Entry e = cnv.byImage(image);
+         if (e == null) { fail(image, "IMG " + image + " sem entrada no CNV"); return null; }
+ 
+-        Bitmap b = png(e.source);
+-        if (b == null) { failed[image] = true; return null; }
+-
++        File sf = SheetFiles.file(characterDir, e.source);
++        Bitmap b = sf == null ? null : png(e.source);
+         int s = cnv.scale();
          int l = e.x * s, t = e.y * s, w = e.width * s, h = e.height * s;
-         if (e.width <= 0 || e.height <= 0) { fail(image, "IMG " + image + ": recorte vazio"); return null; }
-         if (l < 0 || t < 0 || l >= b.getWidth() || t >= b.getHeight()) {
+-        if (e.width <= 0 || e.height <= 0) { fail(image, "IMG " + image + ": recorte vazio"); return null; }
+-        if (l < 0 || t < 0 || l >= b.getWidth() || t >= b.getHeight()) {
 -            fail(image, "IMG " + image + ": recorte fora de " + pngName(e.source));
-+            fail(image, "IMG " + image + ": recorte fora de " + sheetLabel(e.source));
-             return null;
+-            return null;
++        CropProblem why = CropProblem.check(e, s, sf == null ? null : sf.getName(), SheetFiles.count(characterDir), b == null ? 0 : b.getWidth(), b == null ? 0 : b.getHeight());
++        if (why != null) {
++            String line = characterDir.getName() + "  SPR_" + image + ": " + why.text;
++            if (why.fatal) { fail(image, line); return null; }
++            if (warned.add(Integer.valueOf(image))) error(line);       // so passa da borda: desenha o que existe e avisa uma vez
          }
          int cw = Math.min(w, b.getWidth() - l);
-@@ -107,7 +107,12 @@
+         int ch = Math.min(h, b.getHeight() - t);
+@@ -107,7 +109,12 @@
          Bitmap cached = pngs.get(key);
          if (cached != null && !cached.isRecycled()) return cached;
          if (missingPngs.containsKey(key)) return null;
@@ -15363,7 +15581,7 @@ diff -ruN a/SpriteCache.java b/SpriteCache.java
          FileInputStream in = null;
          try {
              in = new FileInputStream(f);
-@@ -121,15 +126,16 @@
+@@ -121,15 +128,16 @@
              return b;
          } catch (IOException ex) {
              missingPngs.put(key, Boolean.TRUE);
@@ -15383,6 +15601,30 @@ diff -ruN a/SpriteCache.java b/SpriteCache.java
      }
  
      private void fail(int image, String msg) {
+@@ -140,8 +148,12 @@
+     private void error(String msg) {
+         errorCount++;
+         lastError = msg;
++        if (errors.size() < 60 && !errors.contains(msg)) errors.add(msg);
+     }
+ 
++    /** Todas as falhas de recorte/folha desta pasta, como linhas "pasta  SPR_n: motivo" (sem repetir; ate 60). */
++    public java.util.List<String> errors() { return new java.util.ArrayList<String>(errors); }
++
+     public int errorCount() { return errorCount; }
+     public String lastError() { return lastError; }
+ 
+@@ -150,6 +162,10 @@
+         clear();
+         missingPngs.clear();
+         outOfRange.clear();
++        warned.clear();
++        errors.clear();
++        errorCount = 0;
++        lastError = "";
+         sprites = new Sprite[cnv.size()];
+         failed = new boolean[cnv.size()];
+     }
 diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 --- a/SpriteImportPlan.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/SpriteImportPlan.java	2026-10-28 22:54:43.136440439 +0000
@@ -15494,7 +15736,7 @@ diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 +}
 diff -ruN a/SpriteLib.java b/SpriteLib.java
 --- a/SpriteLib.java	2026-10-18 13:09:58.000000000 +0000
-+++ b/SpriteLib.java	2026-10-28 23:32:00.479192443 +0000
++++ b/SpriteLib.java	2026-10-29 10:45:10.049891566 +0000
 @@ -33,6 +33,8 @@
      private final Map<Integer, Bitmap> sheets = new HashMap<Integer, Bitmap>();
      private final HashSet<Integer> dirty = new HashSet<Integer>();
@@ -15531,7 +15773,33 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
          if (!f.isFile()) return null;
          BitmapFactory.Options o = new BitmapFactory.Options();
          o.inScaled = false;
-@@ -289,6 +288,7 @@
+@@ -83,6 +82,25 @@
+         return e != null && e.width > 0 && e.height > 0;
+     }
+ 
++    /** Por que o recorte da sprite {@code image} nao funciona (null = certo; vazia nao conta): ver {@link CropProblem}. */
++    public String cutProblem(int image) {
++        Cnv.Entry e = cnv.byImage(image);
++        if (e != null && (e.width <= 0 || e.height <= 0)) return null;
++        File f = e == null || e.source < 0 || e.source >= sheetFiles.size() ? null : sheetFiles.get(e.source);
++        Bitmap sh = f == null || !f.isFile() ? null : sheet(e.source);
++        return CropProblem.reason(e, scale, f == null ? null : f.getName(), sheetFiles.size(), sh == null ? 0 : sh.getWidth(), sh == null ? 0 : sh.getHeight());
++    }
++
++    /** Sprites com desenho cujo recorte falha, como linhas "SPR_n: motivo" (ate {@code max}). */
++    public java.util.List<String> cutProblems(int max) {
++        java.util.ArrayList<String> out = new java.util.ArrayList<String>();
++        for (int i = 0; i < cnv.size() && out.size() < max; i++) {
++            String why = cutProblem(i);
++            if (why != null) out.add("SPR_" + i + ": " + why);
++        }
++        return out;
++    }
++
+     /** Copia dos pixels da sprite (tamanho fisico); null se vazia ou fora da folha. */
+     public Bitmap cut(int image) {
+         Cnv.Entry e = cnv.byImage(image);
+@@ -289,6 +307,7 @@
              Bitmap ns = Bitmap.createBitmap(sp.newSize, sp.newSize, Bitmap.Config.ARGB_8888);
              sheets.put(Integer.valueOf(nSheets), ns);
              sp.sheet = nSheets;
@@ -15539,7 +15807,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              nSheets++;
              newSheets++;
              if (nSheets > 255) throw new IOException("mais de 255 folhas de sprite");
-@@ -321,8 +321,8 @@
+@@ -321,8 +340,8 @@
          for (Integer s : new ArrayList<Integer>(dirty)) {
              Bitmap b = sheets.get(s);
              if (b == null) continue;
@@ -15550,7 +15818,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              FileOutputStream fo = new FileOutputStream(tmp);
              try { b.compress(Bitmap.CompressFormat.PNG, 100, fo); } finally { fo.close(); }
              if (out.exists() && !out.delete()) throw new IOException("nao consegui substituir " + out.getName());
-@@ -346,8 +346,9 @@
+@@ -346,8 +365,9 @@
          if (wavs.isEmpty()) return;
          Collections.sort(wavs, new Comparator<File>() { @Override public int compare(File a, File b) { return a.getName().compareTo(b.getName()); } });
          int first = Integer.parseInt(wavs.get(0).getName().substring(0, 3));
@@ -15564,8 +15832,19 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              wavs.get(i).renameTo(new File(dir, String.format(Locale.US, "%03d.wav", n)));
 diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 --- a/SpriteListScreen.java	2026-10-20 12:29:22.000000000 +0000
-+++ b/SpriteListScreen.java	2026-10-28 23:16:40.436666726 +0000
-@@ -92,7 +92,7 @@
++++ b/SpriteListScreen.java	2026-10-29 10:46:34.723415889 +0000
+@@ -61,6 +61,10 @@
+         final TextView sub = text(a, "", 11, DIM, false);
+         sub.setPadding(dp(a, 14), 0, dp(a, 14), dp(a, 8));
+         root.addView(sub);
++        final TextView badBanner = text(a, "", 11, 0xFFFF6B6B, true);
++        badBanner.setPadding(dp(a, 14), 0, dp(a, 14), dp(a, 6));
++        badBanner.setVisibility(View.GONE);
++        root.addView(badBanner);
+ 
+         final Map<Integer, Bitmap> thumbs = new HashMap<Integer, Bitmap>();
+         final java.util.TreeSet<Integer> sel = new java.util.TreeSet<Integer>();      // sprites marcadas (acoes em massa)
+@@ -92,15 +96,16 @@
                      if (tb != null) iv.setImageBitmap(tb);
                      row.addView(iv, new LinearLayout.LayoutParams(dp(a, 60), dp(a, 60)));
                  }
@@ -15574,7 +15853,18 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, type == 2 ? 0 : 12), 0, 0, 0);
                  if (type == 0) {
-@@ -117,7 +117,7 @@
+                     Cnv.Entry e = ca.cnv.byImage(i);
+                     boolean empty = e == null || e.width <= 0 || e.height <= 0;
++                    String why = empty ? null : lib.cutProblem(i);
+                     t.setText("SPR_" + i + (i == selected ? "   \u2713 atual" : "") + "\n" + (empty ? "(vazia)"
+-                            : e.width + "x" + e.height + "  folha " + e.source + "  x " + e.x + "  y " + e.y));
+-                    t.setTextColor(empty ? DIM : i == selected ? OK : TEXT);
++                            : e.width + "x" + e.height + "  folha " + e.source + "  x " + e.x + "  y " + e.y) + (why != null ? "\n\u26A0 " + why : ""));
++                    t.setTextColor(why != null ? 0xFFFF6B6B : empty ? DIM : i == selected ? OK : TEXT);
+                 } else if (type == 1) {
+                     Cnv.Entry e = ca.cnv.byImage(i);
+                     t.setText("GIF  " + g.name + "\nSPR_" + g.first + " a SPR_" + g.last() + "  \u00b7  " + framesText(g)
+@@ -117,7 +122,7 @@
                      final int fi = i;
                      final boolean grp = type == 1;
                      final SpriteGroups.Group gg = g;
@@ -15583,7 +15873,25 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                      boolean on;
                      if (grp) { on = true; for (int k = gg.first; k <= gg.last() && k < lib.count(); k++) if (lib.has(k) && !sel.contains(Integer.valueOf(k))) on = false; }
                      else on = sel.contains(Integer.valueOf(fi));
-@@ -180,13 +180,7 @@
+@@ -155,6 +160,17 @@
+                 ti.setText((picker == null ? "Sprites \u2014 " : "Escolher sprite \u2014 ") + title);
+                 sub.setText(lib.count() + " imagem(ns)  \u00b7  " + lib.groups.list.size() + " GIF(s)  \u00b7  " + lib.sheetCount() + " folha(s) PNG  \u00b7  escala " + lib.scale
+                         + (picker == null ? "  \u00b7  toque para editar" : ""));
++                final java.util.List<String> badCuts = lib.cutProblems(80);        // recorte que nao funciona: motivo exato (alerta copiavel)
++                badBanner.setVisibility(badCuts.isEmpty() ? View.GONE : View.VISIBLE);
++                if (!badCuts.isEmpty()) {
++                    badBanner.setText(badCuts.size() + " sprite(s) com problema de recorte \u2014 toque para ver");
++                    badBanner.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
++                        java.util.ArrayList<String> rep = new java.util.ArrayList<String>();
++                        rep.add(lib.dir.getPath() + "  (escala " + lib.scale + ")");
++                        rep.addAll(badCuts);
++                        ErrorListDialog.show(a, "Erro de recorte", rep);
++                    } });
++                }
+                 java.util.Iterator<Integer> it = sel.iterator();
+                 while (it.hasNext()) { int k = it.next().intValue(); if (k >= lib.count() || !lib.has(k)) it.remove(); }
+                 if (selChanged[0] != null) selChanged[0].run();
+@@ -180,13 +196,7 @@
          bar.setGravity(Gravity.CENTER_VERTICAL);
          bar.setPadding(dp(a, 12), 0, dp(a, 12), dp(a, 8));
          final TextView addBtn = button(a, "+ ADICIONAR", new View.OnClickListener() {
@@ -15598,7 +15906,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          });
          bar.addView(addBtn);
          bar.addView(button(a, "FECHAR", new View.OnClickListener() { @Override public void onClick(View v) { d.dismiss(); } }), lpm(a, 8));
-@@ -309,7 +303,7 @@
+@@ -309,7 +319,7 @@
          String msg = framesText(g) + " (SPR_" + g.first + " a SPR_" + g.last() + ").\n\n"
                  + "MODO GIF: coloca todos os quadros na timeline, depois do frame atual, formando a animacao completa com os tempos do GIF.\n\n"
                  + "MODO PNG: voce marca quais quadros quer, e so eles entram na timeline.";
@@ -15607,7 +15915,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setPositiveButton("MODO GIF", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) {
                          // quadros sem sprite (removidos) saem e o anterior segura o tempo; quadros seguidos com a mesma sprite viram um so
-@@ -377,7 +371,7 @@
+@@ -377,7 +387,7 @@
                  Bitmap tb = thumb(lib, thumbs, g.spriteAt(i));
                  if (tb != null) iv.setImageBitmap(tb);
                  row.addView(iv, new LinearLayout.LayoutParams(dp(a, 60), dp(a, 60)));
@@ -15616,7 +15924,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 12), 0, 0, 0);
                  t.setText((on[i] ? "\u2713  " : "") + "Quadro " + (i + 1) + "  (SPR_" + g.spriteAt(i) + ")\n" + g.delayAt(i) + " ms");
-@@ -425,13 +419,13 @@
+@@ -425,13 +435,13 @@
      private static void groupActions(final Activity a, final CharAssets ca, final SpriteLib lib, final SpriteGroups.Group g,
                                       final java.util.HashSet<Integer> open, final Runnable applied, final Runnable refresh) {
          String[] items = {"Editar os quadros um a um", "Otimizar GIF (tirar quadros repetidos)", "Desagrupar (viram sprites comuns)", "Remover o GIF inteiro"};
@@ -15632,7 +15940,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                                  .setMessage("As " + g.count + " sprites (SPR_" + g.first + " a SPR_" + g.last() + ") tem as coordenadas zeradas e o espaco na folha fica livre. Os frames do DAC que as usam passam a imagem -1.")
                                  .setNegativeButton("CANCELAR", null)
                                  .setPositiveButton("REMOVER", new DialogInterface.OnClickListener() {
-@@ -522,7 +516,7 @@
+@@ -522,7 +532,7 @@
                  row.setPadding(dp(a, 12), dp(a, 6), dp(a, 12), dp(a, 6));
                  if (changed) row.setBackgroundColor(HI);
                  row.addView(thumbView(a, lib, thumbs, an.sprite[i]), new LinearLayout.LayoutParams(dp(a, 56), dp(a, 56)));
@@ -15641,7 +15949,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 10), 0, dp(a, 6), 0);
                  String uses = usedBy(an, i);
-@@ -637,7 +631,7 @@
+@@ -637,7 +647,7 @@
  
      private static void actions(final Activity a, final CharAssets ca, final SpriteLib lib, final int idx, final Runnable applied) {
          String[] items = {"Substituir imagem", "Mudar recorte na folha", "Mudar índice (só no CNV)", "Hurtbox / hitbox / efeito dos frames (com prévia)", "Remover da lista"};
@@ -15650,7 +15958,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setItems(items, new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int which) {
                          if (which == 0) replace(a, lib, idx, applied);
-@@ -651,8 +645,23 @@
+@@ -651,8 +661,23 @@
  
      private static Runnable uiOnlyR;
  
@@ -15675,7 +15983,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
              @Override public void onPicked(final List<File> files) {
                  final BusyDialog busy = BusyDialog.show(a, "Abrindo imagem");
                  busy.set(files.get(0).getName(), 0, 0);
-@@ -675,6 +684,12 @@
+@@ -675,6 +700,12 @@
                      }
                  }).start();
              }
@@ -15688,7 +15996,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          });
      }
  
-@@ -704,7 +719,7 @@
+@@ -704,7 +735,7 @@
          };
          if (ld.notice == null) { go.run(); return; }
          String msg = file.getName() + ":\n" + ld.notice + (ld.animated() ? "\n\nAo substituir so o primeiro quadro e usado." : "");
@@ -15697,7 +16005,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface x, int w) { recycle(ld); } })
                  .setPositiveButton("CONTINUAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface x, int w) { go.run(); } })
                  .setOnCancelListener(new DialogInterface.OnCancelListener() { @Override public void onCancel(DialogInterface x) { recycle(ld); } })
-@@ -808,7 +823,7 @@
+@@ -808,7 +839,7 @@
          if (fail.length() > 0) msg.append("Nao abriu:\n").append(fail);
          if (msg.length() == 0) { go.run(); return; }
          msg.append(frames).append(" sprite(s) serao criadas, a partir de SPR_").append(first).append('.');
@@ -15706,7 +16014,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) { for (ImageImport.Loaded ld : ok) recycle(ld); }
                  })
-@@ -831,7 +846,7 @@
+@@ -831,7 +862,7 @@
          et.setText(String.valueOf(idx));
          et.setSelectAllOnFocus(true);
          et.setPadding(dp(a, 20), dp(a, 12), dp(a, 20), dp(a, 12));
@@ -15715,7 +16023,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setMessage("A sprite vai para o índice digitado e a que estava la vem para SPR_" + idx + " (troca de lugar). So o CNV muda: as folhas PNG continuam iguais e o DAC continua apontando para os mesmos numeros.")
                  .setView(et).setNegativeButton("CANCELAR", null)
                  .setPositiveButton("MUDAR", new DialogInterface.OnClickListener() {
-@@ -925,7 +940,7 @@
+@@ -925,7 +956,7 @@
          sync.run();
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(box);
@@ -15724,7 +16032,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", null)
                  .setPositiveButton("APLICAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int w) {
-@@ -949,7 +964,7 @@
+@@ -949,7 +980,7 @@
          }
      }
  
@@ -15733,7 +16041,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
  
      static int dp(Activity a, int v) { return (int) (v * a.getResources().getDisplayMetrics().density + 0.5f); }
  
-@@ -966,7 +981,7 @@
+@@ -966,7 +997,7 @@
      }
  
      static TextView text(Activity a, String s, int sp, int color, boolean bold) {
@@ -19158,6 +19466,40 @@ diff -ruN a/test/BattleTest.java b/test/BattleTest.java
              else if (mode == 1) check("agarrao 8 sem 512 puxa no fim do ANO (10 ticks)", pulledAt >= 9 && pulledAt <= 11, true);
              else if (mode == 2) check("agarrao 8 sem acertar tambem puxa", pulledAt > 0, true);
              else if (mode == 3) check("agarrao 128 sem hit nao puxa", pulledAt, -1);
+diff -ruN a/test/CropProblemTest.java b/test/CropProblemTest.java
+--- a/test/CropProblemTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/CropProblemTest.java	2026-10-29 10:46:34.730459226 +0000
+@@ -0,0 +1,30 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Motivo exato de um recorte do CNV falhar: folha inexistente, PNG ilegivel, fora da folha, passa da borda, vazio. */
++public class CropProblemTest {
++    static Cnv.Entry e(int src, int x, int y, int w, int h) throws Exception {
++        return Cnv.read(Cnv.encode(src, x, y, w, h), false).byImage(0);
++    }
++
++    public static void main(String[] args) throws Exception {
++        check("recorte certo", CropProblem.reason(e(0, 10, 20, 30, 40), 2, "000.png", 1, 512, 512), null);
++        check("sem entrada", CropProblem.reason(null, 2, "000.png", 1, 512, 512), "sem entrada no CNV");
++        check("recorte vazio", CropProblem.reason(e(0, 0, 0, 0, 5), 2, "000.png", 1, 512, 512).startsWith("recorte vazio"), true);
++        check("coordenada negativa", CropProblem.reason(e(0, -3, 4, 5, 5), 1, "000.png", 1, 512, 512).startsWith("coordenada negativa (x -3, y 4)"), true);
++
++        String no = CropProblem.reason(e(18, 0, 0, 10, 10), 2, null, 19, 0, 0);
++        check("folha inexistente cita o $src, a quantidade e que e indice", no.contains("$src:18") && no.contains("19 folha(s) PNG") && no.contains("indices 0 a 18") && no.contains("indice na lista"), true);
++        check("pasta sem nenhum PNG", CropProblem.reason(e(0, 0, 0, 10, 10), 2, null, 0, 0, 0).contains("0 folha(s) PNG)") && !CropProblem.reason(e(0, 0, 0, 10, 10), 2, null, 0, 0, 0).contains("indices 0 a"), true);
++        check("PNG ilegivel", CropProblem.reason(e(2, 0, 0, 10, 10), 2, "002.png", 3, 0, 0), "PNG ilegivel: 002.png");
++
++        CropProblem out = CropProblem.check(e(0, 300, 0, 10, 10), 2, "019.png", 19, 512, 512);
++        check("fora da folha e fatal, com os numeros dobrados", out.fatal + ":" + out.text, "true:recorte fora da folha 019.png (512x512): x 600..620, y 0..20 (CNV x2)");
++        CropProblem edge = CropProblem.check(e(0, 240, 0, 30, 10), 2, "000.png", 1, 512, 512);
++        check("passa da borda e so aviso", edge.fatal + ":" + edge.text, "false:recorte passa da borda da folha 000.png (512x512): x 480..540, y 0..20 (CNV x2)");
++        check("escala 1 nao mostra o multiplicador", CropProblem.reason(e(0, 600, 0, 10, 10), 1, "000.png", 1, 512, 512).contains("CNV x"), false);
++        check("exatamente na borda e valido", CropProblem.reason(e(0, 246, 0, 10, 10), 2, "000.png", 1, 512, 512), null);
++        System.out.println("CropProblemTest fails=" + fails);
++    }
++}
 diff -ruN a/test/CutsceneTest.java b/test/CutsceneTest.java
 --- a/test/CutsceneTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/CutsceneTest.java	2026-10-21 22:00:19.081809477 +0000
@@ -20585,8 +20927,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-28 23:33:12.242157486 +0000
-@@ -0,0 +1,524 @@
++++ b/test/I18nIgnored.java	2026-10-29 10:48:15.955692270 +0000
+@@ -0,0 +1,527 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -20604,6 +20946,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "   $SPR_",
 +        "  (SPR_",
 +        "  CNV=",
++        "  SPR_",
 +        "  vertical ",
 +        "  wav=",
 +        "  {\"nome\":\"",
@@ -20616,6 +20959,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " (ANIM_INICIAL + 1). A distância vem do HDAT 3 do personagem e vale para todos os golpes dele.",
 +        " (ANIM_SEQ)",
 +        " (ANO ",
++        " (CNV x",
 +        " (HDAT 13): ",
 +        " (SPR_",
 +        " (anim ",
@@ -20626,6 +20970,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " -> ANIM_END ",
 +        " -> ANIM_SEQ ",
 +        " -> CHAO ",
++        " -> SPR_",
 +        " ANO(s)",
 +        " ANO(s), ",
 +        " ANO(s). Desfazer volta tudo de uma vez. Depois use SALVAR > todos os ANOs (ou tudo) para gravar.",
@@ -20995,6 +21340,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "charf",
 +        "charf00",
 +        "cinza",
++        "cnv.txt",
 +        "com.google.android.youtube",
 +        "ctr",
 +        "data",
@@ -21055,7 +21401,6 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "move",
 +        "nao consegui trocar ",
 +        "nenhum",
-+        "nenhuma",
 +        "normal",
 +        "obj:",
 +        "opt",

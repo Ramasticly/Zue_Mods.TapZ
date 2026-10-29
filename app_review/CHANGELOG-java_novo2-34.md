@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1291 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1302 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -322,6 +322,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Todos os usos de recorte seguem a regra: preview (`SpriteCache`), lista de sprites/edição (`SpriteLib`: abrir, gravar, folha nova com o próximo número depois da última, `shiftWavs` pelo maior número de folha), seletor de sprites de outro pac e dedução de escala (`PacSpritePicker.sheetSizes`). Folha inexistente vira erro legível (“folha $src:N não existe (a pasta tem K folha(s) PNG)”), sem exceção por frame.
 - Testes: `SheetFilesTest` (17: o caso 017/018.cnv/019, ordem por número, maiúscula, ignora `.cnv`/`.txt`/PNG com outro nome, fora do intervalo, `nextNumber` com buraco). `SpriteCache`/`SpriteLib`/seletor só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zp Recorte que falha mostra o motivo, num alerta que dá para copiar
+- `CropProblem` (Java puro) diz **por que** um recorte do CNV não funciona: sem entrada, recorte vazio, coordenada negativa, **folha `$src:N` inexistente** (cita quantas folhas PNG a pasta tem e que `$src` é índice), **PNG ilegível**, **recorte fora da folha** e **passa da borda** (aviso; mostra a folha com tamanho, x/y finais e o multiplicador do CNV).
+- **Alerta copiável** (`ErrorListDialog`): texto selecionável + botão COPIAR (não fecha) + FECHAR. Abre sozinho quando: o preview não consegue recortar sprites (lista de tudo, com a pasta: atacante, oponente, efeitos, charf, bobj — uma vez por conjunto de erros); o seletor de sprites de outro CNV abre com sprites que não recortam (cabeçalho com o caminho do CNV, como foi lido — `.cnv.txt` / texto / binário —, a escala e as folhas PNG da pasta em ordem); adicionar/substituir falha (antes só “N falharam”; agora `SPR_n: motivo`, inclusive erro ao gravar as folhas).
+- Na lista de sprites do personagem e no seletor de outro CNV, a sprite com problema mostra o motivo em **vermelho** e há uma faixa “N sprite(s) com problema de recorte — toque para ver”.
+- `SpriteLib.cutProblem/cutProblems`, `SpriteCache.errors()`, `AttackView.spriteProblems()`. Testes: `CropProblemTest` (11). Telas e alertas só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -382,6 +388,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SoundIdsTest (novo)** | 61 |
 | **FilePickerTest (novo)** | 5 |
 | **SheetFilesTest (novo)** | 17 |
+| **CropProblemTest (novo)** | 11 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
