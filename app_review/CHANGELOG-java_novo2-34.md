@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1403 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1407 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -346,6 +346,9 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Como**: cada ponto de `pushUndo` do `AttackView` (ANOs, frames, golpe, reações, agarrão, silenciar sons…) passou a registrar uma `Edit` (`UndoEdits.swapAno/swapAnos/swapMpts/swapMove/swapReaction/swapPull`) que, ao reverter, lê o estado atual e devolve a edição inversa — por isso refazer funciona sem reescrever cada edição. O editor de reações e o diálogo “Editar…” seguem na pilha externa (sem botão de refazer novo).
 - Testes: `UndoHistoryTest` (32: sessão passo a passo até o original e de volta, refazer apagado por mudança nova e por fusão de chave, commit = uma entrada, sessão vazia, discard, ordem do grupo) e `UndoEditsTest` (10: ida e volta com DAC/golpe/agarrão reais). **A gaveta (prévia 30%), os botões ↶ ↷ e o fluxo APLICAR/✕ só compilados e revisados, não rodados num aparelho.** AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zs SPEEDLINE: número do Frame e tick nos pontos
+- Cada ponto da SPEEDLINE mostra o **número do Frame** (base 1, o ponto final mostra o Frame seguinte, onde o personagem estará); o **ponto de tick** (onde a altura muda de sentido dentro de um Frame) mostra o **tick dentro do Frame** (`t3`). Texto claro com contorno escuro; o do Frame atual em branco e maior; pontos muito próximos empilham o texto. `SpeedLine.label` testado (`SpeedLineTest` 42); o desenho do texto só compilado/revisado, não rodado num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -409,7 +412,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CropProblemTest (novo)** | 11 |
 | **LayerOpsTest (novo)** | 11 |
 | **TeleportBehindTest (novo)** | 17 |
-| **SpeedLineTest (novo)** | 38 |
+| **SpeedLineTest (novo)** | 42 |
 | **UndoHistoryTest (novo)** | 32 |
 | **UndoEditsTest (novo)** | 10 |
 | **FrameIndexRobustTest (novo)** | 1 |

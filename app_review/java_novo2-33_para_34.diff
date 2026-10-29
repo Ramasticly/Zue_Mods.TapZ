@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-29 14:57:36.105640364 +0000
++++ b/AiHelpDoc.java	2026-10-29 15:35:02.964044841 +0000
 @@ -0,0 +1,847 @@
 +package com.zue.attackeditor;
 +
@@ -639,7 +639,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
 +        "- `GOLPE SET` — the move's `ATK_FLAGS` options (checkboxes; table in 5.5).\n" +
 +        "- `HITBOX` — draw boxes on the preview (red hit, blue hurt, yellow others).\n" +
-+        "- `SPEEDLINE` — toggles green points and lines over the preview showing the movement path (start of each moving frame, plus the end; an extra point where the height changes direction inside a frame). Dragging a point changes only the speed (never the frame time); tapping a point opens `Remover este ponto` (the frame keeps the previous speed), `Zerar Speed` and `Aceleracao...` (preview, accel x/y per frame, movement speed %, presets).\n" +
++        "- `SPEEDLINE` — toggles green points and lines over the preview showing the movement path (start of each moving frame, plus the end; an extra point where the height changes direction inside a frame). Dragging a point changes only the speed (never the frame time); tapping a point opens `Remover este ponto` (the frame keeps the previous speed), `Zerar Speed` and `Aceleracao...` (preview, accel x/y per frame, movement speed %, presets). Each point is labelled with its frame number; the extra tick point shows the tick inside the frame (`t3`).\n" +
 +        "- `TEMPO` — NORMAL / ESTENDIDO / ATAQUE playback modes.\n" +
 +        "- `CENTRO` — camera NORMAL (free, pinch to zoom) / TELA (game camera 480×320) / CHAR (auto-frame both).\n" +
 +        "- `POUSO` — ON/OFF landing & fall ANO changes.\n" +
@@ -1526,7 +1526,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-29 14:55:29.129275113 +0000
++++ b/AttackView.java	2026-10-29 15:34:30.813497267 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1715,7 +1715,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -785,6 +851,132 @@
+@@ -785,6 +851,156 @@
          return ghostSim;
      }
  
@@ -1789,6 +1789,30 @@ diff -ruN a/AttackView.java b/AttackView.java
 +                    c.drawCircle((float) w[0], (float) w[1], dot * 1.8f, fill);
 +                }
 +            }
++            // numero do Frame em cada ponto (e o tick no ponto de tick); contorno escuro para ler sobre qualquer sprite
++            Paint txt = new Paint(Paint.ANTI_ALIAS_FLAG), outline = new Paint(Paint.ANTI_ALIAS_FLAG);
++            txt.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
++            outline.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
++            outline.setStyle(Paint.Style.STROKE);
++            outline.setColor(0xE60D0F13);
++            double[] prevW = null;
++            int stack = 0;
++            for (SpeedLine.Pt p : ch.pts) {
++                double[] w = slWorld(an, p);
++                boolean here = p.kind != SpeedLine.APEX && p.frame == cur;
++                float size = (here ? 13f : 11f) * density / scale;
++                txt.setTextSize(size);
++                outline.setTextSize(size);
++                outline.setStrokeWidth(3f * density / scale);
++                txt.setColor(here ? 0xFFFFFFFF : p.kind == SpeedLine.APEX ? 0xFFFFE066 : 0xFFB6FFD6);
++                // pontos quase no mesmo lugar (frame sem velocidade): o texto sobe um pouco para nao encavalar
++                stack = prevW != null && Math.hypot(w[0] - prevW[0], w[1] - prevW[1]) < 10f * density / scale ? stack + 1 : 0;
++                prevW = w;
++                float tx = (float) w[0] + dot * 1.6f, ty = (float) w[1] - dot * 1.2f - stack * size * 1.05f;
++                String label = SpeedLine.label(p);
++                c.drawText(label, tx, ty, outline);
++                c.drawText(label, tx, ty, txt);
++            }
 +            if (cur >= ch.head && cur <= ch.last) {              // o personagem andando dentro do frame atual
 +                double[] pos = ch.posAt(m, cur, currentElapsed());
 +                fill.setStyle(Paint.Style.FILL);
@@ -1848,7 +1872,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Arrastar a timeline: vai para {@code elapsed} ticks dentro do frame {@code pat} da ANO atual (pausa). */
      public void seekToPatTick(int pat, int elapsed) {
          Ano a = currentAno();
-@@ -820,7 +1012,7 @@
+@@ -820,7 +1036,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -1857,7 +1881,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1027,29 @@
+@@ -835,13 +1051,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -1890,7 +1914,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1070,11 @@
+@@ -862,10 +1094,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -1903,7 +1927,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -903,7 +1112,7 @@
+@@ -903,7 +1136,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -1912,7 +1936,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -942,18 +1151,45 @@
+@@ -942,18 +1175,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -1960,7 +1984,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1234,7 @@
+@@ -998,7 +1258,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -1969,7 +1993,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1246,48 @@
+@@ -1010,39 +1270,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -2041,7 +2065,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1069,7 +1314,8 @@
+@@ -1069,7 +1338,8 @@
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
                  + ":" + mv.animSeqChao + ":" + mv.animSeqAr + ":" + mv.animEndChao + ":" + mv.animEndAr
@@ -2051,7 +2075,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1363,14 @@
+@@ -1117,6 +1387,14 @@
                  break;
              }
          }
@@ -2066,7 +2090,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1379,65 @@
+@@ -1125,20 +1403,65 @@
          return out;
      }
  
@@ -2134,7 +2158,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1468,7 @@
+@@ -1169,7 +1492,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -2143,7 +2167,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1480,16 @@
+@@ -1181,16 +1504,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -2163,7 +2187,7 @@ diff -ruN a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1500,15 @@
+@@ -1201,6 +1524,15 @@
          return null;
      }
  
@@ -2179,7 +2203,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1542,14 @@
+@@ -1234,6 +1566,14 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -2194,7 +2218,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1266,6 +1582,7 @@
+@@ -1266,6 +1606,7 @@
                  if (ls.get(i).kind == 2 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawGlobalAnchor(c, ls.get(i).sim, opts); }
              for (int i = 0; i < ls.size(); i++)
                  if (ls.get(i).kind == 3 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawProjectileAnchor(c, ls.get(i).sim, opts); }
@@ -2202,7 +2226,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              if (bodyOn) {
                  drawBodyBox(c, sim.attackerX(), sim.attackerY(), data.attacker.data, true);
                  drawBodyBox(c, sim.opponentX(), sim.opponentY(), data.opponent.data, false);
-@@ -1291,11 +1608,11 @@
+@@ -1291,11 +1632,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -2216,7 +2240,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1631,7 @@
+@@ -1314,7 +1655,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -2225,7 +2249,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1666,7 @@
+@@ -1349,6 +1690,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -2233,7 +2257,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1404,8 +1722,52 @@
+@@ -1404,8 +1746,52 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -5865,8 +5889,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-29 14:57:19.263104222 +0000
-@@ -0,0 +1,642 @@
++++ b/HelpText.java	2026-10-29 15:34:53.107651026 +0000
+@@ -0,0 +1,643 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -5986,7 +6010,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "Liga e desliga o desenho das caixas na preview: vermelha = hitbox (onde o golpe acerta), azul = hurtbox (onde o personagem leva dano) "
 +                + "e amarela = as demais caixas de flag. Ligado ajuda a posicionar o alcance; desligado deixa ver só a arte."));
 +        s.add(new Section(ToolbarOrder.SPEEDLINE, "SPEEDLINE",
-+                "Liga e desliga o desenho da trajetória do movimento (speed) sobre a prévia: pontos e linhas verdes. O primeiro ponto é onde o movimento começa e há um ponto no início de cada Frame que se move (e um no fim do último); a linha conecta os pontos, subindo ou descendo conforme a speed y, e um ponto a mais marca o ponto mais alto/baixo quando a altura muda de sentido dentro de um Frame. Ao avançar o tick, o marcador amarelo anda pela trajetória do Frame atual, e o ponto do Frame atual fica em destaque. Arrastar um ponto muda só a speed do Frame anterior a ele para o personagem chegar ali (o tempo nunca muda). Tocar num ponto abre: REMOVER ESTE PONTO (o Frame perde a speed própria e continua com a do anterior; no primeiro ponto, ou num movimento de um Frame só, tira a speed toda, com aviso e confirmação), ZERAR SPEED (zera de verdade: sem manter e sem speed) e ACELERAÇÃO (prévia da velocidade, accel x/y por Frame, velocidade do movimento em % e presets como começar devagar, desacelerar até parar...)."));
++                "Liga e desliga o desenho da trajetória do movimento (speed) sobre a prévia: pontos e linhas verdes. O primeiro ponto é onde o movimento começa e há um ponto no início de cada Frame que se move (e um no fim do último); a linha conecta os pontos, subindo ou descendo conforme a speed y, e um ponto a mais marca o ponto mais alto/baixo quando a altura muda de sentido dentro de um Frame. Ao avançar o tick, o marcador amarelo anda pela trajetória do Frame atual, e o ponto do Frame atual fica em destaque. Arrastar um ponto muda só a speed do Frame anterior a ele para o personagem chegar ali (o tempo nunca muda). Tocar num ponto abre: REMOVER ESTE PONTO (o Frame perde a speed própria e continua com a do anterior; no primeiro ponto, ou num movimento de um Frame só, tira a speed toda, com aviso e confirmação), ZERAR SPEED (zera de verdade: sem manter e sem speed) e ACELERAÇÃO (prévia da velocidade, accel x/y por Frame, velocidade do movimento em % e presets como começar devagar, desacelerar até parar...)."
++                + " Cada ponto mostra o número do Frame; o ponto extra que marca um tick (onde a altura muda de sentido dentro de um Frame) mostra o tick dentro do Frame, por exemplo t3."));
 +        s.add(new Section(ToolbarOrder.TIME, "TEMPO",
 +                "Muda como o tempo corre na simulação. NORMAL: o golpe roda como no jogo e a preview termina quando tudo acaba. "
 +                + "ESTENDIDO: o atacante fica parado no último frame quando o ANO acaba, para você ver projéteis e a reação do oponente até o fim. "
@@ -6775,7 +6800,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-29 14:57:36.192870945 +0000
++++ b/I18nCatalog.java	2026-10-29 15:35:03.042801924 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -6789,7 +6814,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-29 14:57:36.182582259 +0000
++++ b/I18nCatalog0.java	2026-10-29 15:35:03.035302999 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7062,7 +7087,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-29 14:57:36.186082061 +0000
++++ b/I18nCatalog1.java	2026-10-29 15:35:03.036770286 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7335,7 +7360,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-29 14:57:36.187729857 +0000
++++ b/I18nCatalog2.java	2026-10-29 15:35:03.038101344 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7608,7 +7633,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-29 14:57:36.189036519 +0000
++++ b/I18nCatalog3.java	2026-10-29 15:35:03.039532289 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -7881,7 +7906,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-29 14:57:36.190106303 +0000
++++ b/I18nCatalog4.java	2026-10-29 15:35:03.041188565 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -8154,7 +8179,7 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-29 14:57:36.192386415 +0000
++++ b/I18nCatalog5.java	2026-10-29 15:35:03.042309088 +0000
 @@ -0,0 +1,154 @@
 +package com.zue.attackeditor;
 +
@@ -8357,7 +8382,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-29 14:57:36.051715518 +0000
++++ b/I18nHelpCatalog.java	2026-10-29 15:35:02.923178964 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -8371,7 +8396,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-29 14:57:36.049300623 +0000
++++ b/I18nHelpCatalog0.java	2026-10-29 15:35:02.920403799 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8449,14 +8474,14 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +        {"SPEEDLINE",
 +         "SPEEDLINE",
 +         "SPEEDLINE"},
-+        {"Liga e desliga o desenho da trajetória do movimento (speed) sobre a prévia: pontos e linhas verdes. O primeiro ponto é onde o movimento começa e há um ponto no início de cada Frame que se move (e um no fim do último); a linha conecta os pontos, subindo ou descendo conforme a speed y, e um ponto a mais marca o ponto mais alto/baixo quando a altura muda de sentido dentro de um Frame. Ao avançar o tick, o marcador amarelo anda pela trajetória do Frame atual, e o ponto do Frame atual fica em destaque. Arrastar um ponto muda só a speed do Frame anterior a ele para o personagem chegar ali (o tempo nunca muda). Tocar num ponto abre: REMOVER ESTE PONTO (o Frame perde a speed própria e continua com a do anterior; no primeiro ponto, ou num movimento de um Frame só, tira a speed toda, com aviso e confirmação), ZERAR SPEED (zera de verdade: sem manter e sem speed) e ACELERAÇÃO (prévia da velocidade, accel x/y por Frame, velocidade do movimento em % e presets como começar devagar, desacelerar até parar...).",
-+         "Turns on/off the drawing of the movement (speed) path over the preview: green points and lines. The first point is where the movement starts and there is a point at the start of each moving Frame (and one at the end of the last); the line connects the points, going up or down according to speed y, and an extra point marks the highest/lowest spot when the height changes direction inside a Frame. As the tick advances, the yellow marker walks along the current Frame's path, and the current Frame's point is highlighted. Dragging a point changes only the speed of the Frame before it so the character gets there (the time never changes). Tapping a point opens: REMOVE THIS POINT (the Frame loses its own speed and continues with the previous one's; on the first point, or in a one-Frame movement, it removes the whole speed, with a warning and confirmation), ZERO SPEED (really zeroes: no keep and no speed) and ACCELERATION (speed preview, accel x/y per Frame, movement speed in % and presets such as start slow, decelerate to a stop...).",
-+         "Activa y desactiva el dibujo de la trayectoria del movimiento (speed) sobre la vista previa: puntos y líneas verdes. El primer punto es donde empieza el movimiento y hay un punto al inicio de cada Frame que se mueve (y uno al final del último); la línea conecta los puntos, subiendo o bajando según la speed y, y un punto extra marca el punto más alto/bajo cuando la altura cambia de sentido dentro de un Frame. Al avanzar el tick, el marcador amarillo recorre la trayectoria del Frame actual, y el punto del Frame actual queda resaltado. Arrastrar un punto cambia solo la speed del Frame anterior para que el personaje llegue allí (el tiempo nunca cambia). Tocar un punto abre: QUITAR ESTE PUNTO (el Frame pierde su speed propia y continúa con la del anterior; en el primer punto, o en un movimiento de un solo Frame, quita toda la speed, con aviso y confirmación), PONER SPEED EN CERO (pone en cero de verdad: sin mantener y sin speed) y ACELERACIÓN (vista previa de la velocidad, accel x/y por Frame, velocidad del movimiento en % y presets como empezar lento, desacelerar hasta parar...)."},
++        {"Liga e desliga o desenho da trajetória do movimento (speed) sobre a prévia: pontos e linhas verdes. O primeiro ponto é onde o movimento começa e há um ponto no início de cada Frame que se move (e um no fim do último); a linha conecta os pontos, subindo ou descendo conforme a speed y, e um ponto a mais marca o ponto mais alto/baixo quando a altura muda de sentido dentro de um Frame. Ao avançar o tick, o marcador amarelo anda pela trajetória do Frame atual, e o ponto do Frame atual fica em destaque. Arrastar um ponto muda só a speed do Frame anterior a ele para o personagem chegar ali (o tempo nunca muda). Tocar num ponto abre: REMOVER ESTE PONTO (o Frame perde a speed própria e continua com a do anterior; no primeiro ponto, ou num movimento de um Frame só, tira a speed toda, com aviso e confirmação), ZERAR SPEED (zera de verdade: sem manter e sem speed) e ACELERAÇÃO (prévia da velocidade, accel x/y por Frame, velocidade do movimento em % e presets como começar devagar, desacelerar até parar...). Cada ponto mostra o número do Frame; o ponto extra que marca um tick (onde a altura muda de sentido dentro de um Frame) mostra o tick dentro do Frame, por exemplo t3.",
++         "Turns on/off the drawing of the movement (speed) path over the preview: green points and lines. The first point is where the movement starts and there is a point at the start of each moving Frame (and one at the end of the last); the line connects the points, going up or down according to speed y, and an extra point marks the highest/lowest spot when the height changes direction inside a Frame. As the tick advances, the yellow marker walks along the current Frame's path, and the current Frame's point is highlighted. Dragging a point changes only the speed of the Frame before it so the character gets there (the time never changes). Tapping a point opens: REMOVE THIS POINT (the Frame loses its own speed and continues with the previous one's; on the first point, or in a one-Frame movement, it removes the whole speed, with a warning and confirmation), ZERO SPEED (really zeroes: no keep and no speed) and ACCELERATION (speed preview, accel x/y per Frame, movement speed in % and presets such as start slow, decelerate to a stop...). Each point shows the Frame number; the extra point that marks a tick (where the height changes direction inside a Frame) shows the tick inside the Frame, for example t3.",
++         "Activa y desactiva el dibujo de la trayectoria del movimiento (speed) sobre la vista previa: puntos y líneas verdes. El primer punto es donde empieza el movimiento y hay un punto al inicio de cada Frame que se mueve (y uno al final del último); la línea conecta los puntos, subiendo o bajando según la speed y, y un punto extra marca el punto más alto/bajo cuando la altura cambia de sentido dentro de un Frame. Al avanzar el tick, el marcador amarillo recorre la trayectoria del Frame actual, y el punto del Frame actual queda resaltado. Arrastrar un punto cambia solo la speed del Frame anterior para que el personaje llegue allí (el tiempo nunca cambia). Tocar un punto abre: QUITAR ESTE PUNTO (el Frame pierde su speed propia y continúa con la del anterior; en el primer punto, o en un movimiento de un solo Frame, quita toda la speed, con aviso y confirmación), PONER SPEED EN CERO (pone en cero de verdad: sin mantener y sin speed) y ACELERACIÓN (vista previa de la velocidad, accel x/y por Frame, velocidad del movimiento en % y presets como empezar lento, desacelerar hasta parar...). Cada punto muestra el número del Frame; el punto extra que marca un tick (donde la altura cambia de sentido dentro de un Frame) muestra el tick dentro del Frame, por ejemplo t3."},
 +    };
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-29 14:57:36.049791602 +0000
++++ b/I18nHelpCatalog1.java	2026-10-29 15:35:02.920645018 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8541,7 +8566,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-29 14:57:36.050082065 +0000
++++ b/I18nHelpCatalog2.java	2026-10-29 15:35:02.921503217 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8626,7 +8651,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-29 14:57:36.050595060 +0000
++++ b/I18nHelpCatalog3.java	2026-10-29 15:35:02.921795323 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8711,7 +8736,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-29 14:57:36.050772089 +0000
++++ b/I18nHelpCatalog4.java	2026-10-29 15:35:02.922021834 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8796,7 +8821,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-29 14:57:36.050923308 +0000
++++ b/I18nHelpCatalog5.java	2026-10-29 15:35:02.922203715 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8881,7 +8906,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-29 14:57:36.051189191 +0000
++++ b/I18nHelpCatalog6.java	2026-10-29 15:35:02.922467810 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8966,7 +8991,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-29 14:57:36.051411232 +0000
++++ b/I18nHelpCatalog7.java	2026-10-29 15:35:02.922776562 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9051,7 +9076,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-29 14:57:36.051594823 +0000
++++ b/I18nHelpCatalog8.java	2026-10-29 15:35:02.923030323 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9136,7 +9161,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-29 14:57:36.051661784 +0000
++++ b/I18nHelpCatalog9.java	2026-10-29 15:35:02.923117358 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -16340,8 +16365,8 @@ diff -ruN a/SoundPlayer.java b/SoundPlayer.java
      private void playFrom(File f, float vol, int elapsedMs, int limitMs) {
 diff -ruN a/SpeedLine.java b/SpeedLine.java
 --- a/SpeedLine.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/SpeedLine.java	2026-10-29 12:36:27.932976626 +0000
-@@ -0,0 +1,205 @@
++++ b/SpeedLine.java	2026-10-29 15:34:30.811891592 +0000
+@@ -0,0 +1,208 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -16392,6 +16417,9 @@ diff -ruN a/SpeedLine.java b/SpeedLine.java
 +            return new double[] {v.x + d[0], v.y + d[1]};
 +        }
 +    }
++
++    /** Texto do ponto: o numero do Frame (base 1, como no resto do app) ou, no ponto de tick (apice), "t" + o tick dentro do Frame. */
++    static String label(Pt p) { return p.kind == APEX ? "t" + p.tick : String.valueOf(p.frame + 1); }
 +
 +    /** Cadeias de movimento da ANO (frames com velocidade propria ou aceleracao e os que mantem a velocidade, um colado no outro). */
 +    static List<Chain> chains(Ano.Mpt[] m) {
@@ -22629,7 +22657,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-29 14:57:36.350535219 +0000
++++ b/test/I18nIgnored.java	2026-10-29 15:35:03.175526608 +0000
 @@ -0,0 +1,533 @@
 +package com.zue.attackeditor;
 +
@@ -24732,8 +24760,8 @@ diff -ruN a/test/SpawnDiagTest.java b/test/SpawnDiagTest.java
 +}
 diff -ruN a/test/SpeedLineTest.java b/test/SpeedLineTest.java
 --- a/test/SpeedLineTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/SpeedLineTest.java	2026-10-29 12:36:11.967855156 +0000
-@@ -0,0 +1,132 @@
++++ b/test/SpeedLineTest.java	2026-10-29 15:34:30.815440183 +0000
+@@ -0,0 +1,140 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -24863,6 +24891,14 @@ diff -ruN a/test/SpeedLineTest.java b/test/SpeedLineTest.java
 +        check("desacelerar ate parar termina perto de 0", dv[0][dv[0].length - 1] < dv[0][0] * 0.2, true);
 +        Ano.Mpt[] ap2 = AccelPresets.apply(pr, cpr, AccelPresets.ACCEL, 100);
 +        check("os frames depois do primeiro mantem a velocidade", FrameTools.keeps(ap2, 1) + ":" + FrameTools.keeps(ap2, 2), "true:true");
++        // rotulos dos pontos: numero do Frame (base 1) e tick no ponto de tick
++        check("rotulo: START e FRAME mostram o numero do Frame (base 1)", SpeedLine.label(cr.vertex(0)) + ":" + SpeedLine.label(cr.vertex(1)) + ":" + SpeedLine.label(cr.vertex(2)), "1:2:3");
++        check("rotulo: o ponto final mostra o Frame seguinte", SpeedLine.label(cr.vertex(3)), "4");
++        String apexLabel = "";
++        for (SpeedLine.Pt p : ca.pts) if (p.kind == SpeedLine.APEX) apexLabel = SpeedLine.label(p);
++        check("rotulo: o ponto de tick mostra o tick dentro do frame", apexLabel, "t3");
++        SpeedLine.Chain late = SpeedLine.chains(new Ano.Mpt[] {f(2), f(2), mv(f(2), 4, 0, 0, 0), keep(f(2)), f(1)}).get(0);
++        check("rotulo: cadeia que comeca no frame 3 numera de 3 a 5", SpeedLine.label(late.vertex(0)) + ":" + SpeedLine.label(late.vertex(1)) + ":" + SpeedLine.label(late.vertex(2)), "3:4:5");
 +        System.out.println("SpeedLineTest fails=" + fails);
 +    }
 +}
