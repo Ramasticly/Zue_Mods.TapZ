@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1415 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1423 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -353,6 +353,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Por que o ponteiro “trava” com Hitbox**: o acerto congela o atacante por um **contador fixo de ticks** (`iHitStop`; no jogo `PlayerHitStop` = 10, ou 6 no golpe do tipo 12; **grupo 3 do OPT1 = metade, grupo 4 = nenhum**; projétil: defensor cheio, projétil metade, atacante nada). Não espera o hitspark: o hitspark (md 966) chama `_ActReq` todo tick **sem olhar o hitstop**, toca em paralelo na velocidade normal. Congelados: `time` do Frame, speed, aceleração e links; o defensor treme e a simulação segue. (O app usa 10 fixo: o golpe do tipo 12 fica 4 ticks mais longo que no jogo — lacuna conhecida, não alterada.)
 - **Mantido o comportamento**; agora o **botão de avançar tick** trava o número do tick durante o hitstop e mostra um **aviso amarelo** (“Hitstop: o acerto congela o Frame por mais N ticks…”) que conta N a cada toque e some quando o tick é liberado. Timeline, barra de progresso, voltar tick e reprodução ignoram o aviso (os ticks passam normalmente). `HitstopNotice` puro + `HitstopNoticeTest` (8, inclui o hitstop real do `BattleSim`: aviso = passos parados). O aviso na tela só compilado/revisado. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zu Botão efeito/som da Hitbox: grade com prévia
+- O botão **efeito/som** do menu da Hitbox deixou de abrir a lista branca padrão do Android e passou a abrir uma **grade no estilo do app** (fundo escuro): 2 cartões por linha, um para cada jeito de **efeito, som, empurrão e hitstop** do OPT 1 (**normal, som alternativo, forte, leve, sem efeito**), cada cartão com a **prévia da reação atual tocando com o efeito daquele grupo** e a linha de detalhe (`efeito 0 · som 3 · empurra · hitstop 10`; leve = metade do hitstop e sem empurrar; sem efeito = nada).
+- **Tocar num cartão** o seleciona (contorno azul), reinicia a prévia dele e **toca o som** do grupo; o **atual vem destacado** (fundo azul, `✓ … (atual)`). **VOLTAR** descarta; **APLICAR** grava só o grupo (`valor = grupo × 50 + índice da reação`; a reação não muda), dentro da sessão de desfazer do menu.
+- `Opt1.GROUP_TITLES/groupDetail` puros + `Opt1GroupsTest` (8). Grade/diálogo só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -420,6 +425,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **UndoHistoryTest (novo)** | 32 |
 | **UndoEditsTest (novo)** | 10 |
 | **HitstopNoticeTest (novo)** | 8 |
+| **Opt1GroupsTest (novo)** | 8 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
