@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1423 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1429 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -358,6 +358,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Tocar num cartão** o seleciona (contorno azul), reinicia a prévia dele e **toca o som** do grupo; o **atual vem destacado** (fundo azul, `✓ … (atual)`). **VOLTAR** descarta; **APLICAR** grava só o grupo (`valor = grupo × 50 + índice da reação`; a reação não muda), dentro da sessão de desfazer do menu.
 - `Opt1.GROUP_TITLES/groupDetail` puros + `Opt1GroupsTest` (8). Grade/diálogo só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zv Ticks da timeline = só ticks de Frame (hitstop não ocupa lugar)
+- A timeline conta **só os ticks dos Frames**: ticks que só a simulação tem (hitstop e afins) não existem nela. Antes, arrastar/tocar na timeline levava o ponteiro para “início do frame na simulação + tick”; no Frame do acerto qualquer tick depois do acerto caía **dentro do congelamento** e o ponteiro não se mexia. Agora `BattleSim.firstTicksElapsed` monta a tabela (Frame, tick do Frame) → **primeiro tick da simulação** em que o atacante está nesse ponto (uma passada; o congelamento repete o ponto, vale o primeiro) e `AttackView.seekToPatTick` a usa (cache com a mesma chave da tabela de Frames), então cada tick da timeline é um tick de animação e o hitstop é pulado. Vale para arrastar, tocar em clipes e para o ponteiro voltar depois de uma edição.
+- **Não mudou**: o botão de tick (trava o número e avisa o hitstop), a barra de progresso e a reprodução continuam em ticks da simulação (hitstop visível, como o jogo).
+- `TickMapTest` (6: tabela completa e crescente, salto do hitstop, `copyAt` no tick mapeado cai no Frame/tick pedidos, sem acerto = início do Frame + tick). A navegação na tela só compilada/revisada. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -426,6 +431,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **UndoEditsTest (novo)** | 10 |
 | **HitstopNoticeTest (novo)** | 8 |
 | **Opt1GroupsTest (novo)** | 8 |
+| **TickMapTest (novo)** | 6 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

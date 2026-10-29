@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-29 16:23:04.141258735 +0000
++++ b/AiHelpDoc.java	2026-10-29 16:30:38.351351551 +0000
 @@ -0,0 +1,847 @@
 +package com.zue.attackeditor;
 +
@@ -647,7 +647,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "- `VIRAR` — flip sides. `HIDE-EFF` — hide effects/auras/scenes/projectiles. `FR-PREVIEW` — previous/next frame ghost (settings in `TELA` > FR‑PREVIEW SET). `TELA` — grid, sounds, cutscenes, \"lock\" (cinematic), yellow box of all sprites, `FR-PREVIEW SET` and `POSE` (toggle, off by default: draws ANO 0, the idle character, underneath at the same anchor to compare the move's height and size).\n" +
 +        "\n" +
 +        "### 11.2 Timeline\n" +
-+        "Tap a sprite clip to open its drawer. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE (green), ESTILO (orange: flip/transform), LINKS, TRANSIÇÕES (SEQ/END/landing marks). The `＋` at the end of the sprite lane opens a menu: `CAMADA` (− N +, higher = the ANO draws on top; stored as the inverted `$PRIO`) and `Adicionar Sprite`. Special actions include `Teleportar atras do oponente` (= action 40 with a negative x, default −120, plus Flip X on the sprite, handled as one item). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a sprite or speed clip at the pointer (an object — hitbox, hurtbox, projectile, effect, action — belongs to its frame, so it splits at the frame boundary nearest to the pointer and the pointer moves there), `DUPLICAR`, `EXCLUIR`, `↶`/`↷` (undo/redo, two levels: with an edit drawer open they act only on that menu — every changed field/button is a step, back to the original and forth again; after `APLICAR` the whole menu is ONE step of the bar's undo/redo; a new change after undoing clears the redo). Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes. When a hitbox connects the game freezes the attacker a fixed number of ticks (hitstop: 10 normally, half for OPT1 group 3, none for group 4; the hitspark is not awaited, it plays in parallel at normal speed). The tick step button then locks the tick number and shows a yellow notice with the ticks left; timeline, progress bar and playback ignore it.\n" +
++        "Tap a sprite clip to open its drawer. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE (green), ESTILO (orange: flip/transform), LINKS, TRANSIÇÕES (SEQ/END/landing marks). The `＋` at the end of the sprite lane opens a menu: `CAMADA` (− N +, higher = the ANO draws on top; stored as the inverted `$PRIO`) and `Adicionar Sprite`. Special actions include `Teleportar atras do oponente` (= action 40 with a negative x, default −120, plus Flip X on the sprite, handled as one item). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a sprite or speed clip at the pointer (an object — hitbox, hurtbox, projectile, effect, action — belongs to its frame, so it splits at the frame boundary nearest to the pointer and the pointer moves there), `DUPLICAR`, `EXCLUIR`, `↶`/`↷` (undo/redo, two levels: with an edit drawer open they act only on that menu — every changed field/button is a step, back to the original and forth again; after `APLICAR` the whole menu is ONE step of the bar's undo/redo; a new change after undoing clears the redo). Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes. When a hitbox connects the game freezes the attacker a fixed number of ticks (hitstop: 10 normally, half for OPT1 group 3, none for group 4; the hitspark is not awaited, it plays in parallel at normal speed). The tick step button then locks the tick number and shows a yellow notice with the ticks left; the timeline counts only frame ticks (hitstop takes no place on it: dragging/tapping goes straight to the requested animation tick), while the progress bar and playback follow simulation ticks.\n" +
 +        "\n" +
 +        "### 11.3 Edit drawer pages\n" +
 +        "Sprite grid → `Imagem` (sprite picker, position, zoom, rotation, alpha, \"move links together\"), `Tempo` (ticks), `Som` (sound id list with preview), `Movimento` (two sections, `SPEED X` and `SPEED Y`: speed/accel, received speed, total pixels and `REMOVER SPEED` per axis; the stretch's start frame/duration and `MANTER VELOCIDADE` show in both and one updates the other), `Efeitos` (flip X/Y, interpolation), `Copiar` (apply this frame's properties to other frames: next N, previous N, all, this sprite in ANO / in all ANOs). Hitbox/hurtbox menu: type switch, start frame & duration, preview, x/y/w/h (a hurtbox also has `Aplicar a todas as Hurtboxes (neste ANO)` / `(todos os ANOs)`, which copy its position and size to every other hurtbox of the ANO / of the whole character; the other ANOs still need `SALVAR` → all ANOs), and (hitbox) `DANO`, `REAÇÃO` (◀ ▶, `ESCOLHER`, `EDITAR REAÇÃO`), transition (SEQ/END, `MUDAR ANO DESTINO`, `BLOQUEAR SEQUÊNCIA`). Projectile screen: start & duration, branching tree, projectile ANO, position/speed, homing, sequence.\n" +
@@ -1526,7 +1526,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-29 16:18:36.383613537 +0000
++++ b/AttackView.java	2026-10-29 16:30:07.660384139 +0000
 @@ -177,9 +177,11 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
@@ -1769,7 +1769,29 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -785,6 +877,156 @@
+@@ -769,6 +861,21 @@
+         return tickTable;
+     }
+ 
++    private int[][] tickElapsed;
++    private String tickElapsedKey = "";
++
++    /** Tabela (frame, tick dentro do frame) -> tick da simulacao: a timeline conta so ticks de frame, entao o hitstop nao ocupa lugar nela. */
++    private int[][] tickElapsedFor(Ano a) {
++        tickTableFor(a);                              // atualiza tickTableKey
++        if (tickElapsed == null || !tickTableKey.equals(tickElapsedKey)) {
++            int[] dur = new int[a.mpts.length];
++            for (int i = 0; i < dur.length; i++) dur[i] = a.mpts[i].hasTime ? a.mpts[i].time : 0;
++            tickElapsed = sim.firstTicksElapsed(a.index, dur, Math.max(length, 600));
++            tickElapsedKey = tickTableKey;
++        }
++        return tickElapsed;
++    }
++
+     /** Combate parado no primeiro tick do frame vizinho do atual, ou null. */
+     private BattleSim ghost() {
+         Ano a = currentAno();
+@@ -785,6 +892,156 @@
          return ghostSim;
      }
  
@@ -1926,7 +1948,18 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Arrastar a timeline: vai para {@code elapsed} ticks dentro do frame {@code pat} da ANO atual (pausa). */
      public void seekToPatTick(int pat, int elapsed) {
          Ano a = currentAno();
-@@ -820,7 +1062,7 @@
+@@ -792,7 +1049,9 @@
+         int base = tickTableFor(a)[pat];
+         int tt = transitionTick(a);
+         int limit = tt < 0 ? Integer.MAX_VALUE : tt - 1;     // arrastar nunca faz a troca: trava no ultimo tick antes dela
+-        int target = base < 0 ? limit : Math.min(base + elapsed, limit);
++        int[][] te = tickElapsedFor(a);
++        int exact = elapsed >= 0 && pat < te.length && elapsed < te[pat].length ? te[pat][elapsed] : -1;     // ticks so da simulacao (hitstop) nao contam
++        int target = exact >= 0 ? Math.min(exact, limit) : (base < 0 ? limit : Math.min(base + elapsed, limit));
+         if (target == Integer.MAX_VALUE || target < 0) return;
+         pause();
+         seekTo(target);
+@@ -820,7 +1079,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -1935,7 +1968,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1077,29 @@
+@@ -835,13 +1094,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -1968,7 +2001,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1120,11 @@
+@@ -862,10 +1137,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -1981,7 +2014,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -903,7 +1162,7 @@
+@@ -903,7 +1179,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -1990,7 +2023,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -942,18 +1201,45 @@
+@@ -942,18 +1218,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -2038,7 +2071,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1284,7 @@
+@@ -998,7 +1301,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -2047,7 +2080,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1296,48 @@
+@@ -1010,39 +1313,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -2119,7 +2152,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1069,7 +1364,8 @@
+@@ -1069,7 +1381,8 @@
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
                  + ":" + mv.animSeqChao + ":" + mv.animSeqAr + ":" + mv.animEndChao + ":" + mv.animEndAr
@@ -2129,7 +2162,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1413,14 @@
+@@ -1117,6 +1430,14 @@
                  break;
              }
          }
@@ -2144,7 +2177,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1429,65 @@
+@@ -1125,20 +1446,65 @@
          return out;
      }
  
@@ -2212,7 +2245,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1518,7 @@
+@@ -1169,7 +1535,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -2221,7 +2254,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1530,16 @@
+@@ -1181,16 +1547,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -2241,7 +2274,7 @@ diff -ruN a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1550,15 @@
+@@ -1201,6 +1567,15 @@
          return null;
      }
  
@@ -2257,7 +2290,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1592,14 @@
+@@ -1234,6 +1609,14 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -2272,7 +2305,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1266,6 +1632,7 @@
+@@ -1266,6 +1649,7 @@
                  if (ls.get(i).kind == 2 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawGlobalAnchor(c, ls.get(i).sim, opts); }
              for (int i = 0; i < ls.size(); i++)
                  if (ls.get(i).kind == 3 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawProjectileAnchor(c, ls.get(i).sim, opts); }
@@ -2280,7 +2313,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              if (bodyOn) {
                  drawBodyBox(c, sim.attackerX(), sim.attackerY(), data.attacker.data, true);
                  drawBodyBox(c, sim.opponentX(), sim.opponentY(), data.opponent.data, false);
-@@ -1291,11 +1658,11 @@
+@@ -1291,11 +1675,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -2294,7 +2327,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1681,7 @@
+@@ -1314,7 +1698,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -2303,7 +2336,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1716,7 @@
+@@ -1349,6 +1733,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -2311,7 +2344,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1404,8 +1772,52 @@
+@@ -1404,8 +1789,52 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -2366,7 +2399,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          switch (e.getActionMasked()) {
 diff -ruN a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-10-28 13:40:47.823411487 +0000
++++ b/BattleSim.java	2026-10-29 16:30:07.659152052 +0000
 @@ -25,6 +25,8 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -2442,9 +2475,8 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          AttackSim sim;
 +        /** Ponto do impacto (16.16): md 966 chama _SetXY depois do _ActReq, entao raiz e links ficam sempre aqui. */
 +        int x, y;
-     }
- 
--    /** Cutscene da flag 20 (task md 996). */
++    }
++
 +    private static Fx newFx(AttackSim s) {
 +        Fx f = new Fx();
 +        f.sim = s;
@@ -2457,8 +2489,9 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +    private static void stepFx(Fx f) {
 +        f.sim.step(false);
 +        f.sim.pinTo(f.x, f.y);
-+    }
-+
+     }
+ 
+-    /** Cutscene da flag 20 (task md 996). */
 +    /** Cutscene da flag 20 (task md 996, prio 13729: roda depois dos lutadores/projeteis e do hit, antes da camera). */
      private static final class Cut {
          AttackSim sim;
@@ -2855,7 +2888,35 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          return s;
      }
-@@ -492,7 +717,14 @@
+@@ -464,6 +689,27 @@
+         return -1;
+     }
+ 
++    /**
++     * Primeiro tick da simulacao de cada ponto (pat, elapsed) do atacante na ANO {@code anoIdx}, numa unica passada (elapsed = ticks do frame
++     * ja decorridos; {@code durations[pat]} = ticks do frame). Os ticks da timeline sao so os dos frames: ticks que so a simulacao tem (hitstop...)
++     * repetem o mesmo ponto e valem o primeiro. -1 = esse ponto nunca ocorre.
++     */
++    public int[][] firstTicksElapsed(int anoIdx, int[] durations, int max) {
++        int[][] out = new int[durations.length][];
++        for (int i = 0; i < out.length; i++) { out[i] = new int[Math.max(1, durations[i])]; java.util.Arrays.fill(out[i], -1); }
++        BattleSim s = fresh();
++        for (int t = 0; t <= max; t++) {
++            AttackSim.Obj r = s.atk.root();
++            if (r != null && r.ano.index == anoIdx && r.pat >= 0 && r.pat < out.length) {
++                int dur = durations[r.pat];
++                int el = dur <= 0 ? 0 : dur - r.time;
++                if (el >= 0 && el < out[r.pat].length && out[r.pat][el] < 0) out[r.pat][el] = t;
++            }
++            s.step();
++        }
++        return out;
++    }
++
+     /** Primeiro tick de cada frame (pat) da ANO {@code anoIdx}, numa unica passada; -1 = nunca aparece. */
+     public int[] firstTicks(int anoIdx, int frames, int max) {
+         int[] out = new int[frames];
+@@ -492,7 +738,14 @@
  
      public int measureLength() {
          BattleSim s = fresh();
@@ -2871,7 +2932,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private int measure(BattleSim s) {
-@@ -513,7 +745,7 @@
+@@ -513,7 +766,7 @@
  
      /** Tudo que nao e o atacante parou: sem projeteis, efeitos, reacao nem hitstop. */
      /** Fim estendido: o atacante so congela quando esta no chao (ou voa); no ar ele cai e pousa antes. */
@@ -2880,7 +2941,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      /** Projetil ainda em jogo: vivo e dentro do mapa (com folga); fora dele ja desapareceu para o tempo estendido. */
      private boolean projActive() {
-@@ -581,59 +813,125 @@
+@@ -581,59 +834,125 @@
          }
          if (spawnedSerial != r.serial) {
              spawnedSerial = r.serial;
@@ -2944,17 +3005,20 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-             }
++            }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-+            }
-+        }
-+    }
-+
+             }
+         }
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -2979,17 +3043,14 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-         }
++        }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
 +        if (setX) pendAX = x;
 +        if (setY) pendAY = y;
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++    }
++
 +    /** _SetXY do PlayerTail (inicio do tick, depois do hit-detect do tick anterior): o atacante vai para a posicao logica. */
 +    private void applyPendingMoves() {
 +        if (!pendA) return;
@@ -3036,7 +3097,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -643,123 +941,141 @@
+@@ -643,123 +962,141 @@
              int anim = c.flipped ? animF : animN;
              String why = "";
              if (animN == 0) why = " (sem animação: ANIM_ID = 0)";
@@ -3265,7 +3326,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int count = (move.flags & 4) != 0 ? 3 : 1;
          for (int k = 0; k < count; k++) {
              int x, y;
-@@ -779,18 +1095,49 @@
+@@ -779,18 +1116,49 @@
              else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
  
              Proj p = new Proj();
@@ -3316,7 +3377,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int dx = h.x << 16;
          int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
          int y = o.y + (h.y << 16);
-@@ -801,17 +1148,21 @@
+@@ -801,17 +1169,21 @@
          p.globalAno = move.projGlobal;
          p.groundAno = move.subChao;
          p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
@@ -3338,7 +3399,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          p.life++;
          AttackSim.Obj o = p.sim.root();
          if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
-@@ -844,19 +1195,19 @@
+@@ -844,19 +1216,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -3362,7 +3423,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -869,7 +1220,7 @@
+@@ -869,7 +1241,7 @@
          }
          if (p.firstX != o.x) p.moved = true;
  
@@ -3371,7 +3432,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          o = p.sim.root();
          if (o != null) {
              if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
-@@ -890,22 +1241,19 @@
+@@ -890,22 +1262,19 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
@@ -3399,7 +3460,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // projeteis
          for (int i = 0; i < projs.size(); i++) {
              Proj p = projs.get(i);
-@@ -920,13 +1268,14 @@
+@@ -920,13 +1289,14 @@
                  p.hs = HIT_STOP / 2;
                  hsDef = HIT_STOP;
              }
@@ -3415,7 +3476,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int[] pos = checkObjHit(r, def);
              if (pos != null) {
                  armed = false;
-@@ -936,6 +1285,7 @@
+@@ -936,6 +1306,7 @@
                      hsAtk = hs;
                      hsDef = hs;
                  }
@@ -3423,7 +3484,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  applyHit(op, pos, "golpe", r.optData[0], r.ano.index);
                  if (inDamage) onHitConfirmed(false, r.ano.index, null);
              }
-@@ -989,7 +1339,7 @@
+@@ -989,7 +1360,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
@@ -3432,7 +3493,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1349,7 @@
+@@ -999,7 +1370,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
@@ -3441,7 +3502,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1368,7 @@
+@@ -1018,7 +1389,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
@@ -3450,7 +3511,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1380,6 @@
+@@ -1030,7 +1401,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
@@ -3458,7 +3519,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1063,6 +1412,7 @@
+@@ -1063,6 +1433,7 @@
          transKind = -1;
          if (switchAtk(next)) {
              hitConfirmed = false;                 // work[10] = 0
@@ -3466,7 +3527,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
          } else {
              r.x = ox;
-@@ -1117,6 +1467,7 @@
+@@ -1117,6 +1488,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -3474,7 +3535,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1502,7 @@
+@@ -1151,7 +1523,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
@@ -3483,7 +3544,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1184,9 +1535,34 @@
+@@ -1184,9 +1556,34 @@
          return false;
      }
  
@@ -3518,7 +3579,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // md 883: y > chao com velocidade Y > 0 pousa, mesmo que o golpe tenha comecado no chao
          // ANO avulso (md 886 / 891): pousa assim que y > chao fora do hitstop, sem exigir velocidade Y
          boolean lands = move.generic ? (r.y > 0 && hsAtk == 0) : (r.y > 0 && r.speedY > 0);
-@@ -1208,7 +1584,6 @@
+@@ -1208,7 +1605,6 @@
              r.speedX = 0;
              r.accelX = 0;
              sounds.add(new Snd(true, 12, 0));
@@ -3526,7 +3587,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
              if (land == 0) land = 13;
              transKind = 3;
-@@ -1222,7 +1597,7 @@
+@@ -1222,7 +1618,7 @@
          // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
          if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
              transKind = 4;
@@ -3535,7 +3596,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1232,11 +1607,11 @@
+@@ -1232,11 +1628,11 @@
          AttackSim.Obj r = atk.root();
          // chaves ativas no frame atual (so a raiz, como o jogo)
          java.util.LinkedHashMap<Integer, Ano.Hit> active = new java.util.LinkedHashMap<Integer, Ano.Hit>();
@@ -3549,7 +3610,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              }
          }
          for (int i = auras.size() - 1; i >= 0; i--) {
-@@ -1255,7 +1630,8 @@
+@@ -1255,7 +1651,8 @@
              if (a != null) {
                  AttackSim.Obj o = a.sim.root();
                  if (o != null) { o.x = x; o.y = y; }
@@ -3559,7 +3620,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  consumeSe(a.sim, 0);
                  continue;
              }
-@@ -1270,21 +1646,22 @@
+@@ -1270,21 +1667,22 @@
              a = new Aura();
              a.key = f;
              a.owner = owner;
@@ -3592,7 +3653,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private void afterGrabFrame() {
-@@ -1296,20 +1673,50 @@
+@@ -1296,20 +1694,50 @@
          }
      }
  
@@ -3654,7 +3715,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
-@@ -1331,6 +1738,7 @@
+@@ -1331,6 +1759,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
@@ -3662,7 +3723,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1341,14 +1749,17 @@
+@@ -1341,14 +1770,17 @@
  
      private void detectGrab(AttackSim.Obj def) {
          AttackSim.Obj g = grab == null ? null : grab.root();
@@ -3684,7 +3745,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** CheckObjHit: hitbox (flag 2) do atacante contra hurtbox (flag 1) do alvo; devolve o centro do impacto em px. */
-@@ -1438,17 +1849,14 @@
+@@ -1438,17 +1870,14 @@
              applyDamage(op, dmg, hitAno);
              lastHit += " [dano " + lastDamage + ", vida " + lifeO + "/" + maxO + ", combo " + combo + "]";
          }
@@ -3704,7 +3765,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
          if (op.sound >= 0) sounds.add(new Snd(true, op.sound, 0));
          // o defensor vira para o atacante e entra no estado de dano
-@@ -1457,6 +1865,9 @@
+@@ -1457,6 +1886,9 @@
          if (oppX != flipRef) oppFlip = oppX >= flipRef;
          applyFlip(opp, oppFlip);
          inDamage = true;
@@ -3714,7 +3775,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1475,12 +1886,23 @@
+@@ -1475,12 +1907,23 @@
  
      // ============================================================ defensor (md 876 / 877)
  
@@ -3738,7 +3799,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1601,7 +2023,7 @@
+@@ -1601,7 +2044,7 @@
          int comp = tb.u8(dIdx, 11);
          int wall = tb.u8(dIdx, 12);
          if (comp > 0 && comp < 50) {
@@ -3747,7 +3808,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1634,8 +2056,9 @@
+@@ -1634,8 +2077,9 @@
                  dTime = 0;
                  tickDamage(depth + 1);
                  return;
@@ -3758,7 +3819,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp < 30) { dCharSrc = false; dType = comp; }
                  else if (dCharSrc) dType = comp - 30;
                  else { endDamage(864, -1); return; }
-@@ -1701,16 +2124,28 @@
+@@ -1701,16 +2145,28 @@
          float tw = 100f, tx = nx, ty = ny;
          int n = 12;
          AttackSim.Obj r = atk.root();
@@ -3796,7 +3857,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
              int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
              if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1761,11 +2196,8 @@
+@@ -1761,11 +2217,8 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -3809,7 +3870,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              refAtkX = ra.x;
          }
          oldAx = ra == null ? 0 : ra.x;
-@@ -1785,15 +2217,12 @@
+@@ -1785,15 +2238,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -3829,7 +3890,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1802,14 +2231,14 @@
+@@ -1802,14 +2252,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -3846,7 +3907,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2246,7 @@
+@@ -1817,7 +2267,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -3855,7 +3916,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,42 +2266,47 @@
+@@ -1837,42 +2287,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -3913,7 +3974,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2318,117 @@
+@@ -1884,21 +2339,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -4039,7 +4100,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,9 +2449,7 @@
+@@ -1919,9 +2470,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
@@ -4050,16 +4111,16 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
          AttackSim.Obj[] ch = s.children();
          for (int i = 0; i < ch.length; i++) {
-@@ -1929,8 +2457,22 @@
+@@ -1929,10 +2478,24 @@
              if (c == null || c.pendingSe < 0) continue;
              int se = c.pendingSe;
              c.pendingSe = -1;
 -            if (se < 80) pushRaw(se - 1);
 +            int cn = SoundIds.commonOf(se);
 +            if (cn >= 0) sounds.add(new Snd(true, cn, 0));      // links so tocam sons globais
-+        }
-+    }
-+
+         }
+     }
+ 
 +    /** SE do frame (byte sem sinal): 1..79 e 100..255 = global se_(id-1); 80..99 = audio do personagem (o jogador 1 soma os audios do jogador 0). */
 +    private void pushSe(int se, int owner) {
 +        if (SoundIds.isCharId(se)) {
@@ -4068,13 +4129,15 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (idx < atkWavCount) sounds.add(new Snd(false, idx, 0));
 +            else sounds.add(new Snd(false, idx - atkWavCount, 1));
 +            return;
-         }
++        }
 +        int cn = SoundIds.commonOf(se);
 +        if (cn >= 0) sounds.add(new Snd(true, cn, 0));
-     }
- 
++    }
++
      /** PushSE: < 80 = se_NN comum; >= 80 = audio de personagem na lista [atacante..., defensor...]. */
-@@ -1979,55 +2521,47 @@
+     private void pushRaw(int id) {
+         if (id < 0) return;
+@@ -1979,55 +2542,47 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -4153,7 +4216,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-@@ -2040,6 +2574,31 @@
+@@ -2040,6 +2595,31 @@
      public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
  
      public boolean defenderInDamage() { return inDamage; }
@@ -5943,7 +6006,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-29 16:22:37.151623603 +0000
++++ b/HelpText.java	2026-10-29 16:30:28.465162760 +0000
 @@ -0,0 +1,645 @@
 +package com.zue.attackeditor;
 +
@@ -6174,7 +6237,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, "
 +                + "puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar."
 +                + " Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga."
-+                + " Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Na timeline, na barra de progresso e na reprodução os ticks passam normalmente.");
++                + " Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Os ticks da timeline são só os dos Frames: o hitstop (ticks que só a simulação tem) não ocupa lugar nela, então arrastar ou tocar na timeline vai direto ao tick de animação pedido; a barra de progresso e a reprodução seguem os ticks da simulação.");
 +        tl.add("Altura da gaveta: Y e T",
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; isso vale só para aquela abertura. "
 +                + "Y (na borda, à direita) grava a altura atual como a nova altura padrão. T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela, o menu superior some e a timeline mostra de 6 a 2 faixas conforme o menu sobe; "
@@ -8492,7 +8555,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-29 16:23:04.102538942 +0000
++++ b/I18nHelpCatalog.java	2026-10-29 16:30:38.317604898 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -8506,7 +8569,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-29 16:23:04.101198657 +0000
++++ b/I18nHelpCatalog0.java	2026-10-29 16:30:38.316452169 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8591,7 +8654,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-29 16:23:04.101374192 +0000
++++ b/I18nHelpCatalog1.java	2026-10-29 16:30:38.316585299 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8676,7 +8739,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-29 16:23:04.101620820 +0000
++++ b/I18nHelpCatalog2.java	2026-10-29 16:30:38.316728330 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8761,7 +8824,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-29 16:23:04.101764386 +0000
++++ b/I18nHelpCatalog3.java	2026-10-29 16:30:38.316853582 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8812,9 +8875,9 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"Arrastar, ponteiro e zoom",
 +         "Dragging, pointer and zoom",
 +         "Arrastrar, puntero y zoom"},
-+        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga. Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Na timeline, na barra de progresso e na reprodução os ticks passam normalmente.",
-+         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off. With a Hitbox that connects, the game freezes the attacker for a fixed number of ticks (hitstop: normally 10; half for group 3 reactions and none for group 4; it does not wait for the hitspark, which plays in parallel at normal speed). When advancing a tick with the button, the tick number locks and a yellow notice says how many ticks the Frame stays still; when the tick is released the notice goes away. On the timeline, the progress bar and playback the ticks pass normally.",
-+         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas. Con una Hitbox que acierta, el juego congela al atacante por un número fijo de ticks (hitstop: normalmente 10; la mitad en reacciones del grupo 3 y ninguno en el grupo 4; no espera al hitspark, que suena en paralelo a velocidad normal). Al avanzar un tick con el botón, el número del tick se bloquea y un aviso amarillo dice cuántos ticks queda quieto el Frame; cuando se libera el tick el aviso desaparece. En la timeline, la barra de progreso y la reproducción los ticks pasan con normalidad."},
++        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga. Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Os ticks da timeline são só os dos Frames: o hitstop (ticks que só a simulação tem) não ocupa lugar nela, então arrastar ou tocar na timeline vai direto ao tick de animação pedido; a barra de progresso e a reprodução seguem os ticks da simulação.",
++         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off. With a Hitbox that connects, the game freezes the attacker for a fixed number of ticks (hitstop: normally 10; half for group 3 reactions and none for group 4; it does not wait for the hitspark, which plays in parallel at normal speed). When advancing a tick with the button, the tick number locks and a yellow notice says how many ticks the Frame stays still; when the tick is released the notice goes away. The timeline ticks are only the Frames' ticks: hitstop (ticks that only the simulation has) takes no place on it, so dragging or tapping the timeline goes straight to the requested animation tick; the progress bar and playback follow the simulation ticks.",
++         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas. Con una Hitbox que acierta, el juego congela al atacante por un número fijo de ticks (hitstop: normalmente 10; la mitad en reacciones del grupo 3 y ninguno en el grupo 4; no espera al hitspark, que suena en paralelo a velocidad normal). Al avanzar un tick con el botón, el número del tick se bloquea y un aviso amarillo dice cuántos ticks queda quieto el Frame; cuando se libera el tick el aviso desaparece. Los ticks de la timeline son solo los de los Frames: el hitstop (ticks que solo tiene la simulación) no ocupa lugar en ella, así que arrastrar o tocar la timeline va directo al tick de animación pedido; la barra de progreso y la reproducción siguen los ticks de la simulación."},
 +        {"Altura da gaveta: Y e T",
 +         "Drawer height: Y and T",
 +         "Altura del cajón: Y y T"},
@@ -8846,7 +8909,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-29 16:23:04.101897904 +0000
++++ b/I18nHelpCatalog4.java	2026-10-29 16:30:38.316961875 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -8931,7 +8994,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-29 16:23:04.102005091 +0000
++++ b/I18nHelpCatalog5.java	2026-10-29 16:30:38.317119690 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9016,7 +9079,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-29 16:23:04.102111230 +0000
++++ b/I18nHelpCatalog6.java	2026-10-29 16:30:38.317232329 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9101,7 +9164,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-29 16:23:04.102260107 +0000
++++ b/I18nHelpCatalog7.java	2026-10-29 16:30:38.317397328 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9186,7 +9249,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-29 16:23:04.102388342 +0000
++++ b/I18nHelpCatalog8.java	2026-10-29 16:30:38.317521564 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -9271,7 +9334,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-29 16:23:04.102494096 +0000
++++ b/I18nHelpCatalog9.java	2026-10-29 16:30:38.317568403 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -25427,6 +25490,61 @@ diff -ruN a/test/TeleportBehindTest.java b/test/TeleportBehindTest.java
 +        Ano.Hit h = ObjModel.defaultHit(40);
 +        h.x = x;
 +        return h;
++    }
++}
+diff -ruN a/test/TickMapTest.java b/test/TickMapTest.java
+--- a/test/TickMapTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/TickMapTest.java	2026-10-29 16:30:07.664826718 +0000
+@@ -0,0 +1,51 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Os ticks da timeline sao so os dos frames: o hitstop (ticks so da simulacao) nao ocupa lugar nela. */
++public class TickMapTest {
++    public static void main(String[] args) throws Exception {
++        A[] a = new A[45];
++        for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++        // frame 0 acerta (hitstop), frame 1 normal
++        a[40] = new A().mpt(new M().time(30).hit(2, -40, -40, 400, 100)).mpt(new M().time(20));
++        CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++        BattleSim.edgeMode = 1;
++        BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, CutsceneTest.defDac(), CutsceneTest.fxDac(), gd(new byte[][] {}), 20, 0, 0);
++        int[][] t = s.firstTicksElapsed(40, new int[] {30, 20}, 400);
++        check("frame 0 tem 30 pontos e o frame 1 tem 20", t[0].length + ":" + t[1].length, "30:20");
++        boolean all = true, inc = true;
++        int maxJump = 0;
++        for (int p = 0; p < 2; p++) for (int e = 0; e < t[p].length; e++) {
++            if (t[p][e] < 0) all = false;
++            int prev = e > 0 ? t[p][e - 1] : (p > 0 ? t[p - 1][t[p - 1].length - 1] : -1);
++            if (t[p][e] <= prev) inc = false;
++            if (prev >= 0) maxJump = Math.max(maxJump, t[p][e] - prev);
++        }
++        check("todo ponto (frame, tick) ocorre na simulacao", all, true);
++        check("a ordem logica e crescente", inc, true);
++        check("o hitstop abre um salto de 10 ticks de simulacao entre dois ticks da timeline", maxJump, 11);
++
++        // cada ponto aponta para o tick certo: no tick mapeado o atacante esta nesse frame e nesse tick dele
++        boolean exact = true;
++        for (int p = 0; p < 2; p++) for (int e = 0; e < t[p].length; e += 3) {
++            BattleSim c = s.copyAt(t[p][e]);
++            AttackSim.Obj r = c.attacker().root();
++            int dur = p == 0 ? 30 : 20;
++            if (r.pat != p || dur - r.time != e) exact = false;
++        }
++        check("copyAt(tick mapeado) cai no frame e no tick pedidos", exact, true);
++
++        // sem acerto: tabela = inicio do frame + tick (nada muda)
++        A[] b = new A[45];
++        for (int i = 0; i < 45; i++) b[i] = new A().mpt(new M().time(1));
++        b[40] = new A().mpt(new M().time(8)).mpt(new M().time(6));
++        BattleSim q = new BattleSim(dac(b), ch, ch.moves[0], false, CutsceneTest.defDac(), CutsceneTest.fxDac(), gd(new byte[][] {}), 20, 0, 0);
++        int[][] u = q.firstTicksElapsed(40, new int[] {8, 6}, 100);
++        int[] first = q.firstTicks(40, 2, 100);
++        boolean same = true;
++        for (int p = 0; p < 2; p++) for (int e = 0; e < u[p].length; e++) if (u[p][e] != first[p] + e) same = false;
++        check("sem hitstop: tabela = inicio do frame + tick", same, true);
++        System.out.println("TickMapTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/TimelineEditTest.java b/test/TimelineEditTest.java
