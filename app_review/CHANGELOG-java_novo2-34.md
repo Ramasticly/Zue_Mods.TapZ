@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1474 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1491 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -374,11 +374,17 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - `ReactionCameraTest` (14: alvo de x/y, suavização, lançamento de 400 px de altura com o corpo sempre na área, volta ao chão, snap, voz da coluna 13 sai do `drainSounds` como se_4 e reação sem voz não toca). Som e câmera na tela só compilados/revisados, não rodados num aparelho. AJUDA (PT/EN/ES) atualizada.
 
 ### 3.1zy DEF: o oponente defende (simulação)
-- Novo  (estático, **desligado por padrão**; o botão entra na próxima entrega). Ligado, o hit do corpo a corpo e do projétil segue o ramo de defesa do  (var15 == 2, md 908 do ): **sem dano nem reação**, o oponente entra em guarda (**ANO 4** em pé, **81** no ar) e fica nela por  ticks (GuardCancelTime) e até o empurrão acabar; **empurrão de 13 px/2 por tick** (GuardHitBack = 13, decai 2 por tick; o hit normal usa 0); **hitstop do OPT 1** (cheio / metade / nenhum, como no hit); **efeito de defesa ANO 2** e **SE 8** nos grupos 0–3 (grupo 4: nada); o combo não conta e zera.
-- **Arranhão**: o jogo só tira vida de quem defende quando o ANO do golpe é **≥ 40** e o dano não é 0: 2 de vida (o  nunca é preenchido, então vale o mínimo 2). Se o arranhão zerar a vida, segue a reação de KO.
+- Novo `BattleSim.defend` (estático, **desligado por padrão**; o botão entra na próxima entrega). Ligado, o hit do corpo a corpo e do projétil segue o ramo de defesa do `DamageChange` (var15 == 2, md 908 do `TCBManajer`): **sem dano nem reação**, o oponente entra em guarda (**ANO 4** em pé, **81** no ar) e fica nela por `PlayerHitStop + 5` ticks (GuardCancelTime) e até o empurrão acabar; **empurrão de 13 (÷2 px por tick)** (GuardHitBack = 13, decai 2 por tick; o hit normal usa 0); **hitstop do OPT 1** (cheio / metade / nenhum, como no hit); **efeito de defesa ANO 2** e **SE 8** nos grupos 0–3 (grupo 4: nada); o combo não conta e zera.
+- **Arranhão**: o jogo só tira vida de quem defende quando o ANO do golpe é **≥ 40** e o dano não é 0: 2 de vida (o `GuardHardness` nunca é preenchido, então vale o mínimo 2). Se o arranhão zerar a vida, segue a reação de KO.
 - **Não defende**: golpe com a **flag 26** (“inimigo não defende”), **agarrões** (caminho próprio), defensor já em reação de dano, e defensor em ANO que não permite guarda (6–9, 82, 83 e 20 em diante, exceto 13, 25, 80 e 81).
-- Conferido no md 882: o hit defendido **também confirma o golpe** (), então ANIM_SEQ/ANIM_END e o resto acontecem como num acerto.
--  (22: DEF desligado = igual a antes, arranhão só com ANO ≥ 40 e dano ≠ 0, ANO 4/81, SE 8, empurrão ≈ 24 px, volta ao idle, flag 26, grupo 4, projétil, confirmação da SEQ, lista de ANOs que defendem).  testado; sem UI ainda.
+- Conferido no md 882: o hit defendido **também confirma o golpe** (`wFlag |= 1`), então ANIM_SEQ/ANIM_END e o resto acontecem como num acerto.
+- `GuardTest` (22: DEF desligado = igual a antes, arranhão só com ANO ≥ 40 e dano ≠ 0, ANO 4/81, SE 8, empurrão ≈ 24 px, volta ao idle, flag 26, grupo 4, projétil, confirmação da SEQ, lista de ANOs que defendem). `BattleSim` testado; o botão veio na entrega seguinte (3.1zz).
+
+### 3.1zz Linha OPONENTE | DEF e escolha de personagem em grade
+- No botão **CHAR**, a linha do oponente passou a ser **`OPONENTE: charNN` | caixa `DEF`**: o botão (peso 1) divide a linha com a caixa **DEF**, **desmarcada por padrão**. Marcar liga `BattleSim.defend` e refaz a simulação no frame atual (`AttackView.setDefend`); desmarcar volta ao normal. A linha do atacante continua `ATACANTE: charNN`.
+- **Atacante e oponente agora são escolhidos numa grade** (`CharPicker`, fundo escuro, 3 colunas) no lugar da lista branca: cada cartão é uma pasta `charNN` com a **prévia animada da ANO 76 do personagem** (ANO 0 se não tiver a 76; sem prévia se nem a 0), o **atual vem destacado** (`✓ charNN  (atual)`, contorno azul) e a grade abre já na linha dele. Tocar escolhe (mesmo caminho do spinner, recarrega como antes); VOLTAR/✕ fecham.
+- Carga **sob demanda**: só DAC + CNV + sprites (`CharAssets.loadPreview`: sem `000.bin`, **sem importar PNGs soltas** nem mexer no CNV lido por último) de cada personagem, em segundo plano, quando o cartão aparece; ficam até 15 na memória, as mais antigas **fora da tela** são descarregadas (nunca uma que está visível) e tudo é liberado ao fechar.
+- `CharGridTest` (17: nomes ↔ índice, ANO 76 → 0 → nenhuma, destaque do atual, rolagem inicial, quais prévias descarregar). Grade, carga em segundo plano e linha DEF só compiladas/revisadas, não rodadas num aparelho. AJUDA (PT/EN/ES) e MD atualizados (também a regra “Hitbox é uma por Frame”).
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -452,6 +458,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HitboxPerFrameTest (novo)** | 9 |
 | **ReactionCameraTest (novo)** | 14 |
 | **GuardTest (novo)** | 22 |
+| **CharGridTest (novo)** | 17 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
