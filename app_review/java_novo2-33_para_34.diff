@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-29 17:28:58.872638719 +0000
++++ b/AiHelpDoc.java	2026-10-30 00:11:00.942807248 +0000
 @@ -0,0 +1,847 @@
 +package com.zue.attackeditor;
 +
@@ -633,7 +633,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "",
 +        "### 11.1 Top menu (16 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
 +        "- `SALVAR` — save (section 13).\n" +
-+        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
++        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
 +        "- `SPRITES` — the character's sprite list: add, replace, remove, reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame.\n" +
 +        "- `SONS` — sound manager only (does not pick a sound for a frame): the character's WAVs (ids 80+) and the game's common OGGs; `+` adds a sound, tap an item to play, trim, adjust volume/pitch/speed, replace or silence it.\n" +
 +        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
@@ -1537,7 +1537,7 @@ diff -ruN a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-10-30 00:07:51.562109905 +0000
++++ b/AttackView.java	2026-10-30 00:10:00.250438850 +0000
 @@ -95,6 +95,14 @@
          rebuild(0);
      }
@@ -1712,7 +1712,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          playing = true;
          if (sound != null) sound.resumeAll();
          hideNotice();
-@@ -476,6 +521,28 @@
+@@ -476,6 +521,35 @@
  
      public void restart() { seekTo(0); }
  
@@ -1721,10 +1721,16 @@ diff -ruN a/AttackView.java b/AttackView.java
 +    private QuickNotice hsNoticeObj;
 +
 +    /** Tick a mostrar no contador: travado enquanto o botao de tick passa pelo hitstop. */
-+    public int displayTick(int realTick) { return hsNotice.shownTick(realTick); }
++    public int displayTick(int realTick) { return cineNotice.active() ? cineNotice.shownTick(realTick) : hsNotice.shownTick(realTick); }
++
++    private final CineNotice cineNotice = new CineNotice();
 +
 +    private void updateHitstopNotice() {
-+        if (hsNotice.active()) {
++        if (cineNotice.active()) {                  // a trava cinematica tem prioridade: tudo esta congelado
++            hsNoticeObj = new QuickNotice(cineNotice.text()).colors(QuickNotice.AMBER, QuickNotice.AMBER_BTN).duration(0)
++                    .right("PULAR", new Runnable() { public void run() { skipCinematic(); } });
++            showNotice(hsNoticeObj);
++        } else if (hsNotice.active()) {
 +            hsNoticeObj = new QuickNotice(hsNotice.text()).colors(QuickNotice.AMBER, QuickNotice.AMBER_BTN).duration(0);
 +            showNotice(hsNoticeObj);
 +        } else clearHitstopNotice();
@@ -1732,6 +1738,7 @@ diff -ruN a/AttackView.java b/AttackView.java
 +
 +    private void clearHitstopNotice() {
 +        hsNotice.clear();
++        cineNotice.clear();
 +        if (hsNoticeObj != null) {
 +            if (notice == hsNoticeObj) hideNotice();
 +            hsNoticeObj = null;
@@ -1741,16 +1748,41 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void stepForward() {
          pause();
          if (sim == null) return;
-@@ -483,6 +550,8 @@
+@@ -483,12 +557,33 @@
          stopSounds();
          liveStep();
          frame++;
 +        hsNotice.afterStep(frame, sim.hitstopAttacker());
++        cineNotice.afterStep(frame, sim.cinematicLeft());
 +        updateHitstopNotice();
          watchLanding();
          playSounds();
          notifyUi();
-@@ -506,6 +575,7 @@
+         invalidate();
+     }
+ 
++    /** PULAR do aviso da trava cinematica: passa por todos os ticks que faltam e libera o tick (sem tocar os sons dos ticks pulados). */
++    public void skipCinematic() {
++        if (sim == null) return;
++        pause();
++        int guard = 0;
++        while (sim.cinematicActive() && frame + 1 < length && guard++ < 400) {
++            liveStep();
++            frame++;
++            sim.drainSounds();
++        }
++        clearHitstopNotice();
++        hsNotice.afterStep(frame, sim.hitstopAttacker());
++        updateHitstopNotice();
++        watchLanding();
++        notifyUi();
++        invalidate();
++    }
++
+     public void stepBack() {
+         pause();
+         if (frame <= 0) return;                   // voltar Frame nao pula para o fim
+@@ -506,6 +601,7 @@
      }
  
      private void seekInternal(int target) {
@@ -1758,7 +1790,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          stopSounds();
          sim.reset();
          seekSnd.clear();
-@@ -539,7 +609,11 @@
+@@ -539,7 +635,11 @@
      }
  
      private void playSounds() {
@@ -1771,7 +1803,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (sound == null || !soundOn || data == null) return;
          for (int i = 0; i < l.size(); i++) {
              BattleSim.Snd s = l.get(i);
-@@ -726,6 +800,12 @@
+@@ -726,6 +826,12 @@
      }
  
  
@@ -1784,7 +1816,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Vai para o primeiro tick em que o frame {@code pat} da ANO atual aparece (pausa). */
      public boolean seekToPat(int pat) {
          if (sim == null) return false;
-@@ -746,6 +826,33 @@
+@@ -746,6 +852,33 @@
      private BattleSim ghostSim;
      private String ghostKey = "";
  
@@ -1818,7 +1850,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -769,6 +876,21 @@
+@@ -769,6 +902,21 @@
          return tickTable;
      }
  
@@ -1840,7 +1872,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Combate parado no primeiro tick do frame vizinho do atual, ou null. */
      private BattleSim ghost() {
          Ano a = currentAno();
-@@ -785,6 +907,156 @@
+@@ -785,6 +933,156 @@
          return ghostSim;
      }
  
@@ -1997,7 +2029,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Arrastar a timeline: vai para {@code elapsed} ticks dentro do frame {@code pat} da ANO atual (pausa). */
      public void seekToPatTick(int pat, int elapsed) {
          Ano a = currentAno();
-@@ -792,7 +1064,9 @@
+@@ -792,7 +1090,9 @@
          int base = tickTableFor(a)[pat];
          int tt = transitionTick(a);
          int limit = tt < 0 ? Integer.MAX_VALUE : tt - 1;     // arrastar nunca faz a troca: trava no ultimo tick antes dela
@@ -2008,7 +2040,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (target == Integer.MAX_VALUE || target < 0) return;
          pause();
          seekTo(target);
-@@ -820,7 +1094,7 @@
+@@ -820,7 +1120,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -2017,7 +2049,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1109,29 @@
+@@ -835,13 +1135,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -2050,7 +2082,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1152,11 @@
+@@ -862,10 +1178,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -2063,7 +2095,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -903,7 +1194,7 @@
+@@ -903,7 +1220,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -2072,7 +2104,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -942,18 +1233,45 @@
+@@ -942,18 +1259,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -2120,7 +2152,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1316,7 @@
+@@ -998,7 +1342,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -2129,7 +2161,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1328,48 @@
+@@ -1010,39 +1354,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -2201,7 +2233,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1069,7 +1396,8 @@
+@@ -1069,7 +1422,8 @@
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
                  + ":" + mv.animSeqChao + ":" + mv.animSeqAr + ":" + mv.animEndChao + ":" + mv.animEndAr
@@ -2211,7 +2243,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1445,14 @@
+@@ -1117,6 +1471,14 @@
                  break;
              }
          }
@@ -2226,7 +2258,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1461,65 @@
+@@ -1125,20 +1487,65 @@
          return out;
      }
  
@@ -2253,10 +2285,10 @@ diff -ruN a/AttackView.java b/AttackView.java
          mv.clamp();
 -        pushUndo(null, new Runnable() { public void run() { mv.copyFrom(before); } });
 +        pushUndo(null, UndoEdits.swapMove(mv, before, null));
-         editVersion++;
-         rebuild(frame);
-     }
- 
++        editVersion++;
++        rebuild(frame);
++    }
++
 +    /**
 +     * Golpe real do HDAT 4 que "dono" do ANO aberto no modo ANO (o golpe da tela e so uma copia generica); null no modo golpe
 +     * (ai o golpe da tela e o proprio) ou se nenhum golpe usa o ANO.
@@ -2278,10 +2310,10 @@ diff -ruN a/AttackView.java b/AttackView.java
 +        target.clamp();
 +        if (shown != target && shown.generic) syncGeneric(shown, target);
 +        pushUndo(null, UndoEdits.swapMove(target, before, new Runnable() { public void run() { if (shown != target && shown.generic) syncGeneric(shown, target); } }));
-+        editVersion++;
-+        rebuild(frame);
-+    }
-+
+         editVersion++;
+         rebuild(frame);
+     }
+ 
 +    /** Campos que o golpe generico (modo ANO) herda do dono: os mesmos de {@link CharData#genericFrom}. */
 +    private static void syncGeneric(CharData.Move g, CharData.Move src) {
 +        g.flags = src.flags;
@@ -2294,7 +2326,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1550,7 @@
+@@ -1169,7 +1576,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -2303,7 +2335,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1562,16 @@
+@@ -1181,16 +1588,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -2323,7 +2355,7 @@ diff -ruN a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1582,15 @@
+@@ -1201,6 +1608,15 @@
          return null;
      }
  
@@ -2339,7 +2371,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1624,14 @@
+@@ -1234,6 +1650,14 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -2354,7 +2386,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1266,6 +1664,7 @@
+@@ -1266,6 +1690,7 @@
                  if (ls.get(i).kind == 2 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawGlobalAnchor(c, ls.get(i).sim, opts); }
              for (int i = 0; i < ls.size(); i++)
                  if (ls.get(i).kind == 3 && ls.get(i).firstOfSim) { renderer.anchorSprites = spritesFor(ls.get(i).owner); renderer.drawProjectileAnchor(c, ls.get(i).sim, opts); }
@@ -2362,7 +2394,7 @@ diff -ruN a/AttackView.java b/AttackView.java
              if (bodyOn) {
                  drawBodyBox(c, sim.attackerX(), sim.attackerY(), data.attacker.data, true);
                  drawBodyBox(c, sim.opponentX(), sim.opponentY(), data.opponent.data, false);
-@@ -1291,11 +1690,11 @@
+@@ -1291,11 +1716,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -2376,7 +2408,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,7 +1713,7 @@
+@@ -1314,7 +1739,7 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -2385,7 +2417,7 @@ diff -ruN a/AttackView.java b/AttackView.java
      }
  
      /** Bordas da tela (azul) e do mapa (vermelho), em coordenadas do mundo (ja dentro do translate/scale). */
-@@ -1349,6 +1748,7 @@
+@@ -1349,6 +1774,7 @@
          if (owner == BattleSim.OWNER_AURA_CHARF) return data.charf == null ? null : data.charf.sprites;
          if (owner == BattleSim.OWNER_SHADOW) return data.effects == null ? null : data.effects.sprites;
          if (owner == BattleSim.OWNER_EFFECT) return data.effects == null ? null : data.effects.sprites;
@@ -2393,7 +2425,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1404,8 +1804,52 @@
+@@ -1404,8 +1830,52 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -2448,7 +2480,7 @@ diff -ruN a/AttackView.java b/AttackView.java
          switch (e.getActionMasked()) {
 diff -ruN a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-10-29 17:22:39.388208736 +0000
++++ b/BattleSim.java	2026-10-30 00:09:29.174488613 +0000
 @@ -25,10 +25,20 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -2770,7 +2802,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          cineLeft = 0;
  
          oppX = (atkLeft ? -distancePx : distancePx) * PX;
-@@ -295,18 +466,23 @@
+@@ -295,18 +466,28 @@
          setOppAct(0);
  
          // animacao do projetil escolhida no inicio do golpe (altura relativa ao oponente)
@@ -2789,6 +2821,11 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          airborne = heightPx > 0;
          if (cinematic && hasCinematic()) {
              cineLeft = 122;                         // md 923 (1 tick) + TLoop 120 do md 926 + 927/928
++            AttackSim.Obj co = atk.root();
++            if (co != null) {
++                cineZoomX = co.x / 65536f + (co.x > oppX ? 40f : -40f);
++                cineZoomY = co.y / 65536f - 48f;
++            }
 +            stunned[1] = true;                      // md 923: o oponente vai para md 925 (a task 924 solta depois)
              pushRaw(9);                             // PushSE(10) -> se_9
              if (fxDac != null && atk.root() != null) {
@@ -2799,7 +2836,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (f.sim.root() != null) fxs.add(f);
              }
          }
-@@ -314,10 +490,14 @@
+@@ -314,16 +495,24 @@
          consumeSe(atk, 0);
          consumeSe(opp, 1);
          updateAuras();
@@ -2814,7 +2851,26 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      /** Travamento cinematico do especial (md 923/926 do jogo): liga/desliga a simulacao dele. */
      public static boolean cinematic = true;
-@@ -360,29 +540,42 @@
+     /** Linha do HDAT 4 (SpecialType do jogo) do golpe; -1 = desconhecido. */
+     private int specialType = -1;
+     private int cineLeft;
++    /** Zoom da camera na trava (md 29, iCameraLock 0/1): 200 % em 4 ticks, centrado no dono (x +-40 para o lado de fora, y - 48); volta a 100 % em 12 ticks. */
++    static final float CINE_ZOOM = 200f;
++    static final int CINE_ZOOM_TICKS = 4;
++    private float cineZoomX, cineZoomY;
+ 
+     public void setSpecialType(int t) {
+         // modo ANO (golpe generico): o ANO inicial de uma linha 9-12 do HDAT 4 tambem ativa a trava
+@@ -341,6 +530,8 @@
+     public int specialTypeValue() { return specialType; }
+     public boolean hasCinematic() { return specialType >= 9 && specialType <= 12; }
+     public boolean cinematicActive() { return cineLeft > 0; }
++    /** Ticks que a trava cinematica ainda congela (0 = nao ha). */
++    public int cinematicLeft() { return cineLeft; }
+ 
+     private int doneSince = -1;
+ 
+@@ -360,29 +551,43 @@
  
      private void stepImpl() {
          ticks++;
@@ -2832,6 +2888,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            camera();                                // md 19/3 sao tasks proprias: a camera segue rodando durante a trava
 +            if (camShake != 0) camShake--;
 +            updateCamY();
++            zoomTick();                              // md 29: o zoom da trava (200 %) e a volta a 100 % continuam rodando
              for (int i = fxs.size() - 1; i >= 0; i--) {
                  Fx f = fxs.get(i);
 -                f.sim.step(false);
@@ -2859,7 +2916,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  idleMode = true;
                  lastSerial = -1;
                  spawnedSerial = -1;
-@@ -390,8 +583,10 @@
+@@ -390,8 +595,10 @@
                  atkFrozen = false;
              }
          }
@@ -2872,7 +2929,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              updateAuras();
          } else {
              atk.step(hsAtk > 0);
-@@ -399,34 +594,76 @@
+@@ -399,34 +606,76 @@
              tryPull();
              checkEnd();
              checkAttackOver();
@@ -2960,7 +3017,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private boolean looping;
-@@ -442,6 +679,7 @@
+@@ -442,6 +691,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, move, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -2968,7 +3025,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          return s;
      }
-@@ -464,6 +702,27 @@
+@@ -464,6 +714,27 @@
          return -1;
      }
  
@@ -2996,7 +3053,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      /** Primeiro tick de cada frame (pat) da ANO {@code anoIdx}, numa unica passada; -1 = nunca aparece. */
      public int[] firstTicks(int anoIdx, int frames, int max) {
          int[] out = new int[frames];
-@@ -492,7 +751,14 @@
+@@ -492,7 +763,14 @@
  
      public int measureLength() {
          BattleSim s = fresh();
@@ -3012,7 +3069,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private int measure(BattleSim s) {
-@@ -513,7 +779,7 @@
+@@ -513,7 +791,7 @@
  
      /** Tudo que nao e o atacante parou: sem projeteis, efeitos, reacao nem hitstop. */
      /** Fim estendido: o atacante so congela quando esta no chao (ou voa); no ar ele cai e pousa antes. */
@@ -3021,7 +3078,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      /** Projetil ainda em jogo: vivo e dentro do mapa (com folga); fora dele ja desapareceu para o tempo estendido. */
      private boolean projActive() {
-@@ -581,59 +847,125 @@
+@@ -581,59 +859,125 @@
          }
          if (spawnedSerial != r.serial) {
              spawnedSerial = r.serial;
@@ -3177,7 +3234,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -643,123 +975,141 @@
+@@ -643,123 +987,141 @@
              int anim = c.flipped ? animF : animN;
              String why = "";
              if (animN == 0) why = " (sem animação: ANIM_ID = 0)";
@@ -3406,7 +3463,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int count = (move.flags & 4) != 0 ? 3 : 1;
          for (int k = 0; k < count; k++) {
              int x, y;
-@@ -779,18 +1129,49 @@
+@@ -779,18 +1141,49 @@
              else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
  
              Proj p = new Proj();
@@ -3457,7 +3514,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int dx = h.x << 16;
          int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
          int y = o.y + (h.y << 16);
-@@ -801,17 +1182,21 @@
+@@ -801,17 +1194,21 @@
          p.globalAno = move.projGlobal;
          p.groundAno = move.subChao;
          p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
@@ -3479,7 +3536,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          p.life++;
          AttackSim.Obj o = p.sim.root();
          if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
-@@ -844,19 +1229,19 @@
+@@ -844,19 +1241,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -3503,7 +3560,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -869,7 +1254,7 @@
+@@ -869,7 +1266,7 @@
          }
          if (p.firstX != o.x) p.moved = true;
  
@@ -3512,7 +3569,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          o = p.sim.root();
          if (o != null) {
              if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
-@@ -890,22 +1275,19 @@
+@@ -890,22 +1287,19 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
@@ -3540,7 +3597,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // projeteis
          for (int i = 0; i < projs.size(); i++) {
              Proj p = projs.get(i);
-@@ -920,13 +1302,13 @@
+@@ -920,13 +1314,13 @@
                  p.hs = HIT_STOP / 2;
                  hsDef = HIT_STOP;
              }
@@ -3557,7 +3614,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int[] pos = checkObjHit(r, def);
              if (pos != null) {
                  armed = false;
-@@ -936,8 +1318,8 @@
+@@ -936,8 +1330,8 @@
                      hsAtk = hs;
                      hsDef = hs;
                  }
@@ -3568,7 +3625,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              }
          }
      }
-@@ -989,7 +1371,7 @@
+@@ -989,7 +1383,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
@@ -3577,7 +3634,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1381,7 @@
+@@ -999,7 +1393,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
@@ -3586,7 +3643,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1400,7 @@
+@@ -1018,7 +1412,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
@@ -3595,7 +3652,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1412,6 @@
+@@ -1030,7 +1424,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
@@ -3603,7 +3660,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1063,6 +1444,7 @@
+@@ -1063,6 +1456,7 @@
          transKind = -1;
          if (switchAtk(next)) {
              hitConfirmed = false;                 // work[10] = 0
@@ -3611,7 +3668,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
          } else {
              r.x = ox;
-@@ -1117,6 +1499,7 @@
+@@ -1117,6 +1511,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -3619,7 +3676,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1534,7 @@
+@@ -1151,7 +1546,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
@@ -3628,7 +3685,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1184,9 +1567,34 @@
+@@ -1184,9 +1579,34 @@
          return false;
      }
  
@@ -3663,7 +3720,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // md 883: y > chao com velocidade Y > 0 pousa, mesmo que o golpe tenha comecado no chao
          // ANO avulso (md 886 / 891): pousa assim que y > chao fora do hitstop, sem exigir velocidade Y
          boolean lands = move.generic ? (r.y > 0 && hsAtk == 0) : (r.y > 0 && r.speedY > 0);
-@@ -1208,7 +1616,6 @@
+@@ -1208,7 +1628,6 @@
              r.speedX = 0;
              r.accelX = 0;
              sounds.add(new Snd(true, 12, 0));
@@ -3671,7 +3728,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
              if (land == 0) land = 13;
              transKind = 3;
-@@ -1222,7 +1629,7 @@
+@@ -1222,7 +1641,7 @@
          // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
          if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
              transKind = 4;
@@ -3680,7 +3737,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1232,11 +1639,11 @@
+@@ -1232,11 +1651,11 @@
          AttackSim.Obj r = atk.root();
          // chaves ativas no frame atual (so a raiz, como o jogo)
          java.util.LinkedHashMap<Integer, Ano.Hit> active = new java.util.LinkedHashMap<Integer, Ano.Hit>();
@@ -3694,7 +3751,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              }
          }
          for (int i = auras.size() - 1; i >= 0; i--) {
-@@ -1255,7 +1662,8 @@
+@@ -1255,7 +1674,8 @@
              if (a != null) {
                  AttackSim.Obj o = a.sim.root();
                  if (o != null) { o.x = x; o.y = y; }
@@ -3704,7 +3761,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  consumeSe(a.sim, 0);
                  continue;
              }
-@@ -1270,21 +1678,22 @@
+@@ -1270,21 +1690,22 @@
              a = new Aura();
              a.key = f;
              a.owner = owner;
@@ -3737,7 +3794,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private void afterGrabFrame() {
-@@ -1296,20 +1705,50 @@
+@@ -1296,20 +1717,50 @@
          }
      }
  
@@ -3799,7 +3856,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
-@@ -1331,6 +1770,7 @@
+@@ -1331,6 +1782,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
@@ -3807,7 +3864,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1341,14 +1781,17 @@
+@@ -1341,14 +1793,17 @@
  
      private void detectGrab(AttackSim.Obj def) {
          AttackSim.Obj g = grab == null ? null : grab.root();
@@ -3829,7 +3886,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** CheckObjHit: hitbox (flag 2) do atacante contra hurtbox (flag 1) do alvo; devolve o centro do impacto em px. */
-@@ -1438,25 +1881,37 @@
+@@ -1438,25 +1893,37 @@
              applyDamage(op, dmg, hitAno);
              lastHit += " [dano " + lastDamage + ", vida " + lifeO + "/" + maxO + ", combo " + combo + "]";
          }
@@ -3873,7 +3930,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1473,14 +1928,99 @@
+@@ -1473,14 +1940,101 @@
          }
      }
  
@@ -3921,11 +3978,13 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +        gMove = op.pushes ? guardBack : 0;
 +        int want = oppY != 0 ? GUARD_AIR_ANO : GUARD_STAND_ANO;
 +        AttackSim.Obj d = opp.root();
-+        if (!guardActive && (d == null || d.ano.index != want) && defDac != null && defDac.getAno(want) != null && defDac.getAno(want).present) setOppAct(want);
++        Ano wa = defDac == null ? null : defDac.getAno(want);
++        boolean haveGuardAno = wa != null && wa.present && wa.mpts.length > 0;
++        if (!guardActive && (d == null || d.ano.index != want) && haveGuardAno) setOppAct(want);
 +        gTime = HIT_STOP + 5;
 +        guardActive = true;
 +        grabHitAno = hitAno;
-+        lastHit += " [guarda, empurrao " + gMove + "]";
++        lastHit += (haveGuardAno ? " [guarda ANO " + want : " [guarda sem ANO " + want + " no DAC") + ", empurrao " + gMove + "]";
 +    }
 +
 +    /** Defensor em guarda (md 908): empurrao que decai 2 por tick; sai da guarda quando o empurrao, o hitstop e o GuardCancelTime (HIT_STOP + 5 ticks) acabam. */
@@ -3973,7 +4032,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1494,6 +2034,7 @@
+@@ -1494,6 +2048,7 @@
      }
  
      private void stepDefender() {
@@ -3981,7 +4040,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (!inDamage) {
              AttackSim.Obj r = opp.root();
              if (r != null) {
-@@ -1601,7 +2142,7 @@
+@@ -1601,7 +2156,7 @@
          int comp = tb.u8(dIdx, 11);
          int wall = tb.u8(dIdx, 12);
          if (comp > 0 && comp < 50) {
@@ -3990,7 +4049,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1634,8 +2175,9 @@
+@@ -1634,8 +2189,9 @@
                  dTime = 0;
                  tickDamage(depth + 1);
                  return;
@@ -4001,7 +4060,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp < 30) { dCharSrc = false; dType = comp; }
                  else if (dCharSrc) dType = comp - 30;
                  else { endDamage(864, -1); return; }
-@@ -1701,16 +2243,28 @@
+@@ -1701,16 +2257,32 @@
          float tw = 100f, tx = nx, ty = ny;
          int n = 12;
          AttackSim.Obj r = atk.root();
@@ -4033,13 +4092,17 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            action = true;
 +            if (last[0] == 100f) { tw = zTgtW; tx = zTgtX; ty = zTgtY; }
 +            else { tw = last[0]; tx = last[2]; ty = last[3]; n = (int) last[1]; }
++        }
++        if (cinematic && cineLeft > 0) {                         // md 29 com iCameraLock 0/1: zoom 200 % em 4 ticks no dono do especial
++            action = true;
++            tw = CINE_ZOOM; tx = cineZoomX; ty = cineZoomY; n = CINE_ZOOM_TICKS;
          }
 -        if (tw == 100f && r != null) {
 +        if (!action && tw == 100f && r != null) {
              // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
              int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
              if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1761,11 +2315,8 @@
+@@ -1761,11 +2333,8 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -4052,7 +4115,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              refAtkX = ra.x;
          }
          oldAx = ra == null ? 0 : ra.x;
-@@ -1785,15 +2336,12 @@
+@@ -1785,15 +2354,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -4072,7 +4135,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1802,14 +2350,14 @@
+@@ -1802,14 +2368,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -4089,7 +4152,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2365,7 @@
+@@ -1817,7 +2383,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -4098,7 +4161,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,42 +2385,47 @@
+@@ -1837,42 +2403,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -4156,7 +4219,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2437,117 @@
+@@ -1884,21 +2455,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -4282,7 +4345,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,9 +2568,7 @@
+@@ -1919,9 +2586,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
@@ -4293,7 +4356,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
          AttackSim.Obj[] ch = s.children();
          for (int i = 0; i < ch.length; i++) {
-@@ -1929,8 +2576,22 @@
+@@ -1929,8 +2594,22 @@
              if (c == null || c.pendingSe < 0) continue;
              int se = c.pendingSe;
              c.pendingSe = -1;
@@ -4317,7 +4380,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** PushSE: < 80 = se_NN comum; >= 80 = audio de personagem na lista [atacante..., defensor...]. */
-@@ -1979,55 +2640,47 @@
+@@ -1979,55 +2658,47 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -4396,7 +4459,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-@@ -2040,6 +2693,31 @@
+@@ -2040,6 +2711,31 @@
      public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
  
      public boolean defenderInDamage() { return inDamage; }
@@ -7603,6 +7666,46 @@ diff -ruN a/CharPicker.java b/CharPicker.java
 +        loaded.clear();
 +    }
 +}
+diff -ruN a/CineNotice.java b/CineNotice.java
+--- a/CineNotice.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CineNotice.java	2026-10-30 00:10:00.233581238 +0000
+@@ -0,0 +1,36 @@
++package com.zue.attackeditor;
++
++/**
++ * Aviso da trava cinematica ao avancar tick pelo botao (Java puro), no estilo do {@link HitstopNotice}: o especial (9-12) congela tudo por
++ * N ticks (md 923/926 do jogo) com o zoom da camera; enquanto isso o contador de tick mostrado fica travado e o aviso (com o botao PULAR) diz
++ * quantos ticks faltam. Quando a trava acaba (ou e pulada) o aviso some e o tick e liberado.
++ */
++final class CineNotice {
++    private int left;
++    private int locked = -1;
++
++    /** Depois de um passo do botao: {@code tick} = tick da simulacao agora, {@code cineLeft} = ticks de trava que ainda faltam. */
++    void afterStep(int tick, int cineLeft) {
++        if (cineLeft > 0) {
++            if (left == 0) locked = tick;          // entrou na trava: o numero do tick fica neste
++            left = cineLeft;
++        } else {
++            left = 0;
++            locked = -1;
++        }
++    }
++
++    void clear() { left = 0; locked = -1; }
++
++    boolean active() { return left > 0; }
++    int left() { return left; }
++
++    /** Tick a mostrar: o travado durante a trava, o real no resto. */
++    int shownTick(int realTick) { return active() ? locked : realTick; }
++
++    /** Texto do aviso amarelo. */
++    String text() {
++        return "Trava cinemática: tudo fica congelado por mais " + left + (left == 1 ? " tick" : " ticks")
++                + " e a câmera dá zoom de 200%. PULAR passa pela trava e libera o tick.";
++    }
++}
 diff -ruN a/Cnv.java b/Cnv.java
 --- a/Cnv.java	2026-10-18 12:20:33.000000000 +0000
 +++ b/Cnv.java	2026-10-28 22:24:31.908309668 +0000
@@ -9176,8 +9279,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-30 00:08:06.482096818 +0000
-@@ -0,0 +1,649 @@
++++ b/HelpText.java	2026-10-30 00:11:00.582893824 +0000
+@@ -0,0 +1,650 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -9409,7 +9512,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + "puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar."
 +                + " Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga."
 +                + " Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Os ticks da timeline são só os dos Frames: o hitstop (ticks que só a simulação tem) não ocupa lugar nela, então arrastar ou tocar na timeline vai direto ao tick de animação pedido; a barra de progresso e a reprodução seguem os ticks da simulação."
-+                + " A Hitbox é a exceção: é sempre uma por Frame (o hit se repete a cada Frame), então cada Frame tem a sua hitbox, o seu dano e a sua reação.");
++                + " A Hitbox é a exceção: é sempre uma por Frame (o hit se repete a cada Frame), então cada Frame tem a sua hitbox, o seu dano e a sua reação."
++                + " Nos especiais com travamento cinematográfico (golpes 9 a 12), o botão de tick mostra o mesmo tipo de aviso amarelo (\"Trava cinemática: tudo fica congelado por mais N ticks\") com o botão PULAR, que passa pela trava de uma vez e libera o tick. A câmera segue o jogo: zoom de 200% em 4 ticks centrado no dono do especial (40 px para o lado de fora e 48 px acima dos pés) e, quando a trava acaba, volta a 100% em 12 ticks.");
 +        tl.add("Altura da gaveta: Y e T",
 +                "A gaveta abre sempre na altura padrão: por cima da tela, subindo até a base da prévia. Arraste a borda (a alça) para subir ou descer à vontade, até por cima da prévia; isso vale só para aquela abertura. "
 +                + "Y (na borda, à direita) grava a altura atual como a nova altura padrão. T põe a timeline acima do menu: a prévia diminui na proporção, o menu só sobe até a metade da tela, o menu superior some e a timeline mostra de 6 a 2 faixas conforme o menu sobe; "
@@ -10133,7 +10237,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-30 00:07:21.574550861 +0000
++++ b/I18nCatalog.java	2026-10-30 00:10:44.223551904 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -10147,7 +10251,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-30 00:07:21.568170514 +0000
++++ b/I18nCatalog0.java	2026-10-30 00:10:44.219049750 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -10420,7 +10524,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-30 00:07:21.570310384 +0000
++++ b/I18nCatalog1.java	2026-10-30 00:10:44.220083764 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -10693,7 +10797,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-30 00:07:21.571578377 +0000
++++ b/I18nCatalog2.java	2026-10-30 00:10:44.220830552 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -10966,7 +11070,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-30 00:07:21.572483238 +0000
++++ b/I18nCatalog3.java	2026-10-30 00:10:44.221786003 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -11239,7 +11343,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-30 00:07:21.573418329 +0000
++++ b/I18nCatalog4.java	2026-10-30 00:10:44.222536074 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -11512,8 +11616,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-30 00:07:21.574216952 +0000
-@@ -0,0 +1,176 @@
++++ b/I18nCatalog5.java	2026-10-30 00:10:44.223289688 +0000
+@@ -0,0 +1,182 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -11688,6 +11792,12 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {" dele (a ANO 0 se não tiver). Toque para escolher.", " (ANO 0 if it has none). Tap to choose.", " (la ANO 0 si no la tiene). Toca para elegir."},
 +        {"CONFIRMAR", "CONFIRM", "CONFIRMAR"},
 +        {"Toque numa reação para ver e ouvir (só a destacada toca). CONFIRMAR grava; VOLTAR fecha sem mudar nada.", "Tap a reaction to see and hear it (only the highlighted one plays). CONFIRM saves; BACK closes without changing anything.", "Toca una reacción para verla y oírla (solo suena la resaltada). CONFIRMAR guarda; VOLVER cierra sin cambiar nada."},
++        {" [guarda ANO ", " [guard ANO ", " [guardia ANO "},
++        {" [guarda sem ANO ", " [guard without ANO ", " [guardia sin ANO "},
++        {" no DAC", " in the DAC", " en el DAC"},
++        {", empurrao ", ", pushback ", ", empuje "},
++        {"Trava cinemática: tudo fica congelado por mais ", "Cinematic lock: everything stays frozen for ", "Bloqueo cinemático: todo queda congelado por "},
++        {" e a câmera dá zoom de 200%. PULAR passa pela trava e libera o tick.", " and the camera zooms to 200%. SKIP goes through the lock and releases the tick.", " y la cámara hace zoom al 200%. SALTAR pasa el bloqueo y libera el tick."},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -11737,7 +11847,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-30 00:08:12.588895247 +0000
++++ b/I18nHelpCatalog.java	2026-10-30 00:11:00.649947786 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -11751,7 +11861,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-30 00:08:12.586895478 +0000
++++ b/I18nHelpCatalog0.java	2026-10-30 00:11:00.648852299 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -11836,7 +11946,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-30 00:08:12.587217069 +0000
++++ b/I18nHelpCatalog1.java	2026-10-30 00:11:00.648965482 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -11921,7 +12031,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-30 00:08:12.587421914 +0000
++++ b/I18nHelpCatalog2.java	2026-10-30 00:11:00.649111187 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12006,7 +12116,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-30 00:08:12.587678845 +0000
++++ b/I18nHelpCatalog3.java	2026-10-30 00:11:00.649247593 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12057,9 +12167,9 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"Arrastar, ponteiro e zoom",
 +         "Dragging, pointer and zoom",
 +         "Arrastrar, puntero y zoom"},
-+        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga. Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Os ticks da timeline são só os dos Frames: o hitstop (ticks que só a simulação tem) não ocupa lugar nela, então arrastar ou tocar na timeline vai direto ao tick de animação pedido; a barra de progresso e a reprodução seguem os ticks da simulação. A Hitbox é a exceção: é sempre uma por Frame (o hit se repete a cada Frame), então cada Frame tem a sua hitbox, o seu dano e a sua reação.",
-+         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off. With a Hitbox that connects, the game freezes the attacker for a fixed number of ticks (hitstop: normally 10; half for group 3 reactions and none for group 4; it does not wait for the hitspark, which plays in parallel at normal speed). When advancing a tick with the button, the tick number locks and a yellow notice says how many ticks the Frame stays still; when the tick is released the notice goes away. The timeline ticks are only the Frames' ticks: hitstop (ticks that only the simulation has) takes no place on it, so dragging or tapping the timeline goes straight to the requested animation tick; the progress bar and playback follow the simulation ticks. The Hitbox is the exception: it is always one per Frame (the hit repeats on every Frame), so each Frame has its own hitbox, damage and reaction.",
-+         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas. Con una Hitbox que acierta, el juego congela al atacante por un número fijo de ticks (hitstop: normalmente 10; la mitad en reacciones del grupo 3 y ninguno en el grupo 4; no espera al hitspark, que suena en paralelo a velocidad normal). Al avanzar un tick con el botón, el número del tick se bloquea y un aviso amarillo dice cuántos ticks queda quieto el Frame; cuando se libera el tick el aviso desaparece. Los ticks de la timeline son solo los de los Frames: el hitstop (ticks que solo tiene la simulación) no ocupa lugar en ella, así que arrastrar o tocar la timeline va directo al tick de animación pedido; la barra de progreso y la reproducción siguen los ticks de la simulación. La Hitbox es la excepción: es siempre una por Frame (el golpe se repite en cada Frame), así que cada Frame tiene su hitbox, su daño y su reacción."},
++        {"O ponteiro fica no centro e a timeline anda por baixo: arrastar na horizontal move o tempo (a preview acompanha); arrastar na vertical rola as faixas; beliscar dá zoom. Para mudar a duração de um sprite, objeto ou trecho, puxe a borda dele; as mudanças de posição e tamanho de uma box só acontecem entre sprites. Objetos que passam por vários frames iguais são um só objeto (\"frames conectados\"): mudar um muda todos; use DIVIDIR para separar. Tocar num clipe (sprite, objeto, velocidade, som…) só o seleciona se o ponteiro já está dentro dele; se o ponteiro estava antes, vai ao início do clipe, e se estava depois, vai ao último tick. O LOOP é do ANO: continua ligado no último frame mesmo quando você adiciona, duplica ou exclui sprites, e só desliga quando você o desliga. Com uma Hitbox que acerta, o jogo congela o atacante por um número fixo de ticks (hitstop: normalmente 10; metade em reações do grupo 3 e nenhum no grupo 4; o hitspark não é esperado: ele toca em paralelo na velocidade normal). Ao avançar tick pelo botão, o número do tick trava e um aviso amarelo diz por quantos ticks o Frame fica parado; quando o tick é liberado o aviso some. Os ticks da timeline são só os dos Frames: o hitstop (ticks que só a simulação tem) não ocupa lugar nela, então arrastar ou tocar na timeline vai direto ao tick de animação pedido; a barra de progresso e a reprodução seguem os ticks da simulação. A Hitbox é a exceção: é sempre uma por Frame (o hit se repete a cada Frame), então cada Frame tem a sua hitbox, o seu dano e a sua reação. Nos especiais com travamento cinematográfico (golpes 9 a 12), o botão de tick mostra o mesmo tipo de aviso amarelo (\"Trava cinemática: tudo fica congelado por mais N ticks\") com o botão PULAR, que passa pela trava de uma vez e libera o tick. A câmera segue o jogo: zoom de 200% em 4 ticks centrado no dono do especial (40 px para o lado de fora e 48 px acima dos pés) e, quando a trava acaba, volta a 100% em 12 ticks.",
++         "The pointer stays in the center and the timeline moves underneath: dragging horizontally moves the time (the preview follows); dragging vertically scrolls the lanes; pinching zooms. To change the duration of a sprite, object or stretch, pull its edge; position and size changes of a box only happen between sprites. Objects that span several equal frames are a single object (\"connected frames\"): changing one changes all; use SPLIT to separate them. Tapping a clip (sprite, object, speed, sound…) only selects it if the pointer is already inside it; if the pointer was before, it goes to the clip start, and if it was after, to the last tick. LOOP belongs to the ANO: it stays on at the last frame even when you add, duplicate or delete sprites, and it only turns off when you turn it off. With a Hitbox that connects, the game freezes the attacker for a fixed number of ticks (hitstop: normally 10; half for group 3 reactions and none for group 4; it does not wait for the hitspark, which plays in parallel at normal speed). When advancing a tick with the button, the tick number locks and a yellow notice says how many ticks the Frame stays still; when the tick is released the notice goes away. The timeline ticks are only the Frames' ticks: hitstop (ticks that only the simulation has) takes no place on it, so dragging or tapping the timeline goes straight to the requested animation tick; the progress bar and playback follow the simulation ticks. The Hitbox is the exception: it is always one per Frame (the hit repeats on every Frame), so each Frame has its own hitbox, damage and reaction. On specials with a cinematic lock (moves 9 to 12), the tick button shows the same kind of yellow notice (\"Cinematic lock: everything stays frozen for N more ticks\") with a SKIP button, which goes through the lock at once and releases the tick. The camera follows the game: 200% zoom in 4 ticks centered on the special's owner (40 px to the outside and 48 px above the feet) and, when the lock ends, back to 100% in 12 ticks.",
++         "El puntero queda en el centro y la timeline se mueve por debajo: arrastrar en horizontal mueve el tiempo (la vista previa acompaña); arrastrar en vertical desplaza las pistas; pellizcar hace zoom. Para cambiar la duración de un sprite, objeto o tramo, jala su borde; los cambios de posición y tamaño de una caja solo ocurren entre sprites. Los objetos que pasan por varios frames iguales son un solo objeto (\"frames conectados\"): cambiar uno cambia todos; usa DIVIDIR para separarlos. Tocar un clip (sprite, objeto, velocidad, sonido…) solo lo selecciona si el puntero ya está dentro; si el puntero estaba antes, va al inicio del clip, y si estaba después, al último tick. El LOOP es del ANO: sigue activado en el último frame aunque agregues, dupliques o elimines sprites, y solo se desactiva cuando tú lo desactivas. Con una Hitbox que acierta, el juego congela al atacante por un número fijo de ticks (hitstop: normalmente 10; la mitad en reacciones del grupo 3 y ninguno en el grupo 4; no espera al hitspark, que suena en paralelo a velocidad normal). Al avanzar un tick con el botón, el número del tick se bloquea y un aviso amarillo dice cuántos ticks queda quieto el Frame; cuando se libera el tick el aviso desaparece. Los ticks de la timeline son solo los de los Frames: el hitstop (ticks que solo tiene la simulación) no ocupa lugar en ella, así que arrastrar o tocar la timeline va directo al tick de animación pedido; la barra de progreso y la reproducción siguen los ticks de la simulación. La Hitbox es la excepción: es siempre una por Frame (el golpe se repite en cada Frame), así que cada Frame tiene su hitbox, su daño y su reacción. En los especiales con bloqueo cinemático (golpes 9 a 12), el botón de tick muestra el mismo tipo de aviso amarillo (\"Bloqueo cinemático: todo queda congelado por N ticks más\") con el botón SALTAR, que pasa el bloqueo de una vez y libera el tick. La cámara sigue el juego: zoom del 200% en 4 ticks centrado en el dueño del especial (40 px hacia fuera y 48 px sobre los pies) y, al terminar el bloqueo, vuelve al 100% en 12 ticks."},
 +        {"Altura da gaveta: Y e T",
 +         "Drawer height: Y and T",
 +         "Altura del cajón: Y y T"},
@@ -12091,7 +12201,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-30 00:08:12.587972633 +0000
++++ b/I18nHelpCatalog4.java	2026-10-30 00:11:00.649346149 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12176,7 +12286,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-30 00:08:12.588145983 +0000
++++ b/I18nHelpCatalog5.java	2026-10-30 00:11:00.649502846 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12261,7 +12371,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-30 00:08:12.588309365 +0000
++++ b/I18nHelpCatalog6.java	2026-10-30 00:11:00.649615326 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12346,7 +12456,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-30 00:08:12.588477068 +0000
++++ b/I18nHelpCatalog7.java	2026-10-30 00:11:00.649760792 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12431,7 +12541,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-30 00:08:12.588696953 +0000
++++ b/I18nHelpCatalog8.java	2026-10-30 00:11:00.649871258 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -12516,7 +12626,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-30 00:08:12.588857521 +0000
++++ b/I18nHelpCatalog9.java	2026-10-30 00:11:00.649915694 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -25041,6 +25151,91 @@ diff -ruN a/test/CharGridTest.java b/test/CharGridTest.java
 +        System.out.println("CharGridTest fails=" + fails);
 +    }
 +}
+diff -ruN a/test/CineNoticeTest.java b/test/CineNoticeTest.java
+--- a/test/CineNoticeTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/CineNoticeTest.java	2026-10-30 00:10:00.254645603 +0000
+@@ -0,0 +1,26 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Aviso da trava cinematica no botao +1 tick: trava o numero do tick, conta o que falta e libera. */
++public class CineNoticeTest {
++    public static void main(String[] args) throws Exception {
++        CineNotice n = new CineNotice();
++        check("sem trava: inativo e tick real", n.active() + ":" + n.shownTick(7), "false:7");
++        n.afterStep(1, 121);
++        check("entrou na trava: ativo, 121 faltam, tick travado em 1", n.active() + ":" + n.left() + ":" + n.shownTick(1), "true:121:1");
++        n.afterStep(2, 120);
++        n.afterStep(3, 119);
++        check("andando na trava: o numero continua no 1", n.shownTick(3) + ":" + n.left(), "1:119");
++        n.afterStep(4, 0);
++        check("acabou: libera e mostra o tick real", n.active() + ":" + n.shownTick(4), "false:4");
++        n.afterStep(10, 5);
++        n.clear();
++        check("clear (pular / buscar na linha do tempo) libera", n.active() + ":" + n.shownTick(12), "false:12");
++        n.afterStep(20, 1);
++        check("texto no singular e menciona PULAR e o zoom", n.text().contains("mais 1 tick ") && n.text().contains("PULAR") && n.text().contains("200%"), true);
++        n.afterStep(21, 3);
++        check("texto no plural", n.text().contains("mais 3 ticks"), true);
++        System.out.println("CineNoticeTest fails=" + fails);
++    }
++}
+diff -ruN a/test/CinematicZoomTest.java b/test/CinematicZoomTest.java
+--- a/test/CinematicZoomTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/CinematicZoomTest.java	2026-10-30 00:10:11.583497859 +0000
+@@ -0,0 +1,51 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Zoom de camera da trava cinematica (md 29 / iCameraLock): 200 % em 4 ticks centrado no dono, volta a 100 % em 12 ticks depois da trava. */
++public class CinematicZoomTest {
++    static BattleSim make(boolean left, int dist, boolean cine) throws Exception {
++        A[] cz = new A[45];
++        for (int i = 0; i < 45; i++) cz[i] = new A().mpt(new M().time(5)).mpt(new M().time(5));
++        CharData chZ = chr(move(new int[]{2, 40}), new byte[][] {});
++        A[] def = new A[30];
++        for (int i = 0; i < 30; i++) def[i] = new A().mpt(new M().time(5).hit(1, -10, -60, 20, 60));
++        GameData g = gd(new byte[][] { null, null, null, react(new int[]{4, 4, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}) });
++        BattleSim.cinematic = cine;
++        BattleSim s = new BattleSim(dac(cz), chZ, chZ.moves[0], left, dac(def), dac(new A().mpt(new M().time(4)), new A().mpt(new M().time(4)), new A().mpt(new M().time(4)), new A().mpt(new M().time(4)), new A().mpt(new M().time(4))), g, dist, 0, 0);
++        s.setSpecialType(9);
++        return s;
++    }
++
++    public static void main(String[] args) throws Exception {
++        BattleSim s = make(false, 120, true);
++        check("trava ativa e com 122 ticks", s.cinematicActive() + ":" + s.cinematicLeft(), "true:122");
++        // atacante a esquerda do oponente (olha para a direita): o dono NAO esta a direita => centro 40 px para a esquerda dele
++        float ax = s.attackerX();
++        for (int i = 0; i < 6; i++) s.step();
++        float[] z = s.zoomRect();
++        check("depois de 4+ ticks o zoom e 200 % (retangulo de 240 px)", z != null && Math.abs((z[2] - z[0]) - 240f) < 0.5f, true);
++        check("centro x = dono -40 (dono a esquerda do oponente)", z != null && Math.abs((z[0] + z[2]) / 2 - (ax - 40f)) < 0.5f, true);
++        check("centro y = y do dono - 48", z != null && Math.abs((z[1] + z[3]) / 2 - (s.attackerY() - 48f)) < 0.5f, true);
++        for (int i = 0; i < 60; i++) s.step();
++        float[] z2 = s.zoomRect();
++        check("durante a trava o zoom se mantem", z2 != null && Math.abs((z2[2] - z2[0]) - 240f) < 0.5f, true);
++        while (s.cinematicActive()) s.step();
++        for (int i = 0; i < 14; i++) s.step();
++        check("12 ticks depois da trava volta a 100 % (sem retangulo)", s.zoomRect() == null, true);
++
++        // dono a direita do oponente (olha para a esquerda): centro 40 px para a direita dele
++        BattleSim r = make(true, 120, true);
++        float rx = r.attackerX();
++        for (int i = 0; i < 6; i++) r.step();
++        float[] zr = r.zoomRect();
++        check("dono a direita: centro x = dono +40", zr != null && Math.abs((zr[0] + zr[2]) / 2 - (rx + 40f)) < 0.5f, true);
++
++        // trava desligada: sem zoom
++        BattleSim off = make(false, 120, false);
++        for (int i = 0; i < 20; i++) off.step();
++        check("trava desligada: sem zoom", off.zoomRect() == null, true);
++        BattleSim.cinematic = true;
++        System.out.println("CinematicZoomTest fails=" + fails);
++    }
++}
 diff -ruN a/test/CropProblemTest.java b/test/CropProblemTest.java
 --- a/test/CropProblemTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/CropProblemTest.java	2026-10-29 10:46:34.730459226 +0000
@@ -26162,8 +26357,8 @@ diff -ruN a/test/GrabEditTest.java b/test/GrabEditTest.java
 +}
 diff -ruN a/test/GuardTest.java b/test/GuardTest.java
 --- a/test/GuardTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/GuardTest.java	2026-10-29 17:23:20.197862207 +0000
-@@ -0,0 +1,142 @@
++++ b/test/GuardTest.java	2026-10-30 00:10:23.383455062 +0000
+@@ -0,0 +1,151 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -26172,6 +26367,8 @@ diff -ruN a/test/GuardTest.java b/test/GuardTest.java
 +
 +/** DEF (oponente defende): DamageChange com var15 == 2 / md 908 do jogo. */
 +public class GuardTest {
++    static boolean noGuardAno;
++
 +    static BattleSim make(int atkAno, int opt1, int dmg, int extraFlag, int oppHeight) throws Exception {
 +        A[] atk = new A[Math.max(41, atkAno + 1)];
 +        for (int i = 0; i < atk.length; i++) atk[i] = new A().mpt(new M().time(1));
@@ -26181,6 +26378,7 @@ diff -ruN a/test/GuardTest.java b/test/GuardTest.java
 +        A[] def = new A[90];
 +        for (int i = 0; i < 90; i++) def[i] = new A().mpt(new M().time(30).hit(1, -10, -60, 20, 60));
 +        def[0] = new A().mpt(new M().time(5).hit(1, -10, -60, 20, 60));
++        if (noGuardAno) def[4] = new A();
 +        A[] fx = new A[5];
 +        for (int i = 0; i < 5; i++) fx[i] = new A().mpt(new M().time(4));
 +        GameData g = gd(new byte[][] { null, null, null, react(new int[]{30, 30, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}) });
@@ -26218,6 +26416,12 @@ diff -ruN a/test/GuardTest.java b/test/GuardTest.java
 +            check("DEF: o dano total e o do arranhao e o combo nao conta", g.totalDamage() + ":" + g.comboCount(), "2:0");
 +            check("DEF: toca o SE 8 de defesa", sawSe, true);
 +            check("DEF: descreve o hit como defendido", g.lastHit().contains("DEFENDIDO"), true);
++            check("DEF: o texto diz a ANO de guarda usada", g.lastHit().contains("guarda ANO 4"), true);
++            noGuardAno = true;
++            BattleSim ng = make(40, 3, 20, 0, 0);
++            for (int i = 0; i < 6; i++) ng.step();
++            noGuardAno = false;
++            check("DEF sem ANO 4 no DAC: defende (sem reacao), fica no idle e avisa", ng.defenderInDamage() + ":" + oppAno(ng) + ":" + ng.lastHit().contains("sem ANO 4 no DAC"), "false:0:true");
 +            // empurrao: 13 decai 2/tick => (13+11+9+7+5+3+1)/2 = 24,5 px para longe do atacante
 +            for (int i = 0; i < 20; i++) g.step();
 +            int dx = g.opponentX() - x0;
@@ -26800,7 +27004,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-30 00:07:21.689626588 +0000
++++ b/test/I18nIgnored.java	2026-10-30 00:10:44.326805264 +0000
 @@ -0,0 +1,532 @@
 +package com.zue.attackeditor;
 +
