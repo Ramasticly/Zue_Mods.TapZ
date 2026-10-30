@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1538 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1554 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -403,6 +403,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Interpolação (OPT d2)**, conferida no `_Hokan` do jogo: a flag vale **só para o frame que a tem**, que interpola **para o próximo**; o frame de antes não interpola para ele; sem tempo não faz efeito; no **último frame o “próximo” dá a volta para o frame 1 sempre** (mesmo sem LOOP). O simulador já fazia assim; agora o botão diz “Interpolar para o frame N+1”, a nota explica a regra e o último frame mostra um aviso âmbar. `InterpolationTest` (6, contra o `AttackSim`).
 - **SPEEDLINE nova — só o movimento do Frame atual**: um **ponto** onde o Frame começa (com o número dele) e uma **seta** até onde ele termina, seguindo o caminho real tick a tick (curva com aceleração/ápice). Se o movimento **para** (último Frame do movimento, ou o próximo começa com speed 0) a seta termina num **ponto**; se continua, termina em **ponta de seta**. Ao passar de Frame o ponto e a seta vão para o novo Frame. Arrastar a **ponta** muda só a speed do Frame atual (grava ao soltar); tocar no **ponto** ou na ponta abre o menu: **Remover speed**, **Zerar Speed**, **Aceleração…** (a aceleração do Frame atual leva a velocidade até a do próximo; rótulo “Frame N → N+1 / → fim”) e, logo abaixo, os **presets** de aceleração, aplicados ao movimento inteiro com um toque. Núcleo puro `SpeedLine.frameArrow/stopsAfter`; `SpeedLineTest` (51) e `ToolbarTest` (83) atualizados. Desenho, toque e menu só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zze Contador de tick sem os ticks parados, CRIAR ANO e loading na grade de personagens
+- **+1 tick**: o número do tick trava durante o hitstop e a trava cinemática e, ao liberar, **continua no seguinte ao travado** (travou em 2 → libera em 3, e não em ~120): só os ticks dos Frames contam. `TickDisplay` puro (`TickDisplayTest`, 10); timeline, barra e reprodução seguem mostrando o tick da simulação. PULAR também libera em travado + 1.
+- **CRIAR ANO** (modo ANOS): no seletor, logo abaixo de ABRIR LISTA, cria a ANO **última + 1** (limite 4096, o link guarda 12 bits) com 1 frame **IMG −1 de 6 ticks** (`Ano.blank`), já aberta; é uma ANO real (entra no salvar). Uma **ANO vazia aberta** agora começa com o mesmo frame (antes 10 ticks). `CharAssets.invalidateKinds`. `NewAnoTest` (6).
+- **Grade de personagens**: enquanto a ANO 76 não carrega, o cartão mostra um **semicírculo girando** (`AnimPreview.setLoading`, uma volta a cada 0,9 s) em vez de “sem animação”; esse texto só aparece se terminou de carregar e não há ANO 76 nem 0. Desenho/spinner e CRIAR ANO só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -481,6 +486,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CineNoticeTest (novo)** | 7 |
 | **CinematicZoomTest (novo)** | 8 |
 | **InterpolationTest (novo)** | 6 |
+| **TickDisplayTest (novo)** | 10 |
+| **NewAnoTest (novo)** | 6 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
