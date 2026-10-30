@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1706 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1726 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -474,6 +474,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Texto do ⓘ corrigido (antes eu usava os nomes errados): **Y (HUD 330/331) = golpes 0/3/6, X (333/334) = 1/4/7, B (336/337) = 2/5/8** (chão / pulando ou caindo / voando); **Especial 1** (HUD 339/341, **100 de Synchro** = 1 barra de ki, comando 8) = golpes **9** (chão ou voando) e **10** (pulando); **Especial 2** (sem botão próprio: toque no botão do canto **com AngryOn ligado**, 200 de Synchro, comando 9) = golpes **11** (chão ou voando) e **12** (no ar); Rage (mesmo botão do canto com Angry ≥ 100 e sem AngryOn, comando 4) = 14/15. A (HUD 209/210) = golpes normais (ANOs fixos 29–39, fora do HDAT 4). Fora do layout de botões (`iControlType == 0`) os especiais saem por gesto.
 - `GridOpsTest` agora 21 (comandos 0/3/7/8 = Y/X/B, 9/10 = Especial 1, 11/12 = Especial 2 com AngryOn). AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzp Grade v2: switch GOLPES | ANOS, filtros, info simples, pouso/loop/box e janela de combo
+- **Switch GOLPES | ANOS** no topo da grade (troca de modo na hora, igual ao chip ANOS da tela principal). **FILTRAR** (no lugar do antigo CRIAR ANO) alterna Padrão / Importância / Golpes / Ataque / Tempo / Frames / Efeitos (`AnoFilter`): **nada some**; as ANOs que casam vão para o topo com **moldura verde** e as outras ficam embaixo sem moldura. Importância = as que têm info (golpes do BIN e ANOs fixos do jogo); Golpes = partes de golpes do BIN; Ataque = hitbox (flag 2) ou projétil (flag 0); Tempo = mais **ticks**; Frames = mais **Frames**; Efeitos = ANOs apontadas por flags de efeito do personagem (ANO 201+). **＋ CRIAR** passou para a fileira de baixo, antes de EXCLUIR.
+- **Prévia expandida** (`AnimPreview`): **simulação de pouso** (golpes com movimento vertical: ao tocar o chão depois de estar no ar troca para o pouso do golpe, ou para o ANO 13 = pouso padrão), **loop** nas ANOs com wActFlag 1 e, nas outras, toca uma vez, **trava no último Frame por 1 s** e recomeça; **box** de hitbox/projétil quando a ANO tem.
+- **Bug do ⓘ**: o texto agora fecha por uma camada transparente que cobre a grade; o toque que fecha é consumido ali e **não chega ao cartão** de baixo. (O texto virou uma view flutuante dentro do diálogo, não mais um `PopupWindow`.)
+- **Info simples** (`AttackInfo`): ANO → só o papel (`ANIM_INICIAL do Golpe N`, `SEQ do golpe N`, `END`, `Ao acertar`, `Projétil do golpe N`, `Animação de pouso do golpe N`, `Animação de pouso padrão`) e o nome dos **ANOs fixos do jogo** (`FixedAnos`: 0 Parado, 1 Voando parado, 2/3 Esquiva rápida, 4 Defesa, 6–9 Dash, 13 pouso padrão, 14 Intro, 18 Andar, 19 Recuo, 22/24 dano/caído, 84/85 Carga de ki, 87/88 Teleporte, 89 queda…; sem botão). **Golpe** → o botão que o dispara com o **ícone renderizado do effect.pac** (A 209, Y 330, X 333, B 336, **Z 339**, **IRA 45**) e o gesto de joystick em setas, mais as sequências. Renomeados: o antigo “Especial 1” é **Z** e o “Especial 2” é **IRA**.
+- **Golpes normais (ANOs 29–39)** pesquisados no `CommonNormal` / md 879: em pé A neutro 30, frente 31, trás 37, baixo 36 (de corrida 29); pulando 34 / 35 / 39 / 38. **Sequência automática = janela OPT 512** (30 → 32 → 33; 31 / 36 / 37 com direção). O app chamava essa janela de “ação desconhecida”: nas ANOs 30 e 32 ela agora é **“Janela de combo (A→A)”** (`WIN_COMBO`, entra na lista do ＋ e tem descrição).
+- `AnoFilterTest` (9) e `GridOpsTest` ampliado (32: textos simples, ANOs fixos, botões e ícones). Switch, filtros, scrim, ícones, pouso/loop/trava na prévia só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -562,7 +570,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
 | **TransplantStepsTest (novo)** | 9 |
-| **GridOpsTest (novo)** | 21 |
+| **GridOpsTest (novo)** | 32 |
+| **AnoFilterTest (novo)** | 9 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

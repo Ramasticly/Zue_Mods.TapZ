@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-30 21:01:34.936896147 +0000
++++ b/AiHelpDoc.java	2026-10-30 21:59:07.533334509 +0000
 @@ -0,0 +1,850 @@
 +package com.zue.attackeditor;
 +
@@ -636,7 +636,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "",
 +        "### 11.1 Top menu (16 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
 +        "- `SALVAR` — save (section 13).\n" +
-+        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The +1 tick counter locks during hitstop and the cinematic lock and then continues at locked+1 (frozen ticks do not count). The ANO/move selector is a button that opens a grid (the same in both modes): first Frame of each item; tapping a card expands it and plays the animation without opening; the big `➜ ABRIR` button opens it for editing. In ANO mode the grid has `＋ CRIAR ANO` (new ANO = last+1, one frame IMG -1 with 6 ticks; an empty ANO opened gets the same frame) and `EXCLUIR` (empties the ANO, it keeps existing; warns if it has a hitbox/projectile or belongs to a BIN attack), `COPIAR`, `MOVER` (pick another ANO; the Frames go there and the original becomes empty) and `COLAR` (same warning); holding a card starts selection mode to delete several; attack ANOs have an `ⓘ` button showing which command triggers the move and its automatic sequences. Buttons (game `CreateGamepad` + `Controller`; pad key = 6th `AddPad` argument): A (HUD ANO 209/210) = normal attacks (fixed ANOs 29–39, not in HDAT 4); Y (330/331) = command 1 = moves 0/3/6; X (333/334) = command 2 = moves 1/4/7; B (336/337) = command 3 = moves 2/5/8 (ground / jumping-falling / flying); Especial 1 (339/341, costs 100 Synchro = 1 ki bar) = command 8 = moves 9 (ground/flying) and 10 (jump); Especial 2 (no button of its own: tap of the corner button while `AngryOn`, costs 200 Synchro) = command 9 = moves 11 (ground/flying) and 12 (air); Rage (same corner button when Angry >= 100 and not `AngryOn`) = command 4 = moves 14/15. Y, X, B and 339 exist only in the game's button layout (`iControlType == 1`); otherwise the specials come from direction gestures. For moves 9-12 `GOLPE SET` also offers `Compensar o zoom da trava`: frame 0 becomes a 1-tick frame with the attacker's sprite zoom at 50% (100/200) and the next frame goes back to the original scale (frame 0 is split if longer than 1 tick; total time unchanged; the opponent, scenery and effects stay at 200%). Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
++        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The +1 tick counter locks during hitstop and the cinematic lock and then continues at locked+1 (frozen ticks do not count). The ANO/move selector is a button that opens a grid. A `GOLPES | ANOS` switch at the top changes mode on the spot. The grid shows the first Frame of each item; tapping a card expands it and plays the animation without opening (landing simulation for aerial moves; loop for ANOs with wActFlag 1, others play once, hold the last Frame 1 s and restart; the hit/projectile box is drawn); the big `➜ ABRIR` button opens it for editing. In ANO mode: `FILTRAR` cycles Padrão / Importância / Golpes / Ataque / Tempo / Frames / Efeitos (reorders without hiding: matches go first with a green frame); at the bottom `＋ CRIAR` (new ANO = last+1, one frame IMG -1 with 6 ticks), `EXCLUIR` (empties the ANO, it keeps existing; warns if it has a hitbox/projectile or belongs to a BIN attack), `COPIAR`, `MOVER` (pick another ANO; the Frames go there and the original becomes empty) and `COLAR` (same warning); holding a card starts selection mode to delete several. The `ⓘ` button: on an ANO only its role (`ANIM_INICIAL do Golpe N`, `SEQ do golpe N`, `Projétil do golpe N`, `Animação de pouso padrão`, fixed game ANOs such as `Parado` or `Carga de ki`; ANOs 29–39 are the normal A attacks and 30/32 have the OPT 512 combo window); on a move, the button that triggers it with its icon from effect.pac plus its automatic sequences. Game buttons (`CreateGamepad` + `Controller`; pad key = 6th `AddPad` argument): A (effect.pac ANO 209) = normal attacks, fixed ANOs 29–39, not in HDAT 4 (ground: A neutral 30, forward 31, back 37, down 36, from a run 29; jumping: 34/35/39/38; combo window OPT 512 in ANOs 30/32: 30→32→33, or 31/36/37 with a direction); Y (330) = moves 0/3/6; X (333) = 1/4/7; B (336) = 2/5/8 (ground / jumping-falling / flying); Z (339, 100 Synchro = 1 ki bar) = moves 9 (ground/flying) and 10 (jump); IRA (ANO 45, no button of its own: tap of the corner button while `AngryOn`, 200 Synchro) = moves 11 (ground/flying) and 12 (air); the same tap without `AngryOn` and Angry >= 100 = Rage = moves 14/15. Y, X, B and Z exist only in the game's button layout (`iControlType == 1`); otherwise the specials come from direction gestures. For moves 9-12 `GOLPE SET` also offers `Compensar o zoom da trava`: frame 0 becomes a 1-tick frame with the attacker's sprite zoom at 50% (100/200) and the next frame goes back to the original scale (frame 0 is split if longer than 1 tick; total time unchanged; the opponent, scenery and effects stay at 200%). Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
 +        "- `SPRITES` — the character's sprite list: add, replace, remove (removing RENUMBERS the following sprites: SPR_0 out → 1 becomes 0, and the CNV, GIF groups and every DAC frame follow), reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame. Its `OTIMIZAR` button (next to `+ ADICIONAR`) has two functions: `Remover Sprites repetidas` (groups equal/similar sprites, also mirrored, rotated 90° or at another scale; a minimum-similarity bar; you tick which to remove, at least one per group stays; the DAC frames are rewritten to use the kept sprite with Flip/zoom/rotation/position adjusted so the drawing is identical, then the sprites are renumbered) and `Otimizar PNGs` (sheets converted to 8-bit palette PNG, up to 256 colors per sheet, originals copied first to `Backups/PreOptim/charNN/`). Tapping a sprite offers `Mostrar usos` (right below `Substituir imagem`): where it appears, one line per ANO (`Ano 3, Frame 1`, `Ano 5, Frames 2, 4 e 7`).\n" +
 +        "- `SONS` — sound manager only (does not pick a sound for a frame): the character's WAVs (ids 80+) and the game's common OGGs; `+` adds a sound, tap an item to play, trim, adjust volume/pitch/speed, replace or silence it.\n" +
 +        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
@@ -709,6 +709,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Why does my attack not hit?** Check: a hitbox (flag 2) exists in the frames where the attack should connect; its `$OPT` `d1` is a valid reaction code (≤ 249) — and a character-slot code (30–49) points to a **non-empty** slot; the defender's hurtbox (flag 1) overlaps (use `HITBOX` and `POS`); `GOLPE SET` options are not hiding the hit (e.g. \"ground only\" only affects projectiles).\n" +
 +        "\n" +
++        "",
 +        "**Why does the projectile not appear?** Flag 0 hit exists in a frame that plays; `PROJETIL_ANIM_NORMAL/ABAIXO/ACIMA` for the current height difference is non-zero and the ANO exists and is non-empty; already 8 projectiles alive; the move missed/was sequence-blocked (see warnings); a projectile ANO has links with links (ignored). The app shows a warning with the reason.\n" +
 +        "\n" +
 +        "**Why does a frame never end?** It has no `$TIME`.\n" +
@@ -717,7 +718,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**How do I change how far the opponent flies?** In the reaction (`EDITAR REAÇÃO`): steps' speeds (unit 0.1 px/tick), durations, and whether ground or air columns apply (opponent height). Use the other reaction group for different hitstop/knockback (5.4).\n" +
 +        "\n" +
-+        "",
 +        "**Where do I save?** Section 13: recommended `Salvar em pasta separada` → `Tap Battle/TBRE/Chars/charNN/`.\n" +
 +        "\n" +
 +        "**I added/deleted a character folder or replaced a `.txt` and the app does not show it.** Tap `↻` in the title bar (confirm). It rereads the character folders, effects, scenes and sounds and keeps the same character/move if they still exist. Unsaved edits are lost, so `SALVAR` first.\n" +
@@ -814,6 +814,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "### 15.2 Data loading and file structure (questions 9–15)\n" +
 +        "\n" +
++        "",
 +        "**Loading [CODE].** `Init` (jogo:28611) → `InitGameData` (jogo:29127): `pGameData` = `gamedata.pac`, `pTextData` = text00 (`GameData.Init(gw, bytes, cnvType = 3, filter = 0)`; with `cnvType 3` the `dac` chunk is converted by `binCnv` into `piGameData/piGameDataPos/XSize/YSize`, GameData.java:230-239, 287-316). Per battle md 713 → 714 (jogo:5324-5400) uses `SetLoad` (jogo:30958): `LoadData[3] = PlayerType[0]`, `[4] = PlayerType[1]`, `[5] = 0`; background number from the opponent's HDAT 39 (jogo:5390-5395). `SetLoad` loads a slot only if `CreatedAct[i] != IDList[i] + LoadData[i]` (jogo:30972): **the same id is not re-read**. `ChrGameData[i].Init(gw, name, cnvType = 2, filter)` opens `assets/<name>.pac`: for `cnvType 2` the `bin` chunk becomes `piGameData`/HDATs, the `dac` chunk stays raw (`getData(3)`), the `cnv` chunk stays raw (`getData(0)`, 9 bytes per image, `DrawImage` jogo:620), `png` chunks become textures. `LoadingProcess` (jogo:29180) is the incremental version. A transformation reloads (md 990 → `SetLoad`, jogo:25020-25025).\n" +
 +        "\n" +
 +        "| `ChrGameData` slot | Resource |\n" +
@@ -827,7 +828,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 27, 28 | `charf00##` (face) |\n" +
 +        "| 29 / 30 | card_preview / font00 |\n" +
 +        "\n" +
-+        "",
 +        "(`effect_en` etc. chosen by `iLanguage*17`, `GetResName2` jogo:28447.) **Read once**: the pacs at load. **Read every tick**: the DAC bytes through `_ActReqMain`/`_SetAct`; the HDAT 4 fields while md 882/883/970/971/940/941 run; HDAT 3 body data; the reaction table row on each reaction tick; HDAT 1 (Synchro/Angry gain ratios), HDAT 5 (score/combo scaling), HDAT 37[0] (rage multiplier), HDAT 6 (CPU sequences), HDAT 42 (touch buttons: [0] command, [2] cost in hundreds), HDAT 13 (cutscene rows), HDAT 0 (AI move table).\n" +
 +        "\n" +
 +        "**HDAT 4 — the move table [CODE].** Row = `SpecialType` = the move number; row stride = `2 * piGameDataXSize[4]` bytes (24 fields of 16-bit little-endian = 48 bytes); field `k` is at byte `2k` of the row. The editor's `$GOLPE_n` text keys map to these **byte offsets** (the app reads exactly these in `CharData.read`):\n" +
@@ -906,11 +906,11 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Never-assigned values [CODE].** `AddDeffencePer`, `GuardHardness`, `SynchroAttackPer` are read but never written (always 0); `DamageHitBack` is only ever assigned 0 (the hit push-back is always 0); `ThrowDamage` (jogo:187) is **never set to true** anywhere — every `ThrowDamage == true` branch is dead code in this build.\n" +
 +        "\n" +
++        "",
 +        "**Per-event rules [CODE].** Damage is applied **once per resolved hit event**, and a hit event happens at most **once per animation pattern** (next section). Projectile damage uses the **owner's** `AttackMul` and `PlayerState`; projectile hit flags land on the owner's `PlayerState`. A projectile that overlaps a defender's attack box (defender ANO ≥ 40) is absorbed with no damage if the defender's `OptData[0] % 50 != 0` (jogo:23390-23402); projectile vs projectile attack boxes cancel with SE 9 (jogo:23430-23443).\n" +
 +        "\n" +
 +        "**KO and hitstop [CODE].** If `Life[tgt] <= 0` after damage the OPT1 reaction is **overridden**: `DamageType = 2, DamageIndex = 0, DamageTime = 0, DamageOldType = 2`, md 876 (jogo:3993-4000); in md 876 a KO in type 2 becomes type 29 (jogo:20989-20992); after the reaction the game plays ANO 24 and enters md 888 → 889 and stays down. Hitstop: `iHitStop = PlayerHitStop[atk]` for **both** players (6 for basic attacks, 10 for specials); group 3 uses half for body hits, group 4 none; projectiles give the target full hitstop and the projectile half; it decrements at the start of md 935 and pauses animation and reaction movement; in md 876 hitstop the defender jitters ±1 px. Invulnerable when: defender `wObjFlag & 8` (alternating frames in md 876 hitstop), either player's life ≤ 0, either player in md 923/926/927/928/911 (the whole hit step is skipped), `iTimer == 0` (no life loss). Hits **during a reaction are allowed** (no untechable window): `DamageChange` resets `DamageTime/Index` and re-enters the reaction.\n" +
 +        "\n" +
-+        "",
 +        "**What the app's simulator omits [CODE-compared].** `BattleSim.applyDamage` matches flag 28, min-2, ANO 92, combo scaling, life cap and combo count; it omits the rage multiplier, guard/chip, score and gauge gain.\n" +
 +        "\n" +
 +        "### 15.5 Reactions, COMP and recovery (questions 34–45)\n" +
@@ -975,9 +975,9 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Sub-projectiles [CODE].** A type-0 entry inside a projectile ANO spawns a sub-projectile with ANO from byte 18 (`SUBPROJETIL_ANIM_ID`), on-hit ANO byte 20, floor ANO byte 42 (jogo:24658-24695).\n" +
 +        "\n" +
++        "",
 +        "**Homing and repeats [CODE].** Homing runs only when the bullet is not frozen **and HDAT4 byte 26 (`HOMING`) equals 0** (the field looks inverted: 0 = homing on); speed is byte 28; it uses an atan table and sin table (jogo:24610-24628) — it recomputes the heading every tick **[INFERRED]**. Repeats (md 883, jogo:21997-22028): while `SpecialBulletNumber < HDAT4[30]` (`MAX_REPETICOES`), the frame has `wOptFlag & 512` and the player presses the attack buttons (`JoyTrig & 16640`), ANO 40/41 are swapped and the counter increments; the repeat uses the 512 window, which the grab also uses (a move cannot do both).\n" +
 +        "\n" +
-+        "",
 +        "**Interpretation of the user's GOLPE_9 (Kamehameha) question (Q63/Q90/Q91) [INFERRED from the generic rules].** The role of an ANO is decided **only by which `$GOLPE_n` field points to it**, never by its number. Read `$GOLPE_9`: `ANIM_INICIAL` (the attacker's cast ANO, here 51); `PROJETIL_ANIM_NORMAL/ABAIXO/ACIMA` (the projectile ANO — probably 49 — chosen by height); `PROJETIL_ANIM_AO_ACERTAR` / `ACERTAR_GLOBAL` / `COLISAO_CHAO` (ANOs the projectile switches to on hit/floor — possibly 50); `ANIM_AO_ACERTAR` (the attacker's reaction ANO after the beam connects). Inside the projectile ANO, each frame/pattern with a type-2 box and `$OPT` damage hits **once** per pattern: \"damage 5 and 4, reaction 116, then a frame without hitbox\" means the beam hits in the patterns that carry a hitbox, dealing the formula in 15.4 each time (5 and 4 are `d0` values, 116 = OPT1 group 2 / game reaction 16), with combo scaling reducing later hits, and the pattern without a hitbox cannot hit. The visual (sprites, `$IMG`, `$MID`, `$MOVE` speed) and the collision (type-2 boxes, `$OPT`) are separate data in the same frames.\n" +
 +        "**To change only…** *damage*: `$OPT` `d0` of the hitbox frames. *reaction*: `$OPT` `d1` (OPT1). *projectile speed*: `$XSPEED` (and accel) in the projectile ANO's `$MOVE`. *number of hits*: the number of patterns that carry a type-2 box (add/remove hit blocks), and `MAX_REPETICOES` for repeated throws. *impact animation*: `PROJETIL_ANIM_AO_ACERTAR` / `ACERTAR_GLOBAL` (what the projectile becomes) or the attacker's `ANIM_AO_ACERTAR`.\n" +
 +        "\n" +
@@ -1054,6 +1054,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**md → responsibility → main methods → main variables [CODE].**\n" +
 +        "\n" +
++        "",
 +        "| md | Responsibility | Main methods | Main variables |\n" +
 +        "|---|---|---|---|\n" +
 +        "| 32/37/38 | pads | `GetGamePadKey`, `BTDataSet/BTSend/BTRev` | `Joy/JoyTrig`, `TouchesCommand`, `_commandButton` |\n" +
@@ -1089,7 +1090,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 797/798, 801–843 | HUD (life lag bar, Synchro, timer, combo counter md 837) | | `OldLife`, `GaugeLen`, `ComboCount` (read) |\n" +
 +        "| 998–1122 | not reviewed **[UNKNOWN]** | | |\n" +
 +        "\n" +
-+        "",
 +        "**Variables a simulator must reproduce for one attack [CODE].** Attacker: `PlayerXPos/YPos`, `PlayerAir`, `objExec` fields (`ano`, `pat`, `time`, `x`, `y`, speeds/accels, `hit[]`, `iHitNum`, `wActFlag`, `wObjFlag`, `wOptFlag`, `OptData[4]`), `TCB.iHitCount/iHitFlag/iHitStop/wFlag`, `SpecialType/SpecialKind`, `BulletAction[p][0..1]`, `BulletNum`, `PlayerHitStop`, `CancelTime`, `PlayerState`. Defender: position, `Life`, `DeffenceMul`, `ComboCount[atk]`, `DamageType/Index/Time/OldType/OldIndex`, `DamageX/YSpeed/XAccel/YAccel`, `DamageWall`, `bForceWall`, `iHitStop`, `wObjFlag & 8`. Global: `AttackMul`, `AngryOn`, the tables (reaction rows, HDAT 5 combo scaling, HDAT 3 body data), screen constants. The \"`pigamedatapos[4]`\" of the question is `GameData.piGameDataPos[4]` (start of HDAT 4 in `piGameData`).\n" +
 +        "\n" +
 +        "**Undocumented conditions that stop an attack although the data look right [CODE]** — see the \"Undocumented blockers\" paragraph in 15.1 (input gates, Synchro/rage costs, `PlayerAttack != 0`, `CancelTime`, hit-stop/freeze, hit registration prerequisites, data errors).\n" +
@@ -1224,8 +1224,18 @@ diff -ruN a/AiHelpShare.java b/AiHelpShare.java
 +}
 diff -ruN a/AnimPreview.java b/AnimPreview.java
 --- a/AnimPreview.java	2026-10-20 10:46:55.000000000 +0000
-+++ b/AnimPreview.java	2026-10-30 01:22:05.000000000 +0000
-@@ -43,6 +43,39 @@
++++ b/AnimPreview.java	2026-10-30 21:57:03.507139135 +0000
+@@ -29,6 +29,9 @@
+     private long frozenAt;
+     private static final long HOLD_MS = 1000;
+     private boolean showHits, showOpp;
++    /** >= 0: ANO de pouso. Quando o personagem estava no ar e chega ao chao, a previa troca para ela (13 = pouso padrao do jogo). */
++    private int landAno = -1;
++    private boolean wasAir, landed;
+     private Dac oppDac;
+     private SpriteCache oppSprites;
+     private AttackSim oppSim;
+@@ -43,12 +46,48 @@
  
      void setZoom(float z) { zoom = z; }
  
@@ -1265,7 +1275,16 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
      /** Toca ate o frame {@code pat} (indice, 0 = primeiro) e para nele; pat < 0: toca tudo e para no fim. */
      void setPlayUntil(int pat) { stopPat = pat < 0 ? -2 : pat; restart(); }
  
-@@ -121,6 +154,7 @@
+     /** Depois de travar, espera 1 s e recomeca sozinha (miniaturas do fluxo). */
+     void setAutoReplay(boolean on) { autoReplay = on; }
+ 
++    /** Simula o pouso: ao tocar o chao depois de estar no ar, toca a ANO {@code ano} (pouso do golpe ou o padrao). -1 desliga. */
++    void setLanding(int ano) { landAno = ano; wasAir = false; }
++
+     /** So o primeiro frame, parado (listas grandes de ANOs: barato, sem simular a animacao inteira). */
+     void setFirstFrameOnly(boolean on) { staticMode = on; restart(); }
+ 
+@@ -121,6 +160,7 @@
      }
  
      void set(Dac d, SpriteCache s, int anoIndex) {
@@ -1273,7 +1292,16 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
          dac = d;
          sprites = s;
          ano = anoIndex;
-@@ -136,6 +170,15 @@
+@@ -129,6 +169,8 @@
+ 
+     private void restart() {
+         sim = null;
++        landed = false;
++        wasAir = false;
+         age = 0;
+         idle = 0;
+         frozen = false;
+@@ -136,6 +178,15 @@
          Ano a = dac == null ? null : dac.getAno(ano);
          if (a != null && a.present) sim = new AttackSim(dac, ano, facingLeft, 0, 0);
          oppSim = makeOpp();
@@ -1289,7 +1317,7 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
          if (staticMode) {
              hasBox = false;
              if (sim != null && sprites != null) {
-@@ -176,9 +219,22 @@
+@@ -176,9 +227,22 @@
  
      @Override protected void onDraw(Canvas c) {
          c.drawColor(0xFF0D0F13);
@@ -1313,7 +1341,23 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
              return;
          }
          long now = SystemClock.uptimeMillis();
-@@ -224,6 +280,8 @@
+@@ -190,6 +254,15 @@
+             acc -= 1;
+             steps++;
+             sim.step();
++            AttackSim.Obj rr = sim.root();
++            if (landAno >= 0 && rr != null) {
++                if (rr.y < 0) wasAir = true;
++                else if (wasAir && rr.y >= 0 && rr.speedY >= 0) {                 // pousou: troca a ANO raiz pela de pouso, na mesma posicao
++                    wasAir = false;
++                    Ano la = dac.getAno(landAno);
++                    if (la != null && la.present) { sim = new AttackSim(dac, landAno, facingLeft, rr.x, 0); landed = true; }
++                }
++            }
+             ground(sim);
+             if (oppSim != null) oppSim.step();
+             age++;
+@@ -224,6 +297,8 @@
          renderer.drawSim(c, sim, sprites);
          if (showHits) {
              opts.showHits = true;
@@ -1353,6 +1397,102 @@ diff -ruN a/Ano.java b/Ano.java
          public boolean spawnPos() { return (flags & 0x1000) != 0; }
          public boolean syncXY() { return (flags & 0x4000) != 0; }
          public boolean syncMpt() { return (flags & 0x8000) != 0; }
+diff -ruN a/AnoFilter.java b/AnoFilter.java
+--- a/AnoFilter.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AnoFilter.java	2026-10-30 21:55:19.122828452 +0000
+@@ -0,0 +1,92 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Filtros da grade de ANOs: reordenam sem esconder nada. As ANOs que casam com o filtro vem primeiro (com moldura) e o resto vai embaixo, sem moldura.
++ * Dentro de cada grupo a ordem e a do filtro (Tempo / Frames: maiores primeiro) ou a numerica. Java puro.
++ */
++final class AnoFilter {
++    private AnoFilter() { }
++
++    static final int DEFAULT = 0, IMPORTANCE = 1, MOVES = 2, ATTACK = 3, TIME = 4, FRAMES = 5, EFFECTS = 6;
++    static final String[] NAMES = {"Padrão", "Importância", "Golpes", "Ataque", "Tempo", "Frames", "Efeitos"};
++
++    static final class Result {
++        /** ANOs na ordem em que a grade mostra. */
++        final List<Integer> order = new ArrayList<Integer>();
++        /** Quantas das primeiras casam com o filtro (as outras vem depois, sem moldura). */
++        int matches;
++        final boolean[] matched;
++        Result(int n) { matched = new boolean[n]; }
++    }
++
++    private static boolean present(Dac dac, int i) {
++        Ano a = dac.getAno(i);
++        return a != null && a.present && a.mpts.length > 0;
++    }
++
++    static boolean hasAttackBox(Ano a) {
++        for (Ano.Mpt m : a.mpts) {
++            if ((m.flags & 0x10) == 0) continue;
++            for (Ano.Hit h : m.hits) if (h.flag == 2 || h.flag == 0) return true;
++        }
++        return false;
++    }
++
++    /** A ANO e animacao de uma flag de efeito (hits 10 a 125 de alguma ANO apontam para ela)? */
++    static boolean[] effectAnos(Dac dac) {
++        boolean[] r = new boolean[Math.max(dac.size(), 4096)];
++        for (int i = 0; i < dac.size(); i++) {
++            Ano a = dac.getAno(i);
++            if (a == null || !a.present) continue;
++            for (Ano.Mpt m : a.mpts) {
++                if ((m.flags & 0x10) == 0) continue;
++                for (Ano.Hit h : m.hits) {
++                    int fl = h.flag;
++                    if (ObjModel.kindOf(fl) != ObjModel.EFFECT || ObjModel.fxPack(fl) != 2) continue;      // so os efeitos do proprio personagem (pack char)
++                    int ano = ObjModel.fxAno(fl);
++                    if (ano >= 0 && ano < r.length) r[ano] = true;
++                }
++            }
++        }
++        return r;
++    }
++
++    private static int ticks(Ano a) { return FrameOps.total(a.mpts); }
++
++    static Result apply(int mode, Dac dac, CharData cd) {
++        int n = dac.size();
++        Result res = new Result(n);
++        boolean[] fx = mode == EFFECTS ? effectAnos(dac) : null;
++        for (int i = 0; i < n; i++) {
++            Ano a = dac.getAno(i);
++            boolean ok = present(dac, i);
++            switch (mode) {
++                case IMPORTANCE: res.matched[i] = ok && (AttackInfo.anoInfo(cd, i) != null); break;
++                case MOVES: res.matched[i] = ok && cd != null && cd.ownerOf(i) != null && !cd.ownerOf(i).generic; break;
++                case ATTACK: res.matched[i] = ok && hasAttackBox(a); break;
++                case EFFECTS: res.matched[i] = ok && (fx[i] || (i >= 201 && i <= 255)); break;
++                case TIME: case FRAMES: res.matched[i] = ok; break;
++                default: res.matched[i] = false;
++            }
++        }
++        final int[] key = new int[n];
++        for (int i = 0; i < n; i++) {
++            Ano a = dac.getAno(i);
++            key[i] = !present(dac, i) ? 0 : mode == TIME ? ticks(a) : mode == FRAMES ? a.mpts.length : 0;
++        }
++        List<Integer> top = new ArrayList<Integer>(), rest = new ArrayList<Integer>();
++        for (int i = 0; i < n; i++) (mode != DEFAULT && res.matched[i] ? top : rest).add(Integer.valueOf(i));
++        if (mode == TIME || mode == FRAMES) {
++            java.util.Collections.sort(top, new java.util.Comparator<Integer>() {
++                @Override public int compare(Integer x, Integer y) { return key[x] != key[y] ? (key[x] > key[y] ? -1 : 1) : x - y; }
++            });
++        }
++        res.order.addAll(top);
++        res.order.addAll(rest);
++        res.matches = mode == DEFAULT ? 0 : top.size();
++        return res;
++    }
++}
 diff -ruN a/AnoOps.java b/AnoOps.java
 --- a/AnoOps.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/AnoOps.java	2026-10-30 20:42:08.461669794 +0000
@@ -1554,8 +1694,8 @@ diff -ruN a/AttackData.java b/AttackData.java
  }
 diff -ruN a/AttackGrid.java b/AttackGrid.java
 --- a/AttackGrid.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AttackGrid.java	2026-10-30 20:44:16.848325484 +0000
-@@ -0,0 +1,415 @@
++++ b/AttackGrid.java	2026-10-30 21:56:57.216827028 +0000
+@@ -0,0 +1,542 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -1571,7 +1711,6 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +import android.widget.FrameLayout;
 +import android.widget.GridView;
 +import android.widget.LinearLayout;
-+import android.widget.PopupWindow;
 +import android.widget.TextView;
 +import java.util.ArrayList;
 +import java.util.Collections;
@@ -1580,9 +1719,9 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +import java.util.Set;
 +
 +/**
-+ * Escolha de ANO ou golpe: so grade (sem Spinner). Cada cartao mostra o primeiro Frame; tocar numa seleciona e toca a animacao inteira no painel
-+ * (sem abrir); o botao grande abre para editar. Em ANOS: EXCLUIR (esvazia), COPIAR, MOVER e COLAR, o botao (i) dos ataques e o modo selecao
-+ * (segurar um cartao) para excluir varias de uma vez. Em golpes: so o botao de abrir.
++ * Escolha de ANO ou golpe: so grade (sem Spinner). Switch GOLPES | ANOS no topo. Cada cartao mostra o primeiro Frame; tocar numa seleciona e toca a animacao
++ * inteira no painel (com pouso, loop ou trava de 1 s e a box de hit/projetil), sem abrir; o botao grande abre para editar. Em ANOS: CRIAR ANO, EXCLUIR (esvazia),
++ * COPIAR, MOVER e COLAR, o filtro (reordena sem esconder), o botao (i) e o modo selecao (segurar um cartao) para excluir varias.
 + */
 +final class AttackGrid {
 +    interface Host {
@@ -1595,12 +1734,18 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +        void changed();
 +        /** CRIAR ANO (modo ANOS); devolve o indice criado ou -1. */
 +        int create();
++        /** Troca GOLPES / ANOS (o mesmo que o chip ANOS da tela principal). */
++        void setAnoMode(boolean ano);
++        /** effect.pac (icones dos botoes), ou null. */
++        CharAssets effectAssets();
 +    }
 +
-+    private static final int RED = 0xFFFF6B6B, YELLOW = 0xFFFFD84C, DIMC = 0xFF6F7585;
++    private static final int RED = 0xFFFF6B6B, YELLOW = 0xFFFFD84C, DIMC = 0xFF6F7585, GREEN = 0xFF3DDC84;
 +
 +    /** ANO copiada (fica na memoria entre aberturas da grade). */
 +    private static AnoOps.Clip clip;
++    /** Filtro escolhido (fica entre aberturas da grade). */
++    private static int filterMode = AnoFilter.DEFAULT;
 +
 +    private final Activity a;
 +    private final Host host;
@@ -1610,10 +1755,13 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +    private boolean selecting;
 +    private final Set<Integer> picked = new HashSet<Integer>();
 +    private BaseAdapter adapter;
-+    private LinearLayout previewBox, actions;
-+    private TextView openBtn;
++    private LinearLayout previewBox, actions, filterRow;
++    private TextView openBtn, filterBtn, swGolpes, swAnos, title;
 +    private GridView gv;
-+    private PopupWindow pop;
++    private FrameLayout frame;
++    private View scrim, bubble;
++    private List<Integer> order = new ArrayList<Integer>();
++    private AnoFilter.Result fres;
 +
 +    static void show(Activity a, Host host) { new AttackGrid(a, host).open(); }
 +
@@ -1637,7 +1785,7 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +    private TextView button(String s, int color, int bg, View.OnClickListener l) {
 +        TextView t = tv(s, 13, color, true);
 +        t.setGravity(Gravity.CENTER);
-+        t.setPadding(dp(8), dp(11), dp(8), dp(11));
++        t.setPadding(dp(6), dp(11), dp(6), dp(11));
 +        GradientDrawable g = new GradientDrawable();
 +        g.setColor(bg);
 +        g.setCornerRadius(dp(8));
@@ -1646,61 +1794,94 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +        return t;
 +    }
 +
++    private void paint(TextView t, int bg, int fg) {
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(bg);
++        g.setCornerRadius(dp(8));
++        t.setBackground(g);
++        t.setTextColor(fg);
++    }
++
++    private boolean anos() { return host.anoMode(); }
++
 +    private int count() {
 +        CharAssets ca = host.attacker();
-+        return host.anoMode() ? ca.dac.size() : ca.data.moves.length;
++        return anos() ? ca.dac.size() : ca.data.moves.length;
 +    }
 +
 +    /** ANO que o item mostra: ela mesma (modo ANOS) ou o ANO inicial do golpe. */
-+    private int anoOf(int i) { return host.anoMode() ? i : host.attacker().data.moves[i].animInicial; }
++    private int anoOf(int i) { return anos() ? i : host.attacker().data.moves[i].animInicial; }
 +
 +    private boolean present(int ano) {
 +        Ano an = host.attacker().dac.getAno(ano);
 +        return an != null && an.present && an.mpts.length > 0;
 +    }
 +
++    /** Refaz a ordem dos cartoes (filtro no modo ANOS; numerica em golpes). */
++    private void reorder() {
++        order = new ArrayList<Integer>();
++        fres = null;
++        CharAssets ca = host.attacker();
++        if (anos()) {
++            fres = AnoFilter.apply(filterMode, ca.dac, ca.data);
++            order.addAll(fres.order);
++        } else {
++            for (int i = 0; i < count(); i++) order.add(Integer.valueOf(i));
++        }
++    }
++
 +    private void open() {
-+        final boolean anos = host.anoMode();
 +        dlg = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
++        frame = new FrameLayout(a);
 +        LinearLayout root = new LinearLayout(a);
 +        root.setOrientation(LinearLayout.VERTICAL);
 +        root.setBackgroundColor(LayoutManager.BG);
 +        root.setPadding(dp(10), dp(12), dp(10), dp(10));
-+        dlg.setContentView(root);
-+        dlg.setOnDismissListener(new DialogInterface.OnDismissListener() {
-+            @Override public void onDismiss(DialogInterface x) { if (pop != null) pop.dismiss(); }
-+        });
++        frame.addView(root, new FrameLayout.LayoutParams(-1, -1));
++        dlg.setContentView(frame);
 +
++        // topo: switch GOLPES | ANOS e fechar
 +        LinearLayout h = new LinearLayout(a);
 +        h.setOrientation(LinearLayout.HORIZONTAL);
 +        h.setGravity(Gravity.CENTER_VERTICAL);
-+        final TextView title = tv(anos ? "Escolher ANO" : "Escolher golpe", 17, LayoutManager.TEXT, true);
-+        h.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-+        if (anos) {
-+            TextView mk = button("＋ CRIAR ANO", 0xFF3DDC84, LayoutManager.PANEL_HI, new View.OnClickListener() { public void onClick(View v) {
-+                int n = host.create();
-+                if (n >= 0) { sel = n; adapter.notifyDataSetChanged(); gv.setSelection(Math.max(0, n - 4)); refreshPanel(); }
-+            } });
-+            h.addView(mk);
-+        }
++        swGolpes = button("GOLPES", LayoutManager.TEXT, LayoutManager.PANEL_HI, new View.OnClickListener() { public void onClick(View v) { switchMode(false); } });
++        swAnos = button("ANOS", LayoutManager.TEXT, LayoutManager.PANEL_HI, new View.OnClickListener() { public void onClick(View v) { switchMode(true); } });
++        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(0, -2, 1f);
++        sl.setMargins(0, 0, dp(4), 0);
++        h.addView(swGolpes, sl);
++        h.addView(swAnos, new LinearLayout.LayoutParams(0, -2, 1f));
 +        TextView x = tv("✕", 20, LayoutManager.TEXT, true);
 +        x.setGravity(Gravity.CENTER);
 +        x.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } });
 +        h.addView(x, new LinearLayout.LayoutParams(dp(44), dp(40)));
 +        root.addView(h);
-+        TextView hint = tv(anos ? "Toque numa ANO para ver a animação aqui; segure para marcar várias e excluir." : "Toque num golpe para ver a animação aqui.", 11, LayoutManager.DIM, false);
-+        hint.setPadding(dp(2), dp(2), dp(2), dp(6));
-+        root.addView(hint);
++
++        filterRow = new LinearLayout(a);
++        filterRow.setOrientation(LinearLayout.HORIZONTAL);
++        filterRow.setGravity(Gravity.CENTER_VERTICAL);
++        filterBtn = button("", LayoutManager.TEXT, LayoutManager.PANEL_HI, new View.OnClickListener() { public void onClick(View v) {
++            filterMode = (filterMode + 1) % AnoFilter.NAMES.length;
++            reorder();
++            adapter.notifyDataSetChanged();
++            gv.setSelection(Math.max(0, order.indexOf(Integer.valueOf(sel)) - 4));
++            refreshPanel();
++        } });
++        LinearLayout.LayoutParams fl = new LinearLayout.LayoutParams(-2, -2);
++        fl.setMargins(0, dp(6), dp(8), dp(2));
++        filterRow.addView(filterBtn, fl);
++        title = tv("", 11, LayoutManager.DIM, false);
++        filterRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
++        root.addView(filterRow);
 +
 +        gv = new GridView(a);
 +        gv.setNumColumns(4);
 +        gv.setVerticalSpacing(dp(6));
 +        gv.setHorizontalSpacing(dp(6));
 +        adapter = new BaseAdapter() {
-+            @Override public int getCount() { return count(); }
-+            @Override public Object getItem(int i) { return Integer.valueOf(i); }
-+            @Override public long getItemId(int i) { return i; }
-+            @Override public View getView(final int i, View cv, ViewGroup parent) { return card(i); }
++            @Override public int getCount() { return order.size(); }
++            @Override public Object getItem(int p) { return order.get(p); }
++            @Override public long getItemId(int p) { return order.get(p).intValue(); }
++            @Override public View getView(int p, View cv, ViewGroup parent) { return card(order.get(p).intValue()); }
 +        };
 +        gv.setAdapter(adapter);
 +        root.addView(gv, new LinearLayout.LayoutParams(-1, 0, 1f));
@@ -1723,7 +1904,32 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +        actions.setOrientation(LinearLayout.HORIZONTAL);
 +        root.addView(actions, new LinearLayout.LayoutParams(-1, -2));
 +        dlg.show();
-+        gv.setSelection(Math.max(0, sel - 4));
++        rebuild();
++    }
++
++    /** Troca GOLPES / ANOS e refaz a grade. */
++    private void switchMode(boolean ano) {
++        if (anos() == ano) return;
++        dismissInfo();
++        selecting = false;
++        picked.clear();
++        host.setAnoMode(ano);
++        sel = Math.max(0, host.selected());
++        rebuild();
++    }
++
++    private void rebuild() {
++        dismissInfo();
++        boolean an = anos();
++        paint(swGolpes, an ? LayoutManager.PANEL_HI : LayoutManager.ACCENT, LayoutManager.TEXT);
++        paint(swAnos, an ? LayoutManager.ACCENT : LayoutManager.PANEL_HI, LayoutManager.TEXT);
++        sel = Math.min(Math.max(0, sel), Math.max(0, count() - 1));
++        reorder();
++        filterBtn.setText("FILTRAR: " + AnoFilter.NAMES[filterMode]);
++        filterBtn.setVisibility(an ? View.VISIBLE : View.GONE);
++        title.setText(an ? "Toque numa ANO para ver a animação; segure para marcar várias e excluir." : "Toque num golpe para ver a animação.");
++        adapter.notifyDataSetChanged();
++        gv.setSelection(Math.max(0, order.indexOf(Integer.valueOf(sel)) - 4));
 +        refreshPanel();
 +    }
 +
@@ -1731,16 +1937,19 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +
 +    private View card(final int i) {
 +        final CharAssets ca = host.attacker();
-+        final boolean anos = host.anoMode();
++        final boolean anos = anos();
 +        final int ano = anoOf(i);
 +        boolean ok = present(ano);
 +        LinearLayout cell = new LinearLayout(a);
 +        cell.setOrientation(LinearLayout.VERTICAL);
 +        cell.setGravity(Gravity.CENTER_HORIZONTAL);
 +        GradientDrawable g = new GradientDrawable();
-+        g.setColor(selecting && picked.contains(Integer.valueOf(i)) ? 0xFF3A2430 : LayoutManager.PANEL);
++        boolean pickedNow = selecting && picked.contains(Integer.valueOf(i));
++        g.setColor(pickedNow ? 0xFF3A2430 : LayoutManager.PANEL);
 +        g.setCornerRadius(dp(8));
-+        if (selecting ? picked.contains(Integer.valueOf(i)) : i == sel) g.setStroke(dp(2), selecting ? RED : LayoutManager.ACCENT);
++        boolean framed = anos && fres != null && filterMode != AnoFilter.DEFAULT && i < fres.matched.length && fres.matched[i];
++        if (selecting ? pickedNow : i == sel) g.setStroke(dp(2), selecting ? RED : LayoutManager.ACCENT);
++        else if (framed) g.setStroke(dp(2), GREEN);
 +        cell.setBackground(g);
 +        cell.setPadding(dp(3), dp(3), dp(3), dp(3));
 +        int side = (a.getResources().getDisplayMetrics().widthPixels - dp(20) - dp(18)) / 4 - dp(6);
@@ -1757,11 +1966,12 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +            e.setBackgroundColor(0xFF0D0F13);
 +            fl.addView(e, new FrameLayout.LayoutParams(side, side));
 +        }
-+        if (anos && AttackInfo.describe(ca.data, ano) != null) {
++        final boolean hasInfo = anos ? AttackInfo.anoInfo(ca.data, ano) != null : AttackInfo.moveInfo(ca.data, i) != null;
++        if (hasInfo) {
 +            final TextView info = tv("ⓘ", 16, LayoutManager.ACCENT, true);
 +            info.setGravity(Gravity.CENTER);
 +            info.setBackgroundColor(0x99000000);
-+            info.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showInfo(v, ano); } });
++            info.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showInfo(v, i); } });
 +            fl.addView(info, new FrameLayout.LayoutParams(dp(26), dp(26), Gravity.TOP | Gravity.END));
 +        }
 +        cell.addView(fl);
@@ -1776,12 +1986,14 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +            cell.addView(s);
 +        }
 +        cell.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
++            if (scrim != null) { dismissInfo(); return; }
 +            if (selecting) { toggle(i); return; }
 +            sel = i;
 +            adapter.notifyDataSetChanged();
 +            refreshPanel();
 +        } });
 +        if (anos) cell.setOnLongClickListener(new View.OnLongClickListener() { public boolean onLongClick(View v) {
++            if (scrim != null) return true;
 +            if (!selecting) { selecting = true; picked.clear(); }
 +            toggle(i);
 +            return true;
@@ -1800,7 +2012,7 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +    // ---------------------------------------------------------------- painel de baixo
 +
 +    private void refreshPanel() {
-+        final boolean anos = host.anoMode();
++        final boolean anos = anos();
 +        previewBox.removeAllViews();
 +        actions.removeAllViews();
 +        if (selecting) {
@@ -1822,11 +2034,19 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +        openBtn.setVisibility(View.VISIBLE);
 +        int ano = anoOf(sel);
 +        openBtn.setText("➜  " + (anos ? "ABRIR ANO " + sel : String.format(java.util.Locale.US, "ABRIR GOLPE_%02d", sel)));
-+        // animacao completa do selecionado, tocando aqui mesmo (sem abrir)
 +        CharAssets ca = host.attacker();
 +        if (present(ano)) {
 +            AnimPreview pv = new AnimPreview(a);
++            Ano an = ca.dac.getAno(ano);
 +            pv.set(ca.dac, ca.sprites, ano, false);
++            // loop nas ANOs com wActFlag 1; as outras tocam uma vez, travam no ultimo Frame por 1 s e recomecam
++            if (!ObjModel.loops(an.mpts)) { pv.setPlayUntil(-1); pv.setAutoReplay(true); }
++            if (AnoFilter.hasAttackBox(an)) pv.setShowHits(true);
++            CharData.Move own = ca.data.ownerOf(ano);
++            if (anos ? own != null && !own.generic && own.animInicial == ano : !ca.data.moves[sel].generic) {
++                CharData.Move mv = anos ? own : ca.data.moves[sel];
++                if (hasYMove(an)) pv.setLanding(ca.dac.getAno(mv.pousoErrar) != null && ca.dac.getAno(mv.pousoErrar).present && mv.pousoErrar != 0 ? mv.pousoErrar : FixedAnos.STANDARD_LANDING);
++            }
 +            int side = Math.min(dp(190), Math.round(a.getResources().getDisplayMetrics().heightPixels * 0.26f));
 +            previewBox.addView(pv, new LinearLayout.LayoutParams(side, side));
 +        } else {
@@ -1835,6 +2055,10 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +            previewBox.addView(e, new LinearLayout.LayoutParams(-1, dp(60)));
 +        }
 +        if (!anos) return;
++        actions.addView(button("＋ CRIAR", GREEN, LayoutManager.PANEL_HI, new View.OnClickListener() { public void onClick(View v) {
++            int n = host.create();
++            if (n >= 0) { sel = n; reorder(); adapter.notifyDataSetChanged(); gv.setSelection(Math.max(0, order.indexOf(Integer.valueOf(n)) - 4)); refreshPanel(); }
++        } }), cell());
 +        actions.addView(button("EXCLUIR", RED, LayoutManager.PANEL_HI, new View.OnClickListener() { public void onClick(View v) {
 +            List<Integer> l = new ArrayList<Integer>();
 +            l.add(Integer.valueOf(sel));
@@ -1854,6 +2078,15 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +        actions.addView(paste, cell());
 +    }
 +
++    /** A ANO muda velocidade ou aceleracao vertical (pode sair do chao e pousar)? */
++    private static boolean hasYMove(Ano an) {
++        for (Ano.Mpt m : an.mpts) {
++            if ((m.moveMask & 2) != 0 && m.speedY != 0) return true;
++            if ((m.moveMask & 8) != 0 && m.accelY != 0) return true;
++        }
++        return false;
++    }
++
 +    private LinearLayout.LayoutParams cell() {
 +        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
 +        lp.setMargins(dp(2), 0, dp(2), 0);
@@ -1861,6 +2094,7 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +    }
 +
 +    private void refreshAll() {
++        reorder();
 +        adapter.notifyDataSetChanged();
 +        refreshPanel();
 +    }
@@ -1938,143 +2172,213 @@ diff -ruN a/AttackGrid.java b/AttackGrid.java
 +                        sel = to;
 +                        host.changed();
 +                        refreshAll();
-+                        gv.setSelection(Math.max(0, to - 4));
++                        gv.setSelection(Math.max(0, order.indexOf(Integer.valueOf(to)) - 4));
 +                    }
 +                } }).show();
 +    }
 +
 +    // ---------------------------------------------------------------- (i)
 +
-+    private void showInfo(View anchor, int ano) {
-+        String text = AttackInfo.describe(host.attacker().data, ano);
++    private void dismissInfo() {
++        if (frame == null) return;
++        if (scrim != null) { frame.removeView(scrim); scrim = null; }
++        if (bubble != null) { frame.removeView(bubble); bubble = null; }
++    }
++
++    /**
++     * Texto flutuante ao lado do botao. Uma camada transparente cobre a grade: o toque que fecha o texto e consumido ali e nao chega ao cartao de baixo.
++     * No modo GOLPES o texto vem com o icone do botao (renderizado do effect.pac).
++     */
++    private void showInfo(View anchor, int item) {
++        dismissInfo();
++        CharAssets ca = host.attacker();
++        final boolean anos = anos();
++        String text = anos ? AttackInfo.anoInfo(ca.data, anoOf(item)) : AttackInfo.moveInfo(ca.data, item);
 +        if (text == null) return;
-+        if (pop != null) pop.dismiss();
-+        TextView t = tv(text, 12, LayoutManager.TEXT, false);
-+        t.setPadding(dp(12), dp(10), dp(12), dp(10));
++        LinearLayout box = new LinearLayout(a);
++        box.setOrientation(LinearLayout.HORIZONTAL);
++        box.setGravity(Gravity.CENTER_VERTICAL);
++        box.setPadding(dp(10), dp(8), dp(12), dp(8));
 +        GradientDrawable g = new GradientDrawable();
 +        g.setColor(0xFF2C313C);
 +        g.setStroke(dp(1), LayoutManager.ACCENT);
 +        g.setCornerRadius(dp(10));
-+        t.setBackground(g);
-+        int maxW = Math.round(a.getResources().getDisplayMetrics().widthPixels * 0.72f);
-+        t.setMaxWidth(maxW);
-+        pop = new PopupWindow(t, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
-+        pop.setOutsideTouchable(true);
-+        pop.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
-+        int[] loc = new int[2];
-+        anchor.getLocationOnScreen(loc);
-+        int sw = a.getResources().getDisplayMetrics().widthPixels;
-+        t.measure(View.MeasureSpec.makeMeasureSpec(maxW, View.MeasureSpec.AT_MOST), View.MeasureSpec.UNSPECIFIED);
-+        boolean right = loc[0] + anchor.getWidth() + t.getMeasuredWidth() < sw;       // ao lado do botao: a direita se couber, senao a esquerda
-+        int x = right ? loc[0] + anchor.getWidth() : Math.max(0, loc[0] - t.getMeasuredWidth());
-+        int y = Math.max(dp(8), Math.min(loc[1], a.getResources().getDisplayMetrics().heightPixels - t.getMeasuredHeight() - dp(16)));
-+        pop.showAtLocation(gv, Gravity.NO_GRAVITY, x, y);
++        box.setBackground(g);
++        AttackInfo.Button bt = anos ? null : AttackInfo.button(item);
++        CharAssets eff = host.effectAssets();
++        if (bt != null && bt.hudAno >= 0 && eff != null && eff.dac != null && eff.dac.getAno(bt.hudAno) != null && eff.dac.getAno(bt.hudAno).present) {
++            AnimPreview ic = new AnimPreview(a);
++            ic.setFirstFrameOnly(true);
++            ic.set(eff.dac, eff.sprites, bt.hudAno, false);
++            LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(dp(54), dp(54));
++            il.setMargins(0, 0, dp(10), 0);
++            box.addView(ic, il);
++        }
++        TextView t = tv(text, 12, LayoutManager.TEXT, false);
++        box.addView(t);
++        final int maxW = Math.round(a.getResources().getDisplayMetrics().widthPixels * 0.78f);
++        t.setMaxWidth(maxW - dp(90));
++        scrim = new View(a);
++        scrim.setBackgroundColor(0x33000000);
++        scrim.setClickable(true);
++        scrim.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dismissInfo(); } });
++        frame.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
++        bubble = box;
++        box.measure(View.MeasureSpec.makeMeasureSpec(maxW, View.MeasureSpec.AT_MOST), View.MeasureSpec.UNSPECIFIED);
++        int[] fl = new int[2], al = new int[2];
++        frame.getLocationOnScreen(fl);
++        anchor.getLocationOnScreen(al);
++        int ax = al[0] - fl[0], ay = al[1] - fl[1];
++        boolean right = ax + anchor.getWidth() + box.getMeasuredWidth() < frame.getWidth();     // ao lado do botao: a direita se couber, senao a esquerda
++        int x = right ? ax + anchor.getWidth() : Math.max(0, ax - box.getMeasuredWidth());
++        int y = Math.max(dp(8), Math.min(ay, frame.getHeight() - box.getMeasuredHeight() - dp(16)));
++        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2);
++        lp.leftMargin = x;
++        lp.topMargin = y;
++        frame.addView(box, lp);
 +    }
 +}
 diff -ruN a/AttackInfo.java b/AttackInfo.java
 --- a/AttackInfo.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AttackInfo.java	2026-10-30 21:00:53.196601695 +0000
-@@ -0,0 +1,102 @@
++++ b/AttackInfo.java	2026-10-30 21:54:40.828789674 +0000
+@@ -0,0 +1,139 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
 +import java.util.List;
 +
 +/**
-+ * Texto do botao (i) de uma ANO de ataque: qual comando do jogo dispara o golpe e quais ANOs vem em seguida sozinhas.
-+ * O numero do golpe (GOLPE_n do HDAT 4) e o SpecialType do jogo; o codigo de comando vem de CmdCheck (ver a secao 15.1 da ajuda para IA).
-+ * Botoes da tela (CreateGamepad do jogo, pads do tipo 4: a tecla e a mascara do 6o argumento de AddPad): A (HUD 209/210, mascara 16640) = golpes normais, que usam
-+ * ANOs fixos 29 a 39 e nao passam pelo HDAT 4; Y (330/331, 1048576) = comando 1; X (333/334, 2097152) = comando 2; B (336/337, 4194304) = comando 3;
-+ * 339/340 (8388608) = comando 8 (Especial 1, 100 de Synchro). Y, X, B e o de 339 so existem com iControlType == 1. O Especial 2 (comando 9, 16777216) so sai
-+ * com AngryOn ligado e 200 de Synchro: nao tem botao proprio (e o toque do botao do canto, mascara 553648128 = 536870912 rage + 16777216). Java puro.
++ * Textos do botao (i) da grade. O numero do golpe (GOLPE_n do HDAT 4) e o SpecialType do jogo; os comandos vem do CmdCheck e os botoes do
++ * CreateGamepad (pad do tipo 4: a tecla e a mascara do 6o argumento de AddPad). Botoes: A (HUD 209, 16640) golpes normais; Y (330, 1048576) comando 1;
++ * X (333, 2097152) comando 2; B (336, 4194304) comando 3; Z (339, 8388608) comando 8 (100 de Synchro); IRA (45, canto, 553648128) comando 9 com AngryOn
++ * (200 de Synchro) ou Rage (comando 4) sem AngryOn. Java puro.
 + */
 +final class AttackInfo {
 +    private AttackInfo() { }
 +
-+    /** Nome do comando que dispara o golpe {@code n} (linha do HDAT 4), ou null se nenhum comando o dispara. */
-+    static String command(int n) {
++    /** Botao da tela: nome, ANO do icone no effect.pac (-1 = sem icone) e o gesto de joystick equivalente em setas. */
++    static final class Button {
++        final String name;
++        final int hudAno;
++        final String stick;
++        Button(String name, int hudAno, String stick) { this.name = name; this.hudAno = hudAno; this.stick = stick; }
++    }
++
++    static final int HUD_A = 209, HUD_Y = 330, HUD_X = 333, HUD_B = 336, HUD_Z = 339, HUD_IRA = 45;
++
++    /** Botao que dispara o golpe {@code n}, ou null se nenhum comando o dispara. */
++    static Button button(int n) {
 +        switch (n) {
-+            case 0: return "Botão Y (ANO 330/331 do HUD, comando 1) — no chão";
-+            case 3: return "Botão Y (ANO 330/331 do HUD, comando 1) — pulando ou caindo";
-+            case 6: return "Botão Y (ANO 330/331 do HUD, comando 1) — voando";
-+            case 1: return "Botão X (ANO 333/334 do HUD, comando 2) — no chão";
-+            case 4: return "Botão X (ANO 333/334 do HUD, comando 2) — pulando ou caindo";
-+            case 7: return "Botão X (ANO 333/334 do HUD, comando 2) — voando";
-+            case 2: return "Botão B (ANO 336/337 do HUD, comando 3) — no chão";
-+            case 5: return "Botão B (ANO 336/337 do HUD, comando 3) — pulando ou caindo";
-+            case 8: return "Botão B (ANO 336/337 do HUD, comando 3) — voando";
-+            case 9: return "Especial 1 (botão ANO 339/341 do HUD, comando 8; gasta 100 de Synchro, 1 barra de ki) — no chão ou voando";
-+            case 10: return "Especial 1 (botão ANO 339/341 do HUD, comando 8; gasta 100 de Synchro, 1 barra de ki) — pulando";
-+            case 11: return "Especial 2 (sem botão próprio: toque no botão do canto com AngryOn ligado, comando 9; gasta 200 de Synchro) — no chão ou voando";
-+            case 12: return "Especial 2 (sem botão próprio: toque no botão do canto com AngryOn ligado, comando 9; gasta 200 de Synchro) — pulando ou no ar";
-+            case 14: return "Rage (toque no botão do canto com Angry em 100 ou mais e AngryOn desligado, comando 4) — no chão";
-+            case 15: return "Rage (toque no botão do canto com Angry em 100 ou mais e AngryOn desligado, comando 4) — voando";
-+            case 16: return "Rage alternativo (comando 23) — no chão";
-+            case 17: return "Rage alternativo (comando 23) — no ar";
++            case 0: case 3: case 6: return new Button("Y", HUD_Y, "↓ →");
++            case 1: case 4: case 7: return new Button("X", HUD_X, "→ ↓");
++            case 2: case 5: case 8: return new Button("B", HUD_B, "↓ ←");
++            case 9: case 10: return new Button("Z", HUD_Z, "↓ → →");
++            case 11: case 12: return new Button("IRA", HUD_IRA, "↓ ← ↓ ←");
++            case 14: case 15: return new Button("IRA", HUD_IRA, null);
 +            default: return null;
 +        }
 +    }
 +
-+    private static final String[] FIELD_NAMES = {"ao acertar", "sequência no chão (SEQ)", "fim no chão (END)", "sequência no ar (SEQ)", "fim no ar (END)",
-+            "pouso ao errar", "pouso ao acertar", "oponente agarrado"};
++    /** Em que estado do personagem o golpe {@code n} sai. */
++    static String where(int n) {
++        switch (n) {
++            case 0: case 1: case 2: case 14: return "no chão";
++            case 3: case 4: case 5: case 10: case 12: return "pulando ou caindo";
++            case 6: case 7: case 8: case 15: return "voando";
++            case 9: case 11: return "no chão ou voando";
++            default: return "";
++        }
++    }
++
++    /** Condicao extra do botao (Synchro / AngryOn), ou "". */
++    static String cost(int n) {
++        switch (n) {
++            case 9: case 10: return "100 de Synchro (1 barra de ki)";
++            case 11: case 12: return "AngryOn ligado e 200 de Synchro";
++            case 14: case 15: return "Angry em 100 ou mais e AngryOn desligado";
++            default: return "";
++        }
++    }
++
++    private static final String[] FIELD_NAMES = {"ao acertar", "SEQ", "END", "SEQ (ar)", "END (ar)", "pouso ao errar", "pouso ao acertar", "oponente agarrado"};
 +
 +    private static int[] fields(CharData.Move m) {
 +        return new int[]{m.animAoAcertar, m.animSeqChao, m.animEndChao, m.animSeqAr, m.animEndAr, m.pousoErrar, m.pousoAcertar, m.oponenteAgarrado};
 +    }
 +
-+    /** Linhas de "sequências automáticas" do golpe (vazio se nao tem). */
++    /** Linhas das sequencias automaticas do golpe (vazio se nao tem). */
 +    static List<String> sequences(CharData.Move m) {
 +        List<String> out = new ArrayList<String>();
 +        int[] f = fields(m);
 +        for (int i = 0; i < f.length; i++) if (f[i] != 0) out.add(FIELD_NAMES[i] + " → ANO " + f[i]);
 +        int[] pj = {m.projNormal, m.projAbaixo, m.projAcima, m.projGlobal, m.projAoAcertar, m.projChao};
-+        StringBuilder b = new StringBuilder();
 +        java.util.TreeSet<Integer> seen = new java.util.TreeSet<Integer>();
++        StringBuilder b = new StringBuilder();
 +        for (int p : pj) if (p != 0 && seen.add(Integer.valueOf(p))) b.append(b.length() == 0 ? "" : ", ").append(p);
 +        if (b.length() > 0) out.add("projétil → ANO " + b);
 +        return out;
 +    }
 +
-+    /** Papel da ANO {@code ano} no golpe {@code m} (alem de ser o ANO inicial), ou null. */
-+    static String role(CharData.Move m, int ano) {
-+        if (m.animInicial == ano) return "ANO inicial";
-+        int[] f = fields(m);
-+        for (int i = 0; i < f.length; i++) if (f[i] == ano && ano != 0) return FIELD_NAMES[i];
++    /** Texto do golpe {@code n} (modo GOLPES): nome, botao e sequencias. O icone do botao e desenhado pela tela. */
++    static String moveInfo(CharData cd, int n) {
++        if (cd == null || n < 0 || n >= cd.moves.length) return null;
++        CharData.Move m = cd.moves[n];
++        StringBuilder b = new StringBuilder(String.format(java.util.Locale.US, "GOLPE_%02d", n));
++        Button bt = button(n);
++        if (bt != null) {
++            b.append("\nBotão ").append(bt.name);
++            String w = where(n);
++            if (!w.isEmpty()) b.append(" — ").append(w);
++            if (bt.stick != null) b.append("\nou joystick: ").append(bt.stick);
++            String c = cost(n);
++            if (!c.isEmpty()) b.append("\nUsa: ").append(c);
++        } else b.append("\nNenhum botão dispara este golpe (linha ").append(n).append(" do HDAT 4).");
++        List<String> seq = sequences(m);
++        if (!seq.isEmpty()) {
++            b.append("\nSequências automáticas:");
++            for (String s : seq) b.append("\n• ").append(s);
++        }
++        return b.toString();
++    }
++
++    /** Papel curto da ANO {@code ano} no golpe {@code n}, ou null. */
++    static String role(CharData.Move m, int n, int ano) {
++        if (ano == 0) return null;
++        String no = String.valueOf(n);
++        if (m.animInicial == ano) return "ANIM_INICIAL do Golpe " + no;
++        if (m.animSeqChao == ano) return "SEQ do golpe " + no;
++        if (m.animSeqAr == ano) return "SEQ (ar) do golpe " + no;
++        if (m.animEndChao == ano) return "END do golpe " + no;
++        if (m.animEndAr == ano) return "END (ar) do golpe " + no;
++        if (m.animAoAcertar == ano) return "Ao acertar do golpe " + no;
++        if (m.pousoErrar == ano) return "Animação de pouso do golpe " + no;
++        if (m.pousoAcertar == ano) return "Animação de pouso (ao acertar) do golpe " + no;
++        if (m.oponenteAgarrado == ano) return "Oponente agarrado do golpe " + no;
 +        int[] pj = {m.projNormal, m.projAbaixo, m.projAcima, m.projGlobal, m.projAoAcertar, m.projChao, m.subId, m.subAoAcertar, m.subChao};
-+        for (int p : pj) if (p == ano && ano != 0) return "projétil";
++        for (int p : pj) if (p == ano) return "Projétil do golpe " + no;
 +        return null;
 +    }
 +
-+    /** O texto do (i); null se nenhum golpe do HDAT 4 usa a ANO. */
-+    static String describe(CharData cd, int ano) {
-+        if (cd == null) return null;
-+        StringBuilder b = new StringBuilder();
-+        int shown = 0;
-+        for (int pass = 0; pass < 2; pass++) {
++    /** O texto simples do (i) de uma ANO (modo ANOS); null se nao ha nada a dizer. Sem botoes: eles so aparecem na info do golpe. */
++    static String anoInfo(CharData cd, int ano) {
++        List<String> lines = new ArrayList<String>();
++        if (cd != null) {
 +            for (int n = 0; n < cd.moves.length; n++) {
 +                CharData.Move m = cd.moves[n];
 +                if (m.generic) continue;
-+                boolean initial = m.animInicial == ano;
-+                if (pass == 0 ? !initial : (initial || role(m, ano) == null)) continue;
-+                if (shown++ > 0) b.append("\n\n");
-+                String name = String.format(java.util.Locale.US, "GOLPE_%02d", n);
-+                if (initial) {
-+                    String cmd = command(n);
-+                    b.append(name).append('\n');
-+                    b.append(cmd != null ? "Ativado por: " + cmd : "Nenhum comando do jogo dispara este golpe (linha " + n + " do HDAT 4).");
-+                } else {
-+                    b.append(name).append(" — esta ANO é ").append(role(m, ano)).append('\n');
-+                    String cmd = command(n);
-+                    b.append(cmd != null ? "O golpe é ativado por: " + cmd : "Nenhum comando do jogo dispara este golpe (linha " + n + " do HDAT 4).");
-+                }
-+                List<String> seq = sequences(m);
-+                if (!seq.isEmpty()) {
-+                    b.append("\nSequências automáticas:");
-+                    for (String s : seq) b.append("\n• ").append(s);
-+                } else b.append("\nSem sequências automáticas.");
++                String r = role(m, n, ano);
++                if (r != null && !lines.contains(r)) lines.add(r);
 +            }
 +        }
-+        return shown == 0 ? null : b.toString();
++        String fixed = FixedAnos.name(ano);
++        if (fixed != null) {
++            lines.add(fixed);
++            if (FixedAnos.hasComboWindow(ano)) lines.add("Janela de combo (OPT 512): o próximo A continua a sequência");
++        }
++        if (lines.isEmpty()) return null;
++        StringBuilder b = new StringBuilder();
++        for (int i = 0; i < lines.size(); i++) b.append(i == 0 ? "" : "\n").append(lines.get(i));
++        return b.toString();
 +    }
 +}
 diff -ruN a/AttackRenderer.java b/AttackRenderer.java
@@ -14272,6 +14576,63 @@ diff -ruN a/FilePicker.java b/FilePicker.java
          t.setText(s);
          t.setTextSize(sp);
          t.setTextColor(color);
+diff -ruN a/FixedAnos.java b/FixedAnos.java
+--- a/FixedAnos.java	1970-01-01 00:00:00.000000000 +0000
++++ b/FixedAnos.java	2026-10-30 21:54:40.826260832 +0000
+@@ -0,0 +1,53 @@
++package com.zue.attackeditor;
++
++/**
++ * ANOs fixos do jogo, iguais em todos os personagens (o TCBManajer chama {@code _SetAct} com esses numeros). Nomes curtos para o (i) da grade.
++ * Os nomes vem do md que usa cada ANO (secao 15.1 da ajuda para IA); os que o jogo usa sem um papel claro nao tem nome aqui. Java puro.
++ */
++final class FixedAnos {
++    private FixedAnos() { }
++
++    /** Pouso padrao: o jogo toca o ANO 13 quando o golpe nao define POUSO. */
++    static final int STANDARD_LANDING = 13;
++
++    static String name(int ano) {
++        switch (ano) {
++            case 0: return "Parado (idle)";
++            case 1: return "Voando parado";
++            case 2: case 3: return "Esquiva rápida";
++            case 4: return "Defesa";
++            case 6: case 7: return "Dash no chão";
++            case 8: case 9: return "Dash no ar";
++            case 13: return "Animação de pouso padrão";
++            case 14: return "Intro";
++            case 18: return "Andar para a frente";
++            case 19: return "Recuo";
++            case 22: return "Reação de dano";
++            case 24: return "Caído / levantando";
++            case 29: return "Ataque normal A (vindo de corrida)";
++            case 30: return "Ataque normal A (1º golpe, em pé)";
++            case 31: return "Ataque normal A + frente (em pé)";
++            case 32: return "Ataque normal A (2º golpe do combo)";
++            case 33: return "Ataque normal A (3º golpe do combo)";
++            case 34: return "Ataque normal A (pulando)";
++            case 35: return "Ataque normal A + frente (pulando)";
++            case 36: return "Ataque normal A + baixo (em pé)";
++            case 37: return "Ataque normal A + trás (em pé)";
++            case 38: return "Ataque normal A + baixo (pulando)";
++            case 39: return "Ataque normal A + trás (pulando)";
++            case 42: return "Repetição do disparo (especial dos golpes 0/3/6)";
++            case 84: return "Carga de ki (início)";
++            case 85: return "Carga de ki (contínua)";
++            case 87: return "Teleporte (some)";
++            case 88: return "Teleporte (aparece)";
++            case 89: return "Queda depois de um ataque no ar";
++            default: return null;
++        }
++    }
++
++    /** O ANO e um dos ataques normais do botao A (29 a 39)? Eles nao passam pelo HDAT 4. */
++    static boolean isNormalAttack(int ano) { return ano >= 29 && ano <= 39; }
++
++    /** Os ANOs 30 e 32 abrem a janela de combo (wOptFlag 512): o proximo A troca para 32 / 33 (ou 31 / 36 / 37 com direcao). */
++    static boolean hasComboWindow(int ano) { return ano == 30 || ano == 32; }
++}
 diff -ruN a/FlowDialog.java b/FlowDialog.java
 --- a/FlowDialog.java	2026-10-19 19:32:24.000000000 +0000
 +++ b/FlowDialog.java	2026-10-24 21:48:20.000000000 +0000
@@ -15495,8 +15856,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-30 21:01:34.822419169 +0000
-@@ -0,0 +1,655 @@
++++ b/HelpText.java	2026-10-30 21:58:44.053050122 +0000
+@@ -0,0 +1,645 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -15690,7 +16051,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        inicio.add("Recarregar pastas (↻)",
 +                "O botão ↻ (na barra de título, ao lado do idioma e do AJUDA) faz o app reler as pastas que ele usa, sem reiniciar: os personagens (charNN), os efeitos, as cenas (bobj) e os sons. Use quando você apagar, adicionar ou renomear uma pasta de personagem, ou trocar os .txt de um personagem. Antes de recarregar, o app avisa que as edições não salvas serão perdidas (SALVAR primeiro, se precisar). Depois de recarregar, o app volta ao mesmo personagem, oponente e golpe/ANO se eles ainda existirem; se a pasta do personagem sumiu, abre o primeiro da lista.");
 +        inicio.add("MODO: GOLPES / ANO",
-+                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Tocar no botão ao lado (mostra o golpe ou a ANO atual) abre a grade de escolha, igual nos dois modos. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO. A grade mostra o primeiro Frame de cada item. Tocar num cartão expande e toca a animação ali mesmo, sem abrir; o botão grande ➜ ABRIR leva para editar. No modo ANO há ＋ CRIAR ANO (a ANO seguinte à última, com um Frame sem imagem de 6 ticks) e, embaixo, EXCLUIR (esvazia a ANO: ela continua existindo; avisa se tem hitbox, projétil ou se é de um ataque do BIN), COPIAR, MOVER (escolhe outra ANO: os Frames vão para ela e a original fica vazia) e COLAR (cola os Frames copiados, com o mesmo aviso). Segurar um cartão liga o modo seleção para excluir várias de uma vez. As ANOs de ataque têm um botão ⓘ que abre, ao lado dele, qual comando ativa o golpe e as sequências automáticas dele. Uma ANO vazia aberta começa com um Frame sem imagem (IMG −1) de 6 ticks.");
++                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Tocar no botão ao lado (mostra o golpe ou a ANO atual) abre a grade de escolha, igual nos dois modos. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO. No topo da grade há o switch GOLPES | ANOS, que troca de modo na hora. A grade mostra o primeiro Frame de cada item. Tocar num cartão expande e toca a animação ali mesmo, sem abrir (com simulação de pouso nos golpes aéreos, loop nas ANOs com wActFlag 1; as outras tocam uma vez, travam no último Frame por 1 s e recomeçam; e a box de hitbox/projétil); o botão grande ➜ ABRIR leva para editar. No modo ANO o botão FILTRAR alterna Padrão, Importância (as que têm info), Golpes (partes de golpes do BIN), Ataque (hitbox/projétil), Tempo (mais ticks), Frames (mais Frames) e Efeitos (animações de flag): nenhuma ANO some, as que casam vão para o topo com moldura verde. Embaixo: ＋ CRIAR (a ANO seguinte à última, com um Frame sem imagem de 6 ticks), EXCLUIR (esvazia a ANO: ela continua existindo; avisa se tem hitbox, projétil ou se é de um ataque do BIN), COPIAR, MOVER (escolhe outra ANO: os Frames vão para ela e a original fica vazia) e COLAR (com o mesmo aviso). Segurar um cartão liga o modo seleção para excluir várias de uma vez. O botão ⓘ abre um texto ao lado dele: na ANO, só o papel dela (ANIM_INICIAL do Golpe N, SEQ do golpe N, Projétil do golpe N, Animação de pouso padrão, ANOs fixos do jogo como Parado ou Carga de ki); no golpe, o botão que o dispara com o ícone dele e as sequências automáticas. Tocar fora do texto só o fecha. Uma ANO vazia aberta começa com um Frame sem imagem (IMG −1) de 6 ticks.");
 +        inicio.add("Barra de tempo e transporte",
 +                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), PAUSAR/TOCAR reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
 +                + "O jogo roda a 60 ticks por segundo.");
@@ -15876,17 +16237,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs)."
 +                + " O id do SE vai de 0 a 255 (valores acima de 127 só valem no TCBManajer com o patch do byte sem sinal): 1 a 79 = sons comuns se_00 a se_78, 80 a 99 = áudios do personagem e 100 a 255 = sons comuns novos (se_99 a se_254; o arquivo é se_NNN.ogg a partir do 100). O + da lista também adiciona um SOM GLOBAL (OGG, precisa do Android 10 ou mais novo): ele vira o próximo se_; depois do se_78 o primeiro novo é o se_100 e o app cria arquivos silenciosos se_79 a se_99 para não deixar buraco. Os sons comuns têm as mesmas ferramentas dos WAV (ouvir, cortar, ajustar, substituir e silenciar — nunca se apaga um se_). O .ogg gravado usa o codec Opus.");
 +        sn.add("Sprites e CNV",
-+                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). "
-+                + "As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber."
-+                + " Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só."
-+                + " O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto)."
-+                + " Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível."
-+                + " A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png."
-+                + " Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV."
-+                + " Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1)."
-+                + " O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/."
-+                + " Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\")."
-+                + " O ⓘ das ANOs de ataque (na grade de escolha) diz qual botão dispara o golpe: Y (HUD 330/331) = golpes 0/3/6, X (333/334) = 1/4/7, B (336/337) = 2/5/8 (no chão / pulando ou caindo / voando), Especial 1 (HUD 339/341, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando), e Especial 2 (sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar). O A (HUD 209/210) faz os golpes normais, que usam ANOs fixos 29 a 39 e não passam pelo HDAT 4. Y, X, B e o de 339 só existem no layout de botões do jogo; no outro layout os especiais saem por gesto.");
++                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1). O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). Botões do jogo (no ⓘ dos golpes): A (ANO 209 do effect.pac) faz os golpes normais — ANOs fixos 29 a 39 (30 → 32 → 33 em pé, com a janela OPT 512 liberando o próximo A), que não passam pelo HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (chão / pulando ou caindo / voando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando); IRA (ANO 45, sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar), e o mesmo toque sem AngryOn, com Angry em 100 ou mais, é Rage (golpes 14/15). Y, X, B e Z só existem no layout de botões do jogo; no outro layout os especiais saem por gesto de joystick (setas).");
 +        c.add(sn);
 +
 +        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
@@ -16458,7 +16809,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-30 21:01:29.077738784 +0000
++++ b/I18nCatalog.java	2026-10-30 21:58:12.667857894 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -16472,7 +16823,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-30 21:01:29.070171708 +0000
++++ b/I18nCatalog0.java	2026-10-30 21:58:12.662775044 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16745,7 +17096,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-30 21:01:29.071512093 +0000
++++ b/I18nCatalog1.java	2026-10-30 21:58:12.663616894 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17018,7 +17369,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-30 21:01:29.072782259 +0000
++++ b/I18nCatalog2.java	2026-10-30 21:58:12.664362146 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17291,7 +17642,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-30 21:01:29.073998154 +0000
++++ b/I18nCatalog3.java	2026-10-30 21:58:12.665071969 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17564,7 +17915,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-30 21:01:29.075280344 +0000
++++ b/I18nCatalog4.java	2026-10-30 21:58:12.665842420 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17837,7 +18188,7 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-30 21:01:29.076448275 +0000
++++ b/I18nCatalog5.java	2026-10-30 21:58:12.666646321 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -18110,8 +18461,8 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +}
 diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
 --- a/I18nCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog6.java	2026-10-30 21:01:29.077485748 +0000
-@@ -0,0 +1,154 @@
++++ b/I18nCatalog6.java	2026-10-30 21:58:12.667453780 +0000
+@@ -0,0 +1,217 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 6 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -18264,6 +18615,69 @@ diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
 +        {"Especial 2 (sem botão próprio: toque no botão do canto com AngryOn ligado, comando 9; gasta 200 de Synchro) — pulando ou no ar", "Special 2 (no button of its own: tap the corner button with AngryOn on, command 9; costs 200 Synchro) — jumping or in the air", "Especial 2 (sin botón propio: toque en el botón de la esquina con AngryOn activo, comando 9; gasta 200 de Synchro) — saltando o en el aire"},
 +        {"Rage (toque no botão do canto com Angry em 100 ou mais e AngryOn desligado, comando 4) — no chão", "Rage (tap the corner button with Angry at 100 or more and AngryOn off, command 4) — on the ground", "Rage (toque en el botón de la esquina con Angry en 100 o más y AngryOn apagado, comando 4) — en el suelo"},
 +        {"Rage (toque no botão do canto com Angry em 100 ou mais e AngryOn desligado, comando 4) — voando", "Rage (tap the corner button with Angry at 100 or more and AngryOn off, command 4) — flying", "Rage (toque en el botón de la esquina con Angry en 100 o más y AngryOn apagado, comando 4) — volando"},
++        {"Ataque", "Attack", "Ataque"},
++        {"Golpes", "Moves", "Golpes"},
++        {"Importância", "Importance", "Importancia"},
++        {"Padrão", "Default", "Estándar"},
++        {"FILTRAR: ", "FILTER: ", "FILTRAR: "},
++        {"GOLPES", "MOVES", "GOLPES"},
++        {"Toque num golpe para ver a animação.", "Tap a move to see the animation.", "Toca un golpe para ver la animación."},
++        {"Toque numa ANO para ver a animação; segure para marcar várias e excluir.", "Tap an ANO to see the animation; hold to mark several and delete.", "Toca una ANO para ver la animación; mantén para marcar varias y eliminar."},
++        {"＋ CRIAR", "＋ CREATE", "＋ CREAR"},
++        {"\nBotão ", "\nButton ", "\nBotón "},
++        {"\nNenhum botão dispara este golpe (linha ", "\nNo button triggers this move (row ", "\nNingún botón dispara este golpe (fila "},
++        {"\nUsa: ", "\nUses: ", "\nUsa: "},
++        {"\nou joystick: ", "\nor joystick: ", "\no joystick: "},
++        {"100 de Synchro (1 barra de ki)", "100 Synchro (1 ki bar)", "100 de Synchro (1 barra de ki)"},
++        {"ANIM_INICIAL do Golpe ", "ANIM_INICIAL of Move ", "ANIM_INICIAL del Golpe "},
++        {"Angry em 100 ou mais e AngryOn desligado", "Angry at 100 or more and AngryOn off", "Angry en 100 o más y AngryOn apagado"},
++        {"AngryOn ligado e 200 de Synchro", "AngryOn on and 200 Synchro", "AngryOn activo y 200 de Synchro"},
++        {"Animação de pouso (ao acertar) do golpe ", "Landing animation (on hit) of move ", "Animación de aterrizaje (al acertar) del golpe "},
++        {"Animação de pouso do golpe ", "Landing animation of move ", "Animación de aterrizaje del golpe "},
++        {"Ao acertar do golpe ", "On hit of move ", "Al acertar del golpe "},
++        {"END (ar)", "END (air)", "END (aire)"},
++        {"END (ar) do golpe ", "END (air) of move ", "END (aire) del golpe "},
++        {"END do golpe ", "END of move ", "END del golpe "},
++        {"Janela de combo (OPT 512): o próximo A continua a sequência", "Combo window (OPT 512): the next A continues the sequence", "Ventana de combo (OPT 512): la siguiente A continúa la secuencia"},
++        {"Oponente agarrado do golpe ", "Grabbed opponent of move ", "Oponente agarrado del golpe "},
++        {"Projétil do golpe ", "Projectile of move ", "Proyectil del golpe "},
++        {"SEQ (ar)", "SEQ (air)", "SEQ (aire)"},
++        {"SEQ (ar) do golpe ", "SEQ (air) of move ", "SEQ (aire) del golpe "},
++        {"SEQ do golpe ", "SEQ of move ", "SEQ del golpe "},
++        {"no chão", "on the ground", "en el suelo"},
++        {"no chão ou voando", "on the ground or flying", "en el suelo o volando"},
++        {"pulando ou caindo", "jumping or falling", "saltando o cayendo"},
++        {"voando", "flying", "volando"},
++        {"Andar para a frente", "Walk forward", "Caminar hacia adelante"},
++        {"Animação de pouso padrão", "Standard landing animation", "Animación de aterrizaje estándar"},
++        {"Ataque normal A (1º golpe, em pé)", "Normal attack A (1st hit, standing)", "Ataque normal A (1.er golpe, de pie)"},
++        {"Ataque normal A (2º golpe do combo)", "Normal attack A (2nd hit of the combo)", "Ataque normal A (2.º golpe del combo)"},
++        {"Ataque normal A (3º golpe do combo)", "Normal attack A (3rd hit of the combo)", "Ataque normal A (3.er golpe del combo)"},
++        {"Ataque normal A (pulando)", "Normal attack A (jumping)", "Ataque normal A (saltando)"},
++        {"Ataque normal A (vindo de corrida)", "Normal attack A (from a run)", "Ataque normal A (viniendo de una carrera)"},
++        {"Ataque normal A + baixo (em pé)", "Normal attack A + down (standing)", "Ataque normal A + abajo (de pie)"},
++        {"Ataque normal A + baixo (pulando)", "Normal attack A + down (jumping)", "Ataque normal A + abajo (saltando)"},
++        {"Ataque normal A + frente (em pé)", "Normal attack A + forward (standing)", "Ataque normal A + adelante (de pie)"},
++        {"Ataque normal A + frente (pulando)", "Normal attack A + forward (jumping)", "Ataque normal A + adelante (saltando)"},
++        {"Ataque normal A + trás (em pé)", "Normal attack A + back (standing)", "Ataque normal A + atrás (de pie)"},
++        {"Ataque normal A + trás (pulando)", "Normal attack A + back (jumping)", "Ataque normal A + atrás (saltando)"},
++        {"Carga de ki (contínua)", "Ki charge (continuous)", "Carga de ki (continua)"},
++        {"Carga de ki (início)", "Ki charge (start)", "Carga de ki (inicio)"},
++        {"Caído / levantando", "Down / getting up", "Caído / levantándose"},
++        {"Dash no ar", "Air dash", "Dash en el aire"},
++        {"Dash no chão", "Ground dash", "Dash en el suelo"},
++        {"Defesa", "Defense", "Defensa"},
++        {"Esquiva rápida", "Quick dodge", "Esquiva rápida"},
++        {"Parado (idle)", "Idle", "Parado (idle)"},
++        {"Queda depois de um ataque no ar", "Fall after an air attack", "Caída tras un ataque aéreo"},
++        {"Reação de dano", "Damage reaction", "Reacción de daño"},
++        {"Recuo", "Step back", "Retroceso"},
++        {"Repetição do disparo (especial dos golpes 0/3/6)", "Repeated shot (special of moves 0/3/6)", "Repetición del disparo (especial de los golpes 0/3/6)"},
++        {"Teleporte (aparece)", "Teleport (appears)", "Teletransporte (aparece)"},
++        {"Teleporte (some)", "Teleport (vanishes)", "Teletransporte (desaparece)"},
++        {"Voando parado", "Hovering", "Volando quieto"},
++        {"Janela de combo (A→A)", "Combo window (A→A)", "Ventana de combo (A→A)"},
++        {"Janela de combo do botão A (md 879 do jogo): neste ANO, com o golpe acertando e a janela aberta, o próximo A continua a sequência: ANO 30 + A vira o 32, ANO 32 + A vira o 33; com frente, trás ou baixo vira o 31, 37 ou 36. Estenda este objeto para aumentar o tempo para apertar.", "Combo window of the A button (game md 879): in this ANO, with the move connecting and the window open, the next A continues the sequence: ANO 30 + A becomes 32, ANO 32 + A becomes 33; with forward, back or down it becomes 31, 37 or 36. Extend this object to give more time to press.", "Ventana de combo del botón A (md 879 del juego): en esta ANO, con el golpe acertando y la ventana abierta, la siguiente A continúa la secuencia: ANO 30 + A pasa a 32, ANO 32 + A pasa a 33; con adelante, atrás o abajo pasa a 31, 37 o 36. Extiende este objeto para dar más tiempo."},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -18313,7 +18727,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-30 21:01:34.884055495 +0000
++++ b/I18nHelpCatalog.java	2026-10-30 21:58:44.124132853 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -18327,7 +18741,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-30 21:01:34.883173124 +0000
++++ b/I18nHelpCatalog0.java	2026-10-30 21:58:44.122992374 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18412,7 +18826,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-30 21:01:34.883327958 +0000
++++ b/I18nHelpCatalog1.java	2026-10-30 21:58:44.123107627 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18497,7 +18911,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-30 21:01:34.883429984 +0000
++++ b/I18nHelpCatalog2.java	2026-10-30 21:58:44.123211772 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18551,9 +18965,9 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +        {"MODO: GOLPES / ANO",
 +         "MODE: MOVES / ANO",
 +         "MODO: GOLPES / ANO"},
-+        {"GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Tocar no botão ao lado (mostra o golpe ou a ANO atual) abre a grade de escolha, igual nos dois modos. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO. A grade mostra o primeiro Frame de cada item. Tocar num cartão expande e toca a animação ali mesmo, sem abrir; o botão grande ➜ ABRIR leva para editar. No modo ANO há ＋ CRIAR ANO (a ANO seguinte à última, com um Frame sem imagem de 6 ticks) e, embaixo, EXCLUIR (esvazia a ANO: ela continua existindo; avisa se tem hitbox, projétil ou se é de um ataque do BIN), COPIAR, MOVER (escolhe outra ANO: os Frames vão para ela e a original fica vazia) e COLAR (cola os Frames copiados, com o mesmo aviso). Segurar um cartão liga o modo seleção para excluir várias de uma vez. As ANOs de ataque têm um botão ⓘ que abre, ao lado dele, qual comando ativa o golpe e as sequências automáticas dele. Uma ANO vazia aberta começa com um Frame sem imagem (IMG −1) de 6 ticks.",
-+         "MOVES lists the character's moves (each with its ANOs, projectiles and reactions). ANO lists the loose ANOs, to open and edit an animation on its own, without the move around it. Tapping the button next to it (it shows the current move or ANO) opens the choice grid, the same in both modes. In ANO mode the projectile screen and MOVE SET are still available for the move that owns the ANO. The grid shows the first Frame of each item. Tapping a card expands it and plays the animation right there, without opening it; the big ➜ OPEN button takes you to edit it. In ANO mode there is ＋ CREATE ANO (the ANO after the last one, with one 6-tick Frame without image) and, below, DELETE (empties the ANO: it still exists; it warns if it has a hitbox, a projectile or belongs to a BIN attack), COPY, MOVE (pick another ANO: the Frames go to it and the original becomes empty) and PASTE (pastes the copied Frames, with the same warning). Holding a card turns on selection mode to delete several at once. Attack ANOs have an ⓘ button that opens, beside it, which command triggers the move and its automatic sequences. An empty ANO that is opened starts with one Frame without image (IMG −1) of 6 ticks.",
-+         "GOLPES lista los golpes del personaje (cada uno con sus ANOs, proyectiles y reacciones). ANO lista los ANOs sueltos, para abrir y editar una animación aislada, sin el golpe alrededor. Al tocar el botón de al lado (muestra el golpe o la ANO actual) se abre la cuadrícula de elección, igual en los dos modos. En el modo ANO la pantalla del proyectil y el GOLPE SET siguen disponibles para el golpe dueño del ANO. La cuadrícula muestra el primer Frame de cada elemento. Al tocar una tarjeta se expande y reproduce la animación ahí mismo, sin abrir; el botón grande ➜ ABRIR lleva a editarla. En el modo ANO hay ＋ CREAR ANO (la ANO siguiente a la última, con un Frame sin imagen de 6 ticks) y, abajo, ELIMINAR (vacía la ANO: sigue existiendo; avisa si tiene hitbox, proyectil o es de un ataque del BIN), COPIAR, MOVER (eliges otra ANO: los Frames van a ella y la original queda vacía) y PEGAR (pega los Frames copiados, con el mismo aviso). Mantener una tarjeta activa el modo selección para eliminar varias a la vez. Las ANOs de ataque tienen un botón ⓘ que abre, a su lado, qué comando activa el golpe y sus secuencias automáticas. Una ANO vacía que se abre empieza con un Frame sin imagen (IMG −1) de 6 ticks."},
++        {"GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Tocar no botão ao lado (mostra o golpe ou a ANO atual) abre a grade de escolha, igual nos dois modos. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO. No topo da grade há o switch GOLPES | ANOS, que troca de modo na hora. A grade mostra o primeiro Frame de cada item. Tocar num cartão expande e toca a animação ali mesmo, sem abrir (com simulação de pouso nos golpes aéreos, loop nas ANOs com wActFlag 1; as outras tocam uma vez, travam no último Frame por 1 s e recomeçam; e a box de hitbox/projétil); o botão grande ➜ ABRIR leva para editar. No modo ANO o botão FILTRAR alterna Padrão, Importância (as que têm info), Golpes (partes de golpes do BIN), Ataque (hitbox/projétil), Tempo (mais ticks), Frames (mais Frames) e Efeitos (animações de flag): nenhuma ANO some, as que casam vão para o topo com moldura verde. Embaixo: ＋ CRIAR (a ANO seguinte à última, com um Frame sem imagem de 6 ticks), EXCLUIR (esvazia a ANO: ela continua existindo; avisa se tem hitbox, projétil ou se é de um ataque do BIN), COPIAR, MOVER (escolhe outra ANO: os Frames vão para ela e a original fica vazia) e COLAR (com o mesmo aviso). Segurar um cartão liga o modo seleção para excluir várias de uma vez. O botão ⓘ abre um texto ao lado dele: na ANO, só o papel dela (ANIM_INICIAL do Golpe N, SEQ do golpe N, Projétil do golpe N, Animação de pouso padrão, ANOs fixos do jogo como Parado ou Carga de ki); no golpe, o botão que o dispara com o ícone dele e as sequências automáticas. Tocar fora do texto só o fecha. Uma ANO vazia aberta começa com um Frame sem imagem (IMG −1) de 6 ticks.",
++         "MOVES lists the character's moves (each with its ANOs, projectiles and reactions). ANO lists the loose ANOs, to open and edit an animation on its own, without the move around it. Tapping the button next to it (it shows the current move or ANO) opens the choice grid, the same in both modes. In ANO mode the projectile screen and MOVE SET are still available for the move that owns the ANO. At the top of the grid there is the MOVES | ANOS switch, which changes mode on the spot. The grid shows the first Frame of each item. Tapping a card expands it and plays the animation right there, without opening it (with landing simulation for aerial moves, loop for ANOs with wActFlag 1; the others play once, freeze on the last Frame for 1 s and restart; and the hitbox/projectile box); the big ➜ OPEN button takes you to edit it. In ANO mode the FILTER button cycles Default, Importance (those with info), Moves (parts of BIN moves), Attack (hitbox/projectile), Time (most ticks), Frames (most Frames) and Effects (flag animations): no ANO disappears, the ones that match go to the top with a green frame. Below: ＋ CREATE (the ANO after the last one, with one 6-tick Frame without image), DELETE (empties the ANO: it still exists; warns if it has a hitbox, a projectile or belongs to a BIN attack), COPY, MOVE (pick another ANO: the Frames go to it and the original becomes empty) and PASTE (same warning). Holding a card turns on selection mode to delete several at once. The ⓘ button opens a text beside it: on an ANO, only its role (ANIM_INICIAL of Move N, SEQ of move N, Projectile of move N, Standard landing animation, fixed game ANOs such as Idle or Ki charge); on a move, the button that triggers it with its icon and the automatic sequences. Tapping outside the text only closes it. An empty ANO that is opened starts with one Frame without image (IMG −1) of 6 ticks.",
++         "GOLPES lista los golpes del personaje (cada uno con sus ANOs, proyectiles y reacciones). ANO lista los ANOs sueltos, para abrir y editar una animación aislada, sin el golpe alrededor. Al tocar el botón de al lado (muestra el golpe o la ANO actual) se abre la cuadrícula de elección, igual en los dos modos. En el modo ANO la pantalla del proyectil y el GOLPE SET siguen disponibles para el golpe dueño del ANO. En la parte de arriba de la cuadrícula está el switch GOLPES | ANOS, que cambia de modo al instante. La cuadrícula muestra el primer Frame de cada elemento. Al tocar una tarjeta se expande y reproduce la animación ahí mismo, sin abrir (con simulación de aterrizaje en los golpes aéreos, bucle en las ANOs con wActFlag 1; las demás suenan una vez, se quedan en el último Frame 1 s y reinician; y la caja de hitbox/proyectil); el botón grande ➜ ABRIR lleva a editarla. En el modo ANO el botón FILTRAR alterna Estándar, Importancia (las que tienen info), Golpes (partes de golpes del BIN), Ataque (hitbox/proyectil), Tempo (más ticks), Frames (más Frames) y Efectos (animaciones de flag): ninguna ANO desaparece, las que coinciden van arriba con marco verde. Abajo: ＋ CREAR (la ANO siguiente a la última, con un Frame sin imagen de 6 ticks), ELIMINAR (vacía la ANO: sigue existiendo; avisa si tiene hitbox, proyectil o es de un ataque del BIN), COPIAR, MOVER (eliges otra ANO: los Frames van a ella y la original queda vacía) y PEGAR (con el mismo aviso). Mantener una tarjeta activa el modo selección para eliminar varias a la vez. El botón ⓘ abre un texto a su lado: en la ANO, solo su papel (ANIM_INICIAL del Golpe N, SEQ del golpe N, Proyectil del golpe N, Animación de aterrizaje estándar, ANOs fijos del juego como Parado o Carga de ki); en el golpe, el botón que lo dispara con su icono y las secuencias automáticas. Tocar fuera del texto solo lo cierra. Una ANO vacía que se abre empieza con un Frame sin imagen (IMG −1) de 6 ticks."},
 +        {"Barra de tempo e transporte",
 +         "Time bar and transport",
 +         "Barra de tiempo y transporte"},
@@ -18582,7 +18996,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-30 21:01:34.883539184 +0000
++++ b/I18nHelpCatalog3.java	2026-10-30 21:58:44.123318888 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18667,7 +19081,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-30 21:01:34.883620306 +0000
++++ b/I18nHelpCatalog4.java	2026-10-30 21:58:44.123402942 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18752,7 +19166,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-30 21:01:34.883698432 +0000
++++ b/I18nHelpCatalog5.java	2026-10-30 21:58:44.123477294 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18837,7 +19251,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-30 21:01:34.883775493 +0000
++++ b/I18nHelpCatalog6.java	2026-10-30 21:58:44.123840897 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18922,7 +19336,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-30 21:01:34.883885281 +0000
++++ b/I18nHelpCatalog7.java	2026-10-30 21:58:44.123969041 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -19007,7 +19421,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-30 21:01:34.883997436 +0000
++++ b/I18nHelpCatalog8.java	2026-10-30 21:58:44.124071044 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -19037,9 +19451,9 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
-+        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1). O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). O ⓘ das ANOs de ataque (na grade de escolha) diz qual botão dispara o golpe: Y (HUD 330/331) = golpes 0/3/6, X (333/334) = 1/4/7, B (336/337) = 2/5/8 (no chão / pulando ou caindo / voando), Especial 1 (HUD 339/341, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando), e Especial 2 (sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar). O A (HUD 209/210) faz os golpes normais, que usam ANOs fixos 29 a 39 e não passam pelo HDAT 4. Y, X, B e o de 339 só existem no layout de botões do jogo; no outro layout os especiais saem por gesto.",
-+         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV. Removing one or several sprites RENUMBERS the following ones (if SPR_0 goes, 1 becomes 0, 2 becomes 1...): the CNV, the GIF groups and every DAC frame follow, and the changed ANOs are written to 000.dac.txt. With the \"Delete Frames with this Sprite\" box the frames that used the sprite are removed; without it they are left without an image (IMG -1). The OPTIMIZE button, next to + ADD, opens two functions. REMOVE REPEATED SPRITES finds equal or similar sprites (also mirrored, rotated 90° or at another scale), shows a preview of each group and a minimum-similarity bar; you mark which ones to remove (at least one must stay in each group) and the DAC frames start using the one that stays, with Flip, zoom, rotation and position adjusted so the drawing looks the same; then the sprites are renumbered. OPTIMIZE PNGs converts the sheets to 8 bits with a palette (up to 256 colors per sheet) to reduce the size, copying the originals first to Backups/PreOptim/charNN/. When you tap a sprite, right below Replace image there is SHOW USES: a list of where it appears, one line per ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 and 7\"). The ⓘ on attack ANOs (in the choice grid) tells which button triggers the move: Y (HUD 330/331) = moves 0/3/6, X (333/334) = 1/4/7, B (336/337) = 2/5/8 (on the ground / jumping or falling / flying), Special 1 (HUD 339/341, costs 100 Synchro = 1 ki bar) = moves 9 (ground or flying) and 10 (jumping), and Special 2 (no button of its own: tap the corner button with AngryOn on, costs 200 Synchro) = moves 11 (ground or flying) and 12 (in the air). A (HUD 209/210) does the normal attacks, which use fixed ANOs 29 to 39 and do not go through HDAT 4. Y, X, B and the 339 one only exist in the game's button layout; in the other layout the specials come from gestures.",
-+         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV. Quitar uno o varios sprites RENUMERA los siguientes (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...): el CNV, los grupos de GIF y todos los frames del DAC los siguen, y las ANOs cambiadas se guardan en 000.dac.txt. Con la casilla \"Eliminar Frames con este Sprite\" salen los frames que usaban el sprite; sin ella quedan sin imagen (IMG -1). El botón OPTIMIZAR, junto a + AÑADIR, abre dos funciones. QUITAR SPRITES REPETIDOS busca sprites iguales o parecidos (también reflejados, girados 90° o en otra escala), muestra la vista previa de cada grupo y una barra de semejanza mínima; marcas cuáles quitar (en cada grupo debe quedar al menos uno) y los frames del DAC pasan a usar el que se queda, con Flip, zoom, rotación y posición ajustados para que el dibujo quede igual; después los sprites se renumeran. OPTIMIZAR PNG convierte las hojas a 8 bits con paleta (hasta 256 colores por hoja) para reducir el tamaño, copiando antes los originales en Backups/PreOptim/charNN/. Al tocar un sprite, justo debajo de Reemplazar imagen está MOSTRAR USOS: una lista de dónde aparece, una línea por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 y 7\"). El ⓘ de las ANOs de ataque (en la cuadrícula de elección) dice qué botón dispara el golpe: Y (HUD 330/331) = golpes 0/3/6, X (333/334) = 1/4/7, B (336/337) = 2/5/8 (en el suelo / saltando o cayendo / volando), Especial 1 (HUD 339/341, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (suelo o volando) y 10 (saltando), y Especial 2 (sin botón propio: toque en el botón de la esquina con AngryOn activo, gasta 200 de Synchro) = golpes 11 (suelo o volando) y 12 (en el aire). La A (HUD 209/210) hace los golpes normales, que usan ANOs fijos 29 a 39 y no pasan por el HDAT 4. Y, X, B y el de 339 solo existen en el diseño de botones del juego; en el otro diseño los especiales salen por gesto."},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1). O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). Botões do jogo (no ⓘ dos golpes): A (ANO 209 do effect.pac) faz os golpes normais — ANOs fixos 29 a 39 (30 → 32 → 33 em pé, com a janela OPT 512 liberando o próximo A), que não passam pelo HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (chão / pulando ou caindo / voando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando); IRA (ANO 45, sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar), e o mesmo toque sem AngryOn, com Angry em 100 ou mais, é Rage (golpes 14/15). Y, X, B e Z só existem no layout de botões do jogo; no outro layout os especiais saem por gesto de joystick (setas).",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV. Removing one or several sprites RENUMBERS the following ones (if SPR_0 goes, 1 becomes 0, 2 becomes 1...): the CNV, the GIF groups and every DAC frame follow, and the changed ANOs are written to 000.dac.txt. With the \"Delete Frames with this Sprite\" box the frames that used the sprite are removed; without it they are left without an image (IMG -1). The OPTIMIZE button, next to + ADD, opens two functions. REMOVE REPEATED SPRITES finds equal or similar sprites (also mirrored, rotated 90° or at another scale), shows a preview of each group and a minimum-similarity bar; you mark which ones to remove (at least one must stay in each group) and the DAC frames start using the one that stays, with Flip, zoom, rotation and position adjusted so the drawing looks the same; then the sprites are renumbered. OPTIMIZE PNGs converts the sheets to 8 bits with a palette (up to 256 colors per sheet) to reduce the size, copying the originals first to Backups/PreOptim/charNN/. When you tap a sprite, right below Replace image there is SHOW USES: a list of where it appears, one line per ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 and 7\"). Game buttons (in the moves' ⓘ): A (effect.pac ANO 209) does the normal attacks — fixed ANOs 29 to 39 (30 → 32 → 33 standing, with the OPT 512 window releasing the next A), which do not go through HDAT 4; Y (330) = moves 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (ground / jumping or falling / flying); Z (339, costs 100 Synchro = 1 ki bar) = moves 9 (ground or flying) and 10 (jumping); IRA (ANO 45, no button of its own: tap the corner button with AngryOn on, costs 200 Synchro) = moves 11 (ground or flying) and 12 (in the air), and the same tap without AngryOn, with Angry at 100 or more, is Rage (moves 14/15). Y, X, B and Z only exist in the game's button layout; in the other layout the specials come from joystick gestures (arrows).",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV. Quitar uno o varios sprites RENUMERA los siguientes (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...): el CNV, los grupos de GIF y todos los frames del DAC los siguen, y las ANOs cambiadas se guardan en 000.dac.txt. Con la casilla \"Eliminar Frames con este Sprite\" salen los frames que usaban el sprite; sin ella quedan sin imagen (IMG -1). El botón OPTIMIZAR, junto a + AÑADIR, abre dos funciones. QUITAR SPRITES REPETIDOS busca sprites iguales o parecidos (también reflejados, girados 90° o en otra escala), muestra la vista previa de cada grupo y una barra de semejanza mínima; marcas cuáles quitar (en cada grupo debe quedar al menos uno) y los frames del DAC pasan a usar el que se queda, con Flip, zoom, rotación y posición ajustados para que el dibujo quede igual; después los sprites se renumeran. OPTIMIZAR PNG convierte las hojas a 8 bits con paleta (hasta 256 colores por hoja) para reducir el tamaño, copiando antes los originales en Backups/PreOptim/charNN/. Al tocar un sprite, justo debajo de Reemplazar imagen está MOSTRAR USOS: una lista de dónde aparece, una línea por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 y 7\"). Botones del juego (en el ⓘ de los golpes): A (ANO 209 del effect.pac) hace los golpes normales — ANOs fijos 29 a 39 (30 → 32 → 33 de pie, con la ventana OPT 512 liberando la siguiente A), que no pasan por el HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (suelo / saltando o cayendo / volando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (suelo o volando) y 10 (saltando); IRA (ANO 45, sin botón propio: toque en el botón de la esquina con AngryOn activo, gasta 200 de Synchro) = golpes 11 (suelo o volando) y 12 (en el aire), y el mismo toque sin AngryOn, con Angry en 100 o más, es Rage (golpes 14/15). Y, X, B y Z solo existen en el diseño de botones del juego; en el otro diseño los especiales salen por gesto de joystick (flechas)."},
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
@@ -19092,7 +19506,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-30 21:01:34.884028506 +0000
++++ b/I18nHelpCatalog9.java	2026-10-30 21:58:44.124106913 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -21260,7 +21674,7 @@ diff -ruN a/LinkScreen.java b/LinkScreen.java
      }
 diff -ruN a/MainActivity.java b/MainActivity.java
 --- a/MainActivity.java	2026-10-20 11:18:53.000000000 +0000
-+++ b/MainActivity.java	2026-10-30 20:44:34.669664522 +0000
++++ b/MainActivity.java	2026-10-30 21:57:03.507742752 +0000
 @@ -32,6 +32,8 @@
      private CharAssets opponent;
      private CharAssets effects;
@@ -21337,7 +21751,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          sound.release();
          super.onDestroy();
      }
-@@ -125,12 +145,28 @@
+@@ -125,12 +145,37 @@
              }
          });
          ui.beforeSave = new Runnable() { @Override public void run() { dropPlaceholder(); } };
@@ -21367,10 +21781,19 @@ diff -ruN a/MainActivity.java b/MainActivity.java
 +                        loadAttack(Math.min(cur, Math.max(0, listSize() - 1)));
 +                    }
 +                    @Override public int create() { return createAno(); }
++                    @Override public void setAnoMode(boolean ano) {
++                        if (anoMode == ano) return;
++                        anoMode = ano;
++                        inSub = false;
++                        ui.setBackBar(null);
++                        ui.setListModeChecked(anoMode);
++                        if (attacker != null) { loadedAttack = -1; fillList(); loadAttack(0); }
++                    }
++                    @Override public CharAssets effectAssets() { return effects; }
                  });
              }
          });
-@@ -147,9 +183,9 @@
+@@ -147,9 +192,9 @@
      private int retAttack = -1;
      private boolean retAnoMode;
  
@@ -21382,7 +21805,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          if (attacker == null) return;
          Ano an = attacker.dac.getAno(ano);
          if (!inSub) {
-@@ -158,6 +194,7 @@
+@@ -158,6 +203,7 @@
          }
          inSub = true;
          forceProjectile = projectile;
@@ -21390,7 +21813,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          if (!anoMode) {
              anoMode = true;
              ui.setListModeChecked(true);
-@@ -173,6 +210,7 @@
+@@ -173,6 +219,7 @@
          if (!inSub) return;
          inSub = false;
          forceProjectile = false;
@@ -21398,7 +21821,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          anoMode = retAnoMode;
          ui.setListModeChecked(anoMode);
          fillList();
-@@ -206,9 +244,86 @@
+@@ -206,9 +253,86 @@
          } catch (Exception e) {
              notes.add("effect: " + e.getMessage());
          }
@@ -21487,7 +21910,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          }
      }
  
-@@ -232,7 +347,7 @@
+@@ -232,7 +356,7 @@
      private void reportLoose(CharAssets a) {
          if (a == null) return;
          if (a.importedLoose > 0) {
@@ -21496,7 +21919,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
              a.importedLoose = 0;
          }
          if (a.importError != null) {
-@@ -267,7 +382,7 @@
+@@ -267,7 +391,7 @@
              String warn = a.dac.getWarnings().isEmpty() ? "" : "  |  avisos DAC: " + a.dac.getWarnings().size();
              ui.status.setText(a.dir.getName() + "  |  ANO=" + a.dac.size() + "  CNV=" + a.cnv.size()
                      + "  golpes=" + mv.length + "  wav=" + a.wavCount + warn);
@@ -21505,7 +21928,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
  
              if (listSize() > 0) loadAttack(0);
              else ui.attackView.setData(null);
-@@ -278,6 +393,26 @@
+@@ -278,6 +402,26 @@
  
      private static final int RED = 0xFFFF6B6B, YELLOW = 0xFFFFD84C, DIMC = 0xFF6F7585, NORMAL = 0xFFE6E8EC;
  
@@ -21532,7 +21955,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
      private int listSize() {
          if (attacker == null) return 0;
          return anoMode ? attacker.dac.size() : attacker.data.moves.length;
-@@ -286,7 +421,6 @@
+@@ -286,7 +430,6 @@
      /** Lista de golpes (HDAT 4) ou de todos os ANOs: vermelho = tem hitbox flag 2, amarelo = flag 0. */
      private void fillList() {
          ArrayList<String> labels = new ArrayList<String>();
@@ -21540,7 +21963,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
          if (!anoMode) {
              CharData.Move[] mv = attacker.data.moves;
              for (int i = 0; i < mv.length; i++) {
-@@ -346,9 +480,7 @@
+@@ -346,9 +489,7 @@
              Ano probe = attacker.dac.getAno(target);
              boolean emptyAno = probe == null || !probe.present;
              if (emptyAno && target >= 0 && target < attacker.dac.size()) {
@@ -21551,7 +21974,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
                  placeholderIdx = target;
                  attacker.dac.setAno(target, placeholder);
              }
-@@ -356,6 +488,8 @@
+@@ -356,6 +497,8 @@
              if (anoMode) {
                  m = CharData.genericFrom(i, attacker.data.ownerOf(i));
                  m.projectile = (inSub && forceProjectile) || attacker.anoKinds()[i] == CharAssets.KIND_PROJECTILE;
@@ -21560,7 +21983,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
              } else {
                  m = attacker.data.moves[i];
              }
-@@ -371,8 +505,15 @@
+@@ -371,8 +514,15 @@
              if (anoMode && attacker.data.ownerOf(i) == null && attacker.anoKinds()[i] == CharAssets.KIND_PROJECTILE)
                  warns.add("flag 0 sem projetil: nenhum golpe do HDAT 4 usa o ANO " + i);
              if (effects == null) warns.add("sem effect: golpes nao mostram efeito de hit");
@@ -21576,7 +21999,7 @@ diff -ruN a/MainActivity.java b/MainActivity.java
              if (charf == null) warns.add("sem " + charfNote + " (hitbox flags 41-70 sem animacao)");
              loadedAttack = i;
              ui.attackView.setData(data);
-@@ -381,7 +522,7 @@
+@@ -381,7 +531,7 @@
                      anoMode ? "ANO " + i : String.format(Locale.US, "GOLPE_%02d", i), m.animInicial, ano.mpts.length, ano.links.length, m.projNormal, m.projAbaixo, m.projAcima));
              if (placeholder != null && attacker.dac.getAno(placeholderIdx) == placeholder)
                  warns.add(0, "ANO " + placeholderIdx + " vazia: frame provisório sem imagem. Se sair sem editar, ela volta a ficar vazia");
@@ -21909,7 +22332,7 @@ diff -ruN a/Navigator.java b/Navigator.java
  }
 diff -ruN a/ObjModel.java b/ObjModel.java
 --- a/ObjModel.java	2026-10-20 03:19:29.000000000 +0000
-+++ b/ObjModel.java	2026-10-30 02:30:27.000000000 +0000
++++ b/ObjModel.java	2026-10-30 21:54:57.248007782 +0000
 @@ -18,7 +18,7 @@
  
      static final int HITBOX = 0, HURTBOX = 1, PROJ = 2, EFFECT = 3, ACTION = 4;
@@ -21978,7 +22401,37 @@ diff -ruN a/ObjModel.java b/ObjModel.java
      /** Seletor de poeira (bits 4096..32768 da wOptFlag), 0 = nenhuma. */
      static int dustOf(Ano.Mpt m) { return (m.flags & 0x40) != 0 ? (m.optFlag >> 12) & 15 : 0; }
  
-@@ -143,10 +174,24 @@
+@@ -116,12 +147,13 @@
+         wallAnos = set;
+     }
+     static boolean wallAllowed() { return wallAnos.contains(Integer.valueOf(curAno)); }
+-    static final int WIN_NONE = 0, WIN_GRAB = 1, WIN_REPEAT = 2, WIN_CONFLICT = 3;
++    static final int WIN_NONE = 0, WIN_GRAB = 1, WIN_REPEAT = 2, WIN_CONFLICT = 3, WIN_COMBO = 4;
+     private static int windowUse = WIN_NONE;
+ 
+ 
+     /** Para que a janela 512 serve neste golpe (quem usa: agarrao 8/128 ou repeticao do projetil 0/3/6). */
+     static int windowUseOf(CharData.Move mv, int moveIndex) {
++        if (FixedAnos.hasComboWindow(curAno)) return WIN_COMBO;            // ANOs 30 e 32: o jogo usa a janela 512 para continuar o combo do botao A (md 879)
+         if (mv == null || mv.generic) return WIN_NONE;
+         boolean rep = mv.repeats(moveIndex);
+         if (mv.grabs() && rep) return WIN_CONFLICT;
+@@ -133,24 +165,42 @@
+     /** Chamado quando o golpe muda: atualiza o nome da acao virtual. */
+     static void setWindowContext(CharData.Move mv, int moveIndex) { windowUse = windowUseOf(mv, moveIndex); }
+ 
++    /** Uso da janela 512 agora: a do golpe, ou a de combo se o ANO aberto e o 30 / 32. */
++    private static int windowUseNow() { return FixedAnos.hasComboWindow(curAno) ? WIN_COMBO : windowUse; }
++
+     static String windowName() {
+-        switch (windowUse) {
++        switch (windowUseNow()) {
+             case WIN_GRAB: return "Tentar agarrão";
+             case WIN_REPEAT: return "Repetir projétil";
+             case WIN_CONFLICT: return "Janela 512 (conflito)";
++            case WIN_COMBO: return "Janela de combo (A→A)";
+             default: return "Janela de cancel (512)";
+         }
      }
  
      /** Acoes do "+": as comuns e, se o golpe permite, a janela 512. */
@@ -22005,7 +22458,21 @@ diff -ruN a/ObjModel.java b/ObjModel.java
          l.add(Integer.valueOf(VF_SCENE));
          l.add(Integer.valueOf(VF_DUST + 1));
          if (wallAllowed()) l.add(Integer.valueOf(VF_WALL));
-@@ -190,6 +235,12 @@
+-        if (u == WIN_GRAB || u == WIN_REPEAT) l.add(Integer.valueOf(VF_WINDOW));
++        if (u == WIN_GRAB || u == WIN_REPEAT || u == WIN_COMBO) l.add(Integer.valueOf(VF_WINDOW));
+         int[] r = new int[l.size()];
+         for (int i = 0; i < r.length; i++) r[i] = l.get(i).intValue();
+         return r;
+@@ -165,7 +215,7 @@
+         if ((m.flags & 0x40) == 0 || (m.optFlag & (512 | 1024 | 2048 | 0xF000)) == 0) return real;
+         java.util.ArrayList<Ano.Hit> extra = new java.util.ArrayList<Ano.Hit>();
+         // fora de agarrao/repeticao a janela 512 nao aparece, e o impacto na parede so nos ANOs de reacao (os bits sao preservados)
+-        if (windowUse != WIN_NONE && optFlagBit(m, 512)) extra.add(WINDOW_HIT);
++        if (windowUseNow() != WIN_NONE && optFlagBit(m, 512)) extra.add(WINDOW_HIT);
+         if (optFlagBit(m, VF_SCENE)) extra.add(vHit(VF_SCENE));
+         if (optFlagBit(m, VF_WALL) && wallAllowed()) extra.add(vHit(VF_WALL));
+         int dt = dustOf(m);
+@@ -190,6 +240,12 @@
          if (pack == 1) return ano - 3 + 41;
          return ano - 201 + 71;
      }
@@ -22018,7 +22485,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
      /** Nome do grupo: 0 = EFFECT, 1 = CHARF, 2 = do personagem (ANOs 201..208 sao auras). */
      static String fxPackName(int pack, int ano) {
          if (pack == 0) return "Efeitos gerais (EFFECT)";
-@@ -206,6 +257,8 @@
+@@ -206,6 +262,8 @@
  
      static final class Obj {
          int kind, flag, occ;
@@ -22027,7 +22494,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
          int f0, f1;
          int[] keys;     // frames onde as coordenadas mudam (inclui f0)
          List<Integer> tmp;
-@@ -230,6 +283,40 @@
+@@ -230,6 +288,40 @@
  
      static Ano.Hit[] hitsOf(Ano.Mpt m) { return (m.flags & 0x10) != 0 ? m.hits : Ano.NO_HITS; }
  
@@ -22068,7 +22535,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
      /** Indice do hit (flag, occ) em m.hits, ou -1. */
      static int indexOf(Ano.Mpt m, int flag, int occ) {
          Ano.Hit[] h = hitsOf(m);
-@@ -261,10 +348,12 @@
+@@ -261,10 +353,12 @@
          for (int f = 0; f < m.length; f++) {
              Map<Integer, Integer> seen = new HashMap<Integer, Integer>();
              Map<Integer, Ano.Hit> cur = new HashMap<Integer, Ano.Hit>();
@@ -22081,7 +22548,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
                  cur.put(h.flag * 256 + occ, h);
              }
              List<Integer> close = new ArrayList<Integer>();
-@@ -274,15 +363,16 @@
+@@ -274,15 +368,16 @@
                  int key = e.getKey();
                  Obj o = open.get(key);
                  Ano.Hit h = e.getValue();
@@ -22100,7 +22567,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
                      o.f0 = f;
                      o.f1 = f;
                      all.add(o);
-@@ -303,6 +393,7 @@
+@@ -303,6 +398,7 @@
              @Override public int compare(Obj a, Obj b) {
                  if (a.kind != b.kind) return a.kind - b.kind;
                  if (a.f0 != b.f0) return a.f0 - b.f0;
@@ -22108,7 +22575,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
                  if (a.flag != b.flag) return a.flag - b.flag;
                  return a.occ - b.occ;
              }
-@@ -332,9 +423,34 @@
+@@ -332,9 +428,34 @@
          return h;
      }
  
@@ -22144,7 +22611,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
          Ano.Mpt[] out = m.clone();
          int end = o.segEnd(frame);
          for (int f = frame; f <= end; f++) {
-@@ -349,7 +465,7 @@
+@@ -349,7 +470,7 @@
  
      /** Aplica x/y/w/h do objeto aos frames [from, to]. null = sem mudanca. */
      static Ano.Mpt[] setCoordsRange(Ano.Mpt[] m, Obj o, int from, int to, int x, int y, int w, int h) {
@@ -22153,7 +22620,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
          Ano.Mpt[] out = m.clone();
          for (int f = from; f <= Math.min(to, o.f1); f++) {
              Ano.Mpt c = m[f].copy();
-@@ -394,31 +510,145 @@
+@@ -394,31 +515,145 @@
          return c;
      }
  
@@ -22177,15 +22644,17 @@ diff -ruN a/ObjModel.java b/ObjModel.java
 +
      static Ano.Mpt[] remove(Ano.Mpt[] m, Obj o) {
 +        if (!sane(m, o)) return m;
-+        Ano.Mpt[] out = m.clone();
+         Ano.Mpt[] out = m.clone();
+-        for (int f = o.f0; f <= o.f1; f++) out[f] = removeHit(m[f], o.flag, o.occ);
 +        for (int f = o.f0; f <= o.f1; f++) {
 +            out[f] = removeHit(m[f], o.flag, o.occ);
 +            if (o.behind) out[f] = setSpriteBit(out[f], FLIP_H, false);          // o Flip X pertence ao Teleportar atras: sai junto
 +            if (isBehindNew(o)) out[f] = FrameTools.setSpeed(out[f], 0, 0, false);      // e a speed X que o leva para tras
 +        }
-+        return out;
-+    }
-+
+         return out;
+     }
+ 
+-    /** Muda o objeto para ocupar [nf0, nf1]; frames novos copiam o hit da borda. */
 +    /** Teleportar atras no frame {@code frame} (um frame so; {@code last} e ignorado): hit flag 39 + Flip X + speed X de {@link #BEHIND_DIST} px (atravessa o oponente). */
 +    static Ano.Mpt[] addBehind(Ano.Mpt[] m, int frame, int last) { return addBehindDist(m, frame, BEHIND_DIST); }
 +
@@ -22196,13 +22665,11 @@ diff -ruN a/ObjModel.java b/ObjModel.java
 +        if (FrameTools.ticks(c) <= 0) { c.hasTime = true; c.time = 1; c.flags |= 0x20; }
 +        c = setSpriteBit(addHit(c, defaultHit(39)), FLIP_H, true);
 +        c = FrameTools.setSpeed(c, 0, Math.max(1, dist) / (double) Math.max(1, FrameTools.ticks(c)), true);
-         Ano.Mpt[] out = m.clone();
--        for (int f = o.f0; f <= o.f1; f++) out[f] = removeHit(m[f], o.flag, o.occ);
++        Ano.Mpt[] out = m.clone();
 +        out[frame] = c;
-         return out;
-     }
- 
--    /** Muda o objeto para ocupar [nf0, nf1]; frames novos copiam o hit da borda. */
++        return out;
++    }
++
 +    /**
 +     * Muda o objeto para ocupar [nf0, nf1]; frames novos copiam o hit da borda. Hitbox: o dano e a reacao (OPT 0 e 1) tambem sao
 +     * copiados da borda para os frames novos (se o destino nao tem outra hitbox) e zerados nos frames que saem (se ficaram sem hitbox).
@@ -22302,7 +22769,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
      /** Liga/desliga a flag (hit sem coordenadas, ex.: 38) em todos os frames [f0, f1]. */
      static Ano.Mpt[] setFlagRange(Ano.Mpt[] m, int f0, int f1, int flag, boolean on) {
          Ano.Mpt[] out = m.clone();
-@@ -442,6 +672,7 @@
+@@ -442,6 +677,7 @@
  
      /** Novo objeto no frame (e opcionalmente ate {@code last}). */
      static Ano.Mpt[] add(Ano.Mpt[] m, int frame, int last, Ano.Hit proto) {
@@ -22310,7 +22777,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
          Ano.Mpt[] out = m.clone();
          for (int f = frame; f <= Math.min(last, m.length - 1); f++) out[f] = addHit(m[f], proto);
          return out;
-@@ -449,6 +680,7 @@
+@@ -449,6 +685,7 @@
  
      /** Troca a flag (tipo/efeito) do objeto em toda a sua duracao. */
      static Ano.Mpt[] setFlag(Ano.Mpt[] m, Obj o, int newFlag) {
@@ -22318,7 +22785,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
          Ano.Mpt[] out = m.clone();
          if (isVirtual(o.flag) || isVirtual(newFlag)) {
              for (int f = o.f0; f <= o.f1; f++) out[f] = addHit(removeHit(m[f], o.flag, o.occ), defaultHit(newFlag));
-@@ -458,6 +690,8 @@
+@@ -458,6 +695,8 @@
              Ano.Mpt c = m[f].copy();
              Ano.Hit t = find(c, o.flag, o.occ);
              if (t != null) t.flag = newFlag;
@@ -22327,7 +22794,7 @@ diff -ruN a/ObjModel.java b/ObjModel.java
              out[f] = c;
          }
          return out;
-@@ -465,6 +699,9 @@
+@@ -465,6 +704,9 @@
  
      // ---- campos de sprite ----
  
@@ -30726,7 +31193,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          apply(n, FrameOps.starts(n)[frame]);
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-30 19:43:40.653194504 +0000
++++ b/TimelineTools.java	2026-10-30 21:54:57.250150058 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -33083,7 +33550,16 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              case ObjModel.VF_WALL: return "Impacto na parede: toca o som 6, zera o cancelamento do oponente e cria a poeira de impacto na borda da tela. Precisa ter um ataque que jogue o oponente na parede (o jogo ignora o frame se o personagem nao estiver batendo na parede). Disponivel so nas ANOs de reacao do gamedata com velocidade/aceleracao X.";
              default:
                  if (ObjModel.isDust(f)) return "Poeira / fumaca: cria um efeito de fumaca na posicao do personagem (vira para o lado em que ele olha). Escolha o tipo abaixo (1 a 15). Tipos 1-5: pacote bobj ANOs 10-14; 6-7: effect ANOs 78-79; 8-15: effect ANOs 70-77. Cada frame com a flag cria um novo efeito.";
-@@ -1753,22 +2570,28 @@
+@@ -1745,6 +2562,8 @@
+             case ObjModel.WIN_REPEAT:
+                 return "O frame com essa função permite repetir o lançamento do projétil. A repetição alterna sempre entre os ANOs 40 e 41."
+                         + (ad != null && ad.moveIndex == 3 ? " No golpe 3 (no ar), em teste a repetição só funcionou com a janela maior: estenda este objeto por mais frames." : "");
++            case ObjModel.WIN_COMBO:
++                return "Janela de combo do botão A (md 879 do jogo): neste ANO, com o golpe acertando e a janela aberta, o próximo A continua a sequência: ANO 30 + A vira o 32, ANO 32 + A vira o 33; com frente, trás ou baixo vira o 31, 37 ou 36. Estenda este objeto para aumentar o tempo para apertar.";
+             case ObjModel.WIN_CONFLICT:
+                 return "Conflito: este golpe tem agarrão (flag 8/128) e repetição de projétil (MAX_REPETICOES > 0), e os dois usam a mesma janela 512. Escolha um dos dois nas OPÇÕES do golpe.";
+             default:
+@@ -1753,22 +2572,28 @@
      }
  
      private void action(Ano a, final ObjModel.Obj o, int pat) {
@@ -33115,7 +33591,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              return;
          }
          Ano.Hit h = ObjModel.find(a.mpts[pat], o.flag, o.occ);
-@@ -1780,26 +2603,94 @@
+@@ -1780,26 +2605,94 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
@@ -33212,7 +33688,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private View.OnClickListener convertAction(final ObjModel.Obj o, final int newFlag) { return convert(o, newFlag); }
  
      // ---- sequencia ----
-@@ -1831,6 +2722,25 @@
+@@ -1831,6 +2724,25 @@
          } });
      }
  
@@ -33238,7 +33714,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private void seqPanel(final Ano a) {
          java.util.List<SeqMark> ms = view.sequenceMarks();
          if (idx < 0 || idx >= ms.size() || view.attackData() == null) { title.setText("TRANSICAO"); note("Sem marcador aqui."); return; }
-@@ -1838,7 +2748,7 @@
+@@ -1838,7 +2750,7 @@
          final int kind = m.kind;
          if (m.incoming) {
              title.setText("ENTRADA  ·  " + m.label().substring(2));
@@ -33247,7 +33723,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                      + ", vinda da ANO " + m.fromAno + " (frame " + (m.fromPat + 1) + "). A causa está na timeline daquela ANO.");
              final int fa = m.fromAno;
              LinearLayout rl = line();
-@@ -1846,12 +2756,13 @@
+@@ -1846,12 +2758,13 @@
              return;
          }
          title.setTextColor(TimelineView.markColor(m));
@@ -33266,7 +33742,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +2829,7 @@
+@@ -1918,7 +2831,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -34271,6 +34747,57 @@ diff -ruN a/test/AiHelpTest.java b/test/AiHelpTest.java
 +        int a = doc.lastIndexOf("```", at);
 +        int z = doc.indexOf("```", at);
 +        return doc.substring(doc.indexOf('\n', a) + 1, z);
++    }
++}
+diff -ruN a/test/AnoFilterTest.java b/test/AnoFilterTest.java
+--- a/test/AnoFilterTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/AnoFilterTest.java	2026-10-30 21:57:35.470129435 +0000
+@@ -0,0 +1,47 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Filtros da grade: reordenam sem esconder; os que casam vem primeiro. */
++public class AnoFilterTest {
++    public static void main(String[] args) throws Exception {
++        A[] a = new A[12];
++        a[0] = new A().mpt(new M().time(5).img(1));                                            // 5 ticks, 1 frame
++        a[1] = new A().mpt(new M().time(10).img(1).hit(2, 0, 0, 10, 10)).mpt(new M().time(10).img(1));   // hitbox, 20 ticks, 2 frames
++        a[2] = new A().mpt(new M().time(3).img(1)).mpt(new M().time(3).img(1)).mpt(new M().time(3).img(1)).mpt(new M().time(3).img(1));   // 12 ticks, 4 frames
++        a[3] = new A().mpt(new M().time(60).img(1).hit(0, 0, 0, 0, 0));                        // projetil, 60 ticks, 1 frame
++        a[4] = new A().mpt(new M().time(5).img(1).hit(71, 0, 0, 0, 0));                        // aponta para o efeito do personagem (ANO 201)
++        a[5] = new A().mpt(new M().time(5).img(1));
++        a[6] = new A().mpt(new M().time(5).img(1));
++        for (int i = 7; i < 12; i++) a[i] = new A().mpt(new M().time(5).img(1));
++        Dac d = dac(a);
++        byte[] m0 = move(new int[]{2, 5}), m1 = move(new int[]{2, 6}), both = new byte[m0.length + m1.length];
++        System.arraycopy(m0, 0, both, 0, m0.length); System.arraycopy(m1, 0, both, m0.length, m1.length);
++        CharData cd = chr(both, new byte[][] {});
++        cd.moves[0].animInicial = 5; cd.moves[1].animInicial = 6;
++
++        AnoFilter.Result def = AnoFilter.apply(AnoFilter.DEFAULT, d, cd);
++        check("Padrao: ordem numerica, ninguem com moldura", def.order.toString() + ":" + def.matches, "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]:0");
++        AnoFilter.Result atk = AnoFilter.apply(AnoFilter.ATTACK, d, cd);
++        check("Ataque: hitbox e projetil no topo, o resto embaixo (nada some)", atk.order.toString() + ":" + atk.matches, "[1, 3, 0, 2, 4, 5, 6, 7, 8, 9, 10, 11]:2");
++        check("Ataque: moldura so nos que casam", atk.matched[1] && atk.matched[3] && !atk.matched[0], true);
++        AnoFilter.Result tm = AnoFilter.apply(AnoFilter.TIME, d, cd);
++        check("Tempo: mais ticks primeiro", tm.order.subList(0, 4).toString(), "[3, 1, 2, 0]");
++        AnoFilter.Result fr = AnoFilter.apply(AnoFilter.FRAMES, d, cd);
++        check("Frames: mais Frames (nao ticks) primeiro", fr.order.subList(0, 3).toString(), "[2, 1, 0]");
++        AnoFilter.Result mv = AnoFilter.apply(AnoFilter.MOVES, d, cd);
++        check("Golpes: ANOs de golpes do BIN primeiro", mv.order.subList(0, 2).toString() + ":" + mv.matches, "[5, 6]:2");
++        AnoFilter.Result fx = AnoFilter.apply(AnoFilter.EFFECTS, new_dac_with_effect(), cd);
++        check("Efeitos: ANO 201 (efeito do personagem) no topo", fx.order.get(0).intValue(), 201);
++        AnoFilter.Result im = AnoFilter.apply(AnoFilter.IMPORTANCE, d, cd);
++        check("Importancia: tem info (ANOs fixos do jogo 0 a 4, 6 a 9 e os golpes 5 e 6) vem primeiro; 10 e 11 embaixo", im.order.subList(8, 12).toString() + ":" + im.matches, "[8, 9, 10, 11]:10".replace("[8, 9, 10, 11]", "[8, 9, 10, 11]"));
++        check("todos os filtros mantem todas as ANOs", AnoFilter.apply(AnoFilter.TIME, d, cd).order.size() + AnoFilter.apply(AnoFilter.EFFECTS, d, cd).order.size(), 24);
++        System.out.println("AnoFilterTest fails=" + fails);
++    }
++
++    static Dac new_dac_with_effect() throws Exception {
++        A[] a = new A[205];
++        for (int i = 0; i < a.length; i++) a[i] = new A().mpt(new M().time(5).img(1));
++        return dac(a);
 +    }
 +}
 diff -ruN a/test/BattleTest.java b/test/BattleTest.java
@@ -36041,8 +36568,8 @@ diff -ruN a/test/GrabEditTest.java b/test/GrabEditTest.java
 +}
 diff -ruN a/test/GridOpsTest.java b/test/GridOpsTest.java
 --- a/test/GridOpsTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/GridOpsTest.java	2026-10-30 21:00:53.197369312 +0000
-@@ -0,0 +1,62 @@
++++ b/test/GridOpsTest.java	2026-10-30 21:57:35.469542744 +0000
+@@ -0,0 +1,76 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -36061,13 +36588,13 @@ diff -ruN a/test/GridOpsTest.java b/test/GridOpsTest.java
 +        byte[] m0 = move(new int[]{2, 40}), m1 = move(new int[]{2, 7}), both = new byte[m0.length + m1.length];
 +        System.arraycopy(m0, 0, both, 0, m0.length); System.arraycopy(m1, 0, both, m0.length, m1.length);
 +        CharData cd = chr(both, new byte[][] {});
-+        cd.moves[1].animInicial = 7; cd.moves[1].animAoAcertar = 8; cd.moves[1].animSeqChao = 9; cd.moves[1].projNormal = 10;
++        cd.moves[1].animInicial = 10; cd.moves[1].animAoAcertar = 11; cd.moves[1].animSeqChao = 5; cd.moves[1].projNormal = 50;
 +
 +        AnoOps.Risk r3 = AnoOps.risk(d, cd, 3);
 +        check("hitbox", r3.hitbox + ":" + r3.projectile + ":" + r3.attack, "true:false:false");
 +        AnoOps.Risk r4 = AnoOps.risk(d, cd, 4);
 +        check("projetil", r4.hitbox + ":" + r4.projectile, "false:true");
-+        check("ANO de ataque do BIN", AnoOps.risk(d, cd, 7).attack, true);
++        check("ANO de ataque do BIN", AnoOps.risk(d, cd, 10).attack, true);
 +        check("ANO comum sem risco", AnoOps.risk(d, cd, 1).any(), false);
 +        check("aviso lista as ANOs de risco", AnoOps.warning(d, cd, java.util.Arrays.asList(Integer.valueOf(1), Integer.valueOf(3))).contains("ANO 3") &&
 +                !AnoOps.warning(d, cd, java.util.Arrays.asList(Integer.valueOf(1), Integer.valueOf(3))).contains("ANO 1:"), true);
@@ -36092,16 +36619,30 @@ diff -ruN a/test/GridOpsTest.java b/test/GridOpsTest.java
 +        check("dois frames", SpriteUses.line(SpriteUses.find(u, 4).get(1)), "Ano 2, Frames 1 e 2");
 +        check("sem uso = vazio", SpriteUses.text(u, 77), "");
 +
-+        // (i)
-+        String info = AttackInfo.describe(cd, 7);
-+        check("ANO inicial do golpe 1: Especial 2 e sequencias", info.contains("GOLPE_01") && info.contains("Botão X") && info.contains("ao acertar → ANO 8")
-+                && info.contains("sequência no chão (SEQ) → ANO 9") && info.contains("projétil → ANO 10"), true);
-+        String seq = AttackInfo.describe(cd, 9);
-+        check("ANO de sequencia: diz o papel e o comando do golpe", seq != null && seq.contains("esta ANO é sequência no chão (SEQ)") && seq.contains("Botão X"), true);
-+        check("ANO sem golpe: null", AttackInfo.describe(cd, 11), null);
-+        check("golpes 0/3/6 = Y; 1/4/7 = X; 2/5/8 = B; 18 sem comando HDAT 4", AttackInfo.command(0).startsWith("Botão Y") && AttackInfo.command(3).contains("pulando") && AttackInfo.command(7).startsWith("Botão X") && AttackInfo.command(8).startsWith("Botão B") && AttackInfo.command(18) == null, true);
-+        check("9/10 = Especial 1 (100 de Synchro); 11/12 = Especial 2 (AngryOn, 200)", AttackInfo.command(9).startsWith("Especial 1") && AttackInfo.command(9).contains("100 de Synchro") && AttackInfo.command(10).contains("pulando")
-+                && AttackInfo.command(11).startsWith("Especial 2") && AttackInfo.command(11).contains("AngryOn") && AttackInfo.command(12).startsWith("Especial 2"), true);
++        // (i) da ANO: textos simples, sem botao
++        String info = AttackInfo.anoInfo(cd, 10);
++        check("ANO inicial do golpe 1", info, "ANIM_INICIAL do Golpe 1");
++        check("ao acertar", AttackInfo.anoInfo(cd, 11), "Ao acertar do golpe 1");
++        check("SEQ", AttackInfo.anoInfo(cd, 5), "SEQ do golpe 1");
++        check("projetil", AttackInfo.anoInfo(cd, 50), "Projétil do golpe 1");
++        check("ANO sem golpe e sem nome fixo: null", AttackInfo.anoInfo(cd, 60), null);
++        check("ANO fixa do jogo", AttackInfo.anoInfo(cd, 0), "Parado (idle)");
++        check("carga de ki", AttackInfo.anoInfo(cd, 84), "Carga de ki (início)");
++        check("pouso padrao", AttackInfo.anoInfo(cd, 13), "Animação de pouso padrão");
++        check("ataque normal 30 com janela de combo", AttackInfo.anoInfo(cd, 30).contains("1º golpe") && AttackInfo.anoInfo(cd, 30).contains("Janela de combo"), true);
++        check("ataque normal 33 sem janela", AttackInfo.anoInfo(cd, 33).contains("Janela"), false);
++        check("a info da ANO nao cita botao", !String.valueOf(AttackInfo.anoInfo(cd, 7)).contains("Botão"), true);
++        cd.moves[1].pousoErrar = 61;
++        check("pouso do golpe", AttackInfo.anoInfo(cd, 61), "Animação de pouso do golpe 1");
++
++        // info do golpe: botao + sequencias
++        String mi = AttackInfo.moveInfo(cd, 1);
++        check("golpe 1 = X, no chao, com gesto e sequencias", mi.contains("GOLPE_01") && mi.contains("Botão X — no chão") && mi.contains("joystick: → ↓") && mi.contains("ao acertar → ANO 11")
++                && mi.contains("SEQ → ANO 5") && mi.contains("projétil → ANO 50"), true);
++        check("golpe 0 = Y; 2 = B; 9 = Z (100 de Synchro); 11 = IRA (AngryOn); 18 sem botao",
++                AttackInfo.button(0).name + AttackInfo.button(2).name + AttackInfo.button(9).name + AttackInfo.button(11).name + (AttackInfo.button(18) == null), "YBZIRAtrue");
++        check("icones: Y 330, X 333, B 336, Z 339, IRA 45", AttackInfo.button(0).hudAno + ":" + AttackInfo.button(1).hudAno + ":" + AttackInfo.button(2).hudAno + ":" + AttackInfo.button(9).hudAno + ":" + AttackInfo.button(11).hudAno, "330:333:336:339:45");
++        check("Z gasta 100 e IRA exige AngryOn", AttackInfo.cost(9).contains("100") && AttackInfo.cost(11).contains("AngryOn"), true);
 +        System.out.println("GridOpsTest fails=" + fails);
 +    }
 +}
@@ -36754,8 +37295,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-30 21:01:29.212589984 +0000
-@@ -0,0 +1,555 @@
++++ b/test/I18nIgnored.java	2026-10-30 21:58:12.778381489 +0000
+@@ -0,0 +1,559 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -36982,6 +37523,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "ANO",
 +        "ANO ",
 +        "ANO %d%s",
++        "ANOS",
 +        "ANO_",
 +        "APNG",
 +        "ATK_FLAGS",
@@ -37028,6 +37570,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "FRAME ",
 +        "FRAMES",
 +        "Frame ",
++        "Frames",
 +        "Frames ",
 +        "GIF",
 +        "GIF  ",
@@ -37052,7 +37595,9 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "IHDR",
 +        "IMG",
 +        "IMG ",
++        "IRA",
 +        "ISO-8859-1",
++        "Intro",
 +        "JPG",
 +        "LINKS",
 +        "LNKS",
