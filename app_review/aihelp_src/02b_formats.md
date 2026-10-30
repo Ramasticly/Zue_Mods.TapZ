@@ -15,7 +15,7 @@ The file is `DAC_ACT_ { $ANO_0: {...}, $ANO_1: {...}, ... }`. One block per anim
   - `$TIME: t` — duration in ticks (1..255). **Without `$TIME` the frame never advances** (it freezes; the ANO never finishes). Don't omit it unless a frozen frame is intended.
   - `$IMG: n` — sprite index = entry `$SPR_n` of `000.cnv.txt`. `-1` = no image.
   - `$MID: [x, y]` — sprite anchor offset in pixels.
-  - `$WACTFLAG: n` — 16-bit state/behaviour flags of the frame. Known bits: **64 = keep the speed of the previous frame (instead of resetting to 0)**; 0x2000 (8192) and 0x8000 (32768) = frame/position synchronised with the parent (for linked animations). Other bits *(unknown)*: copy from existing frames.
+  - `$WACTFLAG: n` — 16-bit state/behaviour flags of the frame. Known bits: **1 = loop back to the first frame when this frame ends**; **16 / 32 = flip X / flip Y**; **64 = keep the speed of the previous frame (instead of resetting to 0)**; 0x2000 (8192) and 0x8000 (32768) = frame/position synchronised with the parent (for linked animations). Other bits *(unknown)*: copy from existing frames.
   - `$SE: n` — sound id played at the start of the frame (see 5.6).
   - `$MOVE: { $XSPEED: v, $YSPEED: v, $XACCEL: v, $YACCEL: v }` — movement in **pixels per tick** (decimals allowed, e.g. `2.5`); any subset of the four. Positive X = forward (facing direction), positive Y = down. See 6.2.
   - `$HITS: { $HT_0: {$FLAG: f, $COORDS: [x, y, w, h]}, ... }` — "boxes"/actions of the frame (hitbox, hurtbox, spawn points, effects…); `x,y` relative to the character (x mirrored with facing); `w,h` size. See 5.2. **At most 10 per frame.**

@@ -1,10 +1,10 @@
 ## 4. What to ask the user for (and how they get it)
 
-Ask only for what you need, one step at a time, in the user's language.
+Ask only for what you need, one step at a time, in the user's language. **Mode A** (questions about the app) usually needs nothing but the user's description or a screenshot. **Mode B** (generate/change an attack) needs the three `.txt` files below.
 
 | You need | Ask the user to send | How the user gets it |
 |---|---|---|
-| Understand/edit an existing move or animation | The **text of that ANO / move / frame** | In the editor open `▲ DADOS / EDITAR`, choose the tab (`GOLPE`, `ANO`, `FRAME`, in ANO mode also `LINKS`), tap the pencil `✎` (it opens the text editor with the current text), select all and copy. |
+| Understand an existing move or animation (Mode A) | A **screenshot** of the timeline / the drawer page, the move and ANO numbers, and the warning text | Screenshot of the app; the move/ANO numbers are in the selector. Do not ask for the `▲ DADOS / EDITAR` text. |
 | Create a move or many ANOs consistent with the character | `000.dac.txt`, `000.bin.txt`, `000.cnv.txt` of the character | Use `SALVAR` → save **all** to the **separate folder**; then open `Tap Battle/TBRE/Chars/charNN/` with any file manager and share the three `.txt` files. (They also exist in `Tap Battle/assets/charNN/`.) The `.dac.txt` can be large; ask for the specific ANOs if the chat limit is a problem. |
 | Know which sprites exist / their cuts | `000.cnv.txt` and the `NNN.png` sheets (or a screenshot of the `SPRITES` list) | Same folder. |
 | Know the exact problem | The **warning text** shown over the preview (tap it to expand) and a description of what the preview shows | The warning line under the menu; tap to expand all of them. |

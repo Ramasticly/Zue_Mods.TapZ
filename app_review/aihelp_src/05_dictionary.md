@@ -12,7 +12,7 @@ The app stores which fields a frame has in a flag byte; in text this is implicit
 | 2 | **Hitbox** (attack area), `[x,y,w,h]`. Uses the frame's `$OPT` (damage, reaction). |
 | 3 / 4 / 5 | Screen shake light / medium / strong. |
 | 10–17 | Dust/smoke effect from the shared `effect` pack (effect ANO = 50 + flag − 10) at offset (x, y). |
-| 20 | **Cutscene** trigger (x, y); the event is selected by data in the character's HDAT 13. Complex — copy from an existing character; the app shows a panel explaining the event. |
+| 20 | **Cutscene** trigger (x, y, event). The third value is the event = row of the character's HDAT 13 table (`$HDAT_13` > `$ROTEIRO_CUTSCENE` > `$EVT_nn: { $ALVO, $DURACAO, $Z_LAYER, $ANIM_ID, $ANIM_FLIP, $CAM_MODE, $TRAVAR_VIT, $FLAG }`: ALVO 0 = effect.pac, 1 = the player's char pack, other = bobj; DURACAO 0/negative = until the ANO changes, N = frame limit; Z_LAYER 0/1/other; CAM_MODE 0 = world, else screen origin (0,0); TRAVAR_VIT != 0 freezes the opponent; FLAG 0-15 = extra effect: 3 camera to attacker, 5 focus opponent, 10-15 teleports...). The app has a full event editor (`EDITAR EVENTOS`, or `CHAR` > `CUTSCENES`): previews, all fields, NEW/DUPLICATE/CLEAR/DELETE-last, and it saves the `$EVT_nn` lines into `000.bin.txt`. |
 | 26 | Opponent cannot defend. |
 | 27 | Prevent cancelling. |
 | 28 | Damage ignores attack/defense stats. |
@@ -21,7 +21,7 @@ The app stores which fields a frame has in a flag byte; in text this is implicit
 | 34 | Heal. |
 | 37 | Hit does not count for combo. |
 | 38 | **Block the sequence** (the move's SEQ does not trigger when this hit connects). |
-| 39 | Teleport to the opponent. |
+| 39 | Teleport the CHARACTER to the opponent's exact position (x/y of the hit ignored; no effect if the opponent is dead). With `Flip X` and a positive own `speed X` in the same frame it becomes the app's **Teleportar atrás do oponente**: the character goes onto the opponent and the speed (relative to the character's facing, not inverted by Flip X) carries it to the other side, default 60 px. The game pushes overlapping bodies apart: turn on `Personagens se atravessam` (ATK_FLAGS 16) to keep the opponent still. |
 | 40 | Pull the opponent. |
 | 41–70 | Aura/bubble from the `charf` pack (ANO = flag − 41 + 3). |
 | 71–125 | **Character's own effect/aura ANOs**: flag f spawns ANO `201 + (f − 71)` of the character's own DAC (so ANOs 201…255 are effect/aura ANOs). They follow the character while the flag is present. |
@@ -71,7 +71,7 @@ Each step **restarts the defender's animation** (ANO). The empty slots of the ch
 | 1 | GROUND_ONLY | the projectile explodes only on the floor (does not explode on the enemy) |
 | 2 | NO_TRADE | the move's hitbox destroys the opponent's hitboxes (the opponent enters the reaction stored in the character's HDAT 3 byte 13) |
 | 4 | TRIPLE | throws 3 projectiles (ANO, ANO+1, ANO+2) |
-| 8 | GRAB | grab at the end of `ANIM_INICIAL` or during a frame with the window bit 512; continues to `ANIM_INICIAL + 1`; works even if it did not hit |
+| 8 | GRAB | grab at the end of `ANIM_INICIAL` or during a frame with the window bit 512; continues to `ANIM_INICIAL + 1`; works even if it did not hit. The app shows it in the **transition lane** (`AGARRAR → ANO`) and as the "Tentar agarrão" object; the grab distance is HDAT 3 byte 5 (`$DISTANCIA_AGARRE` in `$STATUS_BASE_E_FISICA` of `000.bin.txt`, px), editable in both menus |
 | 16 | GHOST | characters pass through each other |
 | 32 | PROJ_OPP | the projectile spawns at the opponent (turns off 64) |
 | 64 | PROJ_FLOOR | the projectile spawns under the opponent, stuck to the floor (turns off 32) |
@@ -80,10 +80,10 @@ Each step **restarts the defender's animation** (ANO). The empty slots of the ch
 Move indexes: moves **0, 3 and 6** are special slots; when transplanting a move to another character, 0/3/6 can only replace 0/3/6 and the others only the non-special ones. Grabs only work in moves 0..12. Move text fields are 16-bit: **ANO numbers above 255 are normal** (up to 32767).
 
 ### 5.6 Sounds
-Sound id `SE`: 0..79 = common game sounds (the app's sound list plays them); **80, 81, … = the character's own `*.wav` files in sorted file-name order** (first wav = 80). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.
+Sound id `SE` (an **unsigned byte, 0–255**; values above 127 only work in a `TCBManajer` patched for that): 0 = none; 1..79 = common game sounds `se_00`..`se_78` (file = id − 1; the app's sound list plays them); **80..99 = the character's own `*.wav` files in sorted file-name order** (first wav = 80, at most 20); 100..255 = new common sounds `se_99`..`se_254` (file names have 3 digits from `se_100.ogg`). Files `se_79`..`se_99` are silent filler (the game loads the `se_` files in sequence, never delete one); the first new global sound after `se_78` is `se_100` (id 101). The app adds global sounds as **Opus inside .ogg** (Android 10+). Voice in reactions uses the same ids (1..127). Adding/removing wavs shifts ids — warn the user before suggesting that.
 
 ### 5.7 Sprites and the CNV
-Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.
+Frame `$IMG: n` → `$SPR_n` in `000.cnv.txt` → rectangle in sheet `NNN.png` (`$src`). A `.cnv` outside the PAC is plain text (`CNV_TXT_ { $SPR_n:{$src:…, $x:…, …} }`) with the **original** coordinates (no ×2); `.cnv.txt` holds the **final** coordinates (already ×2 for characters). Either can be used as the source when importing sprites from another pac. `$src` is the **index** of the sheet in the folder's list of `NNN.png` files sorted by name — not the number in the file name: with `017.png`, `018.cnv`, `019.png`, `$src:18` is `019.png`. The sprite list screen (`SPRITES`) adds/replaces/removes sprites, edits cuts and imports PNG/JPG/GIF; new sprites go to the first free space of a sheet. Sheets are never rewritten destructively.
 
 ### 5.8 Linked animations (links) and effects
 A link spawns another ANO together with its parent (effects, body parts, auras) and follows it. Only 1 level, max 13 per ANO. Effects can also be triggered by hit flags 10–17 / 41–125 (see 5.2).

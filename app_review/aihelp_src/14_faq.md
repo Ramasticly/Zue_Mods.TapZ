@@ -12,6 +12,8 @@
 
 **Where do I save?** Section 13: recommended `Salvar em pasta separada` → `Tap Battle/TBRE/Chars/charNN/`.
 
+**I added/deleted a character folder or replaced a `.txt` and the app does not show it.** Tap `↻` in the title bar (confirm). It rereads the character folders, effects, scenes and sounds and keeps the same character/move if they still exist. Unsaved edits are lost, so `SALVAR` first.
+
 **How do I undo?** `DESFAZER`/`↶`. Saved files keep what was saved; backups are in `Tap Battle/TBRE/Backups/`.
 
 **Can you make me a sprite/sound?** No. Tell me what is needed (size, frames, names); the user imports them (11.5).

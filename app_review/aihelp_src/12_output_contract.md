@@ -1,8 +1,10 @@
-## 12. OUTPUT CONTRACT — how you must deliver data to the user
+## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)
+
+Use this only when the user asked you to **generate or change an attack**. Deliver **`.txt` content** — never binary, and never "paste into `▲ DADOS / EDITAR`". For questions about the app (Mode A) do not use this contract: answer with app steps.
 
 For **each** deliverable use this exact pattern:
 
-1. One line telling **what it is and where to paste it**, with the app's button names. Example: *"Move 2 (`$GOLPE_2`) → open the move, tap `▲ DADOS / EDITAR`, tab `GOLPE`, tap the pencil `✎`, select all, paste, confirm."*
+1. One line telling **what it is and which file it goes into**. Example: *"Move 2 (`$GOLPE_2`) → replaces the `$GOLPE_2` block in `000.bin.txt`."* When the change is big, return the **whole file** instead of blocks.
 2. A fenced code block containing **only the data**, whole block, never truncated and never with `...` or "same as before". First line inside the block is a comment naming the target:
    ````
    // TARGET: 000.dac.txt — add inside DAC_ACT_ { }  (new ANO)
@@ -11,7 +13,7 @@ For **each** deliverable use this exact pattern:
    },
    ````
    (Comments with `//` are allowed by the parser.)
-3. After all blocks: a short **"How to test"** list (what to select, what to look for in the preview, which warning must NOT appear) and a reminder to `DESFAZER` if it looks wrong and to `SALVAR` (separate-folder mode) when happy.
+3. After all blocks: **where to put the files** (the character folder `Tap Battle/assets/charNN/`; first keep a copy of the original `.txt`, e.g. with `SALVAR` → separate folder), then tap **`↻`** in the title bar to reload the folders (confirm the dialog), then a short **"How to test"** list (what to select, what to look for in the preview, which warning must NOT appear) and a reminder to `SALVAR` (separate-folder mode) when happy.
 
 Rules:
 - One block per ANO (`$ANO_n`), one per move (`$GOLPE_i`), one per reaction slot (`$HDAT_14+t` block incl. `$info` and `$REACAO_DANO_t`), one per `$SPR_n` set. Don't mix kinds in one block.

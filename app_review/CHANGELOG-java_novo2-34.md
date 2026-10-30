@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1615 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1635 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -433,6 +433,16 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Corpos sobrepostos**: no teste de simulação o atacante termina a 60 px do outro lado e o oponente fica parado **com “Personagens se atravessam” (ATK_FLAGS 16)**; sem ela a separação dos corpos do jogo (md 19) empurra o oponente. A gaveta mostra essa dica quando a flag está desligada.
 - `TeleportBehindTest` reescrito (24, inclui os dois casos de simulação e o formato antigo). Gaveta só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzj Faixa de Frame, timeline até o fim, linhas de tick, "efeito img" e ＋ no lugar certo
+- **Faixa do Frame** no alto da grade da sprite: `DUPLICAR` (copia só o sprite), `◀` / `▶` (mover o Frame; `FrameOps.shift` dá TIME a quem deixa de ser o último, senão a ANO travaria) e `EXCLUIR` (confirma; recusa apagar o único Frame). Os botões Imagem/Tempo/Som/Movimento/Efeitos/Copiar ficaram a **40 %** (34 dp em vez de 84; ícone e nome lado a lado).
+- **Faixa “Estilo” → “efeito img”**: `FrameOps.styleSig` só considera o que a página Efeitos mexe (Flip X/Y, manter velocidade, interpolar); rotação/alpha/zoom saem da faixa (continuam na página Imagem). `setStyleRun` copia/limpa a interpolação em vez do `$RAZ`.
+- **Timeline até o fim**: arrastar o ponteiro agora chega a `total` (fim do último tick). A simulação fica no último tick; só o ponteiro é desenhado no fim (`TimelineView.atEnd`), e `playheadTick()` devolve `total` ali.
+- **Linhas dos ticks** nas faixas (cor da faixa mais escura, 1 px) nas divisas de tick; somem com zoom afastado (< 3 dp por tick).
+- **Efeitos, poeiras e ações especiais** ganham **FRAME DE INÍCIO** + **DURAÇÃO (frames)** (`timingRows`, o mesmo par das boxes).
+- **＋ azul (sprite)**: meio do Frame → depois dele; na divisa entre Frames, no início dele (tick 0) ou no fim da timeline → no lugar da divisa (`FrameOps.insertIndexAt` / `insertCopyAt`).
+- **Rotação/Alpha negativos** (conferido no `TCBManajer`): rotação é `short` com sinal (negativo vale); alpha cru é `short`, byte baixo = 255 − alpha e `>> 8` escolhe a mistura (1 aditivo, qualquer outro valor — inclusive negativo — “outro modo”). O app já faz a mesma conta; só os textos dos campos foram corrigidos.
+- `FrameBarTest` (20: onde entra o sprite, copiar no início/meio/fim, mover, TIME do ex-último, faixa “efeito img”). Faixa de Frame, botões a 40 %, ponteiro no fim, linhas de tick e as gavetas só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -516,6 +526,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DustTest (novo)** | 11 |
 | **CutsceneEditTest (novo)** | 25 |
 | **CineZoomCompTest (novo)** | 15 |
+| **FrameBarTest (novo)** | 20 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

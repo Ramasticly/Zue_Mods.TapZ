@@ -11,6 +11,6 @@ Where:
 
 Backups/safety copies go to `Tap Battle/TBRE/Backups/` (e.g. `AAAAMMDD_HHMMSS_charNN_transplante/`).
 
-To test in the actual game: the game reads the character folder under `assets/charNN/`. How a "separate folder" copy reaches the game depends on the user's setup — ask how they run the game, and never advise overwriting the only copy of the original. After saving, reload in the editor with `CHAR` to confirm that the saved result loads.
+To test in the actual game: the game reads the character folder under `assets/charNN/`. How a "separate folder" copy reaches the game depends on the user's setup — ask how they run the game, and never advise overwriting the only copy of the original. After saving or replacing `.txt` files by hand, tap `↻` in the title bar (reloads the folders without restarting the app) and select the character in `CHAR` to confirm that the result loads.
 
 The save step also checks the game limits (boxes per frame, links, time…) and warns about anything that would close the game.
