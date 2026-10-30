@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1635 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1649 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -443,6 +443,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Rotação/Alpha negativos** (conferido no `TCBManajer`): rotação é `short` com sinal (negativo vale); alpha cru é `short`, byte baixo = 255 − alpha e `>> 8` escolhe a mistura (1 aditivo, qualquer outro valor — inclusive negativo — “outro modo”). O app já faz a mesma conta; só os textos dos campos foram corrigidos.
 - `FrameBarTest` (20: onde entra o sprite, copiar no início/meio/fim, mover, TIME do ex-último, faixa “efeito img”). Faixa de Frame, botões a 40 %, ponteiro no fim, linhas de tick e as gavetas só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzk Excluir sprites renumera os índices
+- **Antes**: excluir a SPR_n só esvaziava a entrada do CNV (os índices não mudavam). **Agora**: as sprites seguintes são **renumeradas** (se sai a SPR_0, a 1 vira 0, a 2 vira 1…). `Cnv.removeShift`, `SpriteLib.removeShift` (devolve o mapa antigo → novo), `SpriteGroups.remap` (grupos de GIF perdem os quadros das sprites removidas e os atrasos deles; com menos de 2 quadros deixam de ser grupo) e `SpriteRenumber.remapDac` (todos os `image` do DAC; as ANOs mudadas vão para o `000.dac.txt`).
+- Com “Excluir Frames com essa Sprite” os frames saem (com os índices antigos) antes da renumeração; sem a caixa ficam `IMG -1`. O texto da confirmação avisa da renumeração.
+- `SpriteRenumberTest` (14: mapa, CNV deslocado, grupos com e sem sequência, DAC reescrito, frames excluídos + renumeração). A tela de exclusão só compilada/revisada. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -527,6 +532,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CutsceneEditTest (novo)** | 25 |
 | **CineZoomCompTest (novo)** | 15 |
 | **FrameBarTest (novo)** | 20 |
+| **SpriteRenumberTest (novo)** | 14 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
