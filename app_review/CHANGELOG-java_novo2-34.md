@@ -440,7 +440,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpawnDiagTest (novo)** | 50 |
 | **LinkHierarchyTest (novo)** | 8 |
 | **FrameToolsTest (novo)** | 47 |
-| **ToolbarTest (novo)** | 84 |
+| **ToolbarTest (novo)** | 83 |
 | **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 37 |
 | **ReactionSlotsTest (novo)** | 20 |
