@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1608 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1615 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -426,6 +426,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Limites** (avisados no menu): o oponente, o cenário e os efeitos continuam em 200 %; hitbox/hurtbox não escalam com o sprite; e depois da trava a câmera volta a 100 % em 12 ticks (o frame seguinte aparece um pouco ampliado nesses ticks).
 - `CineZoomComp` puro + `CineZoomCompTest` (15: escala, só slots 9–12, dividir 1 tick + resto, tempo total, liga/desliga, rotação preservada, e na simulação o atacante fica em 50 % durante a trava e 100 % depois). Menu só compilado/revisado. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzi Teleportar atrás: agora o PERSONAGEM vai, o oponente não é movido
+- **Problema**: o item usava a flag 40 (Puxar oponente) com x negativo + Flip X, que no jogo move o **oponente** para a posição do personagem + (x, y): ele aparecia do outro lado do mapa.
+- **Formato novo** (um Frame só): **hit flag 39** (o personagem vai até o X/Y exatos do oponente, `CheckOptFlag`) + **Flip X** + **speed X própria positiva** no mesmo frame. A speed é relativa à direção do personagem (`wObjFlag`), que o Flip X do frame (`wActFlag`, só desenho) **não inverte**: o personagem atravessa o oponente e para do outro lado, com o sprite virado para ele. Distância total = speed X × ticks do frame, **padrão 60 px** (a que o jogo usa no contra-ataque da guarda, md 912), editável no campo “distância (px)” da gaveta; frame sem tempo ganha 1 tick. Apagar remove hit, Flip X e speed; mover leva os três e a distância; esticar não faz nada (um frame só); trocar de ação limpa Flip X e speed.
+- **Formato antigo** (flag 40 negativa + Flip X) continua reconhecido, com nota “formato antigo”; a lista do ＋ só esconde o Puxar oponente num frame que tem o formato antigo.
+- **Corpos sobrepostos**: no teste de simulação o atacante termina a 60 px do outro lado e o oponente fica parado **com “Personagens se atravessam” (ATK_FLAGS 16)**; sem ela a separação dos corpos do jogo (md 19) empurra o oponente. A gaveta mostra essa dica quando a flag está desligada.
+- `TeleportBehindTest` reescrito (24, inclui os dois casos de simulação e o formato antigo). Gaveta só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -488,7 +495,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SheetFilesTest (novo)** | 17 |
 | **CropProblemTest (novo)** | 11 |
 | **LayerOpsTest (novo)** | 11 |
-| **TeleportBehindTest (novo)** | 17 |
+| **TeleportBehindTest (novo)** | 24 |
 | **SpeedLineTest (novo)** | 51 |
 | **UndoHistoryTest (novo)** | 32 |
 | **UndoEditsTest (novo)** | 10 |
