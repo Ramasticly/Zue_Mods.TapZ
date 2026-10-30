@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-30 01:33:16.393828934 +0000
++++ b/AiHelpDoc.java	2026-10-30 02:14:24.382918317 +0000
 @@ -0,0 +1,850 @@
 +package com.zue.attackeditor;
 +
@@ -636,7 +636,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "",
 +        "### 11.1 Top menu (16 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
 +        "- `SALVAR` — save (section 13).\n" +
-+        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The +1 tick counter locks during hitstop and the cinematic lock and then continues at locked+1 (frozen ticks do not count). In ANO mode, the selector has `ABRIR LISTA` and `CRIAR ANO` (new ANO = last+1, one frame IMG -1 with 6 ticks; an empty ANO opened gets the same frame). Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
++        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The +1 tick counter locks during hitstop and the cinematic lock and then continues at locked+1 (frozen ticks do not count). In ANO mode, the selector has `ABRIR LISTA` and `CRIAR ANO` (new ANO = last+1, one frame IMG -1 with 6 ticks; an empty ANO opened gets the same frame). For moves 9-12 `GOLPE SET` also offers `Compensar o zoom da trava`: frame 0 becomes a 1-tick frame with the attacker's sprite zoom at 50% (100/200) and the next frame goes back to the original scale (frame 0 is split if longer than 1 tick; total time unchanged; the opponent, scenery and effects stay at 200%). Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
 +        "- `SPRITES` — the character's sprite list: add, replace, remove, reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame.\n" +
 +        "- `SONS` — sound manager only (does not pick a sound for a frame): the character's WAVs (ids 80+) and the game's common OGGs; `+` adds a sound, tap an item to play, trim, adjust volume/pitch/speed, replace or silence it.\n" +
 +        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
@@ -12704,6 +12704,73 @@ diff -ruN a/CineNotice.java b/CineNotice.java
 +                + " e a câmera dá zoom de 200%. PULAR passa pela trava e libera o tick.";
 +    }
 +}
+diff -ruN a/CineZoomComp.java b/CineZoomComp.java
+--- a/CineZoomComp.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CineZoomComp.java	2026-10-30 02:13:35.612609402 +0000
+@@ -0,0 +1,63 @@
++package com.zue.attackeditor;
++
++/**
++ * "Compensar o zoom da trava cinematica" (Java puro): a camera da trava (golpes 9-12, md 923/926) da zoom de 200 % e o frame 0 do golpe fica
++ * congelado na tela durante ~120 ticks. Com o frame 0 em 1 tick e zoom de sprite 50 % (100 / 200), o atacante aparece do tamanho normal sob
++ * o zoom; o frame seguinte volta a escala original. O oponente, o cenario e os efeitos continuam em 200 %.
++ */
++final class CineZoomComp {
++    private CineZoomComp() { }
++
++    /** Escala do sprite (%) que desfaz o zoom da camera da trava. */
++    static int scalePercent() { return Math.round(100f * 100f / BattleSim.CINE_ZOOM); }
++
++    /** Vale so para golpes do HDAT 4 nos slots 9 a 12 (os que o jogo trava). */
++    static boolean applies(int moveIndex, boolean generic) { return !generic && moveIndex >= 9 && moveIndex <= 12; }
++
++    private static int zx(Ano.Mpt m) { return (m.flags & 0x80) != 0 ? m.xZoom : 100; }
++    private static int zy(Ano.Mpt m) { return (m.flags & 0x80) != 0 ? m.yZoom : 100; }
++
++    /** Ligada: frame 0 de 1 tick com a escala da compensacao em relacao ao frame seguinte. */
++    static boolean isOn(Ano.Mpt[] m) {
++        if (m == null || m.length < 2 || FrameTools.ticks(m[0]) != 1) return false;
++        int s = scalePercent();
++        return (m[0].flags & 0x80) != 0 && m[0].xZoom == zx(m[1]) * s / 100 && m[0].yZoom == zy(m[1]) * s / 100;
++    }
++
++    private static void setZoom(Ano.Mpt p, int x, int y) {
++        x = Math.max(1, Math.min(4095, x));
++        y = Math.max(1, Math.min(4095, y));
++        if ((p.flags & 0x80) == 0) { p.flags |= 0x80; p.rot = 0; p.alphaRaw = 0; }
++        p.xZoom = x;
++        p.yZoom = y;
++        if (p.rot == 0 && p.alphaRaw == 0 && x == 100 && y == 100) { p.flags &= ~0x80; p.xZoom = 100; p.yZoom = 100; }
++        p.normalize();
++    }
++
++    /** Liga: o 1o tick do golpe (frame 0 dividido em 1 tick + resto, se preciso) fica na escala compensada. Devolve {@code m} se nao ha o que fazer. */
++    static Ano.Mpt[] apply(Ano.Mpt[] m) {
++        if (m == null || m.length == 0 || isOn(m)) return m;
++        Ano.Mpt[] out = m;
++        if (FrameTools.ticks(m[0]) > 1) {
++            FrameOps.Split sp = FrameOps.splitAt(m, 1);
++            if (sp == null || sp.mpts == m) return m;
++            out = sp.mpts;
++        }
++        out = out.clone();
++        Ano.Mpt first = out[0].copy();
++        int rx = out.length > 1 ? zx(out[1]) : zx(first), ry = out.length > 1 ? zy(out[1]) : zy(first);
++        setZoom(first, rx * scalePercent() / 100, ry * scalePercent() / 100);
++        out[0] = first;
++        return out;
++    }
++
++    /** Desliga: o frame 0 volta a escala do frame seguinte (a divisao em 2 frames fica). */
++    static Ano.Mpt[] remove(Ano.Mpt[] m) {
++        if (!isOn(m)) return m;
++        Ano.Mpt[] out = m.clone();
++        Ano.Mpt first = out[0].copy();
++        setZoom(first, zx(out[1]), zy(out[1]));
++        out[0] = first;
++        return out;
++    }
++}
 diff -ruN a/Cnv.java b/Cnv.java
 --- a/Cnv.java	2026-10-18 12:20:33.000000000 +0000
 +++ b/Cnv.java	2026-10-28 22:24:31.908309668 +0000
@@ -14715,8 +14782,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-30 01:33:16.264890986 +0000
-@@ -0,0 +1,650 @@
++++ b/HelpText.java	2026-10-30 02:14:24.268881130 +0000
+@@ -0,0 +1,651 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -14832,7 +14899,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        s.add(new Section(ToolbarOrder.MOVE, "GOLPE SET",
 +                "Opções do golpe (ATK_FLAGS do HDAT 4): agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, "
 +                + "lançar 3 projéteis (usa ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente e atravessar o oponente. "
-+                + "Só vale para o ANO inicial de um golpe. Define como o golpe é executado no jogo, não como ele é desenhado."));
++                + "Só vale para o ANO inicial de um golpe. Define como o golpe é executado no jogo, não como ele é desenhado."
++                + " Nos golpes 9 a 12 (os que o jogo trava com a câmera em zoom de 200%), há também \"Compensar o zoom da trava\": liga o 1º tick do golpe com o sprite do atacante em 50% (parece do tamanho normal sob o zoom) e volta à escala original no frame seguinte, dividindo o frame 0 se precisar; o tempo total não muda, e o oponente, o cenário e os efeitos continuam ampliados."));
 +        s.add(new Section(ToolbarOrder.HITBOX, "HITBOX",
 +                "Liga e desliga o desenho das caixas na preview: vermelha = hitbox (onde o golpe acerta), azul = hurtbox (onde o personagem leva dano) "
 +                + "e amarela = as demais caixas de flag. Ligado ajuda a posicionar o alcance; desligado deixa ver só a arte."));
@@ -15673,7 +15741,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-30 01:32:50.384520897 +0000
++++ b/I18nCatalog.java	2026-10-30 02:14:11.003249654 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -15687,7 +15755,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-30 01:32:50.377739189 +0000
++++ b/I18nCatalog0.java	2026-10-30 02:14:10.997380932 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -15960,7 +16028,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-30 01:32:50.379114969 +0000
++++ b/I18nCatalog1.java	2026-10-30 02:14:10.998629436 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16233,7 +16301,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-30 01:32:50.380402361 +0000
++++ b/I18nCatalog2.java	2026-10-30 02:14:10.999860442 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16506,7 +16574,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-30 01:32:50.381738083 +0000
++++ b/I18nCatalog3.java	2026-10-30 02:14:11.000996234 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16779,7 +16847,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-30 01:32:50.382940586 +0000
++++ b/I18nCatalog4.java	2026-10-30 02:14:11.001927885 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17052,8 +17120,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-30 01:32:50.384112370 +0000
-@@ -0,0 +1,230 @@
++++ b/I18nCatalog5.java	2026-10-30 02:14:11.002849533 +0000
+@@ -0,0 +1,235 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -17282,6 +17350,11 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"FLAG (efeito extra da cena)", "FLAG (extra effect of the scene)", "FLAG (efecto extra de la escena)"},
 +        {"0 · nada", "0 · nothing", "0 · nada"},
 +        {"Como o jogo lê este evento", "How the game reads this event", "Cómo lee el juego este evento"},
++        {") para compensar o zoom", ") to compensate the zoom", ") para compensar el zoom"},
++        {"Abra o ANO inicial do golpe (ANO ", "Open the move's starting ANO (ANO ", "Abre la ANO inicial del golpe (ANO "},
++        {"Compensar o zoom da trava (1º tick em ", "Compensate the lock zoom (1st tick at ", "Compensar el zoom del bloqueo (1.er tick al "},
++        {"O jogo trava tudo por ~120 ticks com a câmera em 200% no frame 0 do golpe. Ligado, o frame 0 passa a ter 1 tick com o sprite do atacante em 50% (parece do tamanho normal sob o zoom) e o frame seguinte volta à escala original; o tempo total não muda. O oponente, o cenário e os efeitos continuam em 200%, e hitbox/hurtbox não escalam com o sprite.", "The game freezes everything for ~120 ticks with the camera at 200% on the move's frame 0. When on, frame 0 gets 1 tick with the attacker's sprite at 50% (it looks normal size under the zoom) and the next frame returns to the original scale; the total time does not change. The opponent, the scenery and the effects stay at 200%, and hitbox/hurtbox do not scale with the sprite.", "El juego congela todo por ~120 ticks con la cámara al 200% en el frame 0 del golpe. Activado, el frame 0 pasa a tener 1 tick con el sprite del atacante al 50% (parece de tamaño normal bajo el zoom) y el siguiente frame vuelve a la escala original; el tiempo total no cambia. El oponente, el escenario y los efectos siguen al 200%, y la hitbox/hurtbox no escalan con el sprite."},
++        {"Trava cinemática", "Cinematic lock", "Bloqueo cinemático"},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -17331,7 +17404,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-30 01:33:16.334013050 +0000
++++ b/I18nHelpCatalog.java	2026-10-30 02:14:24.333531555 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -17345,7 +17418,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-30 01:33:16.332860657 +0000
++++ b/I18nHelpCatalog0.java	2026-10-30 02:14:24.331130217 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17405,9 +17478,9 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +        {"GOLPE SET",
 +         "MOVE SET",
 +         "GOLPE SET"},
-+        {"Opções do golpe (ATK_FLAGS do HDAT 4): agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, lançar 3 projéteis (usa ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente e atravessar o oponente. Só vale para o ANO inicial de um golpe. Define como o golpe é executado no jogo, não como ele é desenhado.",
-+         "Move options (ATK_FLAGS of the HDAT 4): grab (at the end of the initial ANO or only during the hit), projectile born on the opponent or under them, throw 3 projectiles (uses ANO, ANO+1 and ANO+2), projectile that only explodes on the floor, hitbox that destroys the opponent's and passing through the opponent. It only applies to the initial ANO of a move. It defines how the move is executed in the game, not how it is drawn.",
-+         "Opciones del golpe (ATK_FLAGS del HDAT 4): agarre (al final del ANO inicial o solo durante el hit), proyectil que nace en el oponente o debajo de él, lanzar 3 proyectiles (usa ANO, ANO+1 y ANO+2), proyectil que solo explota en el suelo, hitbox que destruye las del oponente y atravesar al oponente. Solo vale para el ANO inicial de un golpe. Define cómo se ejecuta el golpe en el juego, no cómo se dibuja."},
++        {"Opções do golpe (ATK_FLAGS do HDAT 4): agarrão (ao fim do ANO inicial ou só durante o hit), projétil nascendo no oponente ou embaixo dele, lançar 3 projéteis (usa ANO, ANO+1 e ANO+2), projétil que só explode no chão, hitbox que destrói as do oponente e atravessar o oponente. Só vale para o ANO inicial de um golpe. Define como o golpe é executado no jogo, não como ele é desenhado. Nos golpes 9 a 12 (os que o jogo trava com a câmera em zoom de 200%), há também \"Compensar o zoom da trava\": liga o 1º tick do golpe com o sprite do atacante em 50% (parece do tamanho normal sob o zoom) e volta à escala original no frame seguinte, dividindo o frame 0 se precisar; o tempo total não muda, e o oponente, o cenário e os efeitos continuam ampliados.",
++         "Move options (ATK_FLAGS of the HDAT 4): grab (at the end of the initial ANO or only during the hit), projectile born on the opponent or under them, throw 3 projectiles (uses ANO, ANO+1 and ANO+2), projectile that only explodes on the floor, hitbox that destroys the opponent's and passing through the opponent. It only applies to the initial ANO of a move. It defines how the move is executed in the game, not how it is drawn. On moves 9 to 12 (the ones the game locks with the camera at 200% zoom) there is also \"Compensate the lock zoom\": it sets the move's 1st tick with the attacker's sprite at 50% (it looks normal size under the zoom) and returns to the original scale on the next frame, splitting frame 0 if needed; the total time does not change, and the opponent, the scenery and the effects stay magnified.",
++         "Opciones del golpe (ATK_FLAGS del HDAT 4): agarre (al final del ANO inicial o solo durante el hit), proyectil que nace en el oponente o debajo de él, lanzar 3 proyectiles (usa ANO, ANO+1 y ANO+2), proyectil que solo explota en el suelo, hitbox que destruye las del oponente y atravesar al oponente. Solo vale para el ANO inicial de un golpe. Define cómo se ejecuta el golpe en el juego, no cómo se dibuja. En los golpes 9 a 12 (los que el juego bloquea con la cámara en zoom del 200%) también hay \"Compensar el zoom del bloqueo\": pone el 1.er tick del golpe con el sprite del atacante al 50% (parece de tamaño normal bajo el zoom) y vuelve a la escala original en el frame siguiente, dividiendo el frame 0 si hace falta; el tiempo total no cambia, y el oponente, el escenario y los efectos siguen ampliados."},
 +        {"golpe set atk_flags agarrao agarrar projetil 3 tiro triplo atravessar flags opcoes",
 +         "move set golpe atk_flags grab projectile 3 triple shot pass through flags options",
 +         "golpe set atk_flags agarre agarrar proyectil 3 disparo triple atravesar flags opciones"},
@@ -17430,7 +17503,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-30 01:33:16.333002049 +0000
++++ b/I18nHelpCatalog1.java	2026-10-30 02:14:24.331475423 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17515,7 +17588,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-30 01:33:16.333131790 +0000
++++ b/I18nHelpCatalog2.java	2026-10-30 02:14:24.331707755 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17600,7 +17673,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-30 01:33:16.333336144 +0000
++++ b/I18nHelpCatalog3.java	2026-10-30 02:14:24.331990499 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17685,7 +17758,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-30 01:33:16.333460716 +0000
++++ b/I18nHelpCatalog4.java	2026-10-30 02:14:24.332224937 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17770,7 +17843,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-30 01:33:16.333555770 +0000
++++ b/I18nHelpCatalog5.java	2026-10-30 02:14:24.332436995 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17855,7 +17928,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-30 01:33:16.333666739 +0000
++++ b/I18nHelpCatalog6.java	2026-10-30 02:14:24.332606387 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17940,7 +18013,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-30 01:33:16.333812704 +0000
++++ b/I18nHelpCatalog7.java	2026-10-30 02:14:24.333021288 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18025,7 +18098,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-30 01:33:16.333934980 +0000
++++ b/I18nHelpCatalog8.java	2026-10-30 02:14:24.333316150 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18110,7 +18183,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-30 01:33:16.333978813 +0000
++++ b/I18nHelpCatalog9.java	2026-10-30 02:14:24.333493630 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -18380,7 +18453,7 @@ diff -ruN a/LayerOps.java b/LayerOps.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-30 01:32:17.381772521 +0000
++++ b/LayoutManager.java	2026-10-30 02:13:56.767680308 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -18889,12 +18962,12 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +            boolean inMenu = view.inUndoSession();
 +            if (view.undoEdit()) { if (inMenu) tools.refresh(); else closeTools.run(); undoButtonsRefresh(); }
 +            else I18nUi.toast(a, "nada para desfazer", android.widget.Toast.LENGTH_SHORT).show();
-         } });
++        } });
 +        bRedo.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
 +            boolean inMenu = view.inUndoSession();
 +            if (view.redoEdit()) { if (inMenu) tools.refresh(); else closeTools.run(); undoButtonsRefresh(); }
 +            else I18nUi.toast(a, "nada para refazer", android.widget.Toast.LENGTH_SHORT).show();
-+        } });
+         } });
 +        undoBtns[0] = bUndo;
 +        undoBtns[1] = bRedo;
          timelineRef = tl;
@@ -19592,7 +19665,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              return;
          }
          final CharData.Move mv = d.move;
-@@ -1294,21 +1826,21 @@
+@@ -1294,21 +1826,44 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -19600,6 +19673,29 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +                "Quando uma hitbox (flag 2) sua encosta numa hitbox (flag 2) do oponente, a dele é destruída: o golpe dele não registra e o oponente entra na reação " + CharData.reactionName(d.attacker.data.clashReaction()) + ", com efeito e som de choque, mas sem dano. O seu golpe conta como acerto. Só vale no choque de hitbox: hits na sua hurtbox ainda te acertam, e projéteis seguem a regra comum a todos os golpes. No código, o golpe com esta flag também não registra o acerto comum de corpo (hitbox x hurtbox); teste em jogo.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_GHOST, "Personagens se atravessam",
                  "Enquanto o golpe está ativo, o jogo não separa os dois corpos quando estão perto do chão, então eles se atravessam. As hitboxes continuam normais.", 0);
++        if (CineZoomComp.applies(d.moveIndex, mv.generic)) {            // golpes 9 a 12: o jogo trava e da zoom de 200 % antes do golpe
++            box.addView(text(a, "Trava cinemática", 13, ACCENT), lp(-1, -2, 0, 12, 0, 0));
++            final android.widget.CheckBox cz = new I18nCheckBox(a);
++            cz.setText("Compensar o zoom da trava (1º tick em " + CineZoomComp.scalePercent() + "%)");
++            cz.setTextColor(TEXT);
++            final Ano startAno = d.attacker.dac.getAno(mv.animInicial);
++            cz.setChecked(startAno != null && CineZoomComp.isOn(startAno.mpts));
++            cz.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
++                @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
++                    if (busy[0]) return;
++                    Ano cur = view.currentAno();
++                    if (cur == null || cur.index != mv.animInicial) {
++                        busy[0] = true; cz.setChecked(!on); busy[0] = false;
++                        I18nUi.toast(a, "Abra o ANO inicial do golpe (ANO " + mv.animInicial + ") para compensar o zoom", android.widget.Toast.LENGTH_LONG).show();
++                        return;
++                    }
++                    Ano.Mpt[] nm = on ? CineZoomComp.apply(cur.mpts) : CineZoomComp.remove(cur.mpts);
++                    if (nm != cur.mpts) view.replaceMpts(nm, "cinezoom");
++                }
++            });
++            box.addView(cz);
++            box.addView(text(a, "O jogo trava tudo por ~120 ticks com a câmera em 200% no frame 0 do golpe. Ligado, o frame 0 passa a ter 1 tick com o sprite do atacante em 50% (parece do tamanho normal sob o zoom) e o frame seguinte volta à escala original; o tempo total não muda. O oponente, o cenário e os efeitos continuam em 200%, e hitbox/hurtbox não escalam com o sprite.", 10, DIM), lp(-1, -2, 0, 2, 0, 0));
++        }
          for (int i = 0; i < syncs.size(); i++) syncs.get(i).run();
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(box);
@@ -19618,7 +19714,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cb.setText(label);
          cb.setTextColor(TEXT);
          box.addView(cb, lp(-1, -2, 0, 4, 0, 0));
-@@ -1346,11 +1878,30 @@
+@@ -1346,11 +1901,30 @@
      }
  
      /** F-GHOST SET: o que a previa mostra (alem do personagem) e a transparencia. */
@@ -19650,7 +19746,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cp.setText("Mostrar projeteis");
          cp.setTextColor(TEXT);
          cp.setChecked(view.isGhostProj());
-@@ -1358,7 +1909,7 @@
+@@ -1358,7 +1932,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostProj(on); }
          });
          box.addView(cp);
@@ -19659,7 +19755,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          ce.setText("Mostrar efeitos (os mesmos do HIDE-EFF, menos projeteis)");
          ce.setTextColor(TEXT);
          ce.setChecked(view.isGhostFx());
-@@ -1366,7 +1917,7 @@
+@@ -1366,7 +1940,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostFx(on); }
          });
          box.addView(ce);
@@ -19668,7 +19764,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cc.setText("Aplicar tambem ao Frame atual");
          cc.setTextColor(TEXT);
          cc.setChecked(view.isGhostCurrent());
-@@ -1389,7 +1940,7 @@
+@@ -1389,7 +1963,7 @@
              @Override public void onStopTrackingTouch(SeekBar s2) { }
          });
          box.addView(gs);
@@ -19677,7 +19773,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1403,7 +1954,7 @@
+@@ -1403,7 +1977,7 @@
          seek.setMax(Math.max(1, length - 1));
          if (seek instanceof ExtSeekBar) ((ExtSeekBar) seek).setAnoEnd(attackView.getAnoEnd() - 1);
          seek.setProgress(frame);
@@ -19686,7 +19782,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          btnPlay.setText(playing ? "PAUSAR" : "TOCAR");
          if (timelineRef != null) {
              timelineRef.setSprites(attackView.attackerSprites());
-@@ -1416,6 +1967,7 @@
+@@ -1416,6 +1990,7 @@
              statusLine.setText(attackView.status());
              refreshInfo(false);
          }
@@ -19694,7 +19790,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String problem = attackView.spriteProblem();
          if (problem.length() > 0) {
              warning.setTextColor(WARN);
-@@ -1423,6 +1975,7 @@
+@@ -1423,6 +1998,7 @@
          }
      }
  
@@ -19702,7 +19798,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      // ---- aviso piscando: transicao travada + play ----
      private boolean lockTrans, blinking, blinkOn, landBeforeLock = true;
      private final Runnable blinkRun = new Runnable() {
-@@ -1528,7 +2081,7 @@
+@@ -1528,7 +2104,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -19711,7 +19807,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1544,7 +2097,7 @@
+@@ -1544,7 +2120,7 @@
          et.setText(attackView.editText(tab));
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(et);
@@ -19720,7 +19816,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +2112,7 @@
+@@ -1559,7 +2135,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -19729,7 +19825,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +2120,9 @@
+@@ -1567,9 +2143,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -19741,7 +19837,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2153,7 @@
+@@ -1600,7 +2176,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -19750,7 +19846,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2167,7 @@
+@@ -1614,7 +2190,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -19759,7 +19855,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1641,6 +2194,9 @@
+@@ -1641,6 +2217,9 @@
  
      public void setAttackHeaderOn(boolean on) { if (attackHeaderSpinner != null) attackHeaderSpinner.on = on; }
  
@@ -19769,7 +19865,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private HeaderSpinner headerSpinner(Context c) {
          HeaderSpinner s = new HeaderSpinner(c);
          setBg(s, roundRect(PANEL, 8, 0, 0));
-@@ -1650,7 +2206,7 @@
+@@ -1650,7 +2229,7 @@
  
      /** Spinner cujo dropdown e um dialogo com cabecalho fixo (nao rola junto com a lista). */
      private static final class HeaderSpinner extends Spinner {
@@ -19778,7 +19874,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          boolean on;
          HeaderSpinner(Context c) { super(c); }
  
-@@ -1662,13 +2218,23 @@
+@@ -1662,13 +2241,23 @@
              LinearLayout box = new LinearLayout(c);
              box.setOrientation(LinearLayout.VERTICAL);
              box.setBackgroundColor(PANEL);
@@ -19803,7 +19899,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              android.widget.ListView lv = new android.widget.ListView(c);
              lv.setAdapter(new android.widget.BaseAdapter() {
                  public int getCount() { return ad.getCount(); }
-@@ -1689,6 +2255,9 @@
+@@ -1689,6 +2278,9 @@
              top.setOnClickListener(new View.OnClickListener() {
                  @Override public void onClick(View v) { dlg.dismiss(); header.run(); }
              });
@@ -19813,7 +19909,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              dlg.show();
              if (dlg.getWindow() != null) {
                  dlg.getWindow().setLayout((int) (300 * dn), (int) (c.getResources().getDisplayMetrics().heightPixels * 0.8f));
-@@ -1766,12 +2335,13 @@
+@@ -1766,12 +2358,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -31007,6 +31103,67 @@ diff -ruN a/test/CineNoticeTest.java b/test/CineNoticeTest.java
 +        System.out.println("CineNoticeTest fails=" + fails);
 +    }
 +}
+diff -ruN a/test/CineZoomCompTest.java b/test/CineZoomCompTest.java
+--- a/test/CineZoomCompTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/CineZoomCompTest.java	2026-10-30 02:13:18.050666869 +0000
+@@ -0,0 +1,57 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Compensar o zoom da trava: frame 0 de 1 tick em 50 %, o resto na escala original; so nos slots 9-12; liga/desliga; confere na simulacao. */
++public class CineZoomCompTest {
++    static Ano.Mpt f(int time) { Ano.Mpt m = new Ano.Mpt(); m.flags = 0x20; m.hasTime = true; m.time = time; return m; }
++
++    public static void main(String[] args) throws Exception {
++        check("escala = 100 / 200 = 50 %", CineZoomComp.scalePercent(), 50);
++        check("so golpes 9 a 12 do HDAT 4", CineZoomComp.applies(9, false) + ":" + CineZoomComp.applies(12, false) + ":" + CineZoomComp.applies(8, false) + ":" + CineZoomComp.applies(13, false) + ":" + CineZoomComp.applies(10, true), "true:true:false:false:false");
++
++        Ano.Mpt[] m = {f(5), f(5), f(3)};
++        check("antes: desligado", CineZoomComp.isOn(m), false);
++        Ano.Mpt[] on = CineZoomComp.apply(m);
++        check("liga: frame 0 dividido (1 tick + 4), total 4 frames", on.length + ":" + FrameTools.ticks(on[0]) + ":" + FrameTools.ticks(on[1]), "4:1:4");
++        check("frame 0 em 50 %, o resto na escala normal", on[0].xZoom + ":" + on[0].yZoom + ":" + ((on[1].flags & 0x80) == 0) + ":" + ((on[2].flags & 0x80) == 0), "50:50:true:true");
++        check("o tempo total nao muda", FrameTools.ticks(on[0]) + FrameTools.ticks(on[1]) + FrameTools.ticks(on[2]) + FrameTools.ticks(on[3]), 13);
++        check("ligado", CineZoomComp.isOn(on), true);
++        check("ligar de novo nao muda", CineZoomComp.apply(on) == on, true);
++        check("o original nao e alterado", m.length + ":" + ((m[0].flags & 0x80) == 0), "3:true");
++        Ano.Mpt[] off = CineZoomComp.remove(on);
++        check("desliga: frame 0 volta a escala normal e sem RAZ", off[0].xZoom + ":" + ((off[0].flags & 0x80) == 0) + ":" + CineZoomComp.isOn(off), "100:true:false");
++
++        // frame 0 ja com 1 tick: nao divide
++        Ano.Mpt[] one = {f(1), f(4)};
++        Ano.Mpt[] on1 = CineZoomComp.apply(one);
++        check("frame 0 de 1 tick: nao divide", on1.length + ":" + on1[0].xZoom, "2:50");
++        // frame 0 com rotacao: mantem; frame seguinte com zoom 80 => 40
++        Ano.Mpt a = f(1); a.flags |= 0x80; a.rot = 30; a.xZoom = 100; a.yZoom = 100;
++        Ano.Mpt b = f(4); b.flags |= 0x80; b.xZoom = 80; b.yZoom = 80;
++        Ano.Mpt[] r = CineZoomComp.apply(new Ano.Mpt[] {a, b});
++        check("rotacao preservada e zoom relativo ao frame seguinte (80 -> 40)", r[0].rot + ":" + r[0].xZoom + ":" + CineZoomComp.isOn(r), "30:40:true");
++        Ano.Mpt[] ro = CineZoomComp.remove(r);
++        check("desligar mantem a rotacao e volta a 80", ro[0].rot + ":" + ro[0].xZoom + ":" + ((ro[0].flags & 0x80) != 0), "30:80:true");
++
++        // simulacao: sob a trava o atacante aparece em 50 % no frame 0 e em 100 % depois
++        A[] atk = new A[41];
++        for (int i = 0; i < 41; i++) atk[i] = new A().mpt(new M().time(1));
++        atk[40] = new A().mpt(new M().time(5)).mpt(new M().time(5)).mpt(new M().time(5));
++        Dac base = dac(atk);
++        Ano.Mpt[] comp = CineZoomComp.apply(base.getAno(40).mpts);
++        Dac d2 = base.copyWith(40, new Ano(40, true, 0, 0, new Ano.Link[0], comp));
++        CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++        A[] def = new A[30];
++        for (int i = 0; i < 30; i++) def[i] = new A().mpt(new M().time(5).hit(1, -10, -60, 20, 60));
++        BattleSim.cinematic = true;
++        BattleSim s = new BattleSim(d2, ch, ch.moves[0], false, dac(def), dac(new A().mpt(new M().time(4))), gd(new byte[][] {}), 400, 0, 0);
++        s.setSpecialType(9);
++        for (int i = 0; i < 20; i++) s.step();
++        check("durante a trava: atacante em 50 % e camera em 200 %", s.attacker().root().xZoom + ":" + (s.zoomRect() != null), "50:true");
++        while (s.cinematicActive()) s.step();
++        for (int i = 0; i < 3; i++) s.step();
++        check("depois da trava o sprite volta a 100 %", s.attacker().root().xZoom, 100);
++        System.out.println("CineZoomCompTest fails=" + fails);
++    }
++}
 diff -ruN a/test/CinematicZoomTest.java b/test/CinematicZoomTest.java
 --- a/test/CinematicZoomTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/CinematicZoomTest.java	2026-10-30 00:10:11.583497859 +0000
@@ -33057,8 +33214,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-30 01:32:50.517346280 +0000
-@@ -0,0 +1,547 @@
++++ b/test/I18nIgnored.java	2026-10-30 02:14:11.141007436 +0000
+@@ -0,0 +1,548 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -33488,6 +33645,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "charf",
 +        "charf ",
 +        "charf00",
++        "cinezoom",
 +        "cinza",
 +        "cnv.txt",
 +        "com.google.android.youtube",

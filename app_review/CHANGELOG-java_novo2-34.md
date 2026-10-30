@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1593 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1608 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -420,6 +420,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Tela CUTSCENES (HDAT 13)** (`CutsceneScreen`), pelo botão **EDITAR EVENTOS (HDAT 13)** da gaveta da flag 20 e por **CHAR > CUTSCENES (HDAT 13)**: chips dos eventos, **prévia animada virado para a direita (ANIM_ID) e para a esquerda (ANIM_FLIP)**, quais ANOs usam o evento, **ALVO** (effect.pac / char do player / bobj), ANIM_ID e ANIM_FLIP (campo numérico + **ESCOLHER** com o seletor de ANOs do pacote certo), **DURAÇÃO**, **Z_LAYER** (mostra a prioridade real), **CAM_MODE**, **TRAVAR_VIT**, **FLAG** 0–15 com a descrição, o texto “Como o jogo lê este evento” ao vivo (`CutsceneInfo`), **NOVO / DUPLICAR / ZERAR / EXCLUIR (último) / USAR NESTE HIT / ↶**. A simulação da tela principal é refeita ao fechar.
 - `CutsceneEditTest` (25: lê os 26 eventos reais, carrega no `CharData`, regravar sem mudar = texto idêntico, editar/novo/remover/zerar com `$ROW` e `$SZ` certos, comentários preservados, foto/restauro, sem `$HDAT_13`, cria o roteiro, quem usa o evento). A tela só compilada/revisada, não rodada num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzh Compensar o zoom da trava cinemática (GOLPE SET)
+- **Por que dá certo**: no md 923 o jogo carrega o golpe e roda o `PlayerTail` uma vez antes de entrar no md 926; durante os ~120 ticks o frame 0 fica congelado na tela com a câmera em 200 %. Um frame 0 com sprite em **50 %** (100 / 200) parece do tamanho normal sob o zoom.
+- **Função** (só nos golpes **9 a 12** do HDAT 4, no menu **GOLPE SET → Trava cinemática → “Compensar o zoom da trava”**, automática): ligar faz o **1º tick** do golpe ficar com `$RAZ` de zoom 50 % (relativo ao frame seguinte e mantendo rotação/alpha), **dividindo o frame 0 em 1 tick + resto** se ele for mais longo; o frame seguinte mantém a escala original e o **tempo total não muda**. Desligar devolve a escala do frame 0 (a divisão em dois frames fica). Vale na ANO inicial do golpe (se outra ANO estiver aberta, o app pede para abrir a ANO inicial). Entra no desfazer (`cinezoom`).
+- **Limites** (avisados no menu): o oponente, o cenário e os efeitos continuam em 200 %; hitbox/hurtbox não escalam com o sprite; e depois da trava a câmera volta a 100 % em 12 ticks (o frame seguinte aparece um pouco ampliado nesses ticks).
+- `CineZoomComp` puro + `CineZoomCompTest` (15: escala, só slots 9–12, dividir 1 tick + resto, tempo total, liga/desliga, rotação preservada, e na simulação o atacante fica em 50 % durante a trava e 100 % depois). Menu só compilado/revisado. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -502,6 +508,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **NewAnoTest (novo)** | 6 |
 | **DustTest (novo)** | 11 |
 | **CutsceneEditTest (novo)** | 25 |
+| **CineZoomCompTest (novo)** | 15 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
