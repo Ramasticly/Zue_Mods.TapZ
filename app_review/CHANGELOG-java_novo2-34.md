@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1491 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1507 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -386,6 +386,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Carga **sob demanda**: só DAC + CNV + sprites (`CharAssets.loadPreview`: sem `000.bin`, **sem importar PNGs soltas** nem mexer no CNV lido por último) de cada personagem, em segundo plano, quando o cartão aparece; ficam até 15 na memória, as mais antigas **fora da tela** são descarregadas (nunca uma que está visível) e tudo é liberado ao fechar.
 - `CharGridTest` (17: nomes ↔ índice, ANO 76 → 0 → nenhuma, destaque do atual, rolagem inicial, quais prévias descarregar). Grade, carga em segundo plano e linha DEF só compiladas/revisadas, não rodadas num aparelho. AJUDA (PT/EN/ES) e MD atualizados (também a regra “Hitbox é uma por Frame”).
 
+### 3.1zza Sons da prévia só no cartão destacado + CONFIRMAR/VOLTAR na escolha de reação
+- A prévia da reação **não toca mais sozinha** em lugar nenhum, exceto: (a) a grade **Escolher reação** e (b) a grade **Efeito, som e empurrão**, e nelas **só o cartão/grupo destacado** toca (voz e sons da simulação); (c) o editor de reações, **só ao apertar TOCAR**. Mudos: a prévia do menu “Reação do oponente”, os jogadores de candidata do slot vazio e os cartões não destacados. Na grade de efeito/som saiu o som avulso ao tocar (a prévia já traz o do grupo, não dobra).
+- **Escolher reação** agora tem **CONFIRMAR e VOLTAR**: tocar numa reação só a **seleciona** (contorno azul, toca de novo com som); CONFIRMAR grava no hit (só se mudou), VOLTAR fecha sem alterar. O slot vazio (＋) continua abrindo o “adicionar reação”. `ReactionPickState` puro + `ReactionPickStateTest` (8).
+
+### 3.1zzb Voltar ao app não dá play nem tira o ponteiro
+- Causa: o `onResume` recarregava o golpe inteiro (para reler a game data) → frame 0 e `play()`. Agora a game data só é relida se a **assinatura** dos arquivos dela (nome, tamanho, data) mudou (`GameDataSignature`), e a troca é feita **mantendo o frame, o ponteiro e o play/pausa** (`AttackData.withGameData` + `AttackView.setDataKeep`). Se nada mudou, não faz nada. Escolher outro golpe/personagem continua dando play. `GameDataSignatureTest` (8). O retorno ao app só compilado/revisado.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -459,6 +466,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionCameraTest (novo)** | 14 |
 | **GuardTest (novo)** | 22 |
 | **CharGridTest (novo)** | 17 |
+| **ReactionPickStateTest (novo)** | 8 |
+| **GameDataSignatureTest (novo)** | 8 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
