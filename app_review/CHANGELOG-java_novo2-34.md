@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1554 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1568 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -408,6 +408,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **CRIAR ANO** (modo ANOS): no seletor, logo abaixo de ABRIR LISTA, cria a ANO **última + 1** (limite 4096, o link guarda 12 bits) com 1 frame **IMG −1 de 6 ticks** (`Ano.blank`), já aberta; é uma ANO real (entra no salvar). Uma **ANO vazia aberta** agora começa com o mesmo frame (antes 10 ticks). `CharAssets.invalidateKinds`. `NewAnoTest` (6).
 - **Grade de personagens**: enquanto a ANO 76 não carrega, o cartão mostra um **semicírculo girando** (`AnimPreview.setLoading`, uma volta a cada 0,9 s) em vez de “sem animação”; esse texto só aparece se terminou de carregar e não há ANO 76 nem 0. Desenho/spinner e CRIAR ANO só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzf Poeira/fumaça desenhada e com prévias; rótulos effect/charf/char
+- **Poeira/fumaça** (`TCBManajer.CheckOptFlag`, tasks 961/962): os bits 4096–32768 da `wOptFlag` são o **tipo 1–15**; a cada frame carregado que os tem nasce **uma** fumaça, **parada no mundo** na posição do objeto (atacante, oponente ou projétil), prioridade 200: tipos **1–5 = bobj ANOs 10–14**, **6–7 = effect 78–79**, **8–15 = effect 70–77**; virado usa a ANO **+80** (se o pacote não a tem, a normal virada). **No máximo 6** ao mesmo tempo (a 7ª apaga a mais antiga). Hits dentro da ANO da fumaça criam **fumaças filhas** (bobj, ANO flag + 70, offset x/y espelhado). **Impacto na parede** (2048, só com o dono batendo na parede): SE 6, zera o cancelamento do outro e fumaça ANO 12 do bobj na borda da tela. Sem pasta bobj, os tipos 1–5 não desenham (como no jogo). `BattleSim.dust` (liga/desliga) e `HIDE-EFF` escondem. `ObjModel.dustPack/dustAno/dustTypeOf` puros.
+- **Prévias**: o seletor “Tipo de poeira” virou grade com a **prévia animada** de cada tipo (bobj ou effect), com “tipo · bobj 12 / effect 78” e o atual destacado; `AttackView.packDac/packSprites` ganharam o pacote 3 = bobj.
+- **Faixa dos efeitos**: o clipe agora diz **`effect N`**, **`charf N`** ou **`char N`** (N = ANO do pacote; antes “Efeito 1.50”); a gaveta mostra o mesmo rótulo. `ObjModel.fxLabel` + `TimelineLabelsTest`.
+- `DustTest` (11: tabela tipo → pacote/ANO, 1 por frame, +80, anel de 6, parada no mundo, sem bobj, filhas). A parede (2048) segue o código mas não tem teste (exige o oponente batendo na parede). Prévias na tela só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -488,6 +494,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **InterpolationTest (novo)** | 6 |
 | **TickDisplayTest (novo)** | 10 |
 | **NewAnoTest (novo)** | 6 |
+| **DustTest (novo)** | 11 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
