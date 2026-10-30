@@ -1,0 +1,93 @@
+--- orig.java	2026-10-30 02:54:11.668974727 +0000
++++ new.java	2026-10-30 02:54:11.723789525 +0000
+@@ -320,6 +320,11 @@
+     static int[] iCPUNo = new int[10];
+     static int iCPURandCnt;
+     static int iCameraLock;
++    // hit 33 (controle da trava cinematica): centro da camera (16.16), zoom % (0 = padrao 200), duracao em ticks (0 = padrao 120)
++    static int iLockZoomX;
++    static int iLockZoomY;
++    static int iLockZoomW;
++    static int iLockTime;
+     static int[] iCardAttr = new int[4];
+     static int iCardAutoBaseIndex;
+     static int[] iCardAutoCost = new int[8];
+@@ -2393,7 +2398,16 @@
+         if (hitFlag == 27) PlayerState[currentPlayer] |= 524288;
+         if (hitFlag == 28) PlayerState[currentPlayer] |= 262144;
+         if (hitFlag == 32) PlayerState[currentPlayer] |= 1048576;
+-        if (hitFlag == 33) PlayerState[currentPlayer] |= 2097152;
++        if (hitFlag == 33) {
++            PlayerState[currentPlayer] |= 2097152;
++            // so na entrada da trava (iCameraLock = dono): x/y = centro a partir do objeto (x ja espelhado pelo flip), W = zoom %, H = duracao em ticks
++            if (iCameraLock == currentPlayer) {
++                iLockZoomX = objExec.x + (coords0 << 16);
++                iLockZoomY = objY + (coords1 << 16);
++                iLockZoomW = coords2 > 0 ? coords2 : 200;
++                iLockTime = coords3 > 0 ? coords3 : 1;
++            }
++        }
+         if (hitFlag == 37) PlayerState[currentPlayer] |= 4194304;
+         if (hitFlag == 38) PlayerState[currentPlayer] |= 8388608;
+ 
+@@ -2423,8 +2437,8 @@
+             
+         } else if (hitFlag == 39) {
+             if (Life[otherPlayer] > 0) {
+-                PlayerXPos[currentPlayer] = PlayerXPos[otherPlayer];
+-                PlayerYPos[currentPlayer] = PlayerYPos[otherPlayer];
++                PlayerXPos[currentPlayer] = PlayerXPos[otherPlayer] + (coords0 << 16);
++                PlayerYPos[currentPlayer] = PlayerYPos[otherPlayer] + (coords1 << 16);
+             } else {
+                 objExec.wActFlag |= 2;
+             }
+@@ -6134,7 +6148,7 @@
+                 break;
+             case 434:
+                 _cameraPrio = 3;
+-                this._TLoop(var1, 120, 435);
++                this._TLoop(var1, iLockTime > 0 ? iLockTime : 120, 435);
+                 break;
+             case 435:
+                 _cameraPrio = 3;
+@@ -6146,6 +6160,8 @@
+                 var2 = tcbNow._work[0];
+                 _cameraPrio = 0;
+                 iCameraLock = -1;
++                iLockZoomW = 0;
++                iLockTime = 0;
+                 this._ActReq(var1);
+                 this.ChrSePlay(var1, var2);
+                 this.PlayerTail(var1);
+@@ -23321,12 +23337,14 @@
+                 var2 = tcbNow._work[0];
+                 _cameraPrio = 1;
+                 PlayerKey[1 - var2] = 0;
+-                this._TLoop(var1, 120, 927);
++                this._TLoop(var1, iLockTime > 0 ? iLockTime : 120, 927);
+                 break;
+             case 927:
+                 var2 = tcbNow._work[0];
+                 _cameraPrio = 0;
+                 iCameraLock = -1;
++                iLockZoomW = 0;
++                iLockTime = 0;
+                 this._TKilx(var1, var2 + 13632, var2 + 13632);
+                 tcbNow.md = 928;
+                 tcbNow.lp = 0;
+@@ -25580,6 +25598,15 @@
+                                 iActionZoomH = 100;
+                                 _screeneffect[3] = 200;
+                                 _screeneffect[4] = 200;
++                                if (iLockZoomW > 0) {
++                                    // hit 33: centro e zoom escolhidos (mesma conta do zoom de acao); a entrada continua em 4 ticks
++                                    _screeneffect[3] = iLockZoomW;
++                                    _screeneffect[4] = iLockZoomW;
++                                    _screeneffect[0] = (240 - (iLockZoomX >> 16)) * iLockZoomW / 100;
++                                    _screeneffect[1] = -(160 - (iLockZoomY >> 16)) * iLockZoomW / 100;
++                                    var2 = 4;
++                                    break;
++                                }
+                                 byte var38;
+                                 if (iCameraLock == 0) {
+                                     var3 = 160 - var4;

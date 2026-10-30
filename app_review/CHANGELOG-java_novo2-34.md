@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1615 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1618 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -420,7 +420,9 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Tela CUTSCENES (HDAT 13)** (`CutsceneScreen`), pelo botão **EDITAR EVENTOS (HDAT 13)** da gaveta da flag 20 e por **CHAR > CUTSCENES (HDAT 13)**: chips dos eventos, **prévia animada virado para a direita (ANIM_ID) e para a esquerda (ANIM_FLIP)**, quais ANOs usam o evento, **ALVO** (effect.pac / char do player / bobj), ANIM_ID e ANIM_FLIP (campo numérico + **ESCOLHER** com o seletor de ANOs do pacote certo), **DURAÇÃO**, **Z_LAYER** (mostra a prioridade real), **CAM_MODE**, **TRAVAR_VIT**, **FLAG** 0–15 com a descrição, o texto “Como o jogo lê este evento” ao vivo (`CutsceneInfo`), **NOVO / DUPLICAR / ZERAR / EXCLUIR (último) / USAR NESTE HIT / ↶**. A simulação da tela principal é refeita ao fechar.
 - `CutsceneEditTest` (25: lê os 26 eventos reais, carrega no `CharData`, regravar sem mudar = texto idêntico, editar/novo/remover/zerar com `$ROW` e `$SZ` certos, comentários preservados, foto/restauro, sem `$HDAT_13`, cria o roteiro, quem usa o evento). A tela só compilada/revisada, não rodada num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
 
-### 3.1zzh Compensar o zoom da trava cinemática (GOLPE SET)
+### 3.1zzh Compensar o zoom da trava cinemática (GOLPE SET) — *substituída na 3.1zzj*
+> Esta função foi **removida** na 3.1zzj, quando a flag 33 passou a controlar a trava (ver abaixo).
+
 - **Por que dá certo**: no md 923 o jogo carrega o golpe e roda o `PlayerTail` uma vez antes de entrar no md 926; durante os ~120 ticks o frame 0 fica congelado na tela com a câmera em 200 %. Um frame 0 com sprite em **50 %** (100 / 200) parece do tamanho normal sob o zoom.
 - **Função** (só nos golpes **9 a 12** do HDAT 4, no menu **GOLPE SET → Trava cinemática → “Compensar o zoom da trava”**, automática): ligar faz o **1º tick** do golpe ficar com `$RAZ` de zoom 50 % (relativo ao frame seguinte e mantendo rotação/alpha), **dividindo o frame 0 em 1 tick + resto** se ele for mais longo; o frame seguinte mantém a escala original e o **tempo total não muda**. Desligar devolve a escala do frame 0 (a divisão em dois frames fica). Vale na ANO inicial do golpe (se outra ANO estiver aberta, o app pede para abrir a ANO inicial). Entra no desfazer (`cinezoom`).
 - **Limites** (avisados no menu): o oponente, o cenário e os efeitos continuam em 200 %; hitbox/hurtbox não escalam com o sprite; e depois da trava a câmera volta a 100 % em 12 ticks (o frame seguinte aparece um pouco ampliado nesses ticks).
@@ -432,6 +434,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Formato antigo** (flag 40 negativa + Flip X) continua reconhecido, com nota “formato antigo”; a lista do ＋ só esconde o Puxar oponente num frame que tem o formato antigo.
 - **Corpos sobrepostos**: no teste de simulação o atacante termina a 60 px do outro lado e o oponente fica parado **com “Personagens se atravessam” (ATK_FLAGS 16)**; sem ela a separação dos corpos do jogo (md 19) empurra o oponente. A gaveta mostra essa dica quando a flag está desligada.
 - `TeleportBehindTest` reescrito (24, inclui os dois casos de simulação e o formato antigo). Gaveta só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
+### 3.1zzj Flag 33 = controle da trava cinemática; flag 39 com deslocamento; patch do jogo
+- **Removido**: “Compensar o zoom da trava” (`CineZoomComp`, `CineZoomCompTest`, o bloco do GOLPE SET e os textos da AJUDA/MD).
+- **Flag 33** (no jogo não fazia nada: só marcava um bit que ninguém lê) agora é **“Controle da trava cinematica”**, no menu ＋ e na gaveta: **x, y** = centro da câmera a partir da posição do personagem (x espelha com o flip, como nos zooms 30/31), **zoom %** (padrão 200) e **duração da trava em ticks** (padrão 120). A entrada do zoom continua em 4 ticks e a **volta ao zoom normal é fixa em 12 ticks**. Vale no frame 0 do ANO inicial do golpe (o que o jogo carrega ao entrar na trava, md 923), então funciona em qualquer ANO que um golpe 9–12 use; fora de golpe com trava a gaveta avisa. Sem o hit nada muda (122 ticks, 200 %, centro = dono ±40 / −48). `BattleSim`: `cineLeft = duração + 2`, `cineZoomW`, centro `objeto + (x espelhado, y)`; hit só no frame 0 conta; duração 0 vira 1.
+- **Flag 39 (Teleportar até o oponente) com deslocamento** x/y, igual ao Puxar oponente: o personagem vai até a posição do oponente **+ (x espelhado pelo flip, y)**; 0 e 0 = o comportamento de antes. Gaveta com os campos x e y; `BattleSim.teleportFlags` simula.
+- **Patch do jogo** `TCBManajer_flag33_39.diff` (sobre o `TCBManajer.java` enviado; 7 trechos): estáticos `iLockZoomX/Y/W`, `iLockTime`; `CheckOptFlag` grava o hit 33 só quando `iCameraLock == currentPlayer` (entrada da trava); md 29 case 0/1 usa centro/zoom próprios (mesma conta do zoom de ação: `(240 − cx) × W / 100`, `−(160 − cy) × W / 100`); md 926 (e 434, a outra trava de 120) usam `iLockTime`; md 927/436 zeram; flag 39 soma `coords0/coords1`. Só revisado (javac do arquivo inteiro dá os mesmos 1346 erros de símbolos com e sem o patch; não foi rodado no jogo). **Sem o patch o jogo ignora a flag 33 e o deslocamento da 39** — a prévia do app já mostra o efeito.
+- `CinematicFlag33Test` (15: padrão 122, duração/zoom/centro, flip, duração 0, hit fora do frame 0, ＋/nome/hit novo/oneShot) e `TeleportOffsetTest` (3: sem deslocamento, x/y, flip). Menu ＋, gaveta e remoção do checkbox só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
@@ -515,7 +524,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **NewAnoTest (novo)** | 6 |
 | **DustTest (novo)** | 11 |
 | **CutsceneEditTest (novo)** | 25 |
-| **CineZoomCompTest (novo)** | 15 |
+| **CinematicFlag33Test (novo)** | 15 |
+| **TeleportOffsetTest (novo)** | 3 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
