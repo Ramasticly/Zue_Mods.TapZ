@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-30 01:28:23.470747985 +0000
++++ b/AiHelpDoc.java	2026-10-30 01:33:16.393828934 +0000
 @@ -0,0 +1,850 @@
 +package com.zue.attackeditor;
 +
@@ -452,7 +452,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 2 | **Hitbox** (attack area), `[x,y,w,h]`. Uses the frame's `$OPT` (damage, reaction). |\n" +
 +        "| 3 / 4 / 5 | Screen shake light / medium / strong. |\n" +
 +        "| 10–17 | Dust/smoke effect from the shared `effect` pack (effect ANO = 50 + flag − 10) at offset (x, y). |\n" +
-+        "| 20 | **Cutscene** trigger (x, y); the event is selected by data in the character's HDAT 13. Complex — copy from an existing character; the app shows a panel explaining the event. |\n" +
++        "| 20 | **Cutscene** trigger (x, y, event). The third value is the event = row of the character's HDAT 13 table (`$HDAT_13` > `$ROTEIRO_CUTSCENE` > `$EVT_nn: { $ALVO, $DURACAO, $Z_LAYER, $ANIM_ID, $ANIM_FLIP, $CAM_MODE, $TRAVAR_VIT, $FLAG }`: ALVO 0 = effect.pac, 1 = the player's char pack, other = bobj; DURACAO 0/negative = until the ANO changes, N = frame limit; Z_LAYER 0/1/other; CAM_MODE 0 = world, else screen origin (0,0); TRAVAR_VIT != 0 freezes the opponent; FLAG 0-15 = extra effect: 3 camera to attacker, 5 focus opponent, 10-15 teleports...). The app has a full event editor (`EDITAR EVENTOS`, or `CHAR` > `CUTSCENES`): previews, all fields, NEW/DUPLICATE/CLEAR/DELETE-last, and it saves the `$EVT_nn` lines into `000.bin.txt`. |\n" +
 +        "| 26 | Opponent cannot defend. |\n" +
 +        "| 27 | Prevent cancelling. |\n" +
 +        "| 28 | Damage ignores attack/defense stats. |\n" +
@@ -12081,7 +12081,7 @@ diff -ruN a/BusyDialog.java b/BusyDialog.java
          cnt.setGravity(Gravity.END);
 diff -ruN a/CharAssets.java b/CharAssets.java
 --- a/CharAssets.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/CharAssets.java	2026-10-30 01:21:52.386836534 +0000
++++ b/CharAssets.java	2026-10-30 01:30:11.390709028 +0000
 @@ -29,16 +29,27 @@
          this.sprites = new SpriteCache(dir, cnv);
      }
@@ -12140,16 +12140,19 @@ diff -ruN a/CharAssets.java b/CharAssets.java
      }
  
      private static final String[] FR_KEYS = {"DUR_C", "DUR_A", "ANO", "XSPEED", "YSPEED", "XACCEL", "YACCEL", "XSPEED_A", "YSPEED_A", "XACCEL_A", "YACCEL_A", "COMP", "WALL", "VOZ"};
-@@ -151,6 +182,8 @@
+@@ -151,7 +182,11 @@
              java.util.regex.Matcher mw = java.util.regex.Pattern.compile("\\$LARGURA\\s*:\\s*(\\d+)").matcher(blk);
              java.util.regex.Matcher mh = java.util.regex.Pattern.compile("\\$ALTURA\\s*:\\s*(\\d+)").matcher(blk);
              if (mw.find() && mh.find()) cd.setBody(Integer.parseInt(mw.group(1)) * 2, Integer.parseInt(mh.group(1)));
 +            java.util.regex.Matcher mp = java.util.regex.Pattern.compile("\\$DISTANCIA_AGARRE\\s*:\\s*(\\d+)").matcher(blk);
 +            if (mp.find()) cd.setPullDistance(Integer.parseInt(mp.group(1)));
          }
++        int[][] evs = CutsceneText.parse(text);                  // $ROTEIRO_CUTSCENE (HDAT 13): o texto manda sobre o binario
++        if (evs != null) cd.loadEvents(evs);
          for (int ty = 0; ty < CharData.REACTION_COUNT; ty++) {
              ReactionTable t = cd.reaction(ty);
-@@ -191,6 +224,19 @@
+             int[] b = Saver.findBlock(text, "REACAO_DANO_" + ty);
+@@ -191,6 +226,19 @@
          return ca;
      }
  
@@ -12169,7 +12172,7 @@ diff -ruN a/CharAssets.java b/CharAssets.java
      /** Pack auxiliar do personagem (charfNN): escala 1, 000.dac/000.cnv ou os primeiros .dac/.cnv da pasta. */
      public static CharAssets loadPack(File dir) throws IOException {
          File dacF = new File(dir, "000.dac");
-@@ -258,5 +304,8 @@
+@@ -258,5 +306,8 @@
          return kind;
      }
  
@@ -12180,7 +12183,7 @@ diff -ruN a/CharAssets.java b/CharAssets.java
  }
 diff -ruN a/CharData.java b/CharData.java
 --- a/CharData.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/CharData.java	2026-10-28 13:29:58.288976993 +0000
++++ b/CharData.java	2026-10-30 01:30:11.366929706 +0000
 @@ -37,6 +37,9 @@
          public boolean generic;
          /** true = ANO de projetil aberta sozinha: o oponente se orienta pelo personagem real, nao pelo projetil. */
@@ -12259,7 +12262,7 @@ diff -ruN a/CharData.java b/CharData.java
      public int bodyHeight() { return u(h3, 4); }
  
      /** Muda largura/altura do corpo direto no HDAT 3 (largura sempre par: o .txt guarda a metade). */
-@@ -161,23 +187,38 @@
+@@ -161,23 +187,124 @@
      /** Distancia (px) em que o agarrao simples/condicional (flags 8/128) deixa o atacante do oponente: HDAT 3, byte 5. */
      public int pullDistance() { return u(h3, 5); }
  
@@ -12289,22 +12292,108 @@ diff -ruN a/CharData.java b/CharData.java
      public int eventField(int id, int off) {
 -        int p = id * h13Stride + off;
 -        return (short) ((h13[p] & 255) | ((h13[p + 1] & 255) << 8));
++        int i = id * h13Cols + off / 2;
++        if (i >= 0 && i < h13.length && id >= 0) return h13[i];          // copia editavel (campos alem da linha vazam para a seguinte, como no jogo)
 +        int p = h13Start + id * 2 * h13Cols + off;
-+        if (p < 0 || p + 1 >= raw.length) return 0;
++        if (h13Edited || p < 0 || p + 1 >= raw.length) return 0;
 +        return (short) ((raw[p] & 255) | ((raw[p + 1] & 255) << 8));
++    }
++
++    // ---- edicao do HDAT 13 (linhas de 8 shorts: ALVO, DURACAO, Z_LAYER, ANIM_ID, ANIM_FLIP, CAM_MODE, TRAVAR_VIT, FLAG) ----
++    public static final int EV_ALVO = 0, EV_DURACAO = 2, EV_Z = 4, EV_ANIM = 6, EV_ANIM_FLIP = 8, EV_CAM = 10, EV_STUN = 12, EV_FLAG = 14, EV_COLS = 8;
++    private short[] h13 = new short[0];
++    private boolean h13Edited;
++
++    /** Os eventos foram mudados no app (o Saver so regrava o HDAT 13 quando isso e verdade). */
++    public boolean eventsEdited() { return h13Edited; }
++
++    /** Muda um campo (deslocamento em bytes, par) da linha {@code id}; ignora linha/campo inexistente. */
++    public void setEventField(int id, int off, int v) {
++        int i = id * h13Cols + off / 2;
++        if (!hasEvent(id) || off < 0 || off / 2 >= h13Cols || i >= h13.length) return;
++        h13[i] = (short) v;
++        h13Edited = true;
++    }
++
++    /** Nova linha no fim (copia de {@code copyFrom}, ou zerada se invalido); devolve o id novo. */
++    public int addEvent(int copyFrom) {
++        if (h13Cols <= 0) { h13Cols = EV_COLS; h13Rows = 0; h13 = new short[0]; }
++        short[] n = java.util.Arrays.copyOf(h13, (h13Rows + 1) * h13Cols);
++        if (hasEvent(copyFrom)) System.arraycopy(h13, copyFrom * h13Cols, n, h13Rows * h13Cols, h13Cols);
++        h13 = n;
++        h13Edited = true;
++        return h13Rows++;
++    }
++
++    /** Tira a ultima linha (tirar do meio mudaria o numero dos eventos seguintes, que os hits usam). */
++    public boolean removeLastEvent() {
++        if (h13Rows <= 0) return false;
++        h13Rows--;
++        h13 = java.util.Arrays.copyOf(h13, h13Rows * h13Cols);
++        h13Edited = true;
++        return true;
++    }
++
++    /** Zera a linha (o evento fica sem animacao nem efeito). */
++    public void clearEvent(int id) {
++        if (!hasEvent(id)) return;
++        for (int c = 0; c < h13Cols; c++) h13[id * h13Cols + c] = 0;
++        h13Edited = true;
++    }
++
++    /** Foto dos eventos (para desfazer). */
++    public static final class EventsSnap {
++        final short[] flat; final int rows, cols; final boolean edited;
++        EventsSnap(short[] f, int r, int c, boolean e) { flat = f; rows = r; cols = c; edited = e; }
      }
  
 -    private CharData(Move[] moves, HdatTable t) {
++    public EventsSnap snapshotEvents() { return new EventsSnap(h13.clone(), h13Rows, h13Cols, h13Edited); }
++
++    public void restoreEvents(EventsSnap s) {
++        h13 = s.flat.clone();
++        h13Rows = s.rows;
++        h13Cols = s.cols;
++        h13Edited = s.edited;
++    }
++
++    /** Eventos lidos do 000.bin.txt ($ROTEIRO_CUTSCENE): o texto manda sobre o binario. Cada linha tem {@link #EV_COLS} shorts. */
++    public void loadEvents(int[][] rowsIn) {
++        if (rowsIn == null) return;
++        int oldCols = h13Cols;
++        short[] old = h13;
++        h13Cols = EV_COLS;
++        h13Rows = rowsIn.length;
++        h13 = new short[h13Rows * h13Cols];
++        for (int r = 0; r < rowsIn.length; r++) for (int c = 0; c < EV_COLS && c < rowsIn[r].length; c++) h13[r * h13Cols + c] = (short) rowsIn[r][c];
++        h13Edited = false;
++    }
++
++    /** Linha inteira {@code id} (EV_COLS campos); zeros se nao existe. */
++    public int[] eventRow(int id) {
++        int[] out = new int[EV_COLS];
++        for (int c = 0; c < EV_COLS; c++) out[c] = eventField(id, c * 2);
++        return out;
++    }
++
 +    private CharData(Move[] moves, HdatTable t, byte[] raw) {
          this.moves = moves;
 +        this.raw = raw;
          if (t.size() > 3) h3 = t.bytes(3);
 -        if (t.size() > 13 && t.rows(13) > 0) { h13 = t.bytes(13); h13Stride = h13.length / t.rows(13); }
-+        if (t.size() > 13) { h13Start = t.start(13); h13Cols = t.cols(13); h13Rows = t.rows(13); }
++        if (t.size() > 13) {
++            h13Start = t.start(13); h13Cols = t.cols(13); h13Rows = t.rows(13);
++            int n = Math.max(0, h13Rows * h13Cols);
++            h13 = new short[n];
++            for (int i = 0; i < n; i++) {
++                int q = h13Start + i * 2;
++                h13[i] = (short) (u(raw, q) | (u(raw, q + 1) << 8));
++            }
++        }
          if (t.size() > 7 && t.rows(7) > 0) { h7 = t.bytes(7); h7Stride = h7.length / t.rows(7); }
          for (int i = 0; i < REACTION_COUNT; i++) {
              int h = FIRST_REACTION_HDAT + i;
-@@ -219,7 +260,7 @@
+@@ -219,7 +346,7 @@
              if (p + 48 <= b.length) { m.unk44 = s16(b, p + 44); m.unk46 = s16(b, p + 46); }
              moves[i] = m;
          }
@@ -12686,6 +12775,42 @@ diff -ruN a/CropProblem.java b/CropProblem.java
 +        return p == null ? null : p.text;
 +    }
 +}
+diff -ruN a/CutsceneEdit.java b/CutsceneEdit.java
+--- a/CutsceneEdit.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CutsceneEdit.java	2026-10-30 01:30:59.746744411 +0000
+@@ -0,0 +1,32 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/** Ajudas puras do editor de cutscenes (HDAT 13): quais ANOs usam um evento, rotulos dos campos. */
++final class CutsceneEdit {
++    private CutsceneEdit() { }
++
++    /** Indices (na ordem dada) das ANOs com algum hit flag 20 que usa o evento {@code ev} (o 3o valor da hitbox, {@code width}). */
++    static List<Integer> users(Ano[] anos, int ev) {
++        List<Integer> out = new ArrayList<Integer>();
++        if (anos == null) return out;
++        for (Ano a : anos) {
++            if (a == null || !a.present) continue;
++            boolean used = false;
++            for (Ano.Mpt m : a.mpts) {
++                if ((m.flags & 0x10) == 0) continue;
++                for (Ano.Hit h : m.hits) if (h.flag == 20 && h.width == ev) used = true;
++            }
++            if (used) out.add(Integer.valueOf(a.index));
++        }
++        return out;
++    }
++
++    /** Todas as ANOs de um DAC (para {@link #users}). */
++    static Ano[] all(Dac d) {
++        Ano[] r = new Ano[d == null ? 0 : d.size()];
++        for (int i = 0; i < r.length; i++) r[i] = d.getAno(i);
++        return r;
++    }
++}
 diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 --- a/CutsceneInfo.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/CutsceneInfo.java	2026-10-24 21:48:20.027333776 +0000
@@ -12768,6 +12893,408 @@ diff -ruN a/CutsceneInfo.java b/CutsceneInfo.java
 +            case 15: return "o dono vai para cima da tela (so no 1o tick)";
 +            default: return "valor sem efeito no jogo";
 +        }
++    }
++}
+diff -ruN a/CutsceneScreen.java b/CutsceneScreen.java
+--- a/CutsceneScreen.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CutsceneScreen.java	2026-10-30 01:32:03.326657845 +0000
+@@ -0,0 +1,286 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.app.Dialog;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Editor das cutscenes da flag 20 (HDAT 13 do personagem): lista de eventos, e por evento ALVO, animacoes (virado para a direita / esquerda) com
++ * previa, DURACAO, camada, camera, trava do oponente e FLAG, com o texto de CutsceneInfo ao vivo. Mexe direto no CharData (o Saver grava o
++ * $ROTEIRO_CUTSCENE no 000.bin.txt); a simulacao da tela principal e refeita ao fechar.
++ */
++final class CutsceneScreen {
++    interface Use { void on(int event); }
++
++    private final Activity a;
++    private final AttackView view;
++    private final CharAssets ch;
++    private final CharData cd;
++    private final Use use;
++    private final float d;
++    private Dialog dlg;
++    private int sel;
++    private final List<CharData.EventsSnap> undo = new ArrayList<CharData.EventsSnap>();
++    private LinearLayout chips, detail;
++    private TextView undoBtn;
++
++    /** {@code start} = evento aberto de inicio; {@code use} (pode ser null) = "USAR NESTE HIT". */
++    static void show(Activity a, AttackView view, int start, Use use) {
++        AttackData ad = view.attackData();
++        if (ad == null || ad.attacker == null || ad.attacker.data == null) {
++            I18nUi.toast(a, "Carregue um personagem para editar as cutscenes", android.widget.Toast.LENGTH_SHORT).show();
++            return;
++        }
++        new CutsceneScreen(a, view, ad.attacker, start, use).open();
++    }
++
++    private CutsceneScreen(Activity a, AttackView view, CharAssets ch, int start, Use use) {
++        this.a = a; this.view = view; this.ch = ch; this.cd = ch.data; this.use = use;
++        this.d = a.getResources().getDisplayMetrics().density;
++        this.sel = Math.max(0, Math.min(Math.max(0, cd.eventRows() - 1), start));
++    }
++
++    private int dp(int v) { return Math.round(v * d); }
++
++    private TextView tv(String s, int sp, int color, boolean bold) {
++        TextView t = new I18nTextView(a);
++        t.setText(s);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
++        t.setTextColor(color);
++        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
++        return t;
++    }
++
++    private TextView button(String s, int color, View.OnClickListener l) {
++        TextView t = tv(s, 12, color, true);
++        t.setGravity(Gravity.CENTER);
++        t.setPadding(dp(10), dp(10), dp(10), dp(10));
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(LayoutManager.PANEL_HI);
++        g.setCornerRadius(dp(8));
++        t.setBackground(g);
++        t.setOnClickListener(l);
++        return t;
++    }
++
++    private TextView chip(String s, boolean on, View.OnClickListener l) {
++        TextView t = tv(s, 12, on ? 0xFFFFFFFF : LayoutManager.TEXT, true);
++        t.setGravity(Gravity.CENTER);
++        t.setPadding(dp(10), dp(8), dp(10), dp(8));
++        GradientDrawable g = new GradientDrawable();
++        g.setColor(on ? LayoutManager.ACCENT : LayoutManager.PANEL_HI);
++        g.setCornerRadius(dp(8));
++        t.setBackground(g);
++        t.setOnClickListener(l);
++        return t;
++    }
++
++    private LinearLayout.LayoutParams lp(float w, int l, int t, int r, int b) {
++        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w > 0 ? 0 : -2, -2, w);
++        p.setMargins(dp(l), dp(t), dp(r), dp(b));
++        return p;
++    }
++
++    private void open() {
++        dlg = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
++        LinearLayout root = new LinearLayout(a);
++        root.setOrientation(LinearLayout.VERTICAL);
++        root.setBackgroundColor(LayoutManager.BG);
++        root.setPadding(dp(10), dp(12), dp(10), dp(10));
++        dlg.setContentView(root);
++        LinearLayout h = new LinearLayout(a);
++        h.setGravity(Gravity.CENTER_VERTICAL);
++        h.addView(tv("CUTSCENES (HDAT 13)", 17, LayoutManager.TEXT, true), new LinearLayout.LayoutParams(0, -2, 1f));
++        undoBtn = button("↶", LayoutManager.TEXT, new View.OnClickListener() { public void onClick(View v) { undoLast(); } });
++        h.addView(undoBtn, new LinearLayout.LayoutParams(dp(48), dp(40)));
++        TextView x = tv("✕", 20, LayoutManager.TEXT, true);
++        x.setGravity(Gravity.CENTER);
++        x.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } });
++        h.addView(x, new LinearLayout.LayoutParams(dp(44), dp(40)));
++        root.addView(h);
++        TextView hint = tv("O 3º valor da hitbox da flag 20 escolhe o evento. Mudanças valem na hora e vão para o 000.bin.txt ao salvar.", 11, LayoutManager.DIM, false);
++        hint.setPadding(dp(2), dp(2), dp(2), dp(6));
++        root.addView(hint);
++        ScrollView sv = new ScrollView(a);
++        LinearLayout col = new LinearLayout(a);
++        col.setOrientation(LinearLayout.VERTICAL);
++        sv.addView(col);
++        chips = new LinearLayout(a);
++        chips.setOrientation(LinearLayout.VERTICAL);
++        col.addView(chips);
++        detail = new LinearLayout(a);
++        detail.setOrientation(LinearLayout.VERTICAL);
++        detail.setPadding(0, dp(8), 0, dp(8));
++        col.addView(detail);
++        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++        LinearLayout bar = new LinearLayout(a);
++        bar.addView(button("NOVO", LayoutManager.ACCENT, new View.OnClickListener() { public void onClick(View v) { push(); sel = cd.addEvent(-1); rebuild(); } }), lp(1, 0, 0, 3, 0));
++        bar.addView(button("DUPLICAR", LayoutManager.TEXT, new View.OnClickListener() { public void onClick(View v) { if (cd.hasEvent(sel)) { push(); sel = cd.addEvent(sel); rebuild(); } } }), lp(1, 3, 0, 3, 0));
++        bar.addView(button("ZERAR", 0xFFFFB454, new View.OnClickListener() { public void onClick(View v) { if (cd.hasEvent(sel)) { push(); cd.clearEvent(sel); rebuild(); } } }), lp(1, 3, 0, 3, 0));
++        bar.addView(button("EXCLUIR", 0xFFFF6B6B, new View.OnClickListener() { public void onClick(View v) { deleteLast(); } }), lp(1, 3, 0, 0, 0));
++        root.addView(bar, new LinearLayout.LayoutParams(-1, -2));
++        LinearLayout bar2 = new LinearLayout(a);
++        if (use != null) bar2.addView(button("USAR NESTE HIT", LayoutManager.ACCENT, new View.OnClickListener() { public void onClick(View v) {
++            if (cd.hasEvent(sel)) { use.on(sel); dlg.dismiss(); }
++        } }), lp(1, 0, 0, 3, 0));
++        bar2.addView(button("FECHAR", LayoutManager.DIM, new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } }), lp(1, use != null ? 3 : 0, 0, 0, 0));
++        LinearLayout.LayoutParams b2 = new LinearLayout.LayoutParams(-1, -2);
++        b2.topMargin = dp(6);
++        root.addView(bar2, b2);
++        dlg.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
++            public void onDismiss(android.content.DialogInterface di) { if (changed) view.refreshAfterExternalEdit(); }
++        });
++        rebuild();
++        dlg.show();
++    }
++
++    private boolean changed;
++
++    private void push() {
++        undo.add(cd.snapshotEvents());
++        changed = true;
++    }
++
++    private void undoLast() {
++        if (undo.isEmpty()) return;
++        cd.restoreEvents(undo.remove(undo.size() - 1));
++        sel = Math.min(sel, Math.max(0, cd.eventRows() - 1));
++        rebuild();
++    }
++
++    private void deleteLast() {
++        if (cd.eventRows() == 0) return;
++        final int last = cd.eventRows() - 1;
++        List<Integer> users = CutsceneEdit.users(CutsceneEdit.all(ch.dac), last);
++        Runnable go = new Runnable() { public void run() { push(); cd.removeLastEvent(); sel = Math.min(sel, Math.max(0, cd.eventRows() - 1)); rebuild(); } };
++        if (users.isEmpty()) { go.run(); return; }
++        final Runnable fgo = go;
++        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Excluir o último evento?")
++                .setMessage("O evento " + last + " é usado pelas ANOs " + users + ". Só o último evento pode ser excluído (tirar do meio mudaria o número dos seguintes); use ZERAR para esvaziar outro.")
++                .setNegativeButton("CANCELAR", null)
++                .setPositiveButton("EXCLUIR", new android.content.DialogInterface.OnClickListener() { public void onClick(android.content.DialogInterface di, int w) { fgo.run(); } }).show();
++    }
++
++    private void set(int off, int v) {
++        push();
++        cd.setEventField(sel, off, v);
++        rebuildDetail();
++    }
++
++    private void rebuild() {
++        undoBtn.setAlpha(undo.isEmpty() ? 0.4f : 1f);
++        chips.removeAllViews();
++        LinearLayout row = null;
++        for (int i = 0; i < cd.eventRows(); i++) {
++            if (i % 6 == 0) { row = new LinearLayout(a); chips.addView(row); }
++            final int id = i;
++            row.addView(chip(String.format(java.util.Locale.US, "%02d", i), i == sel, new View.OnClickListener() { public void onClick(View v) { sel = id; rebuild(); } }), lp(1, 2, 2, 2, 2));
++        }
++        if (cd.eventRows() == 0) chips.addView(tv("Este personagem não tem eventos no HDAT 13. Toque em NOVO para criar o primeiro.", 12, LayoutManager.DIM, false));
++        rebuildDetail();
++    }
++
++    private Dac packDac(int alvo) { return view.packDac(alvo == 0 ? 0 : alvo == 1 ? 2 : 3); }
++    private SpriteCache packSprites(int alvo) { return view.packSprites(alvo == 0 ? 0 : alvo == 1 ? 2 : 3); }
++
++    private View previewCell(String title, int alvo, int ano) {
++        LinearLayout cell = new LinearLayout(a);
++        cell.setOrientation(LinearLayout.VERTICAL);
++        cell.setGravity(Gravity.CENTER_HORIZONTAL);
++        Dac dac = packDac(alvo);
++        Ano an = dac == null ? null : dac.getAno(ano);
++        int side = Math.min(dp(130), (a.getResources().getDisplayMetrics().widthPixels - dp(60)) / 2);
++        if (ano > 0 && an != null && an.present && an.mpts.length > 0) {
++            AnimPreview pv = new AnimPreview(a);
++            pv.set(dac, packSprites(alvo), ano);
++            cell.addView(pv, new LinearLayout.LayoutParams(side, side));
++        } else {
++            TextView e = tv(ano == 0 ? "sem animação" : dac == null ? "pacote não carregado" : "ANO vazia", 11, LayoutManager.DIM, false);
++            e.setGravity(Gravity.CENTER);
++            e.setBackgroundColor(0xFF0D0F13);
++            cell.addView(e, new LinearLayout.LayoutParams(side, side));
++        }
++        cell.addView(tv(title, 11, LayoutManager.DIM, false));
++        return cell;
++    }
++
++    private void label(String s) {
++        TextView t = tv(s, 12, LayoutManager.TEXT, true);
++        t.setPadding(0, dp(10), 0, dp(2));
++        detail.addView(t);
++    }
++
++    private void note(String s) {
++        TextView t = tv(s, 11, LayoutManager.DIM, false);
++        detail.addView(t);
++    }
++
++    private LinearLayout choices(String[] names, int cur, final int off, int[] values) {
++        LinearLayout r = new LinearLayout(a);
++        for (int i = 0; i < names.length; i++) {
++            final int val = values[i];
++            r.addView(chip(names[i], val == cur, new View.OnClickListener() { public void onClick(View v) { set(off, val); } }), lp(1, 2, 2, 2, 2));
++        }
++        return r;
++    }
++
++    private void animField(final String name, final int off, final int alvo) {
++        label(name);
++        LinearLayout r = new LinearLayout(a);
++        r.setGravity(Gravity.CENTER_VERTICAL);
++        r.addView(new Stepper(a).range(0, 4095).step(1).keyboard(new Stepper.OnValue() { public void on(double v) { set(off, (int) v); } }).value(cd.eventField(sel, off)).view(), lp(1, 0, 0, 6, 0));
++        r.addView(button("ESCOLHER", LayoutManager.ACCENT, new View.OnClickListener() { public void onClick(View v) {
++            Dac dac = packDac(alvo);
++            if (dac == null) { I18nUi.toast(a, "Pacote não carregado (para o ALVO 2 é preciso a pasta bobj em assets)", android.widget.Toast.LENGTH_LONG).show(); return; }
++            AnoPicker.showAll(a, dac, packSprites(alvo), cd.eventField(sel, off), name, new AnoPicker.Listener() { public void onPick(int ano) { set(off, ano); } });
++        } }), new LinearLayout.LayoutParams(-2, -2));
++        detail.addView(r);
++    }
++
++    private void rebuildDetail() {
++        detail.removeAllViews();
++        if (!cd.hasEvent(sel)) return;
++        int alvo = cd.eventField(sel, CharData.EV_ALVO), animN = cd.eventField(sel, CharData.EV_ANIM), animF = cd.eventField(sel, CharData.EV_ANIM_FLIP);
++        LinearLayout pv = new LinearLayout(a);
++        pv.setGravity(Gravity.CENTER_HORIZONTAL);
++        pv.addView(previewCell("virado para a direita (ANIM_ID)", alvo, animN), lp(1, 2, 0, 2, 0));
++        pv.addView(previewCell("virado para a esquerda (ANIM_FLIP)", alvo, animF), lp(1, 2, 0, 2, 0));
++        detail.addView(pv);
++        List<Integer> users = CutsceneEdit.users(CutsceneEdit.all(ch.dac), sel);
++        note(users.isEmpty() ? "Nenhuma ANO deste personagem usa o evento " + sel + "." : "Usado pelas ANOs " + users + ".");
++        label("ALVO (de onde vem a animação)");
++        detail.addView(choices(new String[] {"effect.pac", "char do player", "bobj"}, alvo == 0 || alvo == 1 ? alvo : 2, CharData.EV_ALVO, new int[] {0, 1, 2}));
++        animField("ANIM_ID (virado para a direita; 0 = sem animação)", CharData.EV_ANIM, alvo);
++        animField("ANIM_FLIP (virado para a esquerda)", CharData.EV_ANIM_FLIP, alvo);
++        label("DURAÇÃO");
++        detail.addView(new Stepper(a).range(-32768, 32767).step(1).keyboard(new Stepper.OnValue() { public void on(double v) { set(CharData.EV_DURACAO, (int) v); } }).value(cd.eventField(sel, CharData.EV_DURACAO)).view());
++        note("0 ou negativo = até a animação do golpe mudar (ou acabar); N positivo = limite de N frames do ANO do golpe (frames, não ticks).");
++        label("Z_LAYER (camada de desenho)");
++        detail.addView(choices(new String[] {"0 · " + CutsceneInfo.zValue(sel, 0), "1 · " + CutsceneInfo.zValue(sel, 1), "2 · " + CutsceneInfo.zValue(sel, 2)}, Math.max(0, Math.min(2, cd.eventField(sel, CharData.EV_Z))), CharData.EV_Z, new int[] {0, 1, 2}));
++        label("CAM_MODE");
++        detail.addView(choices(new String[] {"0 · mundo", "1 · tela cheia", "2 · tela"}, Math.max(0, Math.min(2, cd.eventField(sel, CharData.EV_CAM))), CharData.EV_CAM, new int[] {0, 1, 2}));
++        note("0 = a cena segue o mundo; diferente de 0 = origem na tela (0, 0), ignorando o x/y do hit; 1 também ativa a tela cheia. Eventos 8 e 9 sempre ficam em (0, 0).");
++        label("TRAVAR_VIT (congela o oponente no estado 925)");
++        detail.addView(choices(new String[] {"não", "sim"}, cd.eventField(sel, CharData.EV_STUN) != 0 ? 1 : 0, CharData.EV_STUN, new int[] {0, 1}));
++        label("FLAG (efeito extra da cena)");
++        int fl = cd.eventField(sel, CharData.EV_FLAG);
++        LinearLayout row = null;
++        for (int f = 0; f <= 15; f++) {
++            if (f % 8 == 0) { row = new LinearLayout(a); detail.addView(row); }
++            final int fv = f;
++            row.addView(chip(String.valueOf(f), f == fl, new View.OnClickListener() { public void onClick(View v) { set(CharData.EV_FLAG, fv); } }), lp(1, 1, 1, 1, 1));
++        }
++        note(fl == 0 ? "0 · nada" : CutsceneInfo.mapaName(fl));
++        label("Como o jogo lê este evento");
++        note(CutsceneInfo.describe(cd, sel, 0, 0));
++    }
++}
+diff -ruN a/CutsceneText.java b/CutsceneText.java
+--- a/CutsceneText.java	1970-01-01 00:00:00.000000000 +0000
++++ b/CutsceneText.java	2026-10-30 01:30:11.370745517 +0000
+@@ -0,0 +1,108 @@
++package com.zue.attackeditor;
++
++import java.util.Locale;
++import java.util.TreeMap;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++/**
++ * HDAT 13 (eventos da flag 20) no 000.bin.txt (Java puro): {@code $HDAT_13:{$info:{$COL: 8, $ROW: N, $SZ: &XXXXXXXX}, $ROTEIRO_CUTSCENE:{ comentarios,
++ * $EVT_00: { $ALVO:0, $DURACAO:1, $Z_LAYER:1, $ANIM_ID:145, $ANIM_FLIP:145, $CAM_MODE:1, $TRAVAR_VIT:0, $FLAG:0 }, ... }}}.
++ */
++final class CutsceneText {
++    private CutsceneText() { }
++
++    static final String[] KEYS = {"ALVO", "DURACAO", "Z_LAYER", "ANIM_ID", "ANIM_FLIP", "CAM_MODE", "TRAVAR_VIT", "FLAG"};
++
++    private static String stripComments(String blk) {
++        StringBuilder sb = new StringBuilder();
++        for (String ln : blk.split("\n")) {
++            int c = ln.indexOf("//");
++            sb.append(c >= 0 ? ln.substring(0, c) : ln).append('\n');
++        }
++        return sb.toString();
++    }
++
++    /** Linhas $EVT_nn do bloco $ROTEIRO_CUTSCENE (8 valores cada, na ordem de {@link #KEYS}); null se o bloco nao existe. Eventos que faltam ficam zerados. */
++    static int[][] parse(String text) {
++        int[] b = Saver.findBlock(text, "ROTEIRO_CUTSCENE");
++        if (b == null) return null;
++        String blk = stripComments(text.substring(b[1], b[2] + 1));
++        Matcher fm = Pattern.compile("\\$EVT_(\\d+)\\s*:\\s*\\{([^}]*)\\}").matcher(blk);
++        TreeMap<Integer, int[]> rows = new TreeMap<Integer, int[]>();
++        while (fm.find()) {
++            int[] v = new int[KEYS.length];
++            Matcher km = Pattern.compile("\\$([A-Za-z_]+)\\s*:\\s*(-?\\d+)").matcher(fm.group(2));
++            while (km.find()) for (int k = 0; k < KEYS.length; k++) if (KEYS[k].equalsIgnoreCase(km.group(1))) v[k] = Integer.parseInt(km.group(2));
++            rows.put(Integer.valueOf(Integer.parseInt(fm.group(1))), v);
++        }
++        if (rows.isEmpty()) return null;
++        int n = rows.lastKey().intValue() + 1;
++        int[][] out = new int[n][KEYS.length];
++        for (java.util.Map.Entry<Integer, int[]> e : rows.entrySet()) out[e.getKey().intValue()] = e.getValue();
++        return out;
++    }
++
++    static String evtLine(String ind, int id, int[] v) {
++        StringBuilder sb = new StringBuilder(ind).append(String.format(Locale.US, "$EVT_%02d: {", id));
++        for (int k = 0; k < KEYS.length; k++) sb.append(k == 0 ? " " : ", ").append('$').append(KEYS[k]).append(':').append(v[k]);
++        return sb.append(" },\n").toString();
++    }
++
++    /**
++     * Troca as linhas $EVT_nn pelas de {@code cd} (comentarios do bloco ficam) e corrige $COL/$ROW/$SZ do $info. Se o bloco $ROTEIRO_CUTSCENE nao
++     * existe e o $HDAT_13 sim, ele e criado; sem $HDAT_13, {@code found[0]} = false e nada muda.
++     */
++    static String patch(String text, CharData cd, boolean[] found) {
++        int[] hb = Saver.findBlock(text, "HDAT_13");
++        found[0] = hb != null;
++        if (hb == null) return text;
++        StringBuilder lines = new StringBuilder();
++        int rows = cd.eventRows();
++        String ind = "         ";
++        int[] rb = Saver.findBlock(text, "ROTEIRO_CUTSCENE");
++        int firstEvt = -1, lastEnd = -1;
++        if (rb != null) {
++            Matcher m = Pattern.compile("\\$EVT_\\d+\\s*:\\s*\\{[^}]*\\},?[ \\t]*\\n?").matcher(text);
++            for (int from = rb[1]; from <= rb[2] && m.find(from); from = m.end()) {
++                if (m.start() > rb[2]) break;
++                int ls = text.lastIndexOf('\n', m.start()) + 1;
++                if (text.substring(ls, m.start()).contains("//")) continue;       // dentro de comentario
++                if (firstEvt < 0) { firstEvt = ls; ind = text.substring(ls, m.start()); }
++                lastEnd = m.end();
++            }
++        }
++        for (int r = 0; r < rows; r++) lines.append(evtLine(ind, r, cd.eventRow(r)));
++        String out;
++        if (rb != null && firstEvt >= 0) {
++            out = text.substring(0, firstEvt) + lines + text.substring(lastEnd);
++        } else if (rb != null) {
++            int cl = text.lastIndexOf('\n', rb[2]) + 1;
++            boolean own = text.substring(cl, rb[2]).trim().isEmpty();
++            out = own ? text.substring(0, cl) + lines + text.substring(cl)
++                      : text.substring(0, rb[2]) + "\n" + lines + text.substring(rb[2]);
++        } else {
++            String hind = "   ";
++            int cl = text.lastIndexOf('\n', hb[2]) + 1;
++            boolean own = text.substring(cl, hb[2]).trim().isEmpty();
++            String blk = hind + "   $ROTEIRO_CUTSCENE:{\n" + lines + hind + "   },\n";
++            String before = text.substring(0, own ? cl : hb[2]);
++            int q = before.length() - 1;
++            while (q >= 0 && Character.isWhitespace(before.charAt(q))) q--;
++            String comma = q >= 0 && before.charAt(q) == '}' ? "," : "";
++            out = before.substring(0, q + 1) + comma + before.substring(q + 1) + (own ? "" : "\n") + blk + text.substring(own ? cl : hb[2]);
++        }
++        return fixInfo(out, rows);
++    }
++
++    private static String fixInfo(String out, int rows) {
++        int[] hb = Saver.findBlock(out, "HDAT_13");
++        if (hb == null) return out;
++        int end = out.indexOf('}', hb[1]) + 1;               // fim do $info{...}
++        String hs = out.substring(hb[0], end);
++        String fixed = hs.replaceFirst("(\\$COL\\s*:\\s*)\\d+", "$1" + CharData.EV_COLS)
++                .replaceFirst("(\\$ROW\\s*:\\s*)\\d+", "$1" + rows)
++                .replaceFirst("(\\$SZ\\s*:\\s*&)[0-9A-Fa-f]+", "$1" + String.format(Locale.US, "%08X", rows * CharData.EV_COLS * 2));
++        return out.substring(0, hb[0]) + fixed + out.substring(end);
 +    }
 +}
 diff -ruN a/Dac.java b/Dac.java
@@ -14188,8 +14715,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-30 01:28:16.689954213 +0000
-@@ -0,0 +1,649 @@
++++ b/HelpText.java	2026-10-30 01:33:16.264890986 +0000
+@@ -0,0 +1,650 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -14557,7 +15084,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        lk.add("Animações por flag",
 +                "Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. "
 +                + "O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora."
-+                + " A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote).");
++                + " A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote)."
++                + " Cutscenes (flag 20): o 3º valor da hitbox é o evento da tabela HDAT 13 do personagem. O botão EDITAR EVENTOS da gaveta da flag 20 (e CHAR > CUTSCENES) abre o editor: lista de eventos, prévia da animação virado para a direita e para a esquerda, ALVO (effect.pac, char do player ou bobj), ANIM_ID e ANIM_FLIP (com ESCOLHER), DURAÇÃO, Z_LAYER, CAM_MODE, TRAVAR_VIT e FLAG, o texto de como o jogo lê o evento ao vivo, e NOVO / DUPLICAR / ZERAR / EXCLUIR (só o último evento pode sair) / USAR NESTE HIT / desfazer. Ao salvar, o app grava as linhas $EVT_nn no $ROTEIRO_CUTSCENE do $HDAT_13 do 000.bin.txt, mantendo os comentários e corrigindo $ROW e $SZ.");
 +        lk.add("Sincronia do link",
 +                "Cada link tem posição base (bx, by) e flags: sincronizar MPT (acompanha o frame do pai), sincronizar XY (acompanha a posição do pai) e \"não copiar a posição ao nascer\". O menu Imagem tem \"mover links junto\" e \"Editar posição do Link\".");
 +        c.add(lk);
@@ -15145,7 +15673,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-30 01:28:00.760188457 +0000
++++ b/I18nCatalog.java	2026-10-30 01:32:50.384520897 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -15159,7 +15687,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-30 01:28:00.756364983 +0000
++++ b/I18nCatalog0.java	2026-10-30 01:32:50.377739189 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -15432,7 +15960,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-30 01:28:00.757187690 +0000
++++ b/I18nCatalog1.java	2026-10-30 01:32:50.379114969 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -15705,7 +16233,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-30 01:28:00.757910847 +0000
++++ b/I18nCatalog2.java	2026-10-30 01:32:50.380402361 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -15978,7 +16506,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-30 01:28:00.758674325 +0000
++++ b/I18nCatalog3.java	2026-10-30 01:32:50.381738083 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16251,7 +16779,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-30 01:28:00.759359985 +0000
++++ b/I18nCatalog4.java	2026-10-30 01:32:50.382940586 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16524,8 +17052,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-30 01:28:00.759894027 +0000
-@@ -0,0 +1,196 @@
++++ b/I18nCatalog5.java	2026-10-30 01:32:50.384112370 +0000
+@@ -0,0 +1,230 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -16720,6 +17248,40 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"Limite de 4096 ANOs atingido", "4096 ANO limit reached", "Límite de 4096 ANOs alcanzado"},
 +        {"sem bobj", "no bobj", "sin bobj"},
 +        {". Tipos 1 a 5 usam a pasta bobj do cenário; se ela não existe em assets, nada é desenhado (como no jogo sem esse pacote). O jogo usa a ANO + 80 quando o personagem está virado.", ". Types 1 to 5 use the scenery bobj folder; if it does not exist in assets, nothing is drawn (like the game without that pack). The game uses ANO + 80 when the character is facing left.", ". Los tipos 1 a 5 usan la carpeta bobj del escenario; si no existe en assets, no se dibuja nada (como en el juego sin ese paquete). El juego usa la ANO + 80 cuando el personaje está volteado."},
++        {"USAR NESTE HIT", "USE IN THIS HIT", "USAR EN ESTE HIT"},
++        {"Carregue um personagem para editar as cutscenes", "Load a character to edit the cutscenes", "Carga un personaje para editar las cutscenes"},
++        {"O 3º valor da hitbox da flag 20 escolhe o evento. Mudanças valem na hora e vão para o 000.bin.txt ao salvar.", "The 3rd value of the flag 20 hitbox picks the event. Changes apply right away and go to 000.bin.txt when you save.", "El 3.er valor de la hitbox de la flag 20 elige el evento. Los cambios valen al instante y van al 000.bin.txt al guardar."},
++        {"NOVO", "NEW", "NUEVO"},
++        {"ZERAR", "CLEAR", "PONER A CERO"},
++        {"Excluir o último evento?", "Delete the last event?", "¿Eliminar el último evento?"},
++        {" é usado pelas ANOs ", " is used by ANOs ", " lo usan las ANOs "},
++        {". Só o último evento pode ser excluído (tirar do meio mudaria o número dos seguintes); use ZERAR para esvaziar outro.", ". Only the last event can be deleted (removing one from the middle would renumber the following ones); use CLEAR to empty another.", ". Solo se puede eliminar el último evento (quitar uno del medio cambiaría el número de los siguientes); usa PONER A CERO para vaciar otro."},
++        {"Este personagem não tem eventos no HDAT 13. Toque em NOVO para criar o primeiro.", "This character has no events in HDAT 13. Tap NEW to create the first one.", "Este personaje no tiene eventos en el HDAT 13. Toca NUEVO para crear el primero."},
++        {"sem animação", "no animation", "sin animación"},
++        {"pacote não carregado", "pack not loaded", "paquete no cargado"},
++        {"ANO vazia", "empty ANO", "ANO vacía"},
++        {"Pacote não carregado (para o ALVO 2 é preciso a pasta bobj em assets)", "Pack not loaded (TARGET 2 needs the bobj folder in assets)", "Paquete no cargado (para el ALVO 2 hace falta la carpeta bobj en assets)"},
++        {"virado para a direita (ANIM_ID)", "facing right (ANIM_ID)", "mirando a la derecha (ANIM_ID)"},
++        {"virado para a esquerda (ANIM_FLIP)", "facing left (ANIM_FLIP)", "mirando a la izquierda (ANIM_FLIP)"},
++        {"Nenhuma ANO deste personagem usa o evento ", "No ANO of this character uses event ", "Ninguna ANO de este personaje usa el evento "},
++        {"Usado pelas ANOs ", "Used by ANOs ", "Usado por las ANOs "},
++        {"ALVO (de onde vem a animação)", "ALVO (where the animation comes from)", "ALVO (de dónde viene la animación)"},
++        {"char do player", "player's char", "char del jugador"},
++        {"ANIM_ID (virado para a direita; 0 = sem animação)", "ANIM_ID (facing right; 0 = no animation)", "ANIM_ID (mirando a la derecha; 0 = sin animación)"},
++        {"ANIM_FLIP (virado para a esquerda)", "ANIM_FLIP (facing left)", "ANIM_FLIP (mirando a la izquierda)"},
++        {"DURAÇÃO", "DURATION", "DURACIÓN"},
++        {"0 ou negativo = até a animação do golpe mudar (ou acabar); N positivo = limite de N frames do ANO do golpe (frames, não ticks).", "0 or negative = until the move's animation changes (or ends); positive N = limit of N frames of the move's ANO (frames, not ticks).", "0 o negativo = hasta que la animación del golpe cambie (o termine); N positivo = límite de N frames de la ANO del golpe (frames, no ticks)."},
++        {"Z_LAYER (camada de desenho)", "Z_LAYER (draw layer)", "Z_LAYER (capa de dibujo)"},
++        {"0 · mundo", "0 · world", "0 · mundo"},
++        {"1 · tela cheia", "1 · full screen", "1 · pantalla completa"},
++        {"2 · tela", "2 · screen", "2 · pantalla"},
++        {"0 = a cena segue o mundo; diferente de 0 = origem na tela (0, 0), ignorando o x/y do hit; 1 também ativa a tela cheia. Eventos 8 e 9 sempre ficam em (0, 0).", "0 = the scene follows the world; non-zero = origin on screen (0, 0), ignoring the hit's x/y; 1 also enables full screen. Events 8 and 9 are always at (0, 0).", "0 = la escena sigue el mundo; distinto de 0 = origen en la pantalla (0, 0), ignorando el x/y del hit; 1 también activa la pantalla completa. Los eventos 8 y 9 siempre están en (0, 0)."},
++        {"TRAVAR_VIT (congela o oponente no estado 925)", "TRAVAR_VIT (freezes the opponent in state 925)", "TRAVAR_VIT (congela al oponente en el estado 925)"},
++        {"não", "no", "no"},
++        {"sim", "yes", "sí"},
++        {"FLAG (efeito extra da cena)", "FLAG (extra effect of the scene)", "FLAG (efecto extra de la escena)"},
++        {"0 · nada", "0 · nothing", "0 · nada"},
++        {"Como o jogo lê este evento", "How the game reads this event", "Cómo lee el juego este evento"},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -16769,7 +17331,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-30 01:28:16.769422999 +0000
++++ b/I18nHelpCatalog.java	2026-10-30 01:33:16.334013050 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -16783,7 +17345,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-30 01:28:16.768192309 +0000
++++ b/I18nHelpCatalog0.java	2026-10-30 01:33:16.332860657 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -16868,7 +17430,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-30 01:28:16.768382282 +0000
++++ b/I18nHelpCatalog1.java	2026-10-30 01:33:16.333002049 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -16953,7 +17515,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-30 01:28:16.768537647 +0000
++++ b/I18nHelpCatalog2.java	2026-10-30 01:33:16.333131790 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17038,7 +17600,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-30 01:28:16.768672173 +0000
++++ b/I18nHelpCatalog3.java	2026-10-30 01:33:16.333336144 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17123,7 +17685,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-30 01:28:16.768780423 +0000
++++ b/I18nHelpCatalog4.java	2026-10-30 01:33:16.333460716 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17208,7 +17770,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-30 01:28:16.768875861 +0000
++++ b/I18nHelpCatalog5.java	2026-10-30 01:33:16.333555770 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17293,7 +17855,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-30 01:28:16.768974901 +0000
++++ b/I18nHelpCatalog6.java	2026-10-30 01:33:16.333666739 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17378,7 +17940,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-30 01:28:16.769118392 +0000
++++ b/I18nHelpCatalog7.java	2026-10-30 01:33:16.333812704 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17456,14 +18018,14 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +        {"Animações por flag",
 +         "Animations by flag",
 +         "Animaciones por flag"},
-+        {"Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora. A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote).",
-+         "Hitboxes with special flags create animations: projectile (0), shake (3 to 5), dust (10 to 17), cutscene (20), camera zoom (30/31), teleport (39/40) and character animations (41 to 125). These animations are roots: they show their own links. The warning \"ANOs N, N and N have links that have other links or animations/effects\" in the warning list says which links the game ignores. Dust/smoke (the \"Poeira / fumaça\" action, types 1 to 15) is drawn in the preview like in the game: one is born per frame, it stays still in the world at the character's position, uses ANO +80 when the character is facing left, at most 6 at the same time (the seventh erases the oldest). Types 1 to 5 come from the scenery bobj folder, 6 to 15 from effect; the action menu shows the animated preview of each type and where it comes from. In the effects lane the clip says where the art comes from: effect N, charf N or char N (N = the pack's ANO).",
-+         "Las hitboxes con flags especiales crean animaciones: proyectil (0), temblor (3 a 5), polvo (10 a 17), cutscene (20), zoom de cámara (30/31), teletransporte (39/40) y animaciones del personaje (41 a 125). Esas animaciones son raíces: muestran sus propios links. El aviso \"Los ANOs N, N y N tienen links que tienen otros links o animaciones/efectos\" en la lista de avisos dice qué links ignora el juego. El polvo/humo (la acción \"Poeira / fumaça\", tipos 1 a 15) se dibuja en la vista previa como en el juego: nace uno por frame, queda quieto en el mundo en la posición del personaje, usa la ANO +80 cuando está volteado, como máximo 6 a la vez (el séptimo borra el más antiguo). Los tipos 1 a 5 vienen de la carpeta bobj del escenario, 6 a 15 del effect; el menú de la acción muestra la vista previa animada de cada tipo y de dónde viene. En la franja de efectos el clip dice de dónde viene el arte: effect N, charf N o char N (N = la ANO del paquete)."},
++        {"Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora. A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote). Cutscenes (flag 20): o 3º valor da hitbox é o evento da tabela HDAT 13 do personagem. O botão EDITAR EVENTOS da gaveta da flag 20 (e CHAR > CUTSCENES) abre o editor: lista de eventos, prévia da animação virado para a direita e para a esquerda, ALVO (effect.pac, char do player ou bobj), ANIM_ID e ANIM_FLIP (com ESCOLHER), DURAÇÃO, Z_LAYER, CAM_MODE, TRAVAR_VIT e FLAG, o texto de como o jogo lê o evento ao vivo, e NOVO / DUPLICAR / ZERAR / EXCLUIR (só o último evento pode sair) / USAR NESTE HIT / desfazer. Ao salvar, o app grava as linhas $EVT_nn no $ROTEIRO_CUTSCENE do $HDAT_13 do 000.bin.txt, mantendo os comentários e corrigindo $ROW e $SZ.",
++         "Hitboxes with special flags create animations: projectile (0), shake (3 to 5), dust (10 to 17), cutscene (20), camera zoom (30/31), teleport (39/40) and character animations (41 to 125). These animations are roots: they show their own links. The warning \"ANOs N, N and N have links that have other links or animations/effects\" in the warning list says which links the game ignores. Dust/smoke (the \"Poeira / fumaça\" action, types 1 to 15) is drawn in the preview like in the game: one is born per frame, it stays still in the world at the character's position, uses ANO +80 when the character is facing left, at most 6 at the same time (the seventh erases the oldest). Types 1 to 5 come from the scenery bobj folder, 6 to 15 from effect; the action menu shows the animated preview of each type and where it comes from. In the effects lane the clip says where the art comes from: effect N, charf N or char N (N = the pack's ANO). Cutscenes (flag 20): the hitbox's 3rd value is the event of the character's HDAT 13 table. The EDITAR EVENTOS button in the flag 20 drawer (and CHAR > CUTSCENES) opens the editor: event list, animation preview facing right and left, ALVO (effect.pac, player's char or bobj), ANIM_ID and ANIM_FLIP (with ESCOLHER), DURAÇÃO, Z_LAYER, CAM_MODE, TRAVAR_VIT and FLAG, the live text of how the game reads the event, and NOVO / DUPLICAR / ZERAR / EXCLUIR (only the last event can go) / USAR NESTE HIT / undo. When you save, the app writes the $EVT_nn lines into the $ROTEIRO_CUTSCENE of the $HDAT_13 in 000.bin.txt, keeping the comments and fixing $ROW and $SZ.",
++         "Las hitboxes con flags especiales crean animaciones: proyectil (0), temblor (3 a 5), polvo (10 a 17), cutscene (20), zoom de cámara (30/31), teletransporte (39/40) y animaciones del personaje (41 a 125). Esas animaciones son raíces: muestran sus propios links. El aviso \"Los ANOs N, N y N tienen links que tienen otros links o animaciones/efectos\" en la lista de avisos dice qué links ignora el juego. El polvo/humo (la acción \"Poeira / fumaça\", tipos 1 a 15) se dibuja en la vista previa como en el juego: nace uno por frame, queda quieto en el mundo en la posición del personaje, usa la ANO +80 cuando está volteado, como máximo 6 a la vez (el séptimo borra el más antiguo). Los tipos 1 a 5 vienen de la carpeta bobj del escenario, 6 a 15 del effect; el menú de la acción muestra la vista previa animada de cada tipo y de dónde viene. En la franja de efectos el clip dice de dónde viene el arte: effect N, charf N o char N (N = la ANO del paquete). Cutscenes (flag 20): el 3.er valor de la hitbox es el evento de la tabla HDAT 13 del personaje. El botón EDITAR EVENTOS del cajón de la flag 20 (y CHAR > CUTSCENES) abre el editor: lista de eventos, vista previa de la animación mirando a la derecha y a la izquierda, ALVO (effect.pac, char del jugador o bobj), ANIM_ID y ANIM_FLIP (con ESCOLHER), DURAÇÃO, Z_LAYER, CAM_MODE, TRAVAR_VIT y FLAG, el texto en vivo de cómo lee el juego el evento, y NOVO / DUPLICAR / ZERAR / EXCLUIR (solo puede salir el último evento) / USAR NESTE HIT / deshacer. Al guardar, la app escribe las líneas $EVT_nn en el $ROTEIRO_CUTSCENE del $HDAT_13 del 000.bin.txt, conservando los comentarios y corrigiendo $ROW y $SZ."},
 +    };
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-30 01:28:16.769316098 +0000
++++ b/I18nHelpCatalog8.java	2026-10-30 01:33:16.333934980 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17548,7 +18110,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-30 01:28:16.769376726 +0000
++++ b/I18nHelpCatalog9.java	2026-10-30 01:33:16.333978813 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -17818,7 +18380,7 @@ diff -ruN a/LayerOps.java b/LayerOps.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-10-30 01:21:52.390767696 +0000
++++ b/LayoutManager.java	2026-10-30 01:32:17.381772521 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -18497,19 +19059,23 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbObj.setChecked(objOn[0]);
                  cbObj.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                      @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { objOn[0] = v; applyObj.run(); }
-@@ -797,9 +1066,9 @@
+@@ -797,9 +1066,12 @@
                  objRow.addView(cbObj, new LinearLayout.LayoutParams(-2, -2));
                  box.addView(objRow, lp(-1, -2, 0, 0, 0, 8));
                  box.addView(bA, lp(-1, -2, 0, 0, 0, 8));
 -                box.addView(bO, lp(-1, -2, 0, 0, 0, 8));
-+                box.addView(oppRow, lp(-1, -2, 0, 0, 0, 8));
-                 box.addView(bP, lp(-1, -2, 0, 0, 0, 0));
+-                box.addView(bP, lp(-1, -2, 0, 0, 0, 0));
 -                dlg[0] = new android.app.AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
++                box.addView(oppRow, lp(-1, -2, 0, 0, 0, 8));
++                box.addView(bP, lp(-1, -2, 0, 0, 0, 8));
++                TextView bCs = button(a, "CUTSCENES (HDAT 13)", false);
++                bCs.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); CutsceneScreen.show(a, view, 0, null); } });
++                box.addView(bCs, lp(-1, -2, 0, 0, 0, 0));
 +                dlg[0] = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                          .setTitle("Personagens").setView(box).setNegativeButton("FECHAR", null).create();
                  dlg[0].show();
              }
-@@ -856,7 +1125,9 @@
+@@ -856,7 +1128,9 @@
              }
          });
  
@@ -18520,7 +19086,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -877,18 +1148,44 @@
+@@ -877,18 +1151,44 @@
      /** SPRITES: lista de sprites do personagem atacante atual. */
      private void showSpritePacks(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
@@ -18568,7 +19134,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setItems(items, new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { askWhere(a, view, d, which); }
                  }).setNegativeButton("FECHAR", null).show();
-@@ -896,20 +1193,28 @@
+@@ -896,20 +1196,28 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -18603,7 +19169,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          try {
              File dir = d.attacker.dir;
              Dac dac = d.attacker.dac;
-@@ -918,39 +1223,240 @@
+@@ -918,39 +1226,240 @@
              int idx = d.moveIndex;
              if ((which == 0) && m.generic) {
                  CharData.Move own = cd.ownerOf(d.moveIndex);
@@ -18867,7 +19433,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -976,25 +1482,21 @@
+@@ -976,25 +1485,21 @@
          }
      }
  
@@ -18903,7 +19469,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      /** Dialogo com -10 / -1 / +1 / +10 que aplica na hora. */
-@@ -1019,7 +1521,7 @@
+@@ -1019,7 +1524,7 @@
              row.addView(b, lpw(1f, k == 0 ? 0 : 3, 0, k == 3 ? 0 : 3, 0));
          }
          box.addView(row, lp(-1, -2, 0, 0, 0, 0));
@@ -18912,7 +19478,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title).setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1045,22 +1547,49 @@
+@@ -1045,22 +1550,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -18972,7 +19538,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1121,7 +1650,7 @@
+@@ -1121,7 +1653,7 @@
                  c.drawLine(pad(), y, w - pad(), y, p);
                  p.setColor(0xFFB8C2D6);
                  p.setTextAlign(android.graphics.Paint.Align.LEFT);
@@ -18981,7 +19547,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
              // grade vertical: distancias predefinidas ao redor do personagem parado
              float ref = drag == 0 ? ox : drag == 1 ? ax : ax;
-@@ -1135,7 +1664,7 @@
+@@ -1135,7 +1667,7 @@
                      if (sg > 0 || ref - px < 0) {
                          p.setColor(0xFFFFC857);
                          p.setTextAlign(android.graphics.Paint.Align.CENTER);
@@ -18990,7 +19556,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      }
                  }
              }
-@@ -1145,9 +1674,9 @@
+@@ -1145,9 +1677,9 @@
              p.setTextAlign(android.graphics.Paint.Align.CENTER);
              p.setTextSize(11f * den);
              p.setTextSize(10.5f * den);
@@ -19002,7 +19568,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      w / 2f, gy() + 31f * den, p);
          }
  
-@@ -1235,12 +1764,12 @@
+@@ -1235,12 +1767,12 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -19017,7 +19583,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("Posicao").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1253,7 +1782,7 @@
+@@ -1253,7 +1785,7 @@
          final AttackView view = attackView;
          final AttackData d = view == null ? null : view.attackData();
          if (d == null || d.move == null || d.move.generic) {
@@ -19026,7 +19592,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              return;
          }
          final CharData.Move mv = d.move;
-@@ -1294,21 +1823,21 @@
+@@ -1294,21 +1826,21 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -19052,7 +19618,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cb.setText(label);
          cb.setTextColor(TEXT);
          box.addView(cb, lp(-1, -2, 0, 4, 0, 0));
-@@ -1346,11 +1875,30 @@
+@@ -1346,11 +1878,30 @@
      }
  
      /** F-GHOST SET: o que a previa mostra (alem do personagem) e a transparencia. */
@@ -19084,7 +19650,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cp.setText("Mostrar projeteis");
          cp.setTextColor(TEXT);
          cp.setChecked(view.isGhostProj());
-@@ -1358,7 +1906,7 @@
+@@ -1358,7 +1909,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostProj(on); }
          });
          box.addView(cp);
@@ -19093,7 +19659,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          ce.setText("Mostrar efeitos (os mesmos do HIDE-EFF, menos projeteis)");
          ce.setTextColor(TEXT);
          ce.setChecked(view.isGhostFx());
-@@ -1366,7 +1914,7 @@
+@@ -1366,7 +1917,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostFx(on); }
          });
          box.addView(ce);
@@ -19102,7 +19668,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cc.setText("Aplicar tambem ao Frame atual");
          cc.setTextColor(TEXT);
          cc.setChecked(view.isGhostCurrent());
-@@ -1389,7 +1937,7 @@
+@@ -1389,7 +1940,7 @@
              @Override public void onStopTrackingTouch(SeekBar s2) { }
          });
          box.addView(gs);
@@ -19111,7 +19677,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1403,7 +1951,7 @@
+@@ -1403,7 +1954,7 @@
          seek.setMax(Math.max(1, length - 1));
          if (seek instanceof ExtSeekBar) ((ExtSeekBar) seek).setAnoEnd(attackView.getAnoEnd() - 1);
          seek.setProgress(frame);
@@ -19120,7 +19686,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          btnPlay.setText(playing ? "PAUSAR" : "TOCAR");
          if (timelineRef != null) {
              timelineRef.setSprites(attackView.attackerSprites());
-@@ -1416,6 +1964,7 @@
+@@ -1416,6 +1967,7 @@
              statusLine.setText(attackView.status());
              refreshInfo(false);
          }
@@ -19128,7 +19694,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String problem = attackView.spriteProblem();
          if (problem.length() > 0) {
              warning.setTextColor(WARN);
-@@ -1423,6 +1972,7 @@
+@@ -1423,6 +1975,7 @@
          }
      }
  
@@ -19136,7 +19702,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      // ---- aviso piscando: transicao travada + play ----
      private boolean lockTrans, blinking, blinkOn, landBeforeLock = true;
      private final Runnable blinkRun = new Runnable() {
-@@ -1528,7 +2078,7 @@
+@@ -1528,7 +2081,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -19145,7 +19711,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1544,7 +2094,7 @@
+@@ -1544,7 +2097,7 @@
          et.setText(attackView.editText(tab));
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(et);
@@ -19154,7 +19720,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +2109,7 @@
+@@ -1559,7 +2112,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -19163,7 +19729,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +2117,9 @@
+@@ -1567,9 +2120,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -19175,7 +19741,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2150,7 @@
+@@ -1600,7 +2153,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -19184,7 +19750,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2164,7 @@
+@@ -1614,7 +2167,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -19193,7 +19759,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1641,6 +2191,9 @@
+@@ -1641,6 +2194,9 @@
  
      public void setAttackHeaderOn(boolean on) { if (attackHeaderSpinner != null) attackHeaderSpinner.on = on; }
  
@@ -19203,7 +19769,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private HeaderSpinner headerSpinner(Context c) {
          HeaderSpinner s = new HeaderSpinner(c);
          setBg(s, roundRect(PANEL, 8, 0, 0));
-@@ -1650,7 +2203,7 @@
+@@ -1650,7 +2206,7 @@
  
      /** Spinner cujo dropdown e um dialogo com cabecalho fixo (nao rola junto com a lista). */
      private static final class HeaderSpinner extends Spinner {
@@ -19212,7 +19778,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          boolean on;
          HeaderSpinner(Context c) { super(c); }
  
-@@ -1662,13 +2215,23 @@
+@@ -1662,13 +2218,23 @@
              LinearLayout box = new LinearLayout(c);
              box.setOrientation(LinearLayout.VERTICAL);
              box.setBackgroundColor(PANEL);
@@ -19237,7 +19803,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              android.widget.ListView lv = new android.widget.ListView(c);
              lv.setAdapter(new android.widget.BaseAdapter() {
                  public int getCount() { return ad.getCount(); }
-@@ -1689,6 +2252,9 @@
+@@ -1689,6 +2255,9 @@
              top.setOnClickListener(new View.OnClickListener() {
                  @Override public void onClick(View v) { dlg.dismiss(); header.run(); }
              });
@@ -19247,7 +19813,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              dlg.show();
              if (dlg.getWindow() != null) {
                  dlg.getWindow().setLayout((int) (300 * dn), (int) (c.getResources().getDisplayMetrics().heightPixels * 0.8f));
-@@ -1766,12 +2332,13 @@
+@@ -1766,12 +2335,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -24232,7 +24798,7 @@ diff -ruN a/ReorderBar.java b/ReorderBar.java
 +}
 diff -ruN a/Saver.java b/Saver.java
 --- a/Saver.java	2026-10-20 14:58:43.000000000 +0000
-+++ b/Saver.java	2026-10-28 13:25:17.426911750 +0000
++++ b/Saver.java	2026-10-30 01:30:11.387535665 +0000
 @@ -13,22 +13,33 @@
  
  /**
@@ -24386,7 +24952,11 @@ diff -ruN a/Saver.java b/Saver.java
              if (anos != null) as.addAll(anos);
              anos = as;
              rs.addAll(reactionsUsed(dac, as));
-@@ -264,14 +313,18 @@
+@@ -261,17 +310,22 @@
+             File fb2 = new File(charDir, "000.bin.txt");
+             if (fb2.isFile()) {
+                 String t0 = readText(fb2), t1 = patchBody(t0, data);
++                if (data.eventsEdited()) t1 = CutsceneText.patch(t1, data, new boolean[1]);       // HDAT 13 (cutscenes) editado no app
                  if (!t1.equals(t0)) write(fb2, t1);
              }
          }
@@ -24407,7 +24977,7 @@ diff -ruN a/Saver.java b/Saver.java
          sb.append(DacText.move(m, idx)).append("\n\n");
          TreeSet<Integer> rs = reactionsUsed(dac, anos);
          if (!rs.isEmpty()) {
-@@ -288,12 +341,111 @@
+@@ -288,12 +342,111 @@
  
      // ---- gravacao ----
  
@@ -24520,7 +25090,7 @@ diff -ruN a/Saver.java b/Saver.java
      static void write(File f, String text) throws IOException {
          Writer w = new OutputStreamWriter(new FileOutputStream(f), "UTF-8");
          try { w.write(text); } finally { w.close(); }
-@@ -321,7 +473,7 @@
+@@ -321,7 +474,7 @@
          return f;
      }
  
@@ -26840,7 +27410,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          apply(n, FrameOps.starts(n)[frame]);
 diff -ruN a/TimelineTools.java b/TimelineTools.java
 --- a/TimelineTools.java	2026-10-20 03:56:45.000000000 +0000
-+++ b/TimelineTools.java	2026-10-30 01:27:26.224286306 +0000
++++ b/TimelineTools.java	2026-10-30 01:32:03.344036127 +0000
 @@ -24,8 +24,7 @@
      private interface Setter { void set(double v); }
  
@@ -29179,16 +29749,23 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              return;
          }
          Ano.Hit h = ObjModel.find(a.mpts[pat], o.flag, o.occ);
-@@ -1780,6 +2557,8 @@
+@@ -1780,6 +2557,15 @@
              num(line(), "evento", h.width, 1, coord(o, pat, 2));
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
 +            AttackData ad20 = view.attackData();
 +            if (ad20 != null && ad20.attacker != null) note(CutsceneInfo.describe(ad20.attacker.data, h.width, h.x, h.y, isProjectileAno(a.index, ad20.move)));
++            final Setter evSet = coord(o, pat, 2);
++            line().addView(btn("EDITAR EVENTOS (HDAT 13)", true, new View.OnClickListener() { public void onClick(View v) {
++                if (!(c instanceof android.app.Activity)) return;
++                CutsceneScreen.show((android.app.Activity) c, view, ObjModel.find(cur().mpts[pat], o.flag, o.occ) == null ? 0 : ObjModel.find(cur().mpts[pat], o.flag, o.occ).width, new CutsceneScreen.Use() {
++                    public void on(int ev) { evSet.set(ev); }
++                });
++            } }));
          } else if (f == 30 || f == 31) {
              num(line(), "x", h.x, 1, coord(o, pat, 0));
              num(line(), "y", h.y, 1, coord(o, pat, 1));
-@@ -1788,18 +2567,69 @@
+@@ -1788,18 +2574,69 @@
          } else if (f == 32 || f == 34) {
              num(line(), "quantidade", ObjModel.optField(a.mpts[pat], 0), 1, optSetter(pat, 0));
          } else if (f == 40) {
@@ -29260,7 +29837,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private View.OnClickListener convertAction(final ObjModel.Obj o, final int newFlag) { return convert(o, newFlag); }
  
      // ---- sequencia ----
-@@ -1831,6 +2661,25 @@
+@@ -1831,6 +2668,25 @@
          } });
      }
  
@@ -29286,7 +29863,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      private void seqPanel(final Ano a) {
          java.util.List<SeqMark> ms = view.sequenceMarks();
          if (idx < 0 || idx >= ms.size() || view.attackData() == null) { title.setText("TRANSICAO"); note("Sem marcador aqui."); return; }
-@@ -1838,7 +2687,7 @@
+@@ -1838,7 +2694,7 @@
          final int kind = m.kind;
          if (m.incoming) {
              title.setText("ENTRADA  ·  " + m.label().substring(2));
@@ -29295,7 +29872,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
                      + ", vinda da ANO " + m.fromAno + " (frame " + (m.fromPat + 1) + "). A causa está na timeline daquela ANO.");
              final int fa = m.fromAno;
              LinearLayout rl = line();
-@@ -1846,12 +2695,13 @@
+@@ -1846,12 +2702,13 @@
              return;
          }
          title.setTextColor(TimelineView.markColor(m));
@@ -29314,7 +29891,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
              default: note("O atacante terminou a animacao no ar e cai: o jogo toca a ANO 89 (fixa, nao editavel)."); break;
          }
          if (m.real) note("Esta troca acontece de fato na simulacao (tick " + m.tick + ").");
-@@ -1918,7 +2768,7 @@
+@@ -1918,7 +2775,7 @@
          num(line(), "base x", l.baseX, 1, linkSetter(a, 0));
          num(line(), "base y", l.baseY, 1, linkSetter(a, 1));
          LinearLayout r = line();
@@ -30518,6 +31095,125 @@ diff -ruN a/test/CropProblemTest.java b/test/CropProblemTest.java
 +        check("exatamente na borda e valido", CropProblem.reason(e(0, 246, 0, 10, 10), 2, "000.png", 1, 512, 512), null);
 +        System.out.println("CropProblemTest fails=" + fails);
 +    }
++}
+diff -ruN a/test/CutsceneEditTest.java b/test/CutsceneEditTest.java
+--- a/test/CutsceneEditTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/CutsceneEditTest.java	2026-10-30 01:30:59.741183131 +0000
+@@ -0,0 +1,115 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** HDAT 13 (cutscenes) editavel: modelo (set/add/remove/clear/snapshot) e ida e volta do texto $ROTEIRO_CUTSCENE com um 000.bin.txt real (26 eventos). */
++public class CutsceneEditTest {
++    static final String SAMPLE =
++        "   $HDAT_13:{$info:{$COL: 8, $ROW: 26, $SZ: &000001A0},\n" +
++        "      $ROTEIRO_CUTSCENE:{\n" +
++        "         // Ativado por hitbox flag=20. O 3º valor da hitbox (COORDS) é o índice do evento.\n" +
++        "         // $ALVO: 0=effect.pac | 1=char.pac do player | outro valor=ranura 2\n" +
++        "         // $DURACAO: 0 ou valor negativo = até mudar a animação; N positivo = limite de frames\n" +
++        "         // $FLAG: 0=nada | 1=PlayerState do atacante | 2=PlayerState do oponente se Life<=0\n" +
++        "\n" +
++        "         $EVT_00: { $ALVO:0, $DURACAO:1, $Z_LAYER:1, $ANIM_ID:145, $ANIM_FLIP:145, $CAM_MODE:1, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_01: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:146, $ANIM_FLIP:146, $CAM_MODE:2, $TRAVAR_VIT:0, $FLAG:1 },\n" +
++        "         $EVT_02: { $ALVO:0, $DURACAO:1, $Z_LAYER:2, $ANIM_ID:148, $ANIM_FLIP:148, $CAM_MODE:1, $TRAVAR_VIT:1, $FLAG:0 },\n" +
++        "         $EVT_03: { $ALVO:1, $DURACAO:1, $Z_LAYER:2, $ANIM_ID:280, $ANIM_FLIP:280, $CAM_MODE:1, $TRAVAR_VIT:1, $FLAG:0 },\n" +
++        "         $EVT_04: { $ALVO:1, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:2 },\n" +
++        "         $EVT_05: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:67, $ANIM_FLIP:68, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_06: { $ALVO:2, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:40, $ANIM_FLIP:40, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_07: { $ALVO:2, $DURACAO:0, $Z_LAYER:2, $ANIM_ID:42, $ANIM_FLIP:41, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_08: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:143, $ANIM_FLIP:144, $CAM_MODE:1, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_09: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:355, $ANIM_FLIP:355, $CAM_MODE:1, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_10: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:3 },\n" +
++        "         $EVT_11: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:7 },\n" +
++        "         $EVT_12: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:6 },\n" +
++        "         $EVT_13: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:4 },\n" +
++        "         $EVT_14: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:9 },\n" +
++        "         $EVT_15: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:5 },\n" +
++        "         $EVT_16: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:8 },\n" +
++        "         $EVT_17: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:3 },\n" +
++        "         $EVT_18: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:9, $ANIM_FLIP:9, $CAM_MODE:2, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_19: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:0, $ANIM_FLIP:0, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:13 },\n" +
++        "         $EVT_20: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:136, $ANIM_FLIP:136, $CAM_MODE:1, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_21: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:127, $ANIM_FLIP:127, $CAM_MODE:2, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_22: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:118, $ANIM_FLIP:120, $CAM_MODE:2, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_23: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:120, $ANIM_FLIP:118, $CAM_MODE:2, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_24: { $ALVO:0, $DURACAO:0, $Z_LAYER:1, $ANIM_ID:122, $ANIM_FLIP:122, $CAM_MODE:2, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "         $EVT_25: { $ALVO:0, $DURACAO:0, $Z_LAYER:0, $ANIM_ID:422, $ANIM_FLIP:423, $CAM_MODE:0, $TRAVAR_VIT:0, $FLAG:0 },\n" +
++        "      },\n" +
++        "   },\n";
++
++    static String bin(String hdat13) { return "BIN_ {\n   $HDAT_3:{ $info:{$COL: 1, $ROW: 1} },\n" + hdat13 + "   $HDAT_14:{$info:{$COL: 14, $ROW: 0}},\n}\n"; }
++
++    public static void main(String[] args) throws Exception {
++        String text = bin(SAMPLE);
++        int[][] ev = CutsceneText.parse(text);
++        check("le os 26 eventos do texto real", ev == null ? -1 : ev.length, 26);
++        check("EVT_03 = char do player, anim 280, trava o oponente", ev[3][0] + ":" + ev[3][3] + ":" + ev[3][6], "1:280:1");
++        check("EVT_22 = anim 118 e espelhada 120, cam 2", ev[22][3] + ":" + ev[22][4] + ":" + ev[22][5], "118:120:2");
++        check("comentarios nao viram eventos (so \"$EVT\" de verdade)", ev[25][3], 422);
++
++        // carrega num CharData
++        CharData cd = CutsceneTest.chrEv(new int[]{0, 1, 2, 3, 4, 5, 6, 7});
++        check("antes: 1 linha do binario", cd.eventRows() + ":" + cd.eventField(0, 6), "1:3");
++        cd.loadEvents(ev);
++        check("depois do texto: 26 linhas, 8 colunas, nao editado", cd.eventRows() + "x" + cd.eventCols() + ":" + cd.eventsEdited(), "26x8:false");
++        check("campos pelos deslocamentos do jogo", cd.eventField(0, CharData.EV_ANIM) + ":" + cd.eventField(5, CharData.EV_ANIM_FLIP) + ":" + cd.eventField(19, CharData.EV_FLAG), "145:68:13");
++        check("hasEvent 25 sim, 26 nao", cd.hasEvent(25) + ":" + cd.hasEvent(26), "true:false");
++
++        // texto -> texto sem editar: igual (comentarios preservados)
++        String same = CutsceneText.patch(text, cd, new boolean[1]);
++        check("regravar sem mudar nao muda o texto", same.equals(text), true);
++
++        // editar
++        cd.setEventField(3, CharData.EV_ANIM, 281);
++        cd.setEventField(3, CharData.EV_STUN, 0);
++        check("editado", cd.eventsEdited() + ":" + cd.eventField(3, CharData.EV_ANIM) + ":" + cd.eventField(3, CharData.EV_STUN), "true:281:0");
++        String t1 = CutsceneText.patch(text, cd, new boolean[1]);
++        check("o texto traz a linha nova", t1.contains("$EVT_03: { $ALVO:1, $DURACAO:1, $Z_LAYER:2, $ANIM_ID:281, $ANIM_FLIP:280, $CAM_MODE:1, $TRAVAR_VIT:0, $FLAG:0 },"), true);
++        check("os comentarios continuam", t1.contains("// $DURACAO: 0 ou valor negativo") && t1.contains("// Ativado por hitbox flag=20."), true);
++        check("o resto do arquivo nao muda", t1.startsWith("BIN_ {\n   $HDAT_3:{ $info:{$COL: 1, $ROW: 1} },\n") && t1.endsWith("   $HDAT_14:{$info:{$COL: 14, $ROW: 0}},\n}\n"), true);
++        int[][] back = CutsceneText.parse(t1);
++        check("ida e volta: le o que gravou", back[3][3] + ":" + back.length, "281:26");
++
++        // novo evento (copia do 3) e $ROW/$SZ
++        int nid = cd.addEvent(3);
++        cd.setEventField(nid, CharData.EV_ANIM, 500);
++        check("novo evento no fim", nid + ":" + cd.eventRows() + ":" + cd.eventField(nid, CharData.EV_ALVO), "26:27:1");
++        String t2 = CutsceneText.patch(text, cd, new boolean[1]);
++        check("$ROW 27 e $SZ = 27 * 8 * 2 = 0x1B0", t2.contains("$ROW: 27") && t2.contains("$SZ: &000001B0") && t2.contains("$COL: 8"), true);
++        check("o evento 26 foi escrito", t2.contains("$EVT_26: { $ALVO:1, $DURACAO:1, $Z_LAYER:2, $ANIM_ID:500,"), true);
++        check("volta com 27 linhas", CutsceneText.parse(t2).length, 27);
++        // tirar o ultimo
++        check("remover o ultimo", cd.removeLastEvent() + ":" + cd.eventRows(), "true:26");
++        String t3 = CutsceneText.patch(t2, cd, new boolean[1]);
++        check("depois de remover: 26 e $SZ 0x1A0 de novo", t3.contains("$ROW: 26") && t3.contains("$SZ: &000001A0") && !t3.contains("$EVT_26"), true);
++        // zerar uma linha
++        cd.clearEvent(4);
++        check("zerar a linha 4", cd.eventField(4, CharData.EV_ALVO) + ":" + cd.eventField(4, CharData.EV_FLAG), "0:0");
++        // desfazer
++        CharData.EventsSnap snap = cd.snapshotEvents();
++        cd.setEventField(0, CharData.EV_ANIM, 1);
++        cd.restoreEvents(snap);
++        check("restaurar a foto desfaz a edicao", cd.eventField(0, CharData.EV_ANIM), 145);
++        // texto sem HDAT_13
++        boolean[] f = new boolean[1];
++        String none = CutsceneText.patch("BIN_ {\n  $HDAT_3:{ },\n}\n", cd, f);
++        check("sem $HDAT_13 no arquivo: nada muda e avisa", f[0] + ":" + none.equals("BIN_ {\n  $HDAT_3:{ },\n}\n"), "false:true");
++        // $HDAT_13 sem o bloco do roteiro: e criado
++        String bare = "BIN_ {\n   $HDAT_13:{$info:{$COL: 8, $ROW: 0, $SZ: &00000000}},\n}\n";
++        String made = CutsceneText.patch(bare, cd, new boolean[1]);
++        check("cria o $ROTEIRO_CUTSCENE quando falta", CutsceneText.parse(made) != null && CutsceneText.parse(made).length == 26 && made.contains("$ROW: 26"), true);
++        // eventos que os hits usam
++        Ano.Mpt m = new Ano.Mpt();
++        m.hits = new Ano.Hit[] { hit20(7), hit20(12) };
++        m.flags |= 0x10;
++        Ano a1 = new Ano(3, true, 0, 0, new Ano.Link[0], new Ano.Mpt[] {m});
++        check("quem usa o evento 7 / 12 / 8", CutsceneEdit.users(new Ano[] {a1}, 7).toString() + CutsceneEdit.users(new Ano[] {a1}, 12) + CutsceneEdit.users(new Ano[] {a1}, 8), "[3][3][]");
++        System.out.println("CutsceneEditTest fails=" + fails);
++    }
++
++    static Ano.Hit hit20(int ev) { Ano.Hit h = new Ano.Hit(); h.flag = 20; h.width = ev; return h; }
 +}
 diff -ruN a/test/CutsceneTest.java b/test/CutsceneTest.java
 --- a/test/CutsceneTest.java	1970-01-01 00:00:00.000000000 +0000
@@ -32361,8 +33057,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-30 01:28:00.897966621 +0000
-@@ -0,0 +1,532 @@
++++ b/test/I18nIgnored.java	2026-10-30 01:32:50.517346280 +0000
+@@ -0,0 +1,547 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -32377,6 +33073,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "   $LINK_",
 +        "   $MPTS:{\n",
 +        "   $PRIO: ",
++        "   $ROTEIRO_CUTSCENE:{\n",
 +        "   $SPR_",
 +        "  (SPR_",
 +        "  CNV=",
@@ -32457,6 +33154,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " → ANO ",
 +        "\",\"inicio\":",
 +        "$ANO_",
++        "$EVT_%02d: {",
 +        "$GOLPE_",
 +        "$HITS precisa de { }",
 +        "$HITS:{\n",
@@ -32568,9 +33266,12 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "AGARRAR → ",
 +        "ALPH",
 +        "ALPHA",
++        "ALVO",
 +        "ANIM_AO_ACERTAR",
 +        "ANIM_END_AR",
 +        "ANIM_END_CHAO",
++        "ANIM_FLIP",
++        "ANIM_ID",
 +        "ANIM_INICIAL",
 +        "ANIM_SEQ_AR",
 +        "ANIM_SEQ_CHAO",
@@ -32591,12 +33292,14 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "BIN_CNV_ {\n",
 +        "BMP",
 +        "Backups",
++        "CAM_MODE",
 +        "CHAR",
 +        "CHAR OBJ",
 +        "CHARF",
 +        "CNV_TXT_ {\n",
 +        "COMP",
 +        "COORDS",
++        "CUTSCENES (HDAT 13)",
 +        "Chars",
 +        "Cutscene",
 +        "DAC_ACT_ {\n",
@@ -32605,10 +33308,12 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "DEF",
 +        "DESCONHECIDO_44",
 +        "DESCONHECIDO_46",
++        "DURACAO",
 +        "DUR_A",
 +        "DUR_C",
 +        "Documents",
 +        "Download",
++        "EDITAR EVENTOS (HDAT 13)",
 +        "END",
 +        "ESCALA: ",
 +        "ESCALA: AUTO (",
@@ -32629,6 +33334,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "GOLPE_%02d  (ANIM_INICIAL %d)",
 +        "GOLPE_%02d  ANO %d%s",
 +        "HDAT_",
++        "HDAT_13",
 +        "HIDE-EFF",
 +        "HITBOX",
 +        "HITS",
@@ -32683,6 +33389,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "RAZ",
 +        "REACAO_DANO_",
 +        "ROT",
++        "ROTEIRO_CUTSCENE",
 +        "SEQ",
 +        "SEQ_PROJ",
 +        "SEQ_PROJETIL",
@@ -32710,6 +33417,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "TBRE",
 +        "TIME",
 +        "TOTAL",
++        "TRAVAR_VIT",
 +        "TRUE",
 +        "Timeline",
 +        "Total ",
@@ -32731,6 +33439,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "YSPEED_A",
 +        "YZOOM",
 +        "ZOOM",
++        "Z_LAYER",
 +        "Zoom",
 +        "Zue Mods",
 +        "[^A-Za-z0-9_.\\- ]",
@@ -32738,6 +33447,8 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "\\$ALTURA\\s*:\\s*(\\d+)",
 +        "\\$ANO_(\\d+)\\s*:",
 +        "\\$DISTANCIA_AGARRE\\s*:\\s*(\\d+)",
++        "\\$EVT_(\\d+)\\s*:\\s*\\{([^}]*)\\}",
++        "\\$EVT_\\d+\\s*:\\s*\\{[^}]*\\},?[ \t]*\\\n?",
 +        "\\$FR_(\\d+)\\s*:\\s*\\{([^}]*)\\}",
 +        "\\$FR_\\d+\\s*:",
 +        "\\$LARGURA\\s*:\\s*(\\d+)",

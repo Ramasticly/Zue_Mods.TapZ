@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1568 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1593 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -414,6 +414,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Faixa dos efeitos**: o clipe agora diz **`effect N`**, **`charf N`** ou **`char N`** (N = ANO do pacote; antes “Efeito 1.50”); a gaveta mostra o mesmo rótulo. `ObjModel.fxLabel` + `TimelineLabelsTest`.
 - `DustTest` (11: tabela tipo → pacote/ANO, 1 por frame, +80, anel de 6, parada no mundo, sem bobj, filhas). A parede (2048) segue o código mas não tem teste (exige o oponente batendo na parede). Prévias na tela só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzg Editor completo das cutscenes (flag 20 / HDAT 13)
+- **Modelo editável**: o HDAT 13 do `CharData` virou uma lista de linhas de 8 shorts que o app edita (`setEventField`, `addEvent` com cópia, `clearEvent`, `removeLastEvent`, foto/restauro para desfazer, `eventsEdited`); `eventField` lê dela (campos além da linha continuam vazando para a seguinte, como no jogo). Só o **último** evento pode ser excluído (tirar do meio renumeraria os eventos que os hits usam); ZERAR esvazia outro.
+- **Texto no formato real do `000.bin.txt`** (conferido com o bloco de 26 eventos colado): `$HDAT_13:{$info:{$COL: 8, $ROW: N, $SZ: &…}, $ROTEIRO_CUTSCENE:{ …, $EVT_00: { $ALVO, $DURACAO, $Z_LAYER, $ANIM_ID, $ANIM_FLIP, $CAM_MODE, $TRAVAR_VIT, $FLAG }, … }}`. `CutsceneText.parse` lê (o texto manda sobre o binário, em `CharAssets.applyBinTxt`) e `CutsceneText.patch` grava só as linhas `$EVT_nn` (comentários do bloco ficam; `$COL/$ROW/$SZ` recalculados; cria o `$ROTEIRO_CUTSCENE` se faltar; sem `$HDAT_13` nada muda). O `Saver` grava junto com o corpo/HDAT 3 **somente se os eventos foram editados**. Regravar sem mudar não altera o arquivo.
+- **Tela CUTSCENES (HDAT 13)** (`CutsceneScreen`), pelo botão **EDITAR EVENTOS (HDAT 13)** da gaveta da flag 20 e por **CHAR > CUTSCENES (HDAT 13)**: chips dos eventos, **prévia animada virado para a direita (ANIM_ID) e para a esquerda (ANIM_FLIP)**, quais ANOs usam o evento, **ALVO** (effect.pac / char do player / bobj), ANIM_ID e ANIM_FLIP (campo numérico + **ESCOLHER** com o seletor de ANOs do pacote certo), **DURAÇÃO**, **Z_LAYER** (mostra a prioridade real), **CAM_MODE**, **TRAVAR_VIT**, **FLAG** 0–15 com a descrição, o texto “Como o jogo lê este evento” ao vivo (`CutsceneInfo`), **NOVO / DUPLICAR / ZERAR / EXCLUIR (último) / USAR NESTE HIT / ↶**. A simulação da tela principal é refeita ao fechar.
+- `CutsceneEditTest` (25: lê os 26 eventos reais, carrega no `CharData`, regravar sem mudar = texto idêntico, editar/novo/remover/zerar com `$ROW` e `$SZ` certos, comentários preservados, foto/restauro, sem `$HDAT_13`, cria o roteiro, quem usa o evento). A tela só compilada/revisada, não rodada num aparelho. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -495,6 +501,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **TickDisplayTest (novo)** | 10 |
 | **NewAnoTest (novo)** | 6 |
 | **DustTest (novo)** | 11 |
+| **CutsceneEditTest (novo)** | 25 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
