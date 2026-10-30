@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1524 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1538 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -398,6 +398,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Trava cinemática** (especiais 9–12, md 923/926): o botão **+1 tick** agora mostra o aviso amarelo “Trava cinemática: tudo fica congelado por mais N ticks…” no estilo do hitstop, com o número do tick **travado** e o botão **PULAR**, que passa pelos ticks que faltam (sem tocar os sons deles) e libera o tick. Timeline e barra de progresso seguem como antes (a tabela de ticks já ignora ticks sem avanço do ANO). `CineNotice` puro + `CineNoticeTest` (7).
 - **Zoom da câmera da trava** (md 29, `iCameraLock` 0/1): **200 % em 4 ticks**, centrado no dono do especial (**x ±40 px para o lado de fora**, +40 se o dono está à direita do oponente; **y = y do dono − 48**), mantido durante os ~120 ticks e, ao acabar a trava (md 927), volta a **100 % em 12 ticks**. Antes a trava não tinha zoom. `zoomTick()` agora roda também durante a trava. `CinematicZoomTest` (8: 200 % em 4 ticks, centro ±40 / −48 para os dois lados, mantém, volta a 100 %, trava desligada = sem zoom). Aviso/PULAR e tela só compilados/revisados. (O painel visual da task 974 não foi portado.) AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzd SPEEDLINE e FR-PREVIEW no menu TELA; interpolação explicada; SPEEDLINE só do Frame atual
+- **Menu TELA**: **SPEEDLINE** e **FR-PREVIEW** saíram da barra superior (ordens salvas com esses ids os descartam sozinhas; a barra tem 14 botões). No diálogo TELA há a caixa **SPEEDLINE** e a linha **`FR-PREVIEW | ☐`**: a caixa liga/desliga, tocar no nome abre as opções (**FR-PREVIEW SET**, que saiu do menu e agora traz também **Próximo frame | Frame anterior**; ligar pela caixa usa o último modo escolhido, padrão próximo).
+- **Interpolação (OPT d2)**, conferida no `_Hokan` do jogo: a flag vale **só para o frame que a tem**, que interpola **para o próximo**; o frame de antes não interpola para ele; sem tempo não faz efeito; no **último frame o “próximo” dá a volta para o frame 1 sempre** (mesmo sem LOOP). O simulador já fazia assim; agora o botão diz “Interpolar para o frame N+1”, a nota explica a regra e o último frame mostra um aviso âmbar. `InterpolationTest` (6, contra o `AttackSim`).
+- **SPEEDLINE nova — só o movimento do Frame atual**: um **ponto** onde o Frame começa (com o número dele) e uma **seta** até onde ele termina, seguindo o caminho real tick a tick (curva com aceleração/ápice). Se o movimento **para** (último Frame do movimento, ou o próximo começa com speed 0) a seta termina num **ponto**; se continua, termina em **ponta de seta**. Ao passar de Frame o ponto e a seta vão para o novo Frame. Arrastar a **ponta** muda só a speed do Frame atual (grava ao soltar); tocar no **ponto** ou na ponta abre o menu: **Remover speed**, **Zerar Speed**, **Aceleração…** (a aceleração do Frame atual leva a velocidade até a do próximo; rótulo “Frame N → N+1 / → fim”) e, logo abaixo, os **presets** de aceleração, aplicados ao movimento inteiro com um toque. Núcleo puro `SpeedLine.frameArrow/stopsAfter`; `SpeedLineTest` (51) e `ToolbarTest` (83) atualizados. Desenho, toque e menu só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -461,7 +466,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CropProblemTest (novo)** | 11 |
 | **LayerOpsTest (novo)** | 11 |
 | **TeleportBehindTest (novo)** | 17 |
-| **SpeedLineTest (novo)** | 42 |
+| **SpeedLineTest (novo)** | 51 |
 | **UndoHistoryTest (novo)** | 32 |
 | **UndoEditsTest (novo)** | 10 |
 | **HitstopNoticeTest (novo)** | 8 |
@@ -475,6 +480,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **GameDataSignatureTest (novo)** | 8 |
 | **CineNoticeTest (novo)** | 7 |
 | **CinematicZoomTest (novo)** | 8 |
+| **InterpolationTest (novo)** | 6 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
