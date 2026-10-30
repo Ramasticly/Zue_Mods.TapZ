@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1676 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1685 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -455,6 +455,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Otimizar PNGs**: `Png8` (quantizador mediana-corte sem pontilhado + escritor de PNG indexado com `tRNS`; **sem perda** quando a folha tem ≤ 256 cores) lê as folhas por linha, confere o PNG gerado (`Png8.decode`) e só troca o arquivo se ficar menor. Os originais vão antes para `Backups/PreOptim/charNN/` (se já houver cópia, a original é mantida). Resumo por folha (KB antes → depois, cores, com/sem perda).
 - `SpriteDedupTest` (19: 7 relações, grupos, **48 casos de geometria** — 8 relações × 6 estados de frame — com erro < 0,6 px, Flip X/zoom/rotação pedidos, aplicar no DAC) e `Png8Test` (8: sem perda, alpha, gradiente reduzido, tamanho). Telas OTIMIZAR (menu, grupos, PNGs) só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzm Salvar em outro personagem por etapas
+- **Etapa 1 — Sprites**: pergunta “Salvar também as Sprites?”. **NÃO**: `MoveTransplant.build` recebe `Sprites` nulo e os ANOs entram com `IMG -1` (nenhuma sprite/folha/CNV do destino muda, sem aviso de imagem ausente). **SIM**: como antes.
+- **Etapa 2 — Reações** (`MoveTransplant.needsChoice` + `Choice`): reação igual no destino → só o OPT 1 passa a usar ela; senão tabela **vazia** gravável; senão **tela `ReactionReplaceScreen`** em vez de sobrescrever em silêncio: no alto a prévia da reação que vai ser copiada, abaixo a grade (3 colunas) das reações do destino com a animação de cada uma; tocar numa abre **SUBSTITUIR** (escreve por cima: `reactionWrites`) e **USAR ESSA** (o OPT 1 do golpe copiado aponta para ela, nada é gravado: `reactionMap`). Uma tela por reação sem lugar; VOLTAR cancela tudo sem gravar. Sem a lista de decisões (`choices == null`) vale o comportamento antigo.
+- **Etapa 3**: o resumo de confirmação mostra o que foi escolhido (sprites, reações) e a gravação não mudou (backup dos `.txt` do destino em `Backups/…_transplante`).
+- `TransplantStepsTest` (9: reação sem lugar pede decisão; igual/vazia não pede; USAR ESSA e SUBSTITUIR no mapa e nas gravações; OPT 1 remapeado para o slot escolhido; sem sprites = IMG −1; sem decisão = aviso; com sprites pede as imagens). As telas só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -542,6 +548,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteRenumberTest (novo)** | 14 |
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
+| **TransplantStepsTest (novo)** | 9 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
