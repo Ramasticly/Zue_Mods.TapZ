@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1685 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1705 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -461,6 +461,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Etapa 3**: o resumo de confirmação mostra o que foi escolhido (sprites, reações) e a gravação não mudou (backup dos `.txt` do destino em `Backups/…_transplante`).
 - `TransplantStepsTest` (9: reação sem lugar pede decisão; igual/vazia não pede; USAR ESSA e SUBSTITUIR no mapa e nas gravações; OPT 1 remapeado para o slot escolhido; sem sprites = IMG −1; sem decisão = aviso; com sprites pede as imagens). As telas só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzn Grade única para escolher ANO/golpe, ações de ANO, ⓘ dos ataques e “Mostrar usos”
+- **Sem Spinner**: o seletor do topo virou um botão que mostra o ANO/golpe atual e abre a **grade** (`AttackGrid`) nos dois modos (some o “ABRIR LISTA”; o CRIAR ANO foi para a grade). Cada cartão mostra o **primeiro Frame**; tocar **seleciona e toca a animação inteira ali mesmo, sem abrir**; o botão grande **➜ ABRIR ANO n / ABRIR GOLPE_nn** leva para editar (o fluxo de antes). Em golpes só existe esse botão.
+- **Em ANOs**: `EXCLUIR` (esvazia: `AnoOps.clear`, a ANO continua existindo), `COPIAR`, `MOVER` (lista para escolher a ANO de destino: os Frames vão para lá e a original fica vazia) e `COLAR`. `EXCLUIR`, `COLAR` e `MOVER` **avisam** (`AnoOps.risk`) se a ANO tem hitbox (flag 2), lançamento de projétil (flag 0) ou é usada por um ataque do BIN. Links de outras ANOs e golpes que apontam para uma ANO movida **não** são atualizados (o aviso diz isso).
+- **Modo seleção**: segurar um cartão de ANO liga a seleção; tocar marca/desmarca; `EXCLUIR (n)` esvazia todas de uma vez (um aviso só, com as ANOs de risco).
+- **ⓘ nos ataques** (`AttackInfo`): o botão no canto do cartão abre um texto flutuante ao lado dele com **qual comando ativa o golpe** (linha do HDAT 4 = `SpecialType` do jogo → código do `CmdCheck`: Especial 1 = 0/3/6, Especial 2 = 1/4/7, Especial 3 = 2/5/8, Ultimate = 9/10, Super Ultimate = 11/12, Rage = 14/15, Rage alternativo = 16/17) e as **sequências automáticas** (ao acertar, SEQ/END no chão e no ar, pousos, agarrado, projéteis). Numa ANO que é sequência de um golpe, diz o papel dela. Botões do HUD usados no texto: Especial 1 = ANOs 339/341; Especial 2 = 27/28/41/45. **Limite**: os botões A/Y/X/B (HUD 209/330/333/336) disparam os golpes **normais**, que usam ANOs fixos 29–39 do jogo e não passam pelo HDAT 4; não achei no código como o jogo distingue A, Y, X e B entre si (o mapeamento de teclas fica na classe de controle, fora do `TCBManajer`).
+- **Mostrar usos**: no menu de uma sprite (SPRITES → tocar na sprite), logo abaixo de **Substituir imagem**: `Ano N, Frame N` / `Ano N, Frames N, N e N` (`SpriteUses`).
+- `GridOpsTest` (20: risco, excluir/copiar/colar/mover, cópia independente, usos da sprite, texto do ⓘ). A grade, o modo seleção, o popup e o diálogo de usos só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -549,6 +557,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
 | **TransplantStepsTest (novo)** | 9 |
+| **GridOpsTest (novo)** | 20 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
