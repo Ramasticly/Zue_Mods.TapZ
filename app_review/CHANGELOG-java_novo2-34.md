@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1649 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1676 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -448,6 +448,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Com “Excluir Frames com essa Sprite” os frames saem (com os índices antigos) antes da renumeração; sem a caixa ficam `IMG -1`. O texto da confirmação avisa da renumeração.
 - `SpriteRenumberTest` (14: mapa, CNV deslocado, grupos com e sem sequência, DAC reescrito, frames excluídos + renumeração). A tela de exclusão só compilada/revisada. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzl OTIMIZAR: sprites repetidas e PNGs de 8 bits
+- Botão **OTIMIZAR** ao lado de **+ ADICIONAR** na lista de sprites, com duas funções.
+- **Remover Sprites repetidas** (`SpriteOptimize` + núcleo puro): cada sprite vira uma assinatura de 32 × 32 células; `SpriteDedup.best` compara com as **8 relações** (igual, Flip X, Flip Y, 180°, 90° e as transpostas) e aceita outra escala se a proporção bate (4 %). Barra de **semelhança mínima** (50–100 %), grupos com prévia, caixa **remover** por sprite (em cada grupo tem que ficar ao menos uma) e relação mostrada (“espelhada na horizontal (Flip X)”, “girada 90°”…).
+- **Reescrita dos frames** (`SpriteXform.solve`): resolve a equação do desenho (`AttackRenderer.drawObj`: ponto = `Rot(sx·rot) · (sx(ox+uW), sy(oy+vH))`) para a sprite que fica, e escolhe a solução com menos Flip trocado e sem mexer na rotação à toa: espelhada → liga o Flip X e põe o centro em `−ox − largura`; outra escala → só muda o zoom; girada 90° → rotação múltipla de 90°. O `$RAZ` ganha zoom/rotação só se precisar (alpha preservado). Em ANO usada como **link filho** o Flip não é trocado (o deslocamento do link também espelha); uma sprite só sai se **todos** os frames dela têm solução, senão fica. Depois as sprites são **renumeradas** (3.1zzk). Cópia de `000.dac.txt`, `000.cnv.txt` e dos grupos de GIF em `Backups/PreOptim/charNN/` antes de mexer.
+- **Otimizar PNGs**: `Png8` (quantizador mediana-corte sem pontilhado + escritor de PNG indexado com `tRNS`; **sem perda** quando a folha tem ≤ 256 cores) lê as folhas por linha, confere o PNG gerado (`Png8.decode`) e só troca o arquivo se ficar menor. Os originais vão antes para `Backups/PreOptim/charNN/` (se já houver cópia, a original é mantida). Resumo por folha (KB antes → depois, cores, com/sem perda).
+- `SpriteDedupTest` (19: 7 relações, grupos, **48 casos de geometria** — 8 relações × 6 estados de frame — com erro < 0,6 px, Flip X/zoom/rotação pedidos, aplicar no DAC) e `Png8Test` (8: sem perda, alpha, gradiente reduzido, tamanho). Telas OTIMIZAR (menu, grupos, PNGs) só compiladas/revisadas. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -533,6 +540,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **CineZoomCompTest (novo)** | 15 |
 | **FrameBarTest (novo)** | 20 |
 | **SpriteRenumberTest (novo)** | 14 |
+| **SpriteDedupTest (novo)** | 19 |
+| **Png8Test (novo)** | 8 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)

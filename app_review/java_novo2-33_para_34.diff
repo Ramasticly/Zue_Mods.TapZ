@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-10-30 19:51:41.151728339 +0000
++++ b/AiHelpDoc.java	2026-10-30 20:00:30.740565430 +0000
 @@ -0,0 +1,850 @@
 +package com.zue.attackeditor;
 +
@@ -637,7 +637,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "### 11.1 Top menu (16 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
 +        "- `SALVAR` — save (section 13).\n" +
 +        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The +1 tick counter locks during hitstop and the cinematic lock and then continues at locked+1 (frozen ticks do not count). In ANO mode, the selector has `ABRIR LISTA` and `CRIAR ANO` (new ANO = last+1, one frame IMG -1 with 6 ticks; an empty ANO opened gets the same frame). For moves 9-12 `GOLPE SET` also offers `Compensar o zoom da trava`: frame 0 becomes a 1-tick frame with the attacker's sprite zoom at 50% (100/200) and the next frame goes back to the original scale (frame 0 is split if longer than 1 tick; total time unchanged; the opponent, scenery and effects stay at 200%). Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen).\n" +
-+        "- `SPRITES` — the character's sprite list: add, replace, remove (removing RENUMBERS the following sprites: SPR_0 out → 1 becomes 0, and the CNV, GIF groups and every DAC frame follow), reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame.\n" +
++        "- `SPRITES` — the character's sprite list: add, replace, remove (removing RENUMBERS the following sprites: SPR_0 out → 1 becomes 0, and the CNV, GIF groups and every DAC frame follow), reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame. Its `OTIMIZAR` button (next to `+ ADICIONAR`) has two functions: `Remover Sprites repetidas` (groups equal/similar sprites, also mirrored, rotated 90° or at another scale; a minimum-similarity bar; you tick which to remove, at least one per group stays; the DAC frames are rewritten to use the kept sprite with Flip/zoom/rotation/position adjusted so the drawing is identical, then the sprites are renumbered) and `Otimizar PNGs` (sheets converted to 8-bit palette PNG, up to 256 colors per sheet, originals copied first to `Backups/PreOptim/charNN/`).\n" +
 +        "- `SONS` — sound manager only (does not pick a sound for a frame): the character's WAVs (ids 80+) and the game's common OGGs; `+` adds a sound, tap an item to play, trim, adjust volume/pitch/speed, replace or silence it.\n" +
 +        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
 +        "- `GOLPE SET` — the move's `ATK_FLAGS` options (checkboxes; table in 5.5).\n" +
@@ -737,11 +737,11 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Scope guard.** This section is background so that *you* understand what the user describes and can write correct `.txt` content in Mode B. It is **not** material to teach: never turn it into instructions to edit the binaries (`000.dac/.bin/.cnv`) or to use `▲ DADOS / EDITAR`. When the user asks how to do something in the app, answer with the app's functions (Mode A).\n" +
 +        "\n" +
++        "",
 +        "**Confidence tags used on every claim.** **[CODE]** verified in the game code (line given when useful). **[DOC]** stated by the app's documentation but not re-verified here. **[INFERRED]** deduced from data or usage. **[UNKNOWN]** could not be determined from the code (tell the user instead of guessing).\n" +
 +        "\n" +
 +        "**Method names are the decompiled ones** (`var2` etc. are decompiler names; tables are `ChrGameData[player+3]` for a character's pac and `pGameData` for `gamedata.pac`). `md N` is the state/task number passed to `Game(gw, md)`; a fighter or object is a task (`TCB`) whose `md` selects what runs each tick.\n" +
 +        "\n" +
-+        "",
 +        "**A correction of the app's older help text (confirmed in the code).** `PROJETIL_ANIM_ABAIXO` is used when the **attacker** is ≥ 51 px lower than the opponent (`PlayerYPos[att] >= PlayerYPos[opp] + 3342336`), `PROJETIL_ANIM_ACIMA` when the attacker is ≥ 37 px higher, `PROJETIL_ANIM_NORMAL` in between. Older UI/help text said \"opponent far below/above\", which is the opposite reading.\n" +
 +        "\n" +
 +        "### 15.1 Flow of an attack, from the command to the end (questions 1–8)\n" +
@@ -831,6 +831,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**HDAT 4 — the move table [CODE].** Row = `SpecialType` = the move number; row stride = `2 * piGameDataXSize[4]` bytes (24 fields of 16-bit little-endian = 48 bytes); field `k` is at byte `2k` of the row. The editor's `$GOLPE_n` text keys map to these **byte offsets** (the app reads exactly these in `CharData.read`):\n" +
 +        "\n" +
++        "",
 +        "| Byte | `$KEY` in `$GOLPE_n` | Used by the game as |\n" +
 +        "|---|---|---|\n" +
 +        "| 0 | `ATK_FLAGS` | `SpecialKind[p]` bitmask (see 15.10) |\n" +
@@ -855,7 +856,6 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 42 | `SUBPROJETIL_COLISAO_CHAO` | sub-projectile floor ANO (jogo:24687) |\n" +
 +        "| 44, 46 | `DESCONHECIDO_44/46` | never read through table 4 **[CODE]** |\n" +
 +        "\n" +
-+        "",
 +        "Between 37 px above and 51 px below the opponent the NORMAL ANO is used. ANO fields are 16-bit signed (0 = none); the value `-1` appears as \"absent\".\n" +
 +        "\n" +
 +        "**Other tables used by attacks [CODE].** HDAT 3 (body data, row 0): byte 0/1 forward/back speed, byte 3 body width (half used for walls), byte 4 `PlayerYLimit`, byte 5 grab distance, byte 6 `AirType`/\"can fly\", byte 7 dash speed, byte 10 charge gain, byte 12/14 attack/defense base, **byte 13 clash reaction** (the reaction a hitbox with `ATK_FLAGS` bit 2 forces on the opponent), byte 16 sealed-art ANO. HDAT 13: cutscene rows (stride `2*XSize[13]` bytes). HDAT 14–33 (character) / 10–39 (gamedata): reactions, 14 columns (15.5). HDAT 6: CPU sequences. HDAT 5: score and combo-scaling table. HDAT 37/35: rage multiplier and event damage.\n" +
@@ -916,13 +916,13 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Resolving OPT1 [CODE].** `group = OPT1 / 50`, `index = OPT1 % 50` (jogo:3518-3519). `index >= 30` → md 877 with `DamageType = index - 30` and the **attacker's** character table HDAT 14+type; `index < 30` → md 876 with `DamageType = index` and the gamedata table HDAT 10+type (jogo:3824-3828, 20995, 21264). Example: **OPT1 116 = group 2 (strong), index 16 = game-wide reaction 16**; OPT1 52 = group 1, index 2.\n" +
 +        "\n" +
++        "",
 +        "**Groups [CODE].** `HitEffectActNo = {0,0,1,0,-1}`, `HitSound = {3,4,6,3,7}`, `GuardEffectActNo = {2,2,2,2,-1}` (jogo:601-603). Group 4: no effect, no sound, no combo increment. Push-back (`DamageMove`) only for groups < 3 and it is always 0. Hitstop: group 3 half (body hits), group 4 none. Combo count (cap 99) increments only when the effect ANO is 0 or 1 and the hit is not flag 37. Sound is SE 8 for any effect other than ANO 0/1, else `HitSound[group]`. A hit with OPT1 forced by a trade or clash is always group 0.\n" +
 +        "\n" +
 +        "**Where the tables are [CODE].** Gamedata HDAT 10..39 come from the data pac `gamedata` (`InitGameData`, jogo:29133-29134); character tables are HDAT 14..33 inside `ChrGameData[player+3]`. **No reaction rows are literals in the code**; all rows are in the data pacs. Table header = u16 count then 8-byte entries {pos u32, xsize u16, ysize u16}; each reaction is its own table with xsize 14 and ysize = number of steps. `piGameData` is a `short[]` of unsigned bytes; the code casts `(byte)` where it needs signed.\n" +
 +        "\n" +
 +        "**The 14 columns [CODE].** 0 `DUR_C` (ticks while `PlayerYPos == 15728640`, i.e. on the ground); 1 `DUR_A` (ticks while airborne or below the floor, jogo:21201-21207); 2 `ANO` (signed; negative flips the defender: `wObjFlag ^= 16` and uses `-ano`, jogo:21002-21008); 3–6 ground `xspeed, yspeed, xaccel, yaccel` (signed); 7–10 the same for air (used when `PlayerYPos < 15728640`); 11 `COMP`; 12 `WALL`; 13 `VOZ` (signed; `> 0` plays `Voice(1, player, v)` when the row is entered, jogo:20996-20999).\n" +
 +        "\n" +
-+        "",
 +        "**Special values [CODE].** *Speeds/accels:* `-1` keeps the current `DamageX/YSpeed`/`Accel` (jogo:21033-21060); `-2` on a speed = `rawUnsigned(OldType row OldIndex, same column) / 2` (**raw, not scaled by 128/10, and read as an unsigned byte** — a quirk: a previous speed of −40 is read as 216); `-2` on an accel = half of the current accel. Normal values are `v*128/10` (truncating): one unit = 1/128 px per tick scaled by 10, i.e. tenths of a pixel per tick (`v = 10` → 1 px/tick). *Duration 255:* the row holds until `DamageTime >= 255`, then switches to `DamageType 2, Index 0` (in md 877 type 2 reads the attacker's character table HDAT 16; jogo:21208-21213, 21492-21496). *Duration 0:* lasts 1 tick (`max(dur,1)`).\n" +
 +        "\n" +
 +        "**Row stepping [CODE].** Entering a row loads speeds (`DamageTime` 0 → 1); each non-hitstop tick checks `DamageTime >= dur`, otherwise `DamageTime++`; at the end of a row `DamageIndex++`, `DamageTime = 0` (jogo:21215-21217). Hitstop ticks do not advance the row (the entry load still runs). Past the last row: still moving vertically (`DamageYSpeed != 0`) → alive: type 13 (md 877 explicitly switches to md 876); dead: type 2 / lying; `DamageYSpeed == 0` → alive: `DamageEnd` and md 864 (control returns); dead: ANO 24, md 888.\n" +
@@ -982,9 +982,9 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "### 15.8 ANO, MPT, sprites and links (questions 64–71)\n" +
 +        "\n" +
++        "",
 +        "**Structure [CODE].** An ANO (`$ANO_n`) in the DAC = `flags` byte (4 = priority byte present, 2 = link block present), `mpt` byte (pattern/frame count, ≤ 255), optional priority, optional links (6 bytes each: x, y, flags|ANO & 4095; ≤ 13, one level), then an offset table of patterns (`jogo:32354-32366`). A pattern (`$MPT_i`) starts with a **flag byte** that says which fields follow, in this order: `0x20` **TIME** (1 byte; **absent ⇒ `time = 0` and the frame never advances**), the **image** short (always present; `-1` = no sprite), `0x01` **MID** (ox, oy shorts), `0x02` **WACTFLAG** word, `0x08` **SE** byte, `0x04` **MOVE** block (mask bits 1/2/4/8 select `xSpeed/ySpeed/xAccel/yAccel`, 32-bit 16.16 each), `0x10` **HITS** block, `0x40` **OPT** block (`wOptFlag` word + 4 bytes `OptData`), `0x80` **RAZ** block (rotation, alpha, x/y zoom + their per-tick adds). `_ActReqMain` (jogo:31772-32047) runs once per tick per object (root and its 13 links).\n" +
 +        "\n" +
-+        "",
 +        "**Processing of a frame [CODE].** On the tick a pattern is loaded: `time`, `img`, `ox/oy`, `wActFlag &= 0xA000` (only the two sync bits survive) then OR the frame's word; SE (`< 80` → `PushSE(se−1)`: common game sound; `≥ 80` → `var2.se` played by `ChrSePlay` from the character's wav list); **speed zeroed unless `wActFlag & 64`; accel always zeroed**; then the MOVE block loads speeds/accels; hit block rebuilds `hit[]`; OPT block loads `wOptFlag/OptData` (absent ⇒ all 0); RAZ sets rotation/alpha/zoom. On later ticks while `time > 0` (and not frozen by `wActFlag & 4`): tween (`OptData[2] != 0`), move (`x += iXSpeed` mirrored by `wObjFlag & 16`; `y` by bit 32), add accel, `--time`; at 0 the next pattern loads (`pat++`), or `pat = 0` if `wActFlag & 1` (**WACTFLAG bit 1 = loop back to the first frame when this frame ends**), and when `pat >= mpt` the ANO ends (`wActFlag |= 2`).\n" +
 +        "\n" +
 +        "**WACTFLAG bits [CODE].** `1` loop to frame 0 at the end of this frame · `2` ANO finished (set by the engine) · `4` frozen (engine hit-stop; also checked on the parent) · `16` flip X · `32` flip Y (these two are XORed with `wObjFlag & 48` for drawing and boxes) · `64` keep speed · `0x2000` (8192) follow the parent's position (links) · `0x8000` (32768) follow the parent's frame. Bits `512/1024/2048` are set by the engine in a few places **[UNKNOWN meaning]**. `$TIME: 0`/absent freezes a frame forever (a frozen last frame is a classic way to hold a pose).\n" +
@@ -14859,8 +14859,8 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-10-30 19:51:36.165489545 +0000
-@@ -0,0 +1,653 @@
++++ b/HelpText.java	2026-10-30 20:00:30.604269262 +0000
+@@ -0,0 +1,654 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -15248,7 +15248,8 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                + " Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível."
 +                + " A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png."
 +                + " Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV."
-+                + " Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1).");
++                + " Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1)."
++                + " O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/.");
 +        c.add(sn);
 +
 +        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
@@ -15820,7 +15821,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-10-30 19:51:13.907323613 +0000
++++ b/I18nCatalog.java	2026-10-30 20:00:12.218259200 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -15829,12 +15830,12 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +    private I18nCatalog() { }
 +
 +    static String[][][] blocks() {
-+        return new String[][][] { I18nCatalog0.E, I18nCatalog1.E, I18nCatalog2.E, I18nCatalog3.E, I18nCatalog4.E, I18nCatalog5.E };
++        return new String[][][] { I18nCatalog0.E, I18nCatalog1.E, I18nCatalog2.E, I18nCatalog3.E, I18nCatalog4.E, I18nCatalog5.E, I18nCatalog6.E };
 +    }
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-10-30 19:51:13.902581242 +0000
++++ b/I18nCatalog0.java	2026-10-30 20:00:12.212221649 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16107,7 +16108,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-10-30 19:51:13.903793081 +0000
++++ b/I18nCatalog1.java	2026-10-30 20:00:12.213278348 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16380,7 +16381,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-10-30 19:51:13.904594639 +0000
++++ b/I18nCatalog2.java	2026-10-30 20:00:12.214480039 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16653,7 +16654,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-10-30 19:51:13.905284762 +0000
++++ b/I18nCatalog3.java	2026-10-30 20:00:12.215557070 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -16926,7 +16927,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-10-30 19:51:13.905488222 +0000
++++ b/I18nCatalog4.java	2026-10-30 20:00:12.216578575 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17199,8 +17200,8 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-10-30 19:51:13.906923784 +0000
-@@ -0,0 +1,251 @@
++++ b/I18nCatalog5.java	2026-10-30 20:00:12.217576847 +0000
+@@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 5 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -17450,6 +17451,71 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +        {"efeito img", "img effect", "efecto img"},
 +        {"interpol.", "interp.", "interpol."},
 +        {"As sprites seguintes são RENUMERADAS (se sai a SPR_0, a 1 vira 0, a 2 vira 1...) e todos os frames do DAC acompanham. ", "The following sprites are RENUMBERED (if SPR_0 goes, 1 becomes 0, 2 becomes 1...) and every DAC frame follows. ", "Los sprites siguientes se RENUMERAN (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...) y todos los frames del DAC los siguen. "},
++        {"PNG incompleto", "Incomplete PNG", "PNG incompleto"},
++        {"dados do PNG incompletos", "incomplete PNG data", "datos del PNG incompletos"},
++        {"dados do PNG invalidos", "invalid PNG data", "datos del PNG inválidos"},
++        {"filtro de linha nao suportado", "row filter not supported", "filtro de línea no soportado"},
++        {"nao e PNG indexado de 8 bits", "not an 8-bit indexed PNG", "no es un PNG indexado de 8 bits"},
++        {"OTIMIZAR", "OPTIMIZE", "OPTIMIZAR"},
++        {"\nCópia dos arquivos anteriores: ", "\nCopy of the previous files: ", "\nCopia de los archivos anteriores: "},
++        {"  (só idênticas)", "  (identical only)", "  (solo idénticas)"},
++        {" (já havia cópia; a original foi mantida)", " (a copy already existed; the original was kept)", " (ya había copia; se mantuvo la original)"},
++        {" KB\nCópia dos originais: ", " KB\nCopy of the originals: ", " KB\nCopia de los originales: "},
++        {" KB), mantida\n", " KB), kept\n", " KB), mantenida\n"},
++        {" cores", " colors", " colores"},
++        {" folha(s) PNG para 8 bits com paleta (até 256 cores por folha, transparência mantida) para diminuir o tamanho. ", " PNG sheet(s) to 8 bits with a palette (up to 256 colors per sheet, transparency kept) to reduce the size. ", " hoja(s) PNG a 8 bits con paleta (hasta 256 colores por hoja, transparencia mantenida) para reducir el tamaño. "},
++        {" frame(s) reescrito(s) em ", " frame(s) rewritten in ", " frame(s) reescrito(s) en "},
++        {" grupo(s); ", " group(s); ", " grupo(s); "},
++        {" sprite(s) marcada(s) para remover de ", " sprite(s) marked for removal out of ", " sprite(s) marcada(s) para quitar de "},
++        {" sprite(s) removida(s); ", " sprite(s) removed; ", " sprite(s) quitada(s); "},
++        {"(se já existir cópia de um arquivo, a original é mantida). Folhas que não ficam menores não são trocadas.", "(if a copy of a file already exists, the original one is kept). Sheets that do not get smaller are not replaced.", "(si ya existe copia de un archivo, se mantiene la original). Las hojas que no quedan más pequeñas no se reemplazan."},
++    };
++}
+diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
+--- a/I18nCatalog6.java	1970-01-01 00:00:00.000000000 +0000
++++ b/I18nCatalog6.java	2026-10-30 20:00:12.217875434 +0000
+@@ -0,0 +1,43 @@
++package com.zue.attackeditor;
++
++/** Catalogo de traducao da interface, bloco 6 (gerado de i18n_src/*.py; nao editar a mao). */
++final class I18nCatalog6 {
++    private I18nCatalog6() { }
++
++    static final String[][] E = {
++        {", reduzida", ", reduced", ", reducida"},
++        {", sem perda", ", lossless", ", sin pérdida"},
++        {": erro ", ": error ", ": error "},
++        {": já é pequena (", ": already small (", ": ya es pequeña ("},
++        {": não consegui ler\n", ": could not read it\n", ": no pude leerla\n"},
++        {"Analisando sprites", "Analyzing sprites", "Analizando sprites"},
++        {"As sprites seguintes foram renumeradas.\n", "The following sprites were renumbered.\n", "Los sprites siguientes fueron renumerados.\n"},
++        {"Converte as ", "Converts the ", "Convierte las "},
++        {"Erro ao remover sprites repetidas: ", "Error removing repeated sprites: ", "Error al quitar sprites repetidos: "},
++        {"Ficaram (algum frame não tem como ficar igual): SPR_", "Kept (some frame cannot look the same): SPR_", "Se quedaron (algún frame no puede quedar igual): SPR_"},
++        {"Folhas com mais de 256 cores perdem um pouco de cor.\n\nAntes de gravar, os PNG originais são copiados para\nBackups/PreOptim/", "Sheets with more than 256 colors lose a little color.\n\nBefore writing, the original PNGs are copied to\nBackups/PreOptim/", "Las hojas con más de 256 colores pierden un poco de color.\n\nAntes de grabar, los PNG originales se copian en\nBackups/PreOptim/"},
++        {"Lendo sprites", "Reading sprites", "Leyendo sprites"},
++        {"Nenhum grupo de sprites repetidas com esta semelhança.", "No group of repeated sprites with this similarity.", "Ningún grupo de sprites repetidos con esta semejanza."},
++        {"Nenhuma folha PNG nesta pasta", "No PNG sheet in this folder", "Ninguna hoja PNG en esta carpeta"},
++        {"Otimizando PNGs", "Optimizing PNGs", "Optimizando PNG"},
++        {"Otimizar", "Optimize", "Optimizar"},
++        {"Otimizar PNGs", "Optimize PNGs", "Optimizar PNG"},
++        {"Otimizar PNGs (8 bits)", "Optimize PNGs (8 bits)", "Optimizar PNG (8 bits)"},
++        {"PNGs otimizados", "PNGs optimized", "PNG optimizados"},
++        {"Precisa ficar ao menos uma sprite em cada grupo", "At least one sprite must stay in each group", "Debe quedar al menos un sprite en cada grupo"},
++        {"REMOVER MARCADAS", "REMOVE MARKED", "QUITAR MARCADAS"},
++        {"Reescrevendo os frames...", "Rewriting the frames...", "Reescribiendo los frames..."},
++        {"Removendo sprites repetidas", "Removing repeated sprites", "Quitando sprites repetidos"},
++        {"Remover Sprites repetidas", "Remove repeated Sprites", "Quitar Sprites repetidos"},
++        {"Sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala) formam um grupo. Marque as que quer REMOVER: os frames do DAC ", "Equal or similar sprites (also mirrored, rotated 90° or at another scale) form a group. Mark the ones you want to REMOVE: the DAC frames ", "Los sprites iguales o parecidos (también reflejados, girados 90° o en otra escala) forman un grupo. Marca los que quieres QUITAR: los frames del DAC "},
++        {"passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual. Em cada grupo precisa ficar ao menos uma.", "start using the one that stays, with Flip, zoom, rotation and position adjusted so the drawing looks the same. At least one must stay in each group.", "pasan a usar el que se queda, con Flip, zoom, rotación y posición ajustados para que el dibujo quede igual. En cada grupo debe quedar al menos uno."},
++        {"Sprites repetidas", "Repeated sprites", "Sprites repetidos"},
++        {"a maior do grupo", "the largest in the group", "la mayor del grupo"},
++        {"conferência falhou (tamanho)", "check failed (size)", "la comprobación falló (tamaño)"},
++        {"espelhada na horizontal (Flip X)", "mirrored horizontally (Flip X)", "reflejada en horizontal (Flip X)"},
++        {"espelhada na vertical (Flip Y)", "mirrored vertically (Flip Y)", "reflejada en vertical (Flip Y)"},
++        {"girada 180°", "rotated 180°", "girada 180°"},
++        {"girada 90° (ou espelhada na diagonal)", "rotated 90° (or mirrored on the diagonal)", "girada 90° (o reflejada en la diagonal)"},
++        {"igual (ou só em outra escala)", "equal (or only at another scale)", "igual (o solo en otra escala)"},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -17499,7 +17565,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-10-30 19:51:36.229129835 +0000
++++ b/I18nHelpCatalog.java	2026-10-30 20:00:30.680475230 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -17513,7 +17579,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-10-30 19:51:36.228160988 +0000
++++ b/I18nHelpCatalog0.java	2026-10-30 20:00:30.679448201 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17598,7 +17664,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-10-30 19:51:36.228273464 +0000
++++ b/I18nHelpCatalog1.java	2026-10-30 20:00:30.679571183 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17683,7 +17749,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-10-30 19:51:36.228369266 +0000
++++ b/I18nHelpCatalog2.java	2026-10-30 20:00:30.679684735 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17768,7 +17834,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-10-30 19:51:36.228487126 +0000
++++ b/I18nHelpCatalog3.java	2026-10-30 20:00:30.679810726 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17853,7 +17919,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-10-30 19:51:36.228601228 +0000
++++ b/I18nHelpCatalog4.java	2026-10-30 20:00:30.679899860 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -17938,7 +18004,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-10-30 19:51:36.228707846 +0000
++++ b/I18nHelpCatalog5.java	2026-10-30 20:00:30.679973743 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18023,7 +18089,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-10-30 19:51:36.228788813 +0000
++++ b/I18nHelpCatalog6.java	2026-10-30 20:00:30.680146689 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18108,7 +18174,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-10-30 19:51:36.228914137 +0000
++++ b/I18nHelpCatalog7.java	2026-10-30 20:00:30.680286138 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18193,7 +18259,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-10-30 19:51:36.229061314 +0000
++++ b/I18nHelpCatalog8.java	2026-10-30 20:00:30.680407377 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -18223,9 +18289,9 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
-+        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1).",
-+         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV. Removing one or several sprites RENUMBERS the following ones (if SPR_0 goes, 1 becomes 0, 2 becomes 1...): the CNV, the GIF groups and every DAC frame follow, and the changed ANOs are written to 000.dac.txt. With the \"Delete Frames with this Sprite\" box the frames that used the sprite are removed; without it they are left without an image (IMG -1).",
-+         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV. Quitar uno o varios sprites RENUMERA los siguientes (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...): el CNV, los grupos de GIF y todos los frames del DAC los siguen, y las ANOs cambiadas se guardan en 000.dac.txt. Con la casilla \"Eliminar Frames con este Sprite\" salen los frames que usaban el sprite; sin ella quedan sin imagen (IMG -1)."},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) ficam intactas no disco; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1). O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/.",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) stay untouched on disk; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV. Removing one or several sprites RENUMBERS the following ones (if SPR_0 goes, 1 becomes 0, 2 becomes 1...): the CNV, the GIF groups and every DAC frame follow, and the changed ANOs are written to 000.dac.txt. With the \"Delete Frames with this Sprite\" box the frames that used the sprite are removed; without it they are left without an image (IMG -1). The OPTIMIZE button, next to + ADD, opens two functions. REMOVE REPEATED SPRITES finds equal or similar sprites (also mirrored, rotated 90° or at another scale), shows a preview of each group and a minimum-similarity bar; you mark which ones to remove (at least one must stay in each group) and the DAC frames start using the one that stays, with Flip, zoom, rotation and position adjusted so the drawing looks the same; then the sprites are renumbered. OPTIMIZE PNGs converts the sheets to 8 bits with a palette (up to 256 colors per sheet) to reduce the size, copying the originals first to Backups/PreOptim/charNN/.",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) quedan intactas en el disco; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV. Quitar uno o varios sprites RENUMERA los siguientes (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...): el CNV, los grupos de GIF y todos los frames del DAC los siguen, y las ANOs cambiadas se guardan en 000.dac.txt. Con la casilla \"Eliminar Frames con este Sprite\" salen los frames que usaban el sprite; sin ella quedan sin imagen (IMG -1). El botón OPTIMIZAR, junto a + AÑADIR, abre dos funciones. QUITAR SPRITES REPETIDOS busca sprites iguales o parecidos (también reflejados, girados 90° o en otra escala), muestra la vista previa de cada grupo y una barra de semejanza mínima; marcas cuáles quitar (en cada grupo debe quedar al menos uno) y los frames del DAC pasan a usar el que se queda, con Flip, zoom, rotación y posición ajustados para que el dibujo quede igual; después los sprites se renumeran. OPTIMIZAR PNG convierte las hojas a 8 bits con paleta (hasta 256 colores por hoja) para reducir el tamaño, copiando antes los originales en Backups/PreOptim/charNN/."},
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
@@ -18278,7 +18344,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-10-30 19:51:36.229104042 +0000
++++ b/I18nHelpCatalog9.java	2026-10-30 20:00:30.680447516 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -22660,6 +22726,282 @@ diff -ruN a/PacSpritePicker.java b/PacSpritePicker.java
 +                });
 +            }
 +        }).start();
++    }
++}
+diff -ruN a/Png8.java b/Png8.java
+--- a/Png8.java	1970-01-01 00:00:00.000000000 +0000
++++ b/Png8.java	2026-10-30 19:57:16.943534440 +0000
+@@ -0,0 +1,272 @@
++package com.zue.attackeditor;
++
++import java.io.ByteArrayOutputStream;
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.zip.CRC32;
++import java.util.zip.DataFormatException;
++import java.util.zip.Deflater;
++import java.util.zip.Inflater;
++
++/**
++ * PNG de 8 bits com paleta (ate 256 cores, alpha em tRNS). Imagem com 256 cores ou menos sai sem perda; com mais, quantizacao mediana-corte
++ * (sem pontilhado, que estragaria sprite). Java puro: le as linhas por {@link Rows}, entao a folha inteira nao precisa estar na memoria como int[].
++ */
++final class Png8 {
++    private Png8() { }
++
++    /** Linhas de uma imagem ARGB. */
++    interface Rows {
++        int width();
++        int height();
++        /** Preenche {@code out[0..width)} com a linha {@code y} (ARGB nao premultiplicado). */
++        void row(int y, int[] out) throws IOException;
++    }
++
++    static Rows of(final int[] px, final int w, final int h) {
++        return new Rows() {
++            @Override public int width() { return w; }
++            @Override public int height() { return h; }
++            @Override public void row(int y, int[] out) { System.arraycopy(px, y * w, out, 0, w); }
++        };
++    }
++
++    private static int norm(int p) { return (p >>> 24) == 0 ? 0 : p; }
++
++    /** Resultado: bytes do PNG e quantas cores a paleta tem; {@code lossless} = false se foi preciso reduzir as cores. */
++    static final class Out {
++        byte[] png;
++        int colors;
++        boolean lossless;
++    }
++
++    static Out encode(Rows src) throws IOException {
++        int w = src.width(), h = src.height();
++        int[] row = new int[w];
++        // passo 1: cores exatas (ate 257) e histograma 5-5-5-4 bits
++        HashMap<Integer, Integer> exact = new HashMap<Integer, Integer>();
++        boolean tooMany = false;
++        int[] cnt = new int[1 << 19];
++        long[] sa = new long[1 << 19], sr = new long[1 << 19], sg = new long[1 << 19], sb = new long[1 << 19];
++        for (int y = 0; y < h; y++) {
++            src.row(y, row);
++            for (int x = 0; x < w; x++) {
++                int p = norm(row[x]);
++                if (!tooMany) {
++                    Integer k = Integer.valueOf(p);
++                    if (!exact.containsKey(k)) { exact.put(k, Integer.valueOf(exact.size())); if (exact.size() > 256) tooMany = true; }
++                }
++                int b = bucket(p);
++                cnt[b]++; sa[b] += p >>> 24; sr[b] += (p >> 16) & 255; sg[b] += (p >> 8) & 255; sb[b] += p & 255;
++            }
++        }
++        int[] palette;
++        boolean lossless = !tooMany;
++        if (lossless) {
++            palette = new int[exact.size()];
++            for (java.util.Map.Entry<Integer, Integer> e : exact.entrySet()) palette[e.getValue().intValue()] = e.getKey().intValue();
++        } else {
++            palette = medianCut(cnt, sa, sr, sg, sb, 256);
++        }
++        // passo 2: indices
++        int[] cache = lossless ? null : new int[1 << 19];
++        if (cache != null) java.util.Arrays.fill(cache, -1);
++        HashMap<Integer, Integer> idx = null;
++        if (lossless) { idx = new HashMap<Integer, Integer>(); for (int i = 0; i < palette.length; i++) idx.put(Integer.valueOf(palette[i]), Integer.valueOf(i)); }
++        Deflater def = new Deflater(9);
++        ByteArrayOutputStream idat = new ByteArrayOutputStream();
++        byte[] line = new byte[w + 1];
++        byte[] buf = new byte[1 << 16];
++        for (int y = 0; y < h; y++) {
++            src.row(y, row);
++            line[0] = 0;
++            for (int x = 0; x < w; x++) {
++                int p = norm(row[x]);
++                int i;
++                if (lossless) i = idx.get(Integer.valueOf(p)).intValue();
++                else {
++                    int b = bucket(p);
++                    i = cache[b];
++                    if (i < 0) { i = nearest(palette, p); cache[b] = i; }
++                }
++                line[x + 1] = (byte) i;
++            }
++            def.setInput(line, 0, w + 1);
++            while (!def.needsInput()) { int n = def.deflate(buf); if (n > 0) idat.write(buf, 0, n); else break; }
++        }
++        def.finish();
++        while (!def.finished()) { int n = def.deflate(buf); idat.write(buf, 0, n); }
++        def.end();
++        ByteArrayOutputStream out = new ByteArrayOutputStream();
++        out.write(new byte[]{(byte) 0x89, 'P', 'N', 'G', 13, 10, 26, 10});
++        byte[] ihdr = new byte[13];
++        put32(ihdr, 0, w); put32(ihdr, 4, h);
++        ihdr[8] = 8; ihdr[9] = 3;
++        chunk(out, "IHDR", ihdr);
++        byte[] plte = new byte[palette.length * 3];
++        int lastAlpha = -1;
++        for (int i = 0; i < palette.length; i++) {
++            plte[i * 3] = (byte) (palette[i] >> 16); plte[i * 3 + 1] = (byte) (palette[i] >> 8); plte[i * 3 + 2] = (byte) palette[i];
++            if ((palette[i] >>> 24) != 255) lastAlpha = i;
++        }
++        chunk(out, "PLTE", plte);
++        if (lastAlpha >= 0) {
++            byte[] trns = new byte[lastAlpha + 1];
++            for (int i = 0; i <= lastAlpha; i++) trns[i] = (byte) (palette[i] >>> 24);
++            chunk(out, "tRNS", trns);
++        }
++        chunk(out, "IDAT", idat.toByteArray());
++        chunk(out, "IEND", new byte[0]);
++        Out o = new Out();
++        o.png = out.toByteArray(); o.colors = palette.length; o.lossless = lossless;
++        return o;
++    }
++
++    private static int bucket(int p) {
++        return ((p >>> 24) >> 4 << 15) | (((p >> 16) & 255) >> 3 << 10) | (((p >> 8) & 255) >> 3 << 5) | ((p & 255) >> 3);
++    }
++
++    private static int nearest(int[] pal, int p) {
++        int best = 0;
++        long bd = Long.MAX_VALUE;
++        int pa = p >>> 24, pr = (p >> 16) & 255, pg = (p >> 8) & 255, pb = p & 255;
++        for (int i = 0; i < pal.length; i++) {
++            int q = pal[i];
++            long da = (q >>> 24) - pa, dr = ((q >> 16) & 255) - pr, dg = ((q >> 8) & 255) - pg, db = (q & 255) - pb;
++            long d = da * da * 3 + (pa == 0 && (q >>> 24) == 0 ? 0 : dr * dr + dg * dg + db * db);
++            if (d < bd) { bd = d; best = i; }
++        }
++        return best;
++    }
++
++    private static final class Box {
++        final ArrayList<Integer> items = new ArrayList<Integer>();
++        long total;
++        int[] lo = new int[4], hi = new int[4];
++    }
++
++    private static int[] medianCut(int[] cnt, long[] sa, long[] sr, long[] sg, long[] sb, int max) {
++        Box first = new Box();
++        for (int b = 0; b < cnt.length; b++) if (cnt[b] > 0) { first.items.add(Integer.valueOf(b)); first.total += cnt[b]; }
++        ArrayList<Box> boxes = new ArrayList<Box>();
++        boxes.add(first);
++        final int[][] chan = new int[cnt.length][];
++        while (boxes.size() < max) {
++            Box pick = null;
++            int pc = -1;
++            double ps = -1;
++            for (Box bx : boxes) {
++                if (bx.items.size() < 2) continue;
++                int[] lo = {255, 255, 255, 255}, hi = {0, 0, 0, 0};
++                for (Integer it : bx.items) {
++                    int b = it.intValue();
++                    int[] c = avg(b, cnt, sa, sr, sg, sb);
++                    for (int k = 0; k < 4; k++) { lo[k] = Math.min(lo[k], c[k]); hi[k] = Math.max(hi[k], c[k]); }
++                }
++                for (int k = 0; k < 4; k++) {
++                    double score = (hi[k] - lo[k]) * (k == 0 ? 1.5 : 1.0) * Math.sqrt((double) bx.total);
++                    if (score > ps) { ps = score; pick = bx; pc = k; }
++                }
++            }
++            if (pick == null || ps <= 0) break;
++            final int ch = pc;
++            final int[] fc = cnt;
++            final long[] fa = sa, fr = sr, fg = sg, fb = sb;
++            java.util.Collections.sort(pick.items, new java.util.Comparator<Integer>() {
++                @Override public int compare(Integer x, Integer y) { return avg(x.intValue(), fc, fa, fr, fg, fb)[ch] - avg(y.intValue(), fc, fa, fr, fg, fb)[ch]; }
++            });
++            long half = pick.total / 2, acc = 0;
++            int cut = 1;
++            for (int i = 0; i < pick.items.size() - 1; i++) { acc += cnt[pick.items.get(i).intValue()]; cut = i + 1; if (acc >= half) break; }
++            Box b2 = new Box();
++            for (int i = cut; i < pick.items.size(); i++) { b2.items.add(pick.items.get(i)); b2.total += cnt[pick.items.get(i).intValue()]; }
++            while (pick.items.size() > cut) pick.items.remove(pick.items.size() - 1);
++            pick.total -= b2.total;
++            boxes.add(b2);
++        }
++        int[] pal = new int[boxes.size()];
++        boolean hasClear = false;
++        for (int i = 0; i < pal.length; i++) {
++            long t = 0, a = 0, r = 0, g = 0, b = 0;
++            for (Integer it : boxes.get(i).items) { int k = it.intValue(); t += cnt[k]; a += sa[k]; r += sr[k]; g += sg[k]; b += sb[k]; }
++            pal[i] = t == 0 ? 0 : ((int) (a / t) << 24) | ((int) (r / t) << 16) | ((int) (g / t) << 8) | (int) (b / t);
++            if ((pal[i] >>> 24) == 0) { pal[i] = 0; hasClear = true; }
++        }
++        return pal;
++    }
++
++    private static int[] avg(int b, int[] cnt, long[] sa, long[] sr, long[] sg, long[] sb) {
++        long c = Math.max(1, cnt[b]);
++        return new int[]{(int) (sa[b] / c), (int) (sr[b] / c), (int) (sg[b] / c), (int) (sb[b] / c)};
++    }
++
++    private static void put32(byte[] b, int o, int v) { b[o] = (byte) (v >> 24); b[o + 1] = (byte) (v >> 16); b[o + 2] = (byte) (v >> 8); b[o + 3] = (byte) v; }
++
++    private static void chunk(ByteArrayOutputStream out, String type, byte[] data) throws IOException {
++        byte[] len = new byte[4];
++        put32(len, 0, data.length);
++        out.write(len);
++        byte[] t = type.getBytes("US-ASCII");
++        out.write(t);
++        out.write(data);
++        CRC32 crc = new CRC32();
++        crc.update(t);
++        crc.update(data);
++        byte[] c = new byte[4];
++        put32(c, 0, (int) crc.getValue());
++        out.write(c);
++    }
++
++    // ---- leitura (so PNG de 8 bits indexado, filtro 0: o que este codigo escreve; serve para conferir o arquivo antes de trocar o original) ----
++
++    static final class Img {
++        int w, h;
++        int[] px;
++    }
++
++    static Img decode(byte[] png) throws IOException {
++        int p = 8;
++        int w = 0, h = 0;
++        int[] pal = null;
++        byte[] trns = new byte[0];
++        ByteArrayOutputStream idat = new ByteArrayOutputStream();
++        while (p + 8 <= png.length) {
++            int len = ((png[p] & 255) << 24) | ((png[p + 1] & 255) << 16) | ((png[p + 2] & 255) << 8) | (png[p + 3] & 255);
++            String type = new String(png, p + 4, 4, "US-ASCII");
++            int d = p + 8;
++            if (type.equals("IHDR")) {
++                w = ((png[d] & 255) << 24) | ((png[d + 1] & 255) << 16) | ((png[d + 2] & 255) << 8) | (png[d + 3] & 255);
++                h = ((png[d + 4] & 255) << 24) | ((png[d + 5] & 255) << 16) | ((png[d + 6] & 255) << 8) | (png[d + 7] & 255);
++                if (png[d + 8] != 8 || png[d + 9] != 3) throw new IOException("nao e PNG indexado de 8 bits");
++            } else if (type.equals("PLTE")) {
++                pal = new int[len / 3];
++                for (int i = 0; i < pal.length; i++) pal[i] = 0xFF000000 | ((png[d + i * 3] & 255) << 16) | ((png[d + i * 3 + 1] & 255) << 8) | (png[d + i * 3 + 2] & 255);
++            } else if (type.equals("tRNS")) {
++                trns = java.util.Arrays.copyOfRange(png, d, d + len);
++            } else if (type.equals("IDAT")) {
++                idat.write(png, d, len);
++            }
++            p = d + len + 4;
++        }
++        if (pal == null || w <= 0 || h <= 0) throw new IOException("PNG incompleto");
++        for (int i = 0; i < trns.length && i < pal.length; i++) pal[i] = (pal[i] & 0xFFFFFF) | ((trns[i] & 255) << 24);
++        byte[] raw = new byte[(w + 1) * h];
++        Inflater inf = new Inflater();
++        inf.setInput(idat.toByteArray());
++        try {
++            int n = 0;
++            while (n < raw.length) { int k = inf.inflate(raw, n, raw.length - n); if (k <= 0) break; n += k; }
++            if (n != raw.length) throw new IOException("dados do PNG incompletos");
++        } catch (DataFormatException e) {
++            throw new IOException("dados do PNG invalidos");
++        } finally { inf.end(); }
++        Img im = new Img();
++        im.w = w; im.h = h; im.px = new int[w * h];
++        for (int y = 0; y < h; y++) {
++            if (raw[y * (w + 1)] != 0) throw new IOException("filtro de linha nao suportado");
++            for (int x = 0; x < w; x++) im.px[y * w + x] = pal[raw[y * (w + 1) + 1 + x] & 255];
++        }
++        return im;
 +    }
 +}
 diff -ruN a/ProjectileTree.java b/ProjectileTree.java
@@ -27379,6 +27721,225 @@ diff -ruN a/SpriteCache.java b/SpriteCache.java
          sprites = new Sprite[cnv.size()];
          failed = new boolean[cnv.size()];
      }
+diff -ruN a/SpriteDedup.java b/SpriteDedup.java
+--- a/SpriteDedup.java	1970-01-01 00:00:00.000000000 +0000
++++ b/SpriteDedup.java	2026-10-30 19:55:35.753302042 +0000
+@@ -0,0 +1,215 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * "Remover Sprites repetidas": acha sprites iguais ou parecidas, mesmo espelhadas, giradas em 90 graus ou em outra escala
++ * (relacao {@link SpriteXform}). Cada sprite vira uma assinatura de 32 x 32 celulas (media por celula, ate o fim da borda) mais um hash do conteudo exato.
++ * Java puro: o app entrega os pixels ARGB.
++ */
++final class SpriteDedup {
++    private SpriteDedup() { }
++
++    static final int N = 32;
++    /** Diferenca por canal (0..255) a partir da qual a celula conta como diferente. */
++    static final int TOL = 20;
++    /** As proporcoes (largura / altura) so podem diferir assim para serem a mesma imagem. */
++    static final double ASPECT_TOL = 0.04;
++
++    static final class Sig {
++        int index, w, h;                 // w x h = tamanho logico do recorte no CNV
++        int[] cell = new int[N * N];     // ARGB medio de cada celula
++        long hash;                       // pixels exatos (RGB escondido pela transparencia nao conta)
++        int area() { return w * h; }
++    }
++
++    /** {@code px}: ARGB do recorte inteiro, {@code pw x ph} (pode ser maior que o tamanho logico: personagem x2). */
++    static Sig sig(int index, int[] px, int pw, int ph, int logicalW, int logicalH) {
++        Sig s = new Sig();
++        s.index = index; s.w = logicalW; s.h = logicalH;
++        long hs = 1125899906842597L;
++        for (int i = 0; i < px.length; i++) {
++            int p = px[i];
++            if ((p >>> 24) == 0) p = 0;
++            hs = 31 * hs + p;
++        }
++        s.hash = hs * 31 + pw * 7L + ph;
++        for (int cy = 0; cy < N; cy++) {
++            int y0 = cy * ph / N, y1 = Math.max(y0 + 1, (cy + 1) * ph / N);
++            for (int cx = 0; cx < N; cx++) {
++                int x0 = cx * pw / N, x1 = Math.max(x0 + 1, (cx + 1) * pw / N);
++                long a = 0, r = 0, g = 0, b = 0;
++                int c = 0;
++                for (int y = y0; y < Math.min(ph, y1); y++) {
++                    for (int x = x0; x < Math.min(pw, x1); x++) {
++                        int p = px[y * pw + x];
++                        int pa = p >>> 24;
++                        a += pa; r += ((p >> 16) & 255) * pa; g += ((p >> 8) & 255) * pa; b += (p & 255) * pa;     // cor ponderada pelo alpha
++                        c++;
++                    }
++                }
++                if (c == 0 || a == 0) { s.cell[cy * N + cx] = 0; continue; }
++                s.cell[cy * N + cx] = ((int) (a / c) << 24) | ((int) (r / a) << 16) | ((int) (g / a) << 8) | (int) (b / a);
++            }
++        }
++        return s;
++    }
++
++    /** Celula (cx, cy) de R vista pelo mapa g: a que corresponde em K. */
++    private static int mapped(Sig r, int g, int cx, int cy) {
++        double[] gg = SpriteXform.G[g];
++        double u = (cx + 0.5) / N, v = (cy + 0.5) / N;
++        double ku = gg[0] * u + gg[1] * v + gg[4], kv = gg[2] * u + gg[3] * v + gg[5];
++        int kx = Math.max(0, Math.min(N - 1, (int) Math.floor(ku * N))), ky = Math.max(0, Math.min(N - 1, (int) Math.floor(kv * N)));
++        return ky * N + kx;
++    }
++
++    static final class Match {
++        int score;       // 0..100 (100 = identico no conteudo exato)
++        int g;           // relacao R(u, v) = K(g(u, v))
++        Match(int score, int g) { this.score = score; this.g = g; }
++    }
++
++    /** Melhor relacao de R com K entre as 8; null se nenhuma passa de {@code minPct}. A proporcao tem que bater (com troca de eixos nas giradas). */
++    static Match best(Sig r, Sig k, int minPct) {
++        Match best = null;
++        for (int g = 0; g < 8; g++) {
++            double ar = SpriteXform.swapsAxes(g) ? (double) r.h / r.w : (double) r.w / r.h;
++            double ak = (double) k.w / k.h;
++            if (r.w <= 0 || r.h <= 0 || k.w <= 0 || k.h <= 0) return null;
++            if (Math.abs(ar - ak) > ASPECT_TOL * Math.max(ar, ak)) continue;
++            int same = 0, used = 0;
++            for (int cy = 0; cy < N; cy++) {
++                for (int cx = 0; cx < N; cx++) {
++                    int p = r.cell[cy * N + cx], q = k.cell[mapped(r, g, cx, cy)];
++                    int pa = p >>> 24, qa = q >>> 24;
++                    if (pa == 0 && qa == 0) continue;
++                    used++;
++                    int d = Math.abs(pa - qa);
++                    if (pa != 0 && qa != 0) {
++                        d = Math.max(d, Math.abs(((p >> 16) & 255) - ((q >> 16) & 255)));
++                        d = Math.max(d, Math.abs(((p >> 8) & 255) - ((q >> 8) & 255)));
++                        d = Math.max(d, Math.abs((p & 255) - (q & 255)));
++                    }
++                    if (d <= TOL) same++;
++                }
++            }
++            if (used == 0) continue;
++            int sc = Math.min(99, (int) Math.floor(100.0 * same / used));
++            if (g == 0 && r.hash == k.hash && r.w == k.w && r.h == k.h) sc = 100;
++            if (sc >= minPct && (best == null || sc > best.score)) best = new Match(sc, g);
++        }
++        return best;
++    }
++
++    static final class Member {
++        int index;       // sprite
++        Match toRep;     // relacao desta sprite com a que fica (null na propria representante)
++        int maxScore() { return toRep == null ? 100 : toRep.score; }
++    }
++
++    static final class Group {
++        final List<Member> members = new ArrayList<Member>();      // [0] = representante (a de maior area)
++        int rep() { return members.get(0).index; }
++    }
++
++    /** Agrupa: a sprite de maior area ainda livre vira a representante e leva as que casam com ela direto. Grupos de 2 ou mais. */
++    static List<Group> groups(List<Sig> sigs, int minPct) {
++        List<Sig> order = new ArrayList<Sig>(sigs);
++        java.util.Collections.sort(order, new java.util.Comparator<Sig>() {
++            @Override public int compare(Sig a, Sig b) { return a.area() != b.area() ? (a.area() > b.area() ? -1 : 1) : (a.index < b.index ? -1 : a.index > b.index ? 1 : 0); }
++        });
++        boolean[] done = new boolean[order.size()];
++        List<Group> out = new ArrayList<Group>();
++        for (int i = 0; i < order.size(); i++) {
++            if (done[i]) continue;
++            Sig rep = order.get(i);
++            Group g = null;
++            for (int j = i + 1; j < order.size(); j++) {
++                if (done[j]) continue;
++                Match m = best(order.get(j), rep, minPct);
++                if (m == null) continue;
++                if (g == null) { g = new Group(); Member r = new Member(); r.index = rep.index; g.members.add(r); done[i] = true; }
++                Member mem = new Member();
++                mem.index = order.get(j).index; mem.toRep = m;
++                g.members.add(mem);
++                done[j] = true;
++            }
++            if (g != null) out.add(g);
++        }
++        java.util.Collections.sort(out, new java.util.Comparator<Group>() {
++            @Override public int compare(Group a, Group b) { return a.rep() - b.rep(); }
++        });
++        return out;
++    }
++
++    // ---- aplicar ----
++
++    /** Uma sprite a remover e a que a substitui, com a relacao entre elas. */
++    static final class Choice {
++        Sig removed, kept;
++        Match match;
++    }
++
++    /** Entre as sprites que ficam, a que melhor substitui {@code r}; null se nenhuma casa. */
++    static Choice choose(Sig r, List<Sig> kept, int minPct) {
++        Choice c = null;
++        for (Sig k : kept) {
++            if (k.index == r.index) continue;
++            Match m = best(r, k, minPct);
++            if (m != null && (c == null || m.score > c.match.score)) { c = new Choice(); c.removed = r; c.kept = k; c.match = m; }
++        }
++        return c;
++    }
++
++    /** ANOs usadas como link (filhas) de outra: o deslocamento do link tambem espelha, entao nelas nao se troca Flip. */
++    static java.util.Set<Integer> linkChildren(Dac dac) {
++        java.util.HashSet<Integer> r = new java.util.HashSet<Integer>();
++        for (int i = 0; i < dac.size(); i++) {
++            Ano a = dac.getAno(i);
++            if (a == null || !a.present || a.links == null) continue;
++            for (Ano.Link l : a.links) r.add(Integer.valueOf(l.getAno()));
++        }
++        return r;
++    }
++
++    static final class Result {
++        final java.util.TreeSet<Integer> removedSprites = new java.util.TreeSet<Integer>();
++        final java.util.TreeSet<Integer> changedAnos = new java.util.TreeSet<Integer>();
++        final List<Integer> skipped = new ArrayList<Integer>();       // sprites que ficaram porque um frame nao tem solucao
++        int framesRewritten;
++    }
++
++    /**
++     * Reescreve no DAC os frames das sprites removidas para usarem as que ficam (Flip, zoom, rotacao e posicao ajustados). Uma sprite so e removida se
++     * TODOS os frames dela tem solucao; senao ela fica e nada dela muda. Quem chama exclui as removidas com {@link SpriteLib#removeShift} e
++     * {@link SpriteRenumber#remapDac}.
++     */
++    static Result apply(Dac dac, List<Choice> choices) {
++        Result res = new Result();
++        java.util.Set<Integer> kids = linkChildren(dac);
++        for (Choice c : choices) {
++            java.util.ArrayList<Object[]> plan = new java.util.ArrayList<Object[]>();       // {ano, indice do mpt, mpt novo}
++            boolean ok = true;
++            for (int i = 0; i < dac.size() && ok; i++) {
++                Ano a = dac.getAno(i);
++                if (a == null || !a.present) continue;
++                for (int m = 0; m < a.mpts.length && ok; m++) {
++                    if (a.mpts[m].image != c.removed.index) continue;
++                    Ano.Mpt n = SpriteXform.rewrite(a.mpts[m], c.removed.w, c.removed.h, c.kept.w, c.kept.h, c.match.g, c.kept.index, !kids.contains(Integer.valueOf(i)));
++                    if (n == null) ok = false; else plan.add(new Object[]{Integer.valueOf(i), Integer.valueOf(m), n});
++                }
++            }
++            if (!ok) { res.skipped.add(Integer.valueOf(c.removed.index)); continue; }
++            for (Object[] p : plan) {
++                int ano = ((Integer) p[0]).intValue(), m = ((Integer) p[1]).intValue();
++                dac.getAno(ano).mpts[m] = (Ano.Mpt) p[2];
++                res.changedAnos.add((Integer) p[0]);
++                res.framesRewritten++;
++            }
++            res.removedSprites.add(Integer.valueOf(c.removed.index));
++        }
++        return res;
++    }
++}
 diff -ruN a/SpriteGroups.java b/SpriteGroups.java
 --- a/SpriteGroups.java	2026-10-18 14:26:47.000000000 +0000
 +++ b/SpriteGroups.java	2026-10-30 19:49:48.208437568 +0000
@@ -27545,7 +28106,7 @@ diff -ruN a/SpriteImportPlan.java b/SpriteImportPlan.java
 +}
 diff -ruN a/SpriteLib.java b/SpriteLib.java
 --- a/SpriteLib.java	2026-10-18 13:09:58.000000000 +0000
-+++ b/SpriteLib.java	2026-10-30 19:49:48.209035604 +0000
++++ b/SpriteLib.java	2026-10-30 19:58:05.136569131 +0000
 @@ -33,6 +33,8 @@
      private final Map<Integer, Bitmap> sheets = new HashMap<Integer, Bitmap>();
      private final HashSet<Integer> dirty = new HashSet<Integer>();
@@ -27555,7 +28116,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
      private int nSheets;
      private int newSheets;
      /** Grupos de sprites que vieram de imagens animadas. */
-@@ -45,14 +47,11 @@
+@@ -45,17 +47,30 @@
          this.cnv = cnv;
          this.scale = scale;
          this.groups = SpriteGroups.load(dir);
@@ -27573,7 +28134,26 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
  
      public int sheetCount() { return nSheets; }
      public int count() { return cnv.size(); }
-@@ -63,7 +62,7 @@
++
++    /** Tamanho logico (largura, altura) do recorte da sprite no CNV, ou null se nao tem. */
++    public int[] logicalSize(int image) {
++        Cnv.Entry e = cnv.byImage(image);
++        return e == null || e.width <= 0 || e.height <= 0 ? null : new int[]{e.width, e.height};
++    }
++
++    /** Esquece as folhas lidas que nao tem alteracao pendente (o arquivo no disco mudou por fora, ex.: PNG otimizado). */
++    public void dropSheetCache() {
++        for (java.util.Iterator<Map.Entry<Integer, Bitmap>> it = sheets.entrySet().iterator(); it.hasNext();) {
++            Map.Entry<Integer, Bitmap> e = it.next();
++            if (dirty.contains(e.getKey())) continue;
++            if (e.getValue() != null && !e.getValue().isRecycled()) e.getValue().recycle();
++            it.remove();
++        }
++    }
+     public boolean isDirty() { return cnvDirty || groupsDirty || !dirty.isEmpty(); }
+ 
+     /** Folha em memoria (editavel); null se nao existe. */
+@@ -63,7 +78,7 @@
          Bitmap b = sheets.get(Integer.valueOf(s));
          if (b != null && !b.isRecycled()) return b;
          if (s < 0 || s >= nSheets) return null;
@@ -27582,7 +28162,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
          if (!f.isFile()) return null;
          BitmapFactory.Options o = new BitmapFactory.Options();
          o.inScaled = false;
-@@ -83,6 +82,25 @@
+@@ -83,6 +98,25 @@
          return e != null && e.width > 0 && e.height > 0;
      }
  
@@ -27608,7 +28188,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
      /** Copia dos pixels da sprite (tamanho fisico); null se vazia ou fora da folha. */
      public Bitmap cut(int image) {
          Cnv.Entry e = cnv.byImage(image);
-@@ -223,6 +241,21 @@
+@@ -223,6 +257,21 @@
          trimTrailing();
      }
  
@@ -27630,7 +28210,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
      /** Entradas vazias no fim da tabela nao servem para nada: sao descartadas para liberar os indices. Devolve quantas. */
      public int trimTrailing() {
          int n = cnv.size();
-@@ -289,6 +322,7 @@
+@@ -289,6 +338,7 @@
              Bitmap ns = Bitmap.createBitmap(sp.newSize, sp.newSize, Bitmap.Config.ARGB_8888);
              sheets.put(Integer.valueOf(nSheets), ns);
              sp.sheet = nSheets;
@@ -27638,7 +28218,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              nSheets++;
              newSheets++;
              if (nSheets > 255) throw new IOException("mais de 255 folhas de sprite");
-@@ -321,8 +355,8 @@
+@@ -321,8 +371,8 @@
          for (Integer s : new ArrayList<Integer>(dirty)) {
              Bitmap b = sheets.get(s);
              if (b == null) continue;
@@ -27649,7 +28229,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              FileOutputStream fo = new FileOutputStream(tmp);
              try { b.compress(Bitmap.CompressFormat.PNG, 100, fo); } finally { fo.close(); }
              if (out.exists() && !out.delete()) throw new IOException("nao consegui substituir " + out.getName());
-@@ -346,8 +380,9 @@
+@@ -346,8 +396,9 @@
          if (wavs.isEmpty()) return;
          Collections.sort(wavs, new Comparator<File>() { @Override public int compare(File a, File b) { return a.getName().compareTo(b.getName()); } });
          int first = Integer.parseInt(wavs.get(0).getName().substring(0, 3));
@@ -27663,7 +28243,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              wavs.get(i).renameTo(new File(dir, String.format(Locale.US, "%03d.wav", n)));
 diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 --- a/SpriteListScreen.java	2026-10-20 12:29:22.000000000 +0000
-+++ b/SpriteListScreen.java	2026-10-29 10:46:34.000000000 +0000
++++ b/SpriteListScreen.java	2026-10-30 19:58:05.137917701 +0000
 @@ -61,6 +61,10 @@
          final TextView sub = text(a, "", 11, DIM, false);
          sub.setPadding(dp(a, 14), 0, dp(a, 14), dp(a, 8));
@@ -27722,7 +28302,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  java.util.Iterator<Integer> it = sel.iterator();
                  while (it.hasNext()) { int k = it.next().intValue(); if (k >= lib.count() || !lib.has(k)) it.remove(); }
                  if (selChanged[0] != null) selChanged[0].run();
-@@ -180,13 +196,7 @@
+@@ -180,15 +196,12 @@
          bar.setGravity(Gravity.CENTER_VERTICAL);
          bar.setPadding(dp(a, 12), 0, dp(a, 12), dp(a, 8));
          final TextView addBtn = button(a, "+ ADICIONAR", new View.OnClickListener() {
@@ -27736,8 +28316,13 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +            @Override public void onClick(View v) { openAdd(a, title, lib, applied, uiOnly, lv); }
          });
          bar.addView(addBtn);
++        bar.addView(button(a, "OTIMIZAR", new View.OnClickListener() {
++            @Override public void onClick(View v) { SpriteOptimize.menu(a, ca, lib, applied); }
++        }), lpm(a, 8));
          bar.addView(button(a, "FECHAR", new View.OnClickListener() { @Override public void onClick(View v) { d.dismiss(); } }), lpm(a, 8));
-@@ -309,7 +319,7 @@
+         root.addView(bar);
+ 
+@@ -309,7 +322,7 @@
          String msg = framesText(g) + " (SPR_" + g.first + " a SPR_" + g.last() + ").\n\n"
                  + "MODO GIF: coloca todos os quadros na timeline, depois do frame atual, formando a animacao completa com os tempos do GIF.\n\n"
                  + "MODO PNG: voce marca quais quadros quer, e so eles entram na timeline.";
@@ -27746,7 +28331,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setPositiveButton("MODO GIF", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) {
                          // quadros sem sprite (removidos) saem e o anterior segura o tempo; quadros seguidos com a mesma sprite viram um so
-@@ -377,7 +387,7 @@
+@@ -377,7 +390,7 @@
                  Bitmap tb = thumb(lib, thumbs, g.spriteAt(i));
                  if (tb != null) iv.setImageBitmap(tb);
                  row.addView(iv, new LinearLayout.LayoutParams(dp(a, 60), dp(a, 60)));
@@ -27755,7 +28340,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 12), 0, 0, 0);
                  t.setText((on[i] ? "\u2713  " : "") + "Quadro " + (i + 1) + "  (SPR_" + g.spriteAt(i) + ")\n" + g.delayAt(i) + " ms");
-@@ -425,13 +435,13 @@
+@@ -425,13 +438,13 @@
      private static void groupActions(final Activity a, final CharAssets ca, final SpriteLib lib, final SpriteGroups.Group g,
                                       final java.util.HashSet<Integer> open, final Runnable applied, final Runnable refresh) {
          String[] items = {"Editar os quadros um a um", "Otimizar GIF (tirar quadros repetidos)", "Desagrupar (viram sprites comuns)", "Remover o GIF inteiro"};
@@ -27771,7 +28356,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                                  .setMessage("As " + g.count + " sprites (SPR_" + g.first + " a SPR_" + g.last() + ") tem as coordenadas zeradas e o espaco na folha fica livre. Os frames do DAC que as usam passam a imagem -1.")
                                  .setNegativeButton("CANCELAR", null)
                                  .setPositiveButton("REMOVER", new DialogInterface.OnClickListener() {
-@@ -522,7 +532,7 @@
+@@ -522,7 +535,7 @@
                  row.setPadding(dp(a, 12), dp(a, 6), dp(a, 12), dp(a, 6));
                  if (changed) row.setBackgroundColor(HI);
                  row.addView(thumbView(a, lib, thumbs, an.sprite[i]), new LinearLayout.LayoutParams(dp(a, 56), dp(a, 56)));
@@ -27780,7 +28365,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 10), 0, dp(a, 6), 0);
                  String uses = usedBy(an, i);
-@@ -637,7 +647,7 @@
+@@ -637,7 +650,7 @@
  
      private static void actions(final Activity a, final CharAssets ca, final SpriteLib lib, final int idx, final Runnable applied) {
          String[] items = {"Substituir imagem", "Mudar recorte na folha", "Mudar índice (só no CNV)", "Hurtbox / hitbox / efeito dos frames (com prévia)", "Remover da lista"};
@@ -27789,7 +28374,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setItems(items, new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int which) {
                          if (which == 0) replace(a, lib, idx, applied);
-@@ -651,8 +661,23 @@
+@@ -651,8 +664,23 @@
  
      private static Runnable uiOnlyR;
  
@@ -27814,7 +28399,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
              @Override public void onPicked(final List<File> files) {
                  final BusyDialog busy = BusyDialog.show(a, "Abrindo imagem");
                  busy.set(files.get(0).getName(), 0, 0);
-@@ -675,6 +700,12 @@
+@@ -675,6 +703,12 @@
                      }
                  }).start();
              }
@@ -27827,7 +28412,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          });
      }
  
-@@ -704,7 +735,7 @@
+@@ -704,7 +738,7 @@
          };
          if (ld.notice == null) { go.run(); return; }
          String msg = file.getName() + ":\n" + ld.notice + (ld.animated() ? "\n\nAo substituir so o primeiro quadro e usado." : "");
@@ -27836,7 +28421,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface x, int w) { recycle(ld); } })
                  .setPositiveButton("CONTINUAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface x, int w) { go.run(); } })
                  .setOnCancelListener(new DialogInterface.OnCancelListener() { @Override public void onCancel(DialogInterface x) { recycle(ld); } })
-@@ -808,7 +839,7 @@
+@@ -808,7 +842,7 @@
          if (fail.length() > 0) msg.append("Nao abriu:\n").append(fail);
          if (msg.length() == 0) { go.run(); return; }
          msg.append(frames).append(" sprite(s) serao criadas, a partir de SPR_").append(first).append('.');
@@ -27845,7 +28430,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) { for (ImageImport.Loaded ld : ok) recycle(ld); }
                  })
-@@ -831,7 +862,7 @@
+@@ -831,7 +865,7 @@
          et.setText(String.valueOf(idx));
          et.setSelectAllOnFocus(true);
          et.setPadding(dp(a, 20), dp(a, 12), dp(a, 20), dp(a, 12));
@@ -27854,7 +28439,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setMessage("A sprite vai para o índice digitado e a que estava la vem para SPR_" + idx + " (troca de lugar). So o CNV muda: as folhas PNG continuam iguais e o DAC continua apontando para os mesmos numeros.")
                  .setView(et).setNegativeButton("CANCELAR", null)
                  .setPositiveButton("MUDAR", new DialogInterface.OnClickListener() {
-@@ -925,7 +956,7 @@
+@@ -925,7 +959,7 @@
          sync.run();
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(box);
@@ -27863,7 +28448,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", null)
                  .setPositiveButton("APLICAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int w) {
-@@ -949,7 +980,7 @@
+@@ -949,7 +983,7 @@
          }
      }
  
@@ -27872,7 +28457,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
  
      static int dp(Activity a, int v) { return (int) (v * a.getResources().getDisplayMetrics().density + 0.5f); }
  
-@@ -966,7 +997,7 @@
+@@ -966,7 +1000,7 @@
      }
  
      static TextView text(Activity a, String s, int sp, int color, boolean bold) {
@@ -27953,6 +28538,381 @@ diff -ruN a/SpriteMassDialogs.java b/SpriteMassDialogs.java
                  .setNegativeButton("CANCELAR", null).setPositiveButton("APLICAR", null).create();
          dlg.show();
          oneBy.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
+diff -ruN a/SpriteOptimize.java b/SpriteOptimize.java
+--- a/SpriteOptimize.java	1970-01-01 00:00:00.000000000 +0000
++++ b/SpriteOptimize.java	2026-10-30 19:58:51.144271958 +0000
+@@ -0,0 +1,371 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.app.Dialog;
++import android.content.DialogInterface;
++import android.graphics.Bitmap;
++import android.graphics.BitmapFactory;
++import android.view.Gravity;
++import android.view.View;
++import android.widget.CheckBox;
++import android.widget.ImageView;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.SeekBar;
++import android.widget.TextView;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Map;
++
++/**
++ * Botao OTIMIZAR da lista de sprites: remover sprites repetidas (espelhadas, giradas, em outra escala) e converter as folhas PNG para 8 bits.
++ * Os calculos ficam em {@link SpriteDedup}, {@link SpriteXform}, {@link SpriteRenumber} e {@link Png8} (testados sem Android); aqui so a tela.
++ */
++final class SpriteOptimize {
++    private SpriteOptimize() { }
++
++    private static final int BG = 0xFF14171C, CARD = 0xFF1F2430, LINE = 0xFF3A4150, TEXT = 0xFFE6E8EC, DIM = 0xFF8A93A6, ACCENT = 0xFF4C8DFF, OK = 0xFF7CE08A, WARN = 0xFFFFB454;
++
++    static void menu(final Activity a, final CharAssets ca, final SpriteLib lib, final Runnable applied) {
++        String[] items = {"Remover Sprites repetidas", "Otimizar PNGs (8 bits)"};
++        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Otimizar")
++                .setItems(items, new DialogInterface.OnClickListener() {
++                    @Override public void onClick(DialogInterface dlg, int which) {
++                        if (which == 0) dedup(a, ca, lib, applied); else pngs(a, ca, lib, applied);
++                    }
++                }).setNegativeButton("FECHAR", null).show();
++    }
++
++    // ------------------------------------------------------------------ backup
++
++    /** Tap Battle/TBRE/Backups/PreOptim/charNN/ (criada se preciso). */
++    static File backupDir(File charDir) {
++        File d = new File(new File(Saver.backupsDir(charDir), "PreOptim"), charDir.getName());
++        d.mkdirs();
++        return d;
++    }
++
++    /** Copia o arquivo para a pasta de backup sem sobrescrever um backup que ja exista (o primeiro e o original de verdade). */
++    static boolean backup(File charDir, File f) throws IOException {
++        if (f == null || !f.isFile()) return false;
++        File out = new File(backupDir(charDir), f.getName());
++        if (out.exists()) return false;
++        FileInputStream in = new FileInputStream(f);
++        FileOutputStream os = new FileOutputStream(out);
++        try {
++            byte[] buf = new byte[1 << 16];
++            int n;
++            while ((n = in.read(buf)) > 0) os.write(buf, 0, n);
++        } finally { in.close(); os.close(); }
++        return true;
++    }
++
++    // ------------------------------------------------------------------ 1. sprites repetidas
++
++    private static void dedup(final Activity a, final CharAssets ca, final SpriteLib lib, final Runnable applied) {
++        final BusyDialog busy = BusyDialog.show(a, "Analisando sprites");
++        new Thread(new Runnable() {
++            @Override public void run() {
++                final List<SpriteDedup.Sig> sigs = new ArrayList<SpriteDedup.Sig>();
++                int n = lib.count();
++                try {
++                    for (int i = 0; i < n; i++) {
++                        busy.set("Lendo sprites", i, n);
++                        int[] ls = lib.logicalSize(i);
++                        if (ls == null) continue;
++                        Bitmap b = lib.cut(i);
++                        if (b == null) continue;
++                        int[] px = new int[b.getWidth() * b.getHeight()];
++                        b.getPixels(px, 0, b.getWidth(), 0, 0, b.getWidth(), b.getHeight());
++                        sigs.add(SpriteDedup.sig(i, px, b.getWidth(), b.getHeight(), ls[0], ls[1]));
++                        b.recycle();
++                    }
++                } catch (Throwable t) { /* segue com o que leu */ }
++                busy.dismiss();
++                a.runOnUiThread(new Runnable() { @Override public void run() { dedupScreen(a, ca, lib, sigs, applied); } });
++            }
++        }).start();
++    }
++
++    private static String relation(int g) {
++        switch (g) {
++            case 0: return "igual (ou só em outra escala)";
++            case 1: return "espelhada na horizontal (Flip X)";
++            case 2: return "espelhada na vertical (Flip Y)";
++            case 3: return "girada 180°";
++            default: return "girada 90° (ou espelhada na diagonal)";
++        }
++    }
++
++    private static void dedupScreen(final Activity a, final CharAssets ca, final SpriteLib lib, final List<SpriteDedup.Sig> sigs, final Runnable applied) {
++        final Dialog d = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
++        LinearLayout root = new LinearLayout(a);
++        root.setOrientation(LinearLayout.VERTICAL);
++        root.setBackgroundColor(BG);
++        root.setPadding(0, SpriteListScreen.dp(a, 12), 0, 0);
++        d.setContentView(root);
++        TextView ti = SpriteListScreen.text(a, "Remover Sprites repetidas", 16, TEXT, true);
++        ti.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 2));
++        root.addView(ti);
++        TextView hint = SpriteListScreen.text(a, "Sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala) formam um grupo. Marque as que quer REMOVER: os frames do DAC "
++                + "passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual. Em cada grupo precisa ficar ao menos uma.", 11, DIM, false);
++        hint.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 6));
++        root.addView(hint);
++        final TextView tol = SpriteListScreen.text(a, "", 14, ACCENT, true);
++        tol.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), 0);
++        root.addView(tol);
++        final SeekBar sb = new SeekBar(a);
++        sb.setMax(50);
++        sb.setProgress(40);
++        sb.setPadding(SpriteListScreen.dp(a, 18), SpriteListScreen.dp(a, 6), SpriteListScreen.dp(a, 18), SpriteListScreen.dp(a, 6));
++        root.addView(sb);
++        final TextView sum = SpriteListScreen.text(a, "", 12, TEXT, false);
++        sum.setPadding(SpriteListScreen.dp(a, 14), 0, SpriteListScreen.dp(a, 14), SpriteListScreen.dp(a, 6));
++        root.addView(sum);
++        final LinearLayout list = new LinearLayout(a);
++        list.setOrientation(LinearLayout.VERTICAL);
++        ScrollView sv = new ScrollView(a);
++        sv.addView(list);
++        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++        final TextView ok = SpriteListScreen.button(a, "REMOVER MARCADAS", null);
++        final Map<Integer, SpriteDedup.Sig> byIndex = new HashMap<Integer, SpriteDedup.Sig>();
++        for (SpriteDedup.Sig s : sigs) byIndex.put(Integer.valueOf(s.index), s);
++        final Map<Integer, Bitmap> thumbs = new HashMap<Integer, Bitmap>();
++        final HashSet<Integer> remove = new HashSet<Integer>();
++        final List<SpriteDedup.Group>[] groups = new List[1];
++        final int[] minPct = {90};
++        final Runnable[] rebuild = new Runnable[1];
++        final Runnable counts = new Runnable() {
++            @Override public void run() {
++                int n = remove.size();
++                sum.setText(groups[0].isEmpty() ? "Nenhum grupo de sprites repetidas com esta semelhança." : groups[0].size() + " grupo(s); " + n + " sprite(s) marcada(s) para remover de " + sigs.size() + ".");
++                ok.setEnabled(n > 0);
++                ok.setAlpha(n > 0 ? 1f : 0.4f);
++            }
++        };
++        rebuild[0] = new Runnable() {
++            @Override public void run() {
++                minPct[0] = 50 + sb.getProgress();
++                tol.setText("Semelhança mínima: " + minPct[0] + "%" + (minPct[0] == 100 ? "  (só idênticas)" : ""));
++                groups[0] = SpriteDedup.groups(sigs, minPct[0]);
++                remove.clear();
++                list.removeAllViews();
++                for (final SpriteDedup.Group g : groups[0]) {
++                    LinearLayout card = new LinearLayout(a);
++                    card.setOrientation(LinearLayout.VERTICAL);
++                    card.setPadding(SpriteListScreen.dp(a, 12), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 12), SpriteListScreen.dp(a, 8));
++                    card.setBackgroundColor(CARD);
++                    LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
++                    clp.setMargins(SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 4), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 4));
++                    final List<CheckBox> boxes = new ArrayList<CheckBox>();
++                    for (int mi = 0; mi < g.members.size(); mi++) {
++                        final SpriteDedup.Member m = g.members.get(mi);
++                        LinearLayout row = new LinearLayout(a);
++                        row.setOrientation(LinearLayout.HORIZONTAL);
++                        row.setGravity(Gravity.CENTER_VERTICAL);
++                        row.setPadding(0, SpriteListScreen.dp(a, 4), 0, SpriteListScreen.dp(a, 4));
++                        row.addView(thumb(a, lib, thumbs, m.index), new LinearLayout.LayoutParams(SpriteListScreen.dp(a, 56), SpriteListScreen.dp(a, 56)));
++                        SpriteDedup.Sig sg = byIndex.get(Integer.valueOf(m.index));
++                        TextView t = new I18nTextView(a);
++                        t.setTextSize(12);
++                        t.setTextColor(m.toRep == null ? OK : TEXT);
++                        t.setPadding(SpriteListScreen.dp(a, 10), 0, SpriteListScreen.dp(a, 6), 0);
++                        t.setText("SPR_" + m.index + "  (" + (sg == null ? 0 : sg.w) + "×" + (sg == null ? 0 : sg.h) + ")\n"
++                                + (m.toRep == null ? "a maior do grupo" : relation(m.toRep.g) + " · " + m.toRep.score + "%"));
++                        row.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
++                        final CheckBox cb = new I18nCheckBox(a);
++                        cb.setText("remover");
++                        cb.setTextColor(TEXT);
++                        cb.setTextSize(12);
++                        boxes.add(cb);
++                        final Integer key = Integer.valueOf(m.index);
++                        if (m.toRep != null) { cb.setChecked(true); remove.add(key); }
++                        cb.setOnClickListener(new View.OnClickListener() {
++                            @Override public void onClick(View v) {
++                                if (cb.isChecked()) {
++                                    int staying = 0;
++                                    for (SpriteDedup.Member o : g.members) if (!remove.contains(Integer.valueOf(o.index)) && o.index != m.index) staying++;
++                                    if (staying == 0) {
++                                        cb.setChecked(false);
++                                        SpriteListScreen.toast(a, "Precisa ficar ao menos uma sprite em cada grupo");
++                                        return;
++                                    }
++                                    remove.add(key);
++                                } else remove.remove(key);
++                                counts.run();
++                            }
++                        });
++                        row.addView(cb);
++                        card.addView(row);
++                    }
++                    list.addView(card, clp);
++                }
++                counts.run();
++            }
++        };
++        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
++            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) { tol.setText("Semelhança mínima: " + (50 + p) + "%"); }
++            @Override public void onStartTrackingTouch(SeekBar s) { }
++            @Override public void onStopTrackingTouch(SeekBar s) { rebuild[0].run(); }
++        });
++        LinearLayout foot = new LinearLayout(a);
++        foot.setOrientation(LinearLayout.HORIZONTAL);
++        foot.setPadding(SpriteListScreen.dp(a, 12), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 12), SpriteListScreen.dp(a, 12));
++        foot.addView(SpriteListScreen.button(a, "VOLTAR", new View.OnClickListener() { @Override public void onClick(View v) { d.dismiss(); } }));
++        ok.setOnClickListener(new View.OnClickListener() {
++            @Override public void onClick(View v) {
++                if (remove.isEmpty()) return;
++                d.dismiss();
++                applyDedup(a, ca, lib, groups[0], remove, byIndex, minPct[0], applied);
++            }
++        });
++        foot.addView(ok, SpriteListScreen.lpm(a, 8));
++        root.addView(foot);
++        d.show();
++        rebuild[0].run();
++    }
++
++    private static ImageView thumb(Activity a, SpriteLib lib, Map<Integer, Bitmap> cache, int idx) {
++        ImageView iv = new ImageView(a);
++        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
++        iv.setBackgroundColor(0xFF0D0F13);
++        Bitmap tb = cache.get(Integer.valueOf(idx));
++        if (tb == null) {
++            Bitmap full = lib.cut(idx);
++            if (full != null) {
++                float s = Math.min(1f, 96f / Math.max(full.getWidth(), full.getHeight()));
++                tb = s >= 1f ? full : Bitmap.createScaledBitmap(full, Math.max(1, (int) (full.getWidth() * s)), Math.max(1, (int) (full.getHeight() * s)), true);
++                if (tb != full) full.recycle();
++                cache.put(Integer.valueOf(idx), tb);
++            }
++        }
++        if (tb != null) iv.setImageBitmap(tb);
++        return iv;
++    }
++
++    private static void applyDedup(final Activity a, final CharAssets ca, final SpriteLib lib, final List<SpriteDedup.Group> groups, final HashSet<Integer> remove,
++                                   final Map<Integer, SpriteDedup.Sig> byIndex, final int minPct, final Runnable applied) {
++        final BusyDialog busy = BusyDialog.show(a, "Removendo sprites repetidas");
++        busy.set("Reescrevendo os frames...", 0, 0);
++        new Thread(new Runnable() {
++            @Override public void run() {
++                String out;
++                try {
++                    // backup antes de mexer: DAC, CNV e grupos de GIF (texto)
++                    int copied = 0;
++                    for (String n : new String[]{"000.dac.txt", "000.cnv.txt", SpriteGroups.FILE}) if (backup(ca.dir, new File(ca.dir, n))) copied++;
++                    List<SpriteDedup.Choice> choices = new ArrayList<SpriteDedup.Choice>();
++                    for (SpriteDedup.Group g : groups) {
++                        List<SpriteDedup.Sig> kept = new ArrayList<SpriteDedup.Sig>();
++                        for (SpriteDedup.Member m : g.members) if (!remove.contains(Integer.valueOf(m.index))) kept.add(byIndex.get(Integer.valueOf(m.index)));
++                        for (SpriteDedup.Member m : g.members) {
++                            if (!remove.contains(Integer.valueOf(m.index))) continue;
++                            SpriteDedup.Choice c = SpriteDedup.choose(byIndex.get(Integer.valueOf(m.index)), kept, 0);
++                            if (c != null) choices.add(c);
++                        }
++                    }
++                    SpriteDedup.Result res = SpriteDedup.apply(ca.dac, choices);
++                    java.util.TreeSet<Integer> changed = new java.util.TreeSet<Integer>(res.changedAnos);
++                    if (!res.removedSprites.isEmpty()) {
++                        int[] map = lib.removeShift(res.removedSprites);
++                        changed.addAll(SpriteRenumber.remapDac(ca.dac, map));
++                    }
++                    String saved = SpriteMassDialogs.persist(ca, changed);
++                    StringBuilder sb = new StringBuilder();
++                    sb.append(res.removedSprites.size()).append(" sprite(s) removida(s); ").append(res.framesRewritten).append(" frame(s) reescrito(s) em ").append(res.changedAnos.size()).append(" ANO(s).\n");
++                    sb.append("As sprites seguintes foram renumeradas.\n");
++                    if (!res.skipped.isEmpty()) sb.append("Ficaram (algum frame não tem como ficar igual): SPR_").append(res.skipped).append('\n');
++                    sb.append("\nCópia dos arquivos anteriores: ").append(backupDir(ca.dir).getPath()).append(copied == 0 ? " (já havia cópia; a original foi mantida)" : "").append(saved.isEmpty() ? "" : "\n" + SpriteMassDialogs.lastPersist);
++                    out = sb.toString();
++                } catch (Throwable t) {
++                    out = "Erro ao remover sprites repetidas: " + t;
++                }
++                busy.dismiss();
++                final String text = out;
++                a.runOnUiThread(new Runnable() {
++                    @Override public void run() {
++                        applied.run();
++                        TextView tv = SpriteListScreen.text(a, text, 13, TEXT, false);
++                        tv.setPadding(SpriteListScreen.dp(a, 16), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 16), SpriteListScreen.dp(a, 8));
++                        ScrollView s = new ScrollView(a);
++                        s.addView(tv);
++                        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Sprites repetidas").setView(s).setPositiveButton("OK", null).show();
++                    }
++                });
++            }
++        }).start();
++    }
++
++    // ------------------------------------------------------------------ 2. PNGs de 8 bits
++
++    private static void pngs(final Activity a, final CharAssets ca, final SpriteLib lib, final Runnable applied) {
++        final List<File> sheets = SheetFiles.list(ca.dir);
++        if (sheets.isEmpty()) { SpriteListScreen.toast(a, "Nenhuma folha PNG nesta pasta"); return; }
++        String msg = "Converte as " + sheets.size() + " folha(s) PNG para 8 bits com paleta (até 256 cores por folha, transparência mantida) para diminuir o tamanho. "
++                + "Folhas com mais de 256 cores perdem um pouco de cor.\n\nAntes de gravar, os PNG originais são copiados para\nBackups/PreOptim/" + ca.dir.getName() + "/\n"
++                + "(se já existir cópia de um arquivo, a original é mantida). Folhas que não ficam menores não são trocadas.";
++        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Otimizar PNGs").setMessage(msg)
++                .setNegativeButton("CANCELAR", null)
++                .setPositiveButton("OTIMIZAR", new DialogInterface.OnClickListener() {
++                    @Override public void onClick(DialogInterface dlg, int w) { runPngs(a, ca, lib, sheets, applied); }
++                }).show();
++    }
++
++    private static void runPngs(final Activity a, final CharAssets ca, final SpriteLib lib, final List<File> sheets, final Runnable applied) {
++        final BusyDialog busy = BusyDialog.show(a, "Otimizando PNGs");
++        new Thread(new Runnable() {
++            @Override public void run() {
++                StringBuilder sb = new StringBuilder();
++                long before = 0, after = 0;
++                int done = 0;
++                for (File f : sheets) {
++                    busy.set(f.getName(), done++, sheets.size());
++                    long old = f.length();
++                    before += old;
++                    try {
++                        final Bitmap bm = BitmapFactory.decodeFile(f.getPath());
++                        if (bm == null) { sb.append(f.getName()).append(": não consegui ler\n"); after += old; continue; }
++                        final int w = bm.getWidth(), h = bm.getHeight();
++                        Png8.Out o = Png8.encode(new Png8.Rows() {
++                            @Override public int width() { return w; }
++                            @Override public int height() { return h; }
++                            @Override public void row(int y, int[] out) { bm.getPixels(out, 0, w, 0, y, w, 1); }
++                        });
++                        bm.recycle();
++                        Png8.Img check = Png8.decode(o.png);
++                        if (check.w != w || check.h != h) throw new IOException("conferência falhou (tamanho)");
++                        if (o.png.length >= old) { sb.append(f.getName()).append(": já é pequena (").append(old / 1024).append(" KB), mantida\n"); after += old; continue; }
++                        backup(ca.dir, f);
++                        SpriteLib.writeAtomic(f, o.png);
++                        after += o.png.length;
++                        sb.append(f.getName()).append(": ").append(old / 1024).append(" KB → ").append(o.png.length / 1024).append(" KB (").append(o.colors).append(" cores")
++                                .append(o.lossless ? ", sem perda" : ", reduzida").append(")\n");
++                    } catch (Throwable t) {
++                        after += old;
++                        sb.append(f.getName()).append(": erro ").append(t.getMessage()).append('\n');
++                    }
++                }
++                sb.append("\nTotal: ").append(before / 1024).append(" KB → ").append(after / 1024).append(" KB\nCópia dos originais: ").append(backupDir(ca.dir).getPath());
++                busy.dismiss();
++                final String text = sb.toString();
++                a.runOnUiThread(new Runnable() {
++                    @Override public void run() {
++                        lib.dropSheetCache();
++                        applied.run();
++                        TextView tv = SpriteListScreen.text(a, text, 12, TEXT, false);
++                        tv.setPadding(SpriteListScreen.dp(a, 16), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 16), SpriteListScreen.dp(a, 8));
++                        ScrollView s = new ScrollView(a);
++                        s.addView(tv);
++                        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("PNGs otimizados").setView(s).setPositiveButton("OK", null).show();
++                    }
++                });
++            }
++        }).start();
++    }
++}
 diff -ruN a/SpriteRenumber.java b/SpriteRenumber.java
 --- a/SpriteRenumber.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/SpriteRenumber.java	2026-10-30 19:49:48.213853347 +0000
@@ -27994,6 +28954,135 @@ diff -ruN a/SpriteRenumber.java b/SpriteRenumber.java
 +            if (any) changed.add(Integer.valueOf(i));
 +        }
 +        return changed;
++    }
++}
+diff -ruN a/SpriteXform.java b/SpriteXform.java
+--- a/SpriteXform.java	1970-01-01 00:00:00.000000000 +0000
++++ b/SpriteXform.java	2026-10-30 19:55:17.666092567 +0000
+@@ -0,0 +1,125 @@
++package com.zue.attackeditor;
++
++/**
++ * Troca a sprite R de um frame por outra sprite K que e a mesma imagem espelhada / girada em 90 graus / em outra escala, reescrevendo
++ * Flip X/Y, rotacao, zoom e posicao do frame para o desenho ficar igual. Java puro.
++ *
++ * Geometria (de AttackRenderer.drawObj, objeto sem zoom proprio): sprite de largura/altura logicas w x h, zoom zx/zy (%), centro proprio (ox, oy)
++ * e rotacao rot. Com sx = -1 se Flip X e sy = -1 se Flip Y: o ponto (u, v) do desenho (0..1) cai em
++ * Rot(sx * rot) . ( sx * (ox + u * W), sy * (oy + v * H) ), com W = w * zx / 100 e H = h * zy / 100. (O Flip Y nao inverte a rotacao no jogo.)
++ *
++ * g (0..7) diz como o conteudo de R aparece em K: R(u, v) = K(g(u, v)):
++ * 0 igual, 1 espelho horizontal, 2 espelho vertical, 3 giro de 180, 4 transposta, 5..7 as outras tres com troca de eixos (giros de 90 graus e transposta invertida).
++ */
++final class SpriteXform {
++    private SpriteXform() { }
++
++    /** Matriz linear {{a, b}, {c, d}} e deslocamento {e, f} de g: (u, v) -> (a u + b v + e, c u + d v + f). */
++    static final double[][] G = {
++        {1, 0, 0, 1, 0, 0}, {-1, 0, 0, 1, 1, 0}, {1, 0, 0, -1, 0, 1}, {-1, 0, 0, -1, 1, 1},
++        {0, 1, 1, 0, 0, 0}, {0, -1, 1, 0, 1, 0}, {0, 1, -1, 0, 0, 1}, {0, -1, -1, 0, 1, 1}};
++
++    /** As dimensoes de K trocam de eixo em relacao a R? */
++    static boolean swapsAxes(int g) { return g >= 4; }
++
++    static final class Frame {
++        boolean flipH, flipV;
++        int ox, oy, rot, zx = 100, zy = 100;
++    }
++
++    static Frame read(Ano.Mpt m) {
++        Frame f = new Frame();
++        if ((m.flags & 2) != 0) { f.flipH = (m.wActFlag & 16) != 0; f.flipV = (m.wActFlag & 32) != 0; }
++        if (m.hasMid) { f.ox = m.midX; f.oy = m.midY; }
++        if (m.hasRaz) { f.rot = m.rot; f.zx = m.xZoom; f.zy = m.yZoom; }
++        return f;
++    }
++
++    /** Onde o ponto (u, v) da sprite cai (coordenadas do jogo, origem na ancora do objeto). */
++    static double[] place(Frame f, int w, int h, double u, double v) {
++        double W = w * f.zx / 100.0, H = h * f.zy / 100.0;
++        double sx = f.flipH ? -1 : 1, sy = f.flipV ? -1 : 1;
++        double x = sx * (f.ox + u * W), y = sy * (f.oy + v * H);
++        double a = Math.toRadians(sx * f.rot);
++        return new double[]{x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)};
++    }
++
++    /**
++     * Novos valores do frame para desenhar K (wK x hK) no lugar de R (wR x hR) com a relacao {@code g}; null se nao existe (eixos nao ortogonais).
++     * {@code allowFlip} = false recusa solucoes que mudam Flip X/Y (frames de ANO usada como link filho: o deslocamento do link tambem espelha).
++     */
++    static Frame solve(Frame r, int wR, int hR, int wK, int hK, int g, boolean allowFlip) {
++        double[] gg = G[g];
++        double sxR = r.flipH ? -1 : 1, syR = r.flipV ? -1 : 1;
++        double W = wR * r.zx / 100.0, H = hR * r.zy / 100.0;
++        double rhoR = Math.toRadians(sxR * r.rot);
++        double cr = Math.cos(rhoR), sr = Math.sin(rhoR);
++        // L_R = Rot(rhoR) . diag(sxR W, syR H)
++        double l11 = cr * sxR * W, l21 = sr * sxR * W, l12 = -sr * syR * H, l22 = cr * syR * H;
++        double tx0 = cr * sxR * r.ox - sr * syR * r.oy, ty0 = sr * sxR * r.ox + cr * syR * r.oy;
++        // L_K = L_R . G^-1 (G ortogonal: inversa = transposta)
++        double ga = gg[0], gb = gg[1], gc = gg[2], gd = gg[3];
++        double k11 = l11 * ga + l12 * gb, k12 = l11 * gc + l12 * gd, k21 = l21 * ga + l22 * gb, k22 = l21 * gc + l22 * gd;
++        double c1x = k11, c1y = k21, c2x = k12, c2y = k22;
++        double n1 = Math.hypot(c1x, c1y), n2 = Math.hypot(c2x, c2y);
++        if (n1 < 1e-9 || n2 < 1e-9) return null;
++        if (Math.abs(c1x * c2x + c1y * c2y) > 1e-6 * n1 * n2) return null;            // eixos nao ortogonais: nao e um desenho possivel
++        double det = c1x * c2y - c1y * c2x;
++        // t_K = t_R - L_K . g0
++        double tkx = tx0 - (k11 * gg[4] + k12 * gg[5]), tky = ty0 - (k21 * gg[4] + k22 * gg[5]);
++        Frame best = null;
++        double bestCost = Double.MAX_VALUE;
++        for (int sxi = 0; sxi < 2; sxi++) {
++            for (int syi = 0; syi < 2; syi++) {
++                double sx = sxi == 0 ? 1 : -1, sy = syi == 0 ? 1 : -1;
++                if (sx * sy * det < 0) continue;
++                boolean flipsChange = (sx != sxR) || (sy != syR);
++                if (flipsChange && !allowFlip) continue;
++                double rho = Math.atan2(c1y, c1x) - (sx < 0 ? Math.PI : 0);
++                double rotDeg = Math.toDegrees(sx * rho);
++                int rot = (int) Math.round(rotDeg);
++                while (rot > 180) rot -= 360;
++                while (rot <= -180) rot += 360;
++                double wk2 = n1, hk2 = n2;
++                // (ox', oy') = diag(sx, sy) . Rot(-rho) . t_K
++                double cc = Math.cos(rho), ss = Math.sin(rho);
++                double ux = cc * tkx + ss * tky, uy = -ss * tkx + cc * tky;
++                Frame f = new Frame();
++                f.flipH = sx < 0; f.flipV = sy < 0;
++                f.ox = (int) Math.round(sx * ux); f.oy = (int) Math.round(sy * uy);
++                f.rot = rot;
++                f.zx = (int) Math.round(wk2 / wK * 100.0);
++                f.zy = (int) Math.round(hk2 / hK * 100.0);
++                double cost = ((sx != sxR ? 1 : 0) + (sy != syR ? 1 : 0)) * 10 + (rot != r.rot ? 1 : 0);
++                if (cost < bestCost) { bestCost = cost; best = f; }
++            }
++        }
++        return best;
++    }
++
++    /** Escreve os valores do frame no MPT (copia): Flip, centro proprio e RAZ so quando precisam existir (o alpha do RAZ e preservado). */
++    static Ano.Mpt write(Ano.Mpt src, Frame f, int newImage) {
++        Ano.Mpt m = src.copy();
++        m.image = newImage;
++        int base = (m.flags & 2) != 0 ? m.wActFlag : 0;
++        int w = (base & ~(16 | 32)) | (f.flipH ? 16 : 0) | (f.flipV ? 32 : 0);
++        if (w != 0) { m.flags |= 2; m.wActFlag = w; } else { m.flags &= ~2; m.wActFlag = 0; }
++        if (f.ox != 0 || f.oy != 0) { m.flags |= 1; m.midX = f.ox; m.midY = f.oy; }
++        else { m.flags &= ~1; m.midX = 0; m.midY = 0; }
++        boolean hadAlpha = (m.flags & 0x80) != 0 && m.alphaRaw != 0;
++        if (f.rot != 0 || f.zx != 100 || f.zy != 100 || hadAlpha) {
++            if ((m.flags & 0x80) == 0) { m.flags |= 0x80; m.alphaRaw = 0; }
++            m.rot = f.rot; m.xZoom = f.zx; m.yZoom = f.zy;
++        } else {
++            m.flags &= ~0x80; m.rot = 0; m.alphaRaw = 0; m.xZoom = 100; m.yZoom = 100;
++        }
++        m.normalize();
++        return m;
++    }
++
++    /** Reescreve o MPT {@code m} (que usa R) para usar K; null se nao ha solucao. */
++    static Ano.Mpt rewrite(Ano.Mpt m, int wR, int hR, int wK, int hK, int g, int kImage, boolean allowFlip) {
++        Frame f = solve(read(m), wR, hR, wK, hK, g, allowFlip);
++        return f == null ? null : write(m, f, kImage);
 +    }
 +}
 diff -ruN a/Stepper.java b/Stepper.java
@@ -34385,7 +35474,7 @@ diff -ruN a/test/HurtboxAllTest.java b/test/HurtboxAllTest.java
 +}
 diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 --- a/test/I18nCoverageTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nCoverageTest.java	2026-10-24 21:57:15.000000000 +0000
++++ b/test/I18nCoverageTest.java	2026-10-30 19:59:26.339202433 +0000
 @@ -0,0 +1,114 @@
 +package com.zue.attackeditor;
 +
@@ -34495,7 +35584,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +        }
 +        StringBuilder sb = new StringBuilder();
 +        int shown = 0;
-+        for (String s : missing) { if (shown++ < 12) sb.append("\n   ").append(s.replace("\n", "\\n")); }
++        for (String s : missing) { if (shown++ < 500) sb.append("\n   ").append(s.replace("\n", "\\n")); }
 +        check("cobertura: " + lits + " literais em " + files + " arquivos; sem traducao nem ignorar: " + missing.size() + sb, missing.isEmpty(), true);
 +
 +        System.out.println("I18nCoverageTest fails=" + BattleTest.fails);
@@ -34503,8 +35592,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-10-30 19:51:14.037084432 +0000
-@@ -0,0 +1,547 @@
++++ b/test/I18nIgnored.java	2026-10-30 20:00:12.320875195 +0000
+@@ -0,0 +1,551 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -34515,6 +35604,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "\nALVO ",
 +        "\nFLAG ",
 +        "\nSPR_",
++        "\nTotal: ",
 +        "   $HDAT_",
 +        "   $LINK_",
 +        "   $MPTS:{\n",
@@ -34550,6 +35640,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " -> SPR_",
 +        " ANO(s)",
 +        " ANO(s), ",
++        " ANO(s).\n",
 +        " ANO(s). Desfazer volta tudo de uma vez. Depois use SALVAR > todos os ANOs (ou tudo) para gravar.",
 +        " END",
 +        " GIF(s)  ·  ",
@@ -34831,6 +35922,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "PROJETIL_COLISAO_CHAO",
 +        "Pastas recarregadas: ",
 +        "Pictures",
++        "PreOptim",
 +        "Precisa do Android 10 ou mais novo (o aparelho tem a API ",
 +        "RAZ",
 +        "REACAO_DANO_",
@@ -34867,6 +35959,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "TRUE",
 +        "Timeline",
 +        "Total ",
++        "US-ASCII",
 +        "UTF-8",
 +        "VP8L",
 +        "VP8X",
@@ -35778,6 +36871,63 @@ diff -ruN a/test/Opt1GroupsTest.java b/test/Opt1GroupsTest.java
 +        check("5 titulos", Opt1.GROUP_TITLES.length, 5);
 +        check("o som do grupo vira o id do frame (se_03 = id 4)", SoundIds.idOfCommon(new Opt1(3 * 0 + 5).sound), 4);
 +        System.out.println("Opt1GroupsTest fails=" + fails);
++    }
++}
+diff -ruN a/test/Png8Test.java b/test/Png8Test.java
+--- a/test/Png8Test.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/Png8Test.java	2026-10-30 19:57:16.945495698 +0000
+@@ -0,0 +1,53 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** PNG de 8 bits com paleta: sem perda com ate 256 cores, quantizado acima disso, alpha em tRNS e arquivo menor. */
++public class Png8Test {
++    public static void main(String[] args) throws Exception {
++        int w = 64, h = 48;
++        // 5 cores + transparencia
++        int[] few = new int[w * h];
++        int[] cols = {0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0x80FFFFFF, 0xFF102030, 0x00000000};
++        for (int i = 0; i < few.length; i++) few[i] = cols[(i / 7 + i / (w * 5)) % cols.length];
++        Png8.Out o = Png8.encode(Png8.of(few, w, h));
++        check("poucas cores: sem perda", o.lossless, true);
++        check("paleta = so as cores usadas", o.colors, 6);
++        Png8.Img back = Png8.decode(o.png);
++        boolean same = back.w == w && back.h == h;
++        for (int i = 0; i < few.length && same; i++) {
++            int a = few[i], b = back.px[i];
++            if ((a >>> 24) == 0) same = (b >>> 24) == 0; else same = a == b;
++        }
++        check("volta identica (alpha incluido; transparente total vale 0)", same, true);
++        // assinatura PNG
++        check("assinatura PNG", (o.png[0] & 255) == 0x89 && o.png[1] == 'P' && o.png[2] == 'N' && o.png[3] == 'G', true);
++
++        // gradiente com milhares de cores: quantiza em ate 256 e fica perto
++        int gw = 128, gh = 96;
++        int[] grad = new int[gw * gh];
++        for (int y = 0; y < gh; y++) for (int x = 0; x < gw; x++) grad[y * gw + x] = 0xFF000000 | ((x * 2) << 16) | ((y * 2) << 8) | ((x + y) & 255);
++        Png8.Out g = Png8.encode(Png8.of(grad, gw, gh));
++        check("gradiente: reduzido a ate 256 cores", !g.lossless && g.colors <= 256 && g.colors > 32, true);
++        Png8.Img gb = Png8.decode(g.png);
++        double err = 0;
++        for (int i = 0; i < grad.length; i++) {
++            int a = grad[i], b = gb.px[i];
++            err += Math.abs(((a >> 16) & 255) - ((b >> 16) & 255)) + Math.abs(((a >> 8) & 255) - ((b >> 8) & 255)) + Math.abs((a & 255) - (b & 255));
++        }
++        check("erro medio por canal pequeno (< 8)", err / (grad.length * 3.0) < 8.0, true);
++
++        // folha de 32 bits (cru) x PNG de 8 bits: bem menor
++        int raw = gw * gh * 4;
++        check("PNG indexado menor que o ARGB cru", g.png.length < raw / 2, true);
++
++        // alpha parcial vira tRNS e volta
++        int[] soft = new int[16 * 16];
++        for (int i = 0; i < soft.length; i++) soft[i] = (i % 4) * 60 << 24 | 0x336699;
++        Png8.Img sb = Png8.decode(Png8.encode(Png8.of(soft, 16, 16)).png);
++        boolean softOk = true;
++        for (int i = 0; i < soft.length; i++) if ((soft[i] >>> 24) != (sb.px[i] >>> 24)) softOk = false;
++        check("alpha parcial preservado", softOk, true);
++        System.out.println("Png8Test fails=" + fails);
 +    }
 +}
 diff -ruN a/test/ReactionCameraTest.java b/test/ReactionCameraTest.java
@@ -36976,6 +38126,134 @@ diff -ruN a/test/SpeedLineTest.java b/test/SpeedLineTest.java
 +        List<SpeedLine.Chain> cn = SpeedLine.chains(nz);
 +        check("frame sem TIME nao anda: seta de comprimento zero ou sem cadeia", cn.isEmpty() || SpeedLine.frameArrow(nz, cn.get(0), 0).path.length == 1, true);
 +        System.out.println("SpeedLineTest fails=" + fails);
++    }
++}
+diff -ruN a/test/SpriteDedupTest.java b/test/SpriteDedupTest.java
+--- a/test/SpriteDedupTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/SpriteDedupTest.java	2026-10-30 19:56:10.709505865 +0000
+@@ -0,0 +1,124 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.List;
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Sprites repetidas: deteccao (igual, espelhada, girada, escalada), solucao geometrica do frame e aplicacao no DAC. */
++public class SpriteDedupTest {
++    /** Imagem assimetrica de w x h (quadrantes diferentes e uma marca no canto). */
++    static int[] base(int w, int h) {
++        int[] p = new int[w * h];
++        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
++            int c = (x < w / 2 ? (y < h / 2 ? 0xFFE04040 : 0xFF40E040) : (y < h / 2 ? 0xFF4040E0 : 0xFFE0E040));
++            if (x < w / 4 && y < h / 4) c = 0xFFFFFFFF;
++            if (x > w * 3 / 4 && y > h * 3 / 4) c = 0xFF202020;
++            if (x > w / 3 && x < w / 2 && y > h / 3 && y < h * 2 / 3) c = 0x00000000;
++            p[y * w + x] = c;
++        }
++        return p;
++    }
++
++    /** K tal que R(u, v) = K(g(u, v)), com K de wK x hK (amostra R por vizinho mais proximo). */
++    static int[] derive(int[] r, int wR, int hR, int g, int wK, int hK) {
++        double[] gg = SpriteXform.G[g];
++        int[] k = new int[wK * hK];
++        for (int y = 0; y < hK; y++) for (int x = 0; x < wK; x++) {
++            double a = (x + 0.5) / wK - gg[4], b = (y + 0.5) / hK - gg[5];
++            double u = gg[0] * a + gg[2] * b, v = gg[1] * a + gg[3] * b;          // G^T
++            int rx = Math.max(0, Math.min(wR - 1, (int) Math.floor(u * wR))), ry = Math.max(0, Math.min(hR - 1, (int) Math.floor(v * hR)));
++            k[y * wK + x] = r[ry * wR + rx];
++        }
++        return k;
++    }
++
++    static SpriteDedup.Sig sig(int idx, int[] px, int w, int h) { return SpriteDedup.sig(idx, px, w, h, w, h); }
++
++    static M mpt(int image) { return new M().time(4).img(image); }
++
++    static double maxErr(SpriteXform.Frame fr, int wR, int hR, SpriteXform.Frame fk, int wK, int hK, int g) {
++        double[] gg = SpriteXform.G[g];
++        double worst = 0;
++        for (int i = 0; i <= 4; i++) for (int j = 0; j <= 4; j++) {
++            double u = i / 4.0, v = j / 4.0;
++            double[] pr = SpriteXform.place(fr, wR, hR, u, v);
++            double[] pk = SpriteXform.place(fk, wK, hK, gg[0] * u + gg[1] * v + gg[4], gg[2] * u + gg[3] * v + gg[5]);
++            worst = Math.max(worst, Math.hypot(pr[0] - pk[0], pr[1] - pk[1]));
++        }
++        return worst;
++    }
++
++    public static void main(String[] args) throws Exception {
++        int w = 24, h = 16;
++        int[] r = base(w, h);
++        // ---- deteccao
++        int[] mir = derive(r, w, h, 1, w, h);
++        int[] vf = derive(r, w, h, 2, w, h);
++        int[] rot = derive(r, w, h, 5, h, w);
++        int[] big = derive(r, w, h, 0, w * 2, h * 2);
++        int[] other = new int[w * h];
++        for (int i = 0; i < other.length; i++) other[i] = i % 3 == 0 ? 0xFF8080FF : 0xFF101010;
++        SpriteDedup.Sig sr = sig(0, r, w, h);
++        check("identica: 100", SpriteDedup.best(sig(1, r.clone(), w, h), sr, 60).score, 100);
++        SpriteDedup.Match m1 = SpriteDedup.best(sig(1, mir, w, h), sr, 60);
++        check("espelhada acha a relacao 1 (horizontal)", m1 != null ? m1.g : -1, 1);
++        // R(u, v) = K(g(u, v)): a espelhada K tem R = K mirror => g de K para R e simetrica a g de R para K
++        SpriteDedup.Match m2 = SpriteDedup.best(sr, sig(1, mir, w, h), 60);
++        check("R contra a espelhada: g = 1", m2 != null ? m2.g : -1, 1);
++        SpriteDedup.Match m3 = SpriteDedup.best(sr, sig(2, vf, w, h), 60);
++        check("espelho vertical: g = 2", m3 != null ? m3.g : -1, 2);
++        SpriteDedup.Match m4 = SpriteDedup.best(sr, sig(3, rot, h, w), 60);
++        check("girada 90 (eixos trocados): g = 5", m4 != null ? m4.g : -1, 5);
++        SpriteDedup.Match m5 = SpriteDedup.best(sr, sig(4, big, w * 2, h * 2), 60);
++        check("outra escala (2x): g = 0", m5 != null ? m5.g : -1, 0);
++        check("outra imagem nao casa", SpriteDedup.best(sr, sig(5, other, w, h), 60) == null, true);
++        check("proporcao diferente nao casa", SpriteDedup.best(sr, sig(6, derive(r, w, h, 0, w, h * 2), w, h * 2), 60) == null, true);
++
++        // grupos: a maior (2x) vira representante; as outras apontam para ela
++        List<SpriteDedup.Sig> all = new ArrayList<SpriteDedup.Sig>();
++        all.add(sr); all.add(sig(1, mir, w, h)); all.add(sig(4, big, w * 2, h * 2)); all.add(sig(5, other, w, h));
++        List<SpriteDedup.Group> gs = SpriteDedup.groups(all, 60);
++        check("um grupo com 3 sprites, representante a de maior area (4)", gs.size() + ":" + gs.get(0).members.size() + ":" + gs.get(0).rep(), "1:3:4");
++        check("a sem relacao fica de fora", gs.get(0).members.get(1).index != 5 && gs.get(0).members.get(2).index != 5, true);
++
++        // ---- geometria exata do frame: para cada g e varios estados de R, o desenho de K cai onde o de R caia
++        int[][] states = {{0, 0, 0, 0, 100, 100, 0}, {10, -6, 0, 0, 100, 100, 0}, {5, 8, 30, 0, 200, 100, 0}, {-4, 3, 0, 1, 100, 100, 0}, {7, -2, 45, 1, 150, 150, 1}, {0, 0, 90, 0, 100, 200, 1}};
++        int bad = 0, nulls = 0, total = 0;
++        for (int g = 0; g < 8; g++) {
++            int wK = SpriteXform.swapsAxes(g) ? h * 2 : w * 2, hK = SpriteXform.swapsAxes(g) ? w * 2 : h * 2;
++            for (int[] st : states) {
++                SpriteXform.Frame fr = new SpriteXform.Frame();
++                fr.ox = st[0]; fr.oy = st[1]; fr.rot = st[2]; fr.flipH = st[3] == 1; fr.zx = st[4]; fr.zy = st[5]; fr.flipV = st[6] == 1;
++                SpriteXform.Frame fk = SpriteXform.solve(fr, w, h, wK, hK, g, true);
++                total++;
++                if (fk == null) { nulls++; continue; }
++                if (maxErr(fr, w, h, fk, wK, hK, g) > 0.6) bad++;
++            }
++        }
++        check("48 casos (8 relacoes x 6 estados): todos tem solucao", nulls, 0);
++        check("e o desenho cai no mesmo lugar (erro < 0,6 px)", bad, 0);
++
++        // casos pedidos pelo usuario
++        SpriteXform.Frame plain = new SpriteXform.Frame();
++        SpriteXform.Frame fl = SpriteXform.solve(plain, w, h, w, h, 1, true);
++        check("espelhada: liga o Flip X e desloca o centro por -largura", fl.flipH + ":" + fl.flipV + ":" + fl.ox + ":" + fl.rot, "true:false:-24:0");
++        SpriteXform.Frame sc = SpriteXform.solve(plain, w, h, w * 2, h * 2, 0, true);
++        check("outra escala (K 2x): so o zoom cai para 50 %, sem Flip nem posicao", sc.zx + ":" + sc.zy + ":" + sc.ox + ":" + sc.oy + ":" + sc.flipH + ":" + sc.rot, "50:50:0:0:false:0");
++        SpriteXform.Frame rt = SpriteXform.solve(plain, w, h, h, w, 5, true);
++        check("girada 90: rotacao multipla de 90 e sem Flip", Math.abs(rt.rot) % 90 == 0 && !rt.flipH && !rt.flipV, true);
++        check("sem permitir Flip, o espelho nao tem solucao em ANO filha de link", SpriteXform.solve(plain, w, h, w, h, 1, false) == null || !SpriteXform.solve(plain, w, h, w, h, 1, false).flipH, true);
++
++        // ---- aplicar no DAC
++        Dac dac = dac(new A().mpt(mpt(0)).mpt(mpt(1)).mpt(mpt(2)), new A().mpt(mpt(1)));
++        SpriteDedup.Choice ch = new SpriteDedup.Choice();
++        ch.removed = sig(1, mir, w, h); ch.kept = sr; ch.match = SpriteDedup.best(ch.removed, sr, 60);
++        List<SpriteDedup.Choice> cl = new ArrayList<SpriteDedup.Choice>();
++        cl.add(ch);
++        SpriteDedup.Result res = SpriteDedup.apply(dac, cl);
++        check("removida a sprite 1; 2 frames reescritos em 2 ANOs", res.removedSprites + ":" + res.framesRewritten + ":" + res.changedAnos, "[1]:2:[0, 1]");
++        Ano.Mpt n = dac.getAno(0).mpts[1];
++        check("o frame passou a usar a sprite 0 com Flip X", n.image + ":" + ((n.wActFlag & 16) != 0), "0:true");
++        check("o frame de outra sprite nao mudou", dac.getAno(0).mpts[2].image, 2);
++        System.out.println("SpriteDedupTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/SpriteImportPlanTest.java b/test/SpriteImportPlanTest.java
