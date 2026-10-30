@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1705 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1706 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -469,6 +469,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Mostrar usos**: no menu de uma sprite (SPRITES → tocar na sprite), logo abaixo de **Substituir imagem**: `Ano N, Frame N` / `Ano N, Frames N, N e N` (`SpriteUses`).
 - `GridOpsTest` (20: risco, excluir/copiar/colar/mover, cópia independente, usos da sprite, texto do ⓘ). A grade, o modo seleção, o popup e o diálogo de usos só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzo ⓘ dos ataques: botões A / Y / X / B e Especiais, conferidos no `Controller`
+- Com a classe `Controller` enviada: cada botão da tela é um pad do **tipo 4** e a tecla que ele gera é o **6º argumento do `AddPad`** (`Key[2] = KeyCode[0]`); `GetGamePadKey` faz o OR dos pads. Em `CreateGamepad`: A = 16640, Y = 1048576, X = 2097152, B = 4194304, 339/340 = 8388608 (os quatro últimos só com `iControlType == 1`); o pad do canto tem 553648128 (= 536870912 rage + 16777216). O `CmdCheck` transforma essas teclas nos comandos 1, 2, 3 e 8 (e 9 / 4 no pad do canto).
+- Texto do ⓘ corrigido (antes eu usava os nomes errados): **Y (HUD 330/331) = golpes 0/3/6, X (333/334) = 1/4/7, B (336/337) = 2/5/8** (chão / pulando ou caindo / voando); **Especial 1** (HUD 339/341, **100 de Synchro** = 1 barra de ki, comando 8) = golpes **9** (chão ou voando) e **10** (pulando); **Especial 2** (sem botão próprio: toque no botão do canto **com AngryOn ligado**, 200 de Synchro, comando 9) = golpes **11** (chão ou voando) e **12** (no ar); Rage (mesmo botão do canto com Angry ≥ 100 e sem AngryOn, comando 4) = 14/15. A (HUD 209/210) = golpes normais (ANOs fixos 29–39, fora do HDAT 4). Fora do layout de botões (`iControlType == 0`) os especiais saem por gesto.
+- `GridOpsTest` agora 21 (comandos 0/3/7/8 = Y/X/B, 9/10 = Especial 1, 11/12 = Especial 2 com AngryOn). AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -557,7 +562,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
 | **TransplantStepsTest (novo)** | 9 |
-| **GridOpsTest (novo)** | 20 |
+| **GridOpsTest (novo)** | 21 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
