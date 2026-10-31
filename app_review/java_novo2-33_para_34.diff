@@ -2510,8 +2510,34 @@ diff -ruN a/AttackRenderer.java b/AttackRenderer.java
  
 diff -ruN a/AttackSim.java b/AttackSim.java
 --- a/AttackSim.java	2026-10-13 00:52:40.000000000 +0000
-+++ b/AttackSim.java	2026-10-24 21:48:19.000000000 +0000
-@@ -318,10 +318,71 @@
++++ b/AttackSim.java	2026-10-31 02:20:33.409145876 +0000
+@@ -74,8 +74,11 @@
+         /** Frame sem tempo: o jogo reprocessa o mesmo frame para sempre. */
+         public boolean isHolding() { return !isDone() && time <= 0 && !isSynced(); }
+ 
+-        /** Um tick de _ActReqMain. */
+-        void actReq() {
++        /**
++         * _ActReqMain, "sincronizacao com o pai": roda ANTES da checagem de pausa (flag 4), entao um link sincronizado (0x8000 frame / 0x2000 x,y)
++         * continua acompanhando o pai mesmo com o hitstop.
++         */
++        void syncWithParent() {
+             if (parent != null && (actFlags & 0xA000) != 0) {
+                 if ((actFlags & 0x8000) != 0) {
+                     if (pat != parent.pat) {
+@@ -89,6 +92,11 @@
+                 x = parent.x;
+                 y = parent.y;
+             }
++        }
++
++        /** Um tick de _ActReqMain. */
++        void actReq() {
++            syncWithParent();
+ 
+             if (holdLast && (holding || pat >= mpts.length || (actFlags & 2) != 0) && mpts.length > 0) {
+                 if (!holding) {                       // chegou ao fim: congela no ultimo frame e continua andando
+@@ -318,18 +326,85 @@
      /** Um tick: raiz primeiro, depois os links na ordem. */
      public void step() { step(false); }
  
@@ -2583,7 +2609,12 @@ diff -ruN a/AttackSim.java b/AttackSim.java
              root.actReq();
              for (int i = 0; i < children.length; i++) {
                  if (children[i] != null) children[i].actReq();
-@@ -330,6 +391,8 @@
+             }
++        } else {
++            for (int i = 0; i < children.length; i++) {          // pausado: o _ActReq ainda sincroniza o link com o pai antes de parar
++                if (children[i] != null) children[i].syncWithParent();
++            }
+         }
          frame++;
          if (root.pat < prevRootPat) rootWrapped = true;
          prevRootPat = root.pat;
@@ -34977,6 +35008,80 @@ diff -ruN a/test/AnoFilterTest.java b/test/AnoFilterTest.java
 +        A[] a = new A[205];
 +        for (int i = 0; i < a.length; i++) a[i] = new A().mpt(new M().time(5).img(1));
 +        return dac(a);
++    }
++}
+diff -ruN a/test/AuraLinkFrozenTest.java b/test/AuraLinkFrozenTest.java
+--- a/test/AuraLinkFrozenTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/AuraLinkFrozenTest.java	2026-10-31 02:20:18.778228147 +0000
+@@ -0,0 +1,70 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/**
++ * Link de uma aura (ex.: defesa ANO 4 -> efeito ANO 210 -> link ANO 104): o jogo faz a "sincronizacao com o pai" ANTES da checagem de pausa,
++ * entao durante o hitstop o link sincronizado continua acompanhando a raiz da aura enquanto o dono e empurrado.
++ */
++public class AuraLinkFrozenTest {
++    static void link(Dac d, int idx, int target, int flags) {
++        Ano old = d.getAno(idx);
++        d.setAno(idx, new Ano(idx, true, old.flags | 2, old.priority, new Ano.Link[] { new Ano.Link(0, 0, flags | target) }, old.mpts));
++    }
++
++    public static void main(String[] args) throws Exception {
++        // ---- AttackSim puro: pausado, a raiz anda (quem a posiciona) e o link sincronizado vai junto; o sem sync fica
++        for (int kind = 0; kind < 3; kind++) {
++            A[] a = new A[20];
++            for (int i = 0; i < a.length; i++) a[i] = new A().mpt(new M().time(30).img(1)).mpt(new M().time(30).img(1));
++            Dac d = dac(a);
++            link(d, 10, 11, kind == 0 ? 0x4000 : kind == 1 ? 0x8000 : 0);
++            AttackSim s = new AttackSim(d, 10, false, 0, 0);
++            AttackSim.Obj r = s.root(), c = s.children()[0];
++            int pat0 = c.pat, time0 = c.time;
++            for (int t = 0; t < 4; t++) {
++                r.x += 5 << 16;
++                s.step(true);
++            }
++            String want = kind == 2 ? "0" : String.valueOf(20);
++            check("sim pausado, link " + (kind == 0 ? "syncXY" : kind == 1 ? "syncMpt" : "sem sync") + ": x do link", String.valueOf(c.x >> 16), want);
++            if (kind != 2) check("sim pausado: tempo e frame nao andam", (c.pat == pat0 || kind == 1) + ":" + (r.time == 30), "true:true");
++        }
++
++        // ---- oponente defendendo (ANO 4 com aura 71+ -> ANO 201 com link ANO 104) em hitstop e empurrado
++        BattleSim.defend = true;
++        try {
++            for (int kind = 0; kind < 2; kind++) {
++                A[] atk = new A[41];
++                for (int i = 0; i < atk.length; i++) atk[i] = new A().mpt(new M().time(1));
++                atk[40] = new A().mpt(new M().time(2)).mpt(new M().time(3).hit(2, 20, -40, 40, 20).opt1(3).dmg(20)).mpt(new M().time(40));
++                A[] def = new A[220];
++                for (int i = 0; i < def.length; i++) def[i] = new A().mpt(new M().time(60).img(1).hit(1, -10, -60, 20, 60));
++                def[4] = new A().mpt(new M().time(60).img(1).hit(1, -10, -60, 20, 60).hit(71, 4, -30, 0, 0));
++                Dac dd = dac(def);
++                link(dd, 201, 104, kind == 0 ? 0x4000 : 0x8000);
++                A[] fx = new A[5];
++                for (int i = 0; i < 5; i++) fx[i] = new A().mpt(new M().time(4));
++                GameData g = gd(new byte[][] { null, null, null, react(new int[]{30, 30, 20}) });
++                CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++                BattleSim s = new BattleSim(dac(atk), ch, ch.moves[0], false, dd, dac(fx), g, 30, 0, 0);
++                int bad = 0, frozenSeen = 0, moved = 0, seen = 0, x0 = s.opponentX();
++                for (int t = 0; t < 40; t++) {
++                    s.step();
++                    if (s.opponentX() != x0) moved++;
++                    for (BattleSim.Layer l : s.layers()) {
++                        if (l.owner != BattleSim.OWNER_AURA_OPPCHAR || l.sim.root() == null || l.only != l.sim.root()) continue;
++                        seen++;
++                        if (s.hitstopDefender() > 0 && s.opponentX() != x0) frozenSeen++;
++                        for (AttackSim.Obj c : l.sim.children()) if (c != null && (c.x != l.only.x || c.y != l.only.y)) bad++;
++                    }
++                }
++                check("defesa: aura vista, oponente empurrado, e houve ticks de hitstop com empurrao (" + kind + ")", seen > 5 && moved > 3 && frozenSeen > 0, true);
++                check("defesa: o link da aura acompanha a aura em TODO tick, hitstop incluso (" + kind + ")", bad, 0);
++            }
++        } finally {
++            BattleSim.defend = false;
++        }
++        System.out.println("AuraLinkFrozenTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/BattleTest.java b/test/BattleTest.java

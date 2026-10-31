@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1867 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1876 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -511,6 +511,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Hitstop quando o oponente defende — conferido no jogo, o app já estava certo**: no hit-detect do `TCBManajer` (23644-23645 projétil / 23696-23714 corpo a corpo) `iHitStop = PlayerHitStop[atacante]` é posto nos dois **antes** de a `DamageChange` decidir a defesa (md 908 só entra dentro dela); o md 908 ainda lê `iHitStop` (CPU cancela em `== 1`, o fim só vem com `iHitStop <= 0`) e `GuardCancelTime = PlayerHitStop + 5`. Ou seja, **defendeu = congela igual a um hit** (o hit só deixa de congelar no grupo 4 do OPT 1, `/50 == 4`, e em `/50 == 3` é metade). Não mudei nada; `GuardTest` ganhou a conferência.
 - `OppLinkSyncTest` (novo, 118: corpo × links × aura do oponente em **todo** tick com knockback, lançado ao ar com pouso, parede (WALL 1), câmera de deslocamento (WALL 3), puxão (flag 40), teleporte (flag 39), 3 distâncias × 2 lados, trava cinematográfica com 7 distâncias × 2 lados, aura com speed 6): o teste da velocidade falha com o `placeAuras` antigo e o do 1º tick falhava antes de `reset` chamar `settleFighters`. **Limite**: em nenhum desses cenários consegui reproduzir, na simulação, o oponente fora do corpo além dos casos acima — se ainda ver o desalinhamento, preciso do ANO do oponente e do Frame/reação onde acontece. Só a simulação foi testada, nada foi rodado no aparelho.
 
+### 3.1zzv Link de efeito do oponente acompanha a aura durante o hitstop (defesa ANO 4 → efeito ANO 210 → link ANO 104)
+- **Causa**: na defesa o oponente é empurrado mesmo durante o hitstop; a aura (ANO 210) é posicionada só na raiz (como o jogo: `x = dono + offset`, sem `_SetXY`) e o link (ANO 104) só copia `x/y` do pai dentro do `actReq`. Com o hitstop o `AttackSim.step(frozen)` pulava o `actReq` inteiro → o link ficava parado e só "pulava" para a aura quando o hitstop acabava. No jogo (`_ActReqMain`, TCBManajer 31226) a sincronização com o pai (x/y e PAT dos links com flag 0x2000 / 0x8000) roda **antes** da checagem de pausa, então o link acompanha mesmo pausado.
+- **Correção** (`AttackSim`): o trecho de sincronização virou `Obj.syncWithParent()`; `step(true)` agora o executa nos links (sem avançar tempo, movimento nem frames). Vale para aura, projétil, efeito e agarrão pausados. Links **sem** sync continuam independentes (como no jogo).
+- `AuraLinkFrozenTest` (novo, 9): sim pausado com link syncXY / syncMpt / sem sync; oponente defendendo (ANO 4 com aura 71 → ANO 201 → link ANO 104, nas duas flags de sync) com o link igual à aura em **todo** tick, hitstop com empurrão incluso — falhava em 9 ticks antes. Só a simulação foi testada, não o desenho no aparelho. Se o ANO 104 não tiver flag de sync no seu DAC, ele fica parado também no jogo (aí me diga a flag do link).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -604,6 +609,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **OppEffectTest (novo)** | 4 |
 | **LinkSyncTest (novo)** | 6 |
 | **OppLinkSyncTest (novo)** | 118 |
+| **AuraLinkFrozenTest (novo)** | 9 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
