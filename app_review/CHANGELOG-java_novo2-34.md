@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1738 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1742 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -494,6 +494,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - A nota explicativa do gesto (tempo, diagonal, soltar entre as direções) foi **retirada**: o ⓘ mostra só o comando (`ou joystick: ↓ → + A`).
 - `GridOpsTest` 44 (gestos completos e a nota só nos golpes com gesto). AJUDA (PT/EN/ES) e MD atualizados. Gestos vindos da leitura do `CmdCheck`, não testados no jogo.
 
+### 3.1zzs DEF não confirma o hit; efeitos do oponente (ex.: defesa ANO 4) agora aparecem
+- **DEF e SEQ**: com a caixa DEF ligada o golpe defendido entrava na SEQ (`hitOrGuard` devolvia “confirmado”). No jogo o defensor fica em guarda (md 908), não em dano (md 876/877), então **SEQ, ANIM_AO_ACERTAR e pouso ao acertar só acontecem quando o hit acerta**. `hitOrGuard` agora devolve falso na guarda (continua aplicando empurrão, efeito e SE da defesa).
+- **Efeitos do oponente**: `updateAuras` só olhava o atacante, então a defesa (ANO 4, sem sprite — o visual é um efeito colocado no frame) ficava invisível. Agora `updateAurasFor(who)` cria também as auras do **oponente** (flags 10–17 effect, 41–70 charf, 71–125 = ANO 201+ do **personagem dele**, no DAC dele e com as sprites dele: novo `OWNER_AURA_OPPCHAR`), seguem o hitstop e o flip dele e somem com “esconder efeitos”.
+- `GuardTest` ajustado (golpe defendido não entra na SEQ) e `OppEffectTest` novo (4: aura do oponente aparece, não confunde com a do atacante, some sem a flag, aparece na defesa ANO 4). AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -584,6 +589,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **TransplantStepsTest (novo)** | 9 |
 | **GridOpsTest (novo)** | 44 |
 | **AnoFilterTest (novo)** | 9 |
+| **OppEffectTest (novo)** | 4 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
