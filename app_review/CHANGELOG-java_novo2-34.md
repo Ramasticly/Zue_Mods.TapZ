@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1748 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1867 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -504,6 +504,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Correção** (`BattleSim`): `placeAuras()` no fim do tick (em `settleFighters`, junto do `settle()` dos links) recoloca cada aura no offset do hit a partir da raiz **atual** do dono (espelhado pelo flip), movendo os links dela junto; as auras do oponente passam a ser atualizadas **depois** do defensor. `AnimPreview.groundSim`: ao limitar a raiz ao chão chama `settle()` (antes os links ficavam no `y` antigo, flutuando ou afundando).
 - `LinkSyncTest` (6: aura do atacante a (10, −20) em **todo** tick com câmera / separação de corpos, virado = x espelhado, aura do oponente em todo tick do knockback, `groundSim`) — os 3 primeiros falhavam antes da correção. Só a simulação foi testada; o desenho na tela com a câmera real não foi rodado no aparelho.
 
+### 3.1zzu Efeitos do oponente: a velocidade própria da aura não é mais apagada; câmera do 1º tick e da trava; hitstop na defesa conferido
+- **Bug da 3.1zzt (meu)**: `placeAuras()` recolocava a aura **na posição exata** dono + offset, apagando o passo de velocidade que o ANO da aura dá no próprio tick (o jogo faz `x = dono + offset` e só depois o `_ActReq`, então fica dono + offset + passo). Efeito com speed X andava "travado" no dono — mais visível quando o dono se desloca (knockback, puxão). Agora a aura guarda a posição-base (`bx/by`) e o `placeAuras` leva só a **diferença** que a câmera / borda / empurrão deu ao dono; a velocidade da aura continua.
+- **Câmera fora do fluxo normal**: o 1º tick (`reset`) e os ticks da **trava cinematográfica** (md 926) rodam a câmera / separação de corpos mexendo na raiz, mas não passavam por `settleFighters()` → links e auras ficavam no lugar antigo (com o oponente perto da borda, a aura dele nascia fora do corpo). Os dois caminhos agora terminam em `settleFighters()`.
+- **Desenho**: as auras do oponente sumiam quando o **atacante** estava escondido (`HIDE`); agora cada aura segue o esconder do **próprio** dono.
+- **Hitstop quando o oponente defende — conferido no jogo, o app já estava certo**: no hit-detect do `TCBManajer` (23644-23645 projétil / 23696-23714 corpo a corpo) `iHitStop = PlayerHitStop[atacante]` é posto nos dois **antes** de a `DamageChange` decidir a defesa (md 908 só entra dentro dela); o md 908 ainda lê `iHitStop` (CPU cancela em `== 1`, o fim só vem com `iHitStop <= 0`) e `GuardCancelTime = PlayerHitStop + 5`. Ou seja, **defendeu = congela igual a um hit** (o hit só deixa de congelar no grupo 4 do OPT 1, `/50 == 4`, e em `/50 == 3` é metade). Não mudei nada; `GuardTest` ganhou a conferência.
+- `OppLinkSyncTest` (novo, 118: corpo × links × aura do oponente em **todo** tick com knockback, lançado ao ar com pouso, parede (WALL 1), câmera de deslocamento (WALL 3), puxão (flag 40), teleporte (flag 39), 3 distâncias × 2 lados, trava cinematográfica com 7 distâncias × 2 lados, aura com speed 6): o teste da velocidade falha com o `placeAuras` antigo e o do 1º tick falhava antes de `reset` chamar `settleFighters`. **Limite**: em nenhum desses cenários consegui reproduzir, na simulação, o oponente fora do corpo além dos casos acima — se ainda ver o desalinhamento, preciso do ANO do oponente e do Frame/reação onde acontece. Só a simulação foi testada, nada foi rodado no aparelho.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -596,6 +603,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **AnoFilterTest (novo)** | 9 |
 | **OppEffectTest (novo)** | 4 |
 | **LinkSyncTest (novo)** | 6 |
+| **OppLinkSyncTest (novo)** | 118 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
