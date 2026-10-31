@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1876 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1883 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -515,6 +515,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Causa**: na defesa o oponente é empurrado mesmo durante o hitstop; a aura (ANO 210) é posicionada só na raiz (como o jogo: `x = dono + offset`, sem `_SetXY`) e o link (ANO 104) só copia `x/y` do pai dentro do `actReq`. Com o hitstop o `AttackSim.step(frozen)` pulava o `actReq` inteiro → o link ficava parado e só "pulava" para a aura quando o hitstop acabava. No jogo (`_ActReqMain`, TCBManajer 31226) a sincronização com o pai (x/y e PAT dos links com flag 0x2000 / 0x8000) roda **antes** da checagem de pausa, então o link acompanha mesmo pausado.
 - **Correção** (`AttackSim`): o trecho de sincronização virou `Obj.syncWithParent()`; `step(true)` agora o executa nos links (sem avançar tempo, movimento nem frames). Vale para aura, projétil, efeito e agarrão pausados. Links **sem** sync continuam independentes (como no jogo).
 - `AuraLinkFrozenTest` (novo, 9): sim pausado com link syncXY / syncMpt / sem sync; oponente defendendo (ANO 4 com aura 71 → ANO 201 → link ANO 104, nas duas flags de sync) com o link igual à aura em **todo** tick, hitstop com empurrão incluso — falhava em 9 ticks antes. Só a simulação foi testada, não o desenho no aparelho. Se o ANO 104 não tiver flag de sync no seu DAC, ele fica parado também no jogo (aí me diga a flag do link).
+
+### 3.1zzw Substituir imagem (SPRITES) apaga a sprite antiga da folha antes de pôr a nova
+- **Bug**: `SpriteLib.replace` só zerava a entrada do CNV (espaço "livre" no mapa); os pixels da sprite antiga ficavam na folha NNN.png. A nova ia para outro retângulo (ou, no mesmo lugar e menor, deixava sobra da antiga). O jogo só lê pelo recorte, mas a folha mostrava a sprite antiga e o espaço não ficava limpo.
+- **Correção** (ordem pedida): (1) a sprite antiga é apagada da folha — só as partes que **nenhuma outra entrada do CNV** usa (`SpriteAlloc.uncovered`, subtração de retângulos; recortes que dividem o mesmo pedaço ficam intactos); (2) só então a nova é alocada, vendo o buraco livre **e sem pixels**: uma sprite menor pode assumir o lugar da antiga e o resto fica disponível para outras. Se a gravação da nova falhar, os pixels e a entrada antigos voltam.
+- **Não mudou**: Remover / excluir em massa / OTIMIZAR continuam só tirando a entrada do CNV (pixels ficam como espaço livre, como antes); posso estender se quiser.
+- AJUDA (PT/EN/ES) e MD de IA: a frase "as folhas ficam intactas no disco" agora diz que só mudam ao adicionar ou substituir.
+- `SpriteAllocTest` +7 (`uncovered`: sem outras entradas, uma no meio, outra folha, cobre tudo, retângulo vazio, duas sobrepostas sem contar duas vezes; e a sprite menor cabe no buraco da antiga, no canto 0,0). **Só a lógica de áreas foi testada**; o desenho dos pixels (`SpriteLib.erase` / `restore`, usam `Bitmap`) só foi compilado e revisado, não rodado no aparelho.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
