@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1736 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1738 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -489,6 +489,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - A tela pinta cada linha com `ForegroundColorSpan` (texto com cor não passa pelo `I18nTextView`, então cada linha é traduzida antes).
 - `GridOpsTest` agora 42 (bloco Sequências, fontes BIN/CÓDIGO, repetição só em 0/3/6, agarrão só se funciona, continuações do 30 e do 32). Rótulo do filtro e cores só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzr ⓘ: gesto de joystick completo (direções + botão A) e gesto do Z corrigido
+- O `CmdCheck` só avalia especial por gesto no tick em que um botão é apertado (`JoyTrig & 670056704`: o A, 16384 / 256, e os atalhos Y / X / B / Z / IRA; as direções não estão na máscara). O ⓘ mostrava só as direções; agora mostra a sequência **completa, terminando no A**: Y `↓ → + A`, X `→ ↓ + A`, B `↓ ← + A`, **Z `↓ ← → + A`** (antes estava `↓ → →`, errado: o código pede ↓, depois exatamente ← e depois →), IRA `↓ ← ↓ ← + A` (com AngryOn).
+- Nota azul no ⓘ do golpe: até 1 s; pode deslizar pela diagonal (o ↘ entre ↓ e → não vira estado próprio no `KeyBuf`) ou soltar entre as direções (o histórico só zera após 60 ticks de neutro); o A vem por último; “frente” é para onde o personagem olha.
+- `GridOpsTest` 44 (gestos completos e a nota só nos golpes com gesto). AJUDA (PT/EN/ES) e MD atualizados. Gestos vindos da leitura do `CmdCheck`, não testados no jogo.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -577,7 +582,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
 | **TransplantStepsTest (novo)** | 9 |
-| **GridOpsTest (novo)** | 42 |
+| **GridOpsTest (novo)** | 44 |
 | **AnoFilterTest (novo)** | 9 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
