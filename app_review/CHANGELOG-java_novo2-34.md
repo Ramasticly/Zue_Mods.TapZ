@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1726 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1736 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -482,6 +482,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Golpes normais (ANOs 29–39)** pesquisados no `CommonNormal` / md 879: em pé A neutro 30, frente 31, trás 37, baixo 36 (de corrida 29); pulando 34 / 35 / 39 / 38. **Sequência automática = janela OPT 512** (30 → 32 → 33; 31 / 36 / 37 com direção). O app chamava essa janela de “ação desconhecida”: nas ANOs 30 e 32 ela agora é **“Janela de combo (A→A)”** (`WIN_COMBO`, entra na lista do ＋ e tem descrição).
 - `AnoFilterTest` (9) e `GridOpsTest` ampliado (32: textos simples, ANOs fixos, botões e ícones). Switch, filtros, scrim, ícones, pouso/loop/trava na prévia só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
 
+### 3.1zzq ⓘ: bloco “Sequências”, continuações dos ataques 29–39 e cores azul / verde; filtro que atualiza
+- **Bug do filtro**: o texto do botão FILTRAR só era refeito ao reabrir o menu; agora `updateFilterLabel()` roda no próprio toque.
+- **Info do golpe** (`AttackInfo.moveLines`, linhas tipadas): bloco **“Sequências:”** (sem “automáticas”) **sem pouso**. **Verde (BIN)**: `SEQ (chão)`, `END (chão)`, `SEQ (ar)`, `END (ar)`, **`SEQ PROJ` = `ANIM_AO_ACERTAR`** e o agarrão do BIN (`OPONENTE_AGARRADO`). **Azul (código-fonte)** com “(automática)”: **repetição** do especial (golpes 0/3/6 com `MAX_REPETICOES`: ANO 42, alterna 40/41) e **agarrão** (`ANIM_INICIAL + 1`, só se `grabWorks`). Botão, gesto e custo também em azul (vêm do `CmdCheck`/`CreateGamepad`).
+- **Info da ANO** (`anoLines`): papéis vindos do BIN em **verde** (`ANIM_INICIAL do Golpe N`, `SEQ do golpe N`, `SEQ PROJ do golpe N`, `Projétil do golpe N`, pouso…); ANOs fixos do jogo em **azul**. **ANOs 29–39** mostram a continuação (`FixedAnos.continuations`, md 879): **ANO 30** → A: 32, A + frente: 31, A + trás: 37, A + baixo: 36; **ANO 32** → A: 33 e as mesmas direções; as demais “Sem continuação”; o 32 e o 33 dizem de onde vêm (“Vem da ANO 30 / 32”).
+- A tela pinta cada linha com `ForegroundColorSpan` (texto com cor não passa pelo `I18nTextView`, então cada linha é traduzida antes).
+- `GridOpsTest` agora 42 (bloco Sequências, fontes BIN/CÓDIGO, repetição só em 0/3/6, agarrão só se funciona, continuações do 30 e do 32). Rótulo do filtro e cores só compilados/revisados. AJUDA (PT/EN/ES) e MD atualizados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -570,7 +577,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
 | **TransplantStepsTest (novo)** | 9 |
-| **GridOpsTest (novo)** | 32 |
+| **GridOpsTest (novo)** | 42 |
 | **AnoFilterTest (novo)** | 9 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
