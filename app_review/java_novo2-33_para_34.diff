@@ -1224,7 +1224,7 @@ diff -ruN a/AiHelpShare.java b/AiHelpShare.java
 +}
 diff -ruN a/AnimPreview.java b/AnimPreview.java
 --- a/AnimPreview.java	2026-10-20 10:46:55.000000000 +0000
-+++ b/AnimPreview.java	2026-10-30 21:57:03.507139135 +0000
++++ b/AnimPreview.java	2026-10-31 01:40:48.758403340 +0000
 @@ -29,6 +29,9 @@
      private long frozenAt;
      private static final long HOLD_MS = 1000;
@@ -1284,7 +1284,22 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
      /** So o primeiro frame, parado (listas grandes de ANOs: barato, sem simular a animacao inteira). */
      void setFirstFrameOnly(boolean on) { staticMode = on; restart(); }
  
-@@ -121,6 +160,7 @@
+@@ -69,9 +108,12 @@
+     void setShowOpponent(boolean on) { showOpp = on && hasOpponent(); restart(); }
+ 
+     /** Chao: y = 0 e a linha dos pes; nada fica abaixo dela. */
+-    private static void ground(AttackSim s) {
++    private static void ground(AttackSim s) { groundSim(s); }
++
++    /** Limita a raiz ao chao e leva os links junto (senao eles ficam no y antigo, flutuando ou afundando). */
++    static void groundSim(AttackSim s) {
+         AttackSim.Obj r = s.root();
+-        if (r != null && r.y > 0) { r.y = 0; r.speedY = 0; }
++        if (r != null && r.y > 0) { r.y = 0; r.speedY = 0; s.settle(); }
+     }
+ 
+     private AttackSim makeOpp() {
+@@ -121,6 +163,7 @@
      }
  
      void set(Dac d, SpriteCache s, int anoIndex) {
@@ -1292,7 +1307,7 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
          dac = d;
          sprites = s;
          ano = anoIndex;
-@@ -129,6 +169,8 @@
+@@ -129,6 +172,8 @@
  
      private void restart() {
          sim = null;
@@ -1301,7 +1316,7 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
          age = 0;
          idle = 0;
          frozen = false;
-@@ -136,6 +178,15 @@
+@@ -136,6 +181,15 @@
          Ano a = dac == null ? null : dac.getAno(ano);
          if (a != null && a.present) sim = new AttackSim(dac, ano, facingLeft, 0, 0);
          oppSim = makeOpp();
@@ -1317,7 +1332,7 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
          if (staticMode) {
              hasBox = false;
              if (sim != null && sprites != null) {
-@@ -176,9 +227,22 @@
+@@ -176,9 +230,22 @@
  
      @Override protected void onDraw(Canvas c) {
          c.drawColor(0xFF0D0F13);
@@ -1341,7 +1356,7 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
              return;
          }
          long now = SystemClock.uptimeMillis();
-@@ -190,6 +254,15 @@
+@@ -190,6 +257,15 @@
              acc -= 1;
              steps++;
              sim.step();
@@ -1357,7 +1372,7 @@ diff -ruN a/AnimPreview.java b/AnimPreview.java
              ground(sim);
              if (oppSim != null) oppSim.step();
              age++;
-@@ -224,6 +297,8 @@
+@@ -224,6 +300,8 @@
          renderer.drawSim(c, sim, sprites);
          if (showHits) {
              opts.showHits = true;
@@ -5489,7 +5504,7 @@ diff -ruN a/AttackView.java.pre_sl b/AttackView.java.pre_sl
 +}
 diff -ruN a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-10-31 01:18:53.613258177 +0000
++++ b/BattleSim.java	2026-10-31 01:41:33.666766737 +0000
 @@ -25,10 +25,22 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -5596,8 +5611,9 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +        AttackSim.Obj r = s.root();
 +        if (r != null) { f.x = r.x; f.y = r.y; }
 +        return f;
-+    }
-+
+     }
+ 
+-    /** Cutscene da flag 20 (task md 996). */
 +    /** md 966: _ActReq e so depois _SetXY: o efeito nao sai do lugar, qualquer que seja a velocidade do ANO. */
 +    private static void stepFx(Fx f) {
 +        f.sim.step(false);
@@ -5672,9 +5688,8 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (h.flag < 0 || h.flag > 100) continue;
 +            spawnSmoke(0, h.flag + 70, f.x + ((f.flip ? -h.x : h.x) << 16), f.y + (h.y << 16), f.flip, false);
 +        }
-     }
- 
--    /** Cutscene da flag 20 (task md 996). */
++    }
++
 +    private void stepAllFx() {
 +        inFxLoop = true;
 +        for (int i = fxs.size() - 1; i >= 0; i--) {
@@ -5800,7 +5815,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      // dano do defensor
      private boolean inDamage;
-@@ -186,18 +397,27 @@
+@@ -186,18 +397,28 @@
      private int dOldType, dOldIdx;
      private int dXs, dYs, dXa, dYa;
      private int dMove;
@@ -5814,6 +5829,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private static final class Aura {
 -        int key, owner;
 +        int key, owner, who;
++        Ano.Hit hit;               // o hit (offset x/y) da flag no frame atual do dono: placeAuras() recoloca a aura com ele quando o dono se mexe depois
          AttackSim sim;
      }
      private final List<Aura> auras = new ArrayList<Aura>();
@@ -5829,7 +5845,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean everHit;                     // o golpe acertou o oponente em algum momento
      private boolean flies = true;     // AirType: HDAT 3 linha 0 coluna 6
  
-@@ -207,6 +427,12 @@
+@@ -207,6 +428,12 @@
          reset();
      }
  
@@ -5842,7 +5858,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      /** Personagem do oponente (largura do corpo para as paredes). Reinicia a simulacao. */
      public void setOpponentChar(CharData c) {
          oppChar = c;
-@@ -214,6 +440,14 @@
+@@ -214,6 +441,14 @@
      }
  
      private AttackSim grab;      // OPONENTE_ANIM_SENDO_AGARRADO
@@ -5857,7 +5873,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private int grabSerial = -1;
      private boolean grabArmed;
      private int phase;           // 0 = ANIM_INICIAL, 1 = ANIM_SEQ, 2 = ANIM_END
-@@ -238,6 +472,9 @@
+@@ -238,6 +473,9 @@
      public final void reset() {
          projs.clear();
          fxs.clear();
@@ -5867,7 +5883,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          sounds.clear();
          hsAtk = 0;
          hsDef = 0;
-@@ -248,6 +485,9 @@
+@@ -248,6 +486,9 @@
          endAnim = -1;
          endState = 0;
          dMove = 0;
@@ -5877,7 +5893,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          lastHit = "";
          dmgNote = "";
          ticks = 0;
-@@ -265,11 +505,33 @@
+@@ -265,11 +506,33 @@
          grab = null;
          grabSerial = -1;
          grabArmed = false;
@@ -5912,7 +5928,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          everHit = false;
          attackOver = false;
          flies = flyMode;
-@@ -286,6 +548,7 @@
+@@ -286,6 +549,7 @@
  
          int atkY = -heightPx * PX;
          atk = new AttackSim(atkDac, move.animInicial, atkLeft, 0, atkY);
@@ -5920,7 +5936,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          cineLeft = 0;
  
          oppX = (atkLeft ? -distancePx : distancePx) * PX;
-@@ -295,18 +558,28 @@
+@@ -295,18 +559,28 @@
          setOppAct(0);
  
          // animacao do projetil escolhida no inicio do golpe (altura relativa ao oponente)
@@ -5954,7 +5970,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (f.sim.root() != null) fxs.add(f);
              }
          }
-@@ -314,16 +587,24 @@
+@@ -314,16 +588,24 @@
          consumeSe(atk, 0);
          consumeSe(opp, 1);
          updateAuras();
@@ -5979,7 +5995,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      public void setSpecialType(int t) {
          // modo ANO (golpe generico): o ANO inicial de uma linha 9-12 do HDAT 4 tambem ativa a trava
-@@ -341,6 +622,8 @@
+@@ -341,6 +623,8 @@
      public int specialTypeValue() { return specialType; }
      public boolean hasCinematic() { return specialType >= 9 && specialType <= 12; }
      public boolean cinematicActive() { return cineLeft > 0; }
@@ -5988,7 +6004,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      private int doneSince = -1;
  
-@@ -360,29 +643,39 @@
+@@ -360,29 +644,39 @@
  
      private void stepImpl() {
          ticks++;
@@ -6034,25 +6050,27 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  idleMode = true;
                  lastSerial = -1;
                  spawnedSerial = -1;
-@@ -390,8 +683,10 @@
+@@ -390,43 +684,86 @@
                  atkFrozen = false;
              }
          }
 -        if (atkFrozen) {
 -            stepGrab();
+-            updateAuras();
 +        if (stunned[0]) {
 +            // md 925: o PlayerTail roda sem _ActReq (parado, mas com _SetXY); projeteis, auras e agarrao nao andam
 +            pinStunned();
 +        } else if (atkFrozen) {
-             updateAuras();
++            updateAurasFor(0);
          } else {
              atk.step(hsAtk > 0);
-@@ -399,34 +694,73 @@
+             clampAttacker();
              tryPull();
              checkEnd();
              checkAttackOver();
 -            stepGrab();
-             updateAuras();
+-            updateAuras();
++            updateAurasFor(0);
              afterAtkFrame();
              consumeSe(atk, 0);
          }
@@ -6068,6 +6086,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +        stepGrab();                                   // md 939-941 (13696): depois dos lutadores e dos projeteis
 +        defShaking = !stunned[1] && inDamage && !dCharSrc && hsDef > 0 && ((hsDef & 3) == 1 || (hsDef & 3) == 3);
 +        oppFrameFlags();
++        updateAurasFor(1);                            // as auras do oponente nascem/andam depois do corpo dele (knockback, guarda, reacao)
 +        endPhase();
 +        // 4. efeitos
 +        stepAllFx();
@@ -6131,11 +6150,12 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +    private void settleFighters() {
 +        atk.settle();
 +        opp.settle();
++        placeAuras();
 +        if (grab != null) grab.settle();
      }
  
      private boolean looping;
-@@ -442,6 +776,7 @@
+@@ -442,6 +779,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, move, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -6143,7 +6163,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          return s;
      }
-@@ -464,6 +799,27 @@
+@@ -464,6 +802,27 @@
          return -1;
      }
  
@@ -6171,7 +6191,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      /** Primeiro tick de cada frame (pat) da ANO {@code anoIdx}, numa unica passada; -1 = nunca aparece. */
      public int[] firstTicks(int anoIdx, int frames, int max) {
          int[] out = new int[frames];
-@@ -492,7 +848,14 @@
+@@ -492,7 +851,14 @@
  
      public int measureLength() {
          BattleSim s = fresh();
@@ -6187,7 +6207,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private int measure(BattleSim s) {
-@@ -513,7 +876,7 @@
+@@ -513,7 +879,7 @@
  
      /** Tudo que nao e o atacante parou: sem projeteis, efeitos, reacao nem hitstop. */
      /** Fim estendido: o atacante so congela quando esta no chao (ou voa); no ar ele cai e pousa antes. */
@@ -6196,7 +6216,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
  
      /** Projetil ainda em jogo: vivo e dentro do mapa (com folga); fora dele ja desapareceu para o tempo estendido. */
      private boolean projActive() {
-@@ -581,59 +944,126 @@
+@@ -581,59 +947,126 @@
          }
          if (spawnedSerial != r.serial) {
              spawnedSerial = r.serial;
@@ -6261,20 +6281,17 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-+            }
+             }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-             }
-         }
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++            }
++        }
++    }
++
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -6299,7 +6316,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-+        }
+         }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
@@ -6313,8 +6330,11 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +        pendA = false;
 +        AttackSim.Obj r = atk.root();
 +        if (r != null) { r.x = pendAX; r.y = pendAY; }
-+    }
-+
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    /**
 +     * Flag 20: cria a task 996 (evento HDAT 13 do dono da animacao, linha = COORDS[2]). player = lutador dono do ANO
 +     * (0 atacante, 1 oponente); src = projetil dono do ANO (md 971/972 tambem chamam CheckOptFlag), ou null.
@@ -6353,7 +6373,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -643,123 +1073,141 @@
+@@ -643,123 +1076,141 @@
              int anim = c.flipped ? animF : animN;
              String why = "";
              if (animN == 0) why = " (sem animação: ANIM_ID = 0)";
@@ -6582,7 +6602,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int count = (move.flags & 4) != 0 ? 3 : 1;
          for (int k = 0; k < count; k++) {
              int x, y;
-@@ -779,18 +1227,49 @@
+@@ -779,18 +1230,49 @@
              else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
  
              Proj p = new Proj();
@@ -6633,7 +6653,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int dx = h.x << 16;
          int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
          int y = o.y + (h.y << 16);
-@@ -801,17 +1280,21 @@
+@@ -801,17 +1283,21 @@
          p.globalAno = move.projGlobal;
          p.groundAno = move.subChao;
          p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
@@ -6655,7 +6675,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          p.life++;
          AttackSim.Obj o = p.sim.root();
          if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
-@@ -844,19 +1327,19 @@
+@@ -844,19 +1330,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -6679,7 +6699,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -869,7 +1352,7 @@
+@@ -869,7 +1355,7 @@
          }
          if (p.firstX != o.x) p.moved = true;
  
@@ -6688,7 +6708,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          o = p.sim.root();
          if (o != null) {
              if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
-@@ -890,22 +1373,20 @@
+@@ -890,22 +1376,20 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
@@ -6717,7 +6737,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // projeteis
          for (int i = 0; i < projs.size(); i++) {
              Proj p = projs.get(i);
-@@ -920,13 +1401,13 @@
+@@ -920,13 +1404,13 @@
                  p.hs = HIT_STOP / 2;
                  hsDef = HIT_STOP;
              }
@@ -6734,7 +6754,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int[] pos = checkObjHit(r, def);
              if (pos != null) {
                  armed = false;
-@@ -936,8 +1417,8 @@
+@@ -936,8 +1420,8 @@
                      hsAtk = hs;
                      hsDef = hs;
                  }
@@ -6745,7 +6765,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              }
          }
      }
-@@ -989,7 +1470,7 @@
+@@ -989,7 +1473,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
@@ -6754,7 +6774,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1480,7 @@
+@@ -999,7 +1483,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
@@ -6763,7 +6783,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1499,7 @@
+@@ -1018,7 +1502,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
@@ -6772,7 +6792,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1511,6 @@
+@@ -1030,7 +1514,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
@@ -6780,7 +6800,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1063,6 +1543,7 @@
+@@ -1063,6 +1546,7 @@
          transKind = -1;
          if (switchAtk(next)) {
              hitConfirmed = false;                 // work[10] = 0
@@ -6788,7 +6808,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
          } else {
              r.x = ox;
-@@ -1117,6 +1598,7 @@
+@@ -1117,6 +1601,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -6796,7 +6816,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1633,7 @@
+@@ -1151,7 +1636,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
@@ -6805,7 +6825,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1184,9 +1666,34 @@
+@@ -1184,9 +1669,34 @@
          return false;
      }
  
@@ -6840,7 +6860,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          // md 883: y > chao com velocidade Y > 0 pousa, mesmo que o golpe tenha comecado no chao
          // ANO avulso (md 886 / 891): pousa assim que y > chao fora do hitstop, sem exigir velocidade Y
          boolean lands = move.generic ? (r.y > 0 && hsAtk == 0) : (r.y > 0 && r.speedY > 0);
-@@ -1208,7 +1715,6 @@
+@@ -1208,7 +1718,6 @@
              r.speedX = 0;
              r.accelX = 0;
              sounds.add(new Snd(true, 12, 0));
@@ -6848,7 +6868,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
              if (land == 0) land = 13;
              transKind = 3;
-@@ -1222,25 +1728,28 @@
+@@ -1222,25 +1731,46 @@
          // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
          if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
              transKind = 4;
@@ -6862,6 +6882,24 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 -    private void updateAuras() {
 -        AttackSim.Obj r = atk.root();
 +    private void updateAuras() { updateAurasFor(0); updateAurasFor(1); }
++
++    /**
++     * Fim do tick: a camera, as bordas, as paredes, a separacao de corpos, o empurrao e os teleportes mexem na raiz DEPOIS de a aura ser posicionada.
++     * Cada aura volta a ficar no offset do hit a partir da raiz atual do dono (espelhado pelo flip), junto com os links dela; sem isso o efeito
++     * ficava um tick atras do corpo.
++     */
++    private void placeAuras() {
++        for (int i = 0; i < auras.size(); i++) {
++            Aura a = auras.get(i);
++            AttackSim.Obj r = a.who == 0 ? atk.root() : opp.root();
++            AttackSim.Obj o = a.sim.root();
++            if (r == null || o == null || a.hit == null) continue;
++            int fl = (r.actFlags & 48) ^ (r.objFlags & 48);
++            int ox = (fl & 16) != 0 ? -a.hit.x : a.hit.x;
++            int x = r.x + (ox << 16), y = r.y + (a.hit.y << 16);
++            if (x != o.x || y != o.y) a.sim.translate(x - o.x, y - o.y);
++        }
++    }
 +
 +    /** Auras do lutador {@code who} (0 atacante, 1 oponente): o oponente tambem cria os efeitos colocados nos frames dele (ex.: a defesa, ANO 4). */
 +    private void updateAurasFor(int who) {
@@ -6883,13 +6921,14 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
          if (r == null) return;
          int fl = (r.actFlags & 48) ^ (r.objFlags & 48);
-@@ -1251,40 +1760,43 @@
+@@ -1251,40 +1781,45 @@
              int x = r.x + (ox << 16);
              int y = r.y + (h.y << 16);
              Aura a = null;
 -            for (int i = 0; i < auras.size(); i++) if (auras.get(i).key == f) { a = auras.get(i); break; }
 +            for (int i = 0; i < auras.size(); i++) if (auras.get(i).who == who && auras.get(i).key == f) { a = auras.get(i); break; }
              if (a != null) {
++                a.hit = h;
                  AttackSim.Obj o = a.sim.root();
                  if (o != null) { o.x = x; o.y = y; }
 -                a.sim.step(hsAtk > 0);
@@ -6913,6 +6952,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              a.owner = owner;
 -            a.sim = new AttackSim(dac, ano, (r.objFlags & 16) != 0, x, y);
 +            a.who = who;
++            a.hit = h;
 +            a.sim = new AttackSim(dac, ano, false, x, y);
 +            a.sim.clearPause = true;
 +            applyFlip(a.sim, auraFlip(owner, r, a.sim.root()));
@@ -6942,7 +6982,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private void afterGrabFrame() {
-@@ -1296,20 +1808,50 @@
+@@ -1296,20 +1831,50 @@
          }
      }
  
@@ -7004,7 +7044,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
-@@ -1331,6 +1873,7 @@
+@@ -1331,6 +1896,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
@@ -7012,7 +7052,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1341,14 +1884,17 @@
+@@ -1341,14 +1907,17 @@
  
      private void detectGrab(AttackSim.Obj def) {
          AttackSim.Obj g = grab == null ? null : grab.root();
@@ -7034,7 +7074,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      /** CheckObjHit: hitbox (flag 2) do atacante contra hurtbox (flag 1) do alvo; devolve o centro do impacto em px. */
-@@ -1438,25 +1984,37 @@
+@@ -1438,25 +2007,37 @@
              applyDamage(op, dmg, hitAno);
              lastHit += " [dano " + lastDamage + ", vida " + lifeO + "/" + maxO + ", combo " + combo + "]";
          }
@@ -7078,7 +7118,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1473,14 +2031,104 @@
+@@ -1473,14 +2054,104 @@
          }
      }
  
@@ -7183,7 +7223,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1494,6 +2142,7 @@
+@@ -1494,6 +2165,7 @@
      }
  
      private void stepDefender() {
@@ -7191,7 +7231,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          if (!inDamage) {
              AttackSim.Obj r = opp.root();
              if (r != null) {
-@@ -1601,7 +2250,7 @@
+@@ -1601,7 +2273,7 @@
          int comp = tb.u8(dIdx, 11);
          int wall = tb.u8(dIdx, 12);
          if (comp > 0 && comp < 50) {
@@ -7200,7 +7240,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1634,8 +2283,9 @@
+@@ -1634,8 +2306,9 @@
                  dTime = 0;
                  tickDamage(depth + 1);
                  return;
@@ -7211,7 +7251,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  if (comp < 30) { dCharSrc = false; dType = comp; }
                  else if (dCharSrc) dType = comp - 30;
                  else { endDamage(864, -1); return; }
-@@ -1701,16 +2351,32 @@
+@@ -1701,16 +2374,32 @@
          float tw = 100f, tx = nx, ty = ny;
          int n = 12;
          AttackSim.Obj r = atk.root();
@@ -7253,7 +7293,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
              int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
              if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1761,11 +2427,8 @@
+@@ -1761,11 +2450,8 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -7266,7 +7306,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
              refAtkX = ra.x;
          }
          oldAx = ra == null ? 0 : ra.x;
-@@ -1785,15 +2448,12 @@
+@@ -1785,15 +2471,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -7286,7 +7326,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1802,14 +2462,14 @@
+@@ -1802,14 +2485,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -7303,7 +7343,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2477,7 @@
+@@ -1817,7 +2500,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -7312,7 +7352,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,42 +2497,47 @@
+@@ -1837,42 +2520,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -7370,7 +7410,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2549,117 @@
+@@ -1884,21 +2572,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -7496,7 +7536,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,9 +2680,7 @@
+@@ -1919,9 +2703,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
@@ -7507,16 +7547,16 @@ diff -ruN a/BattleSim.java b/BattleSim.java
          }
          AttackSim.Obj[] ch = s.children();
          for (int i = 0; i < ch.length; i++) {
-@@ -1929,10 +2688,24 @@
+@@ -1929,8 +2711,22 @@
              if (c == null || c.pendingSe < 0) continue;
              int se = c.pendingSe;
              c.pendingSe = -1;
 -            if (se < 80) pushRaw(se - 1);
 +            int cn = SoundIds.commonOf(se);
 +            if (cn >= 0) sounds.add(new Snd(true, cn, 0));      // links so tocam sons globais
-         }
-     }
- 
++        }
++    }
++
 +    /** SE do frame (byte sem sinal): 1..79 e 100..255 = global se_(id-1); 80..99 = audio do personagem (o jogador 1 soma os audios do jogador 0). */
 +    private void pushSe(int se, int owner) {
 +        if (SoundIds.isCharId(se)) {
@@ -7525,15 +7565,13 @@ diff -ruN a/BattleSim.java b/BattleSim.java
 +            if (idx < atkWavCount) sounds.add(new Snd(false, idx, 0));
 +            else sounds.add(new Snd(false, idx - atkWavCount, 1));
 +            return;
-+        }
+         }
 +        int cn = SoundIds.commonOf(se);
 +        if (cn >= 0) sounds.add(new Snd(true, cn, 0));
-+    }
-+
+     }
+ 
      /** PushSE: < 80 = se_NN comum; >= 80 = audio de personagem na lista [atacante..., defensor...]. */
-     private void pushRaw(int id) {
-         if (id < 0) return;
-@@ -1979,55 +2752,48 @@
+@@ -1979,55 +2775,48 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -7613,7 +7651,7 @@ diff -ruN a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-@@ -2040,6 +2806,31 @@
+@@ -2040,6 +2829,31 @@
      public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
  
      public boolean defenderInDamage() { return inDamage; }
@@ -38282,6 +38320,97 @@ diff -ruN a/test/LinkHierarchyTest.java b/test/LinkHierarchyTest.java
 +        check("efeito de hit mostra o link 1 e nao o link do link (2)", fs.contains(Integer.valueOf(0)) + ":" + fs.contains(Integer.valueOf(1)) + ":" + fs.contains(Integer.valueOf(2)), "true:true:false");
 +
 +        System.out.println("LinkHierarchyTest fails=" + BattleTest.fails);
++    }
++}
+diff -ruN a/test/LinkSyncTest.java b/test/LinkSyncTest.java
+--- a/test/LinkSyncTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/LinkSyncTest.java	2026-10-31 01:41:14.048634991 +0000
+@@ -0,0 +1,87 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Efeitos presos ao personagem (auras) e links acompanham o pai no MESMO tick, mesmo quando a camera, a borda ou o empurrao mexem na raiz. */
++public class LinkSyncTest {
++    static AttackSim auraOf(BattleSim s, int owner) {
++        for (BattleSim.Layer l : s.layers()) if (l.owner == owner) return l.sim;
++        return null;
++    }
++
++    public static void main(String[] args) throws Exception {
++        BattleSim.defend = false;
++        A[] fx = new A[5];
++        for (int i = 0; i < 5; i++) fx[i] = new A().mpt(new M().time(4));
++
++        // ---- atacante que anda para cima do oponente (separacao de corpos + camera) com uma aura 71 (ANO 201 dele) a (10, -20)
++        A[] atk = new A[210];
++        for (int i = 0; i < atk.length; i++) atk[i] = new A().mpt(new M().time(1).img(1));
++        atk[40] = new A().mpt(new M().time(120).img(1).speedX(6 * 65536).hit(71, 10, -20, 0, 0));
++        atk[201] = new A().mpt(new M().time(120).img(1));
++        A[] def = new A[210];
++        for (int i = 0; i < def.length; i++) def[i] = new A().mpt(new M().time(30).img(1));
++        GameData g = gd(new byte[][] { null, null, null, react(new int[]{30, 30, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}) });
++        CharData ch = chr(move(new int[]{0, 0}, new int[]{2, 40}), new byte[][] {});
++        BattleSim s = new BattleSim(dac(atk), ch, ch.moves[0], false, dac(def), dac(fx), g, 60, 0, 0);
++        int bad = 0, seen = 0;
++        for (int t = 0; t < 70; t++) {
++            s.step();
++            AttackSim a = auraOf(s, BattleSim.OWNER_AURA_CHAR);
++            AttackSim.Obj r = s.attacker().root();
++            if (a == null || a.root() == null || r == null) continue;
++            seen++;
++            if (a.root().x - r.x != 10 << 16 || a.root().y - r.y != -20 << 16) bad++;
++        }
++        check("a aura do atacante apareceu", seen > 40, true);
++        check("a aura do atacante fica a (10, -20) da raiz em TODO tick (camera / separacao de corpos)", bad, 0);
++
++        // ---- virado para a esquerda: o offset x espelha
++        BattleSim f = new BattleSim(dac(atk), ch, ch.moves[0], true, dac(def), dac(fx), g, 60, 0, 0);
++        int badF = 0;
++        for (int t = 0; t < 40; t++) {
++            f.step();
++            AttackSim a = auraOf(f, BattleSim.OWNER_AURA_CHAR);
++            AttackSim.Obj r = f.attacker().root();
++            if (a == null || a.root() == null || r == null) continue;
++            if (a.root().x - r.x != -(10 << 16)) badF++;
++        }
++        check("virado: offset x espelhado em todo tick", badF, 0);
++
++        // ---- oponente com aura 71 apanhando (knockback): a aura anda junto com o corpo dele
++        A[] atk2 = new A[41];
++        for (int i = 0; i < atk2.length; i++) atk2[i] = new A().mpt(new M().time(1).img(1));
++        atk2[40] = new A().mpt(new M().time(2).img(1)).mpt(new M().time(3).img(1).hit(2, 20, -40, 40, 20).opt1(3)).mpt(new M().time(60).img(1));
++        A[] def2 = new A[210];
++        for (int i = 0; i < def2.length; i++) def2[i] = new A().mpt(new M().time(40).img(1).hit(1, -10, -60, 20, 60).hit(71, 4, -30, 0, 0));
++        def2[201] = new A().mpt(new M().time(120).img(1));
++        GameData g2 = gd(new byte[][] { null, null, null, react(new int[]{30, 30, 20, 8, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0}) });
++        CharData ch2 = chr(move(new int[]{2, 40}), new byte[][] {});
++        BattleSim o = new BattleSim(dac(atk2), ch2, ch2.moves[0], false, dac(def2), dac(fx), g2, 30, 0, 0);
++        int badO = 0, seenO = 0, moved = 0, x0 = o.opponentX();
++        for (int t = 0; t < 40; t++) {
++            o.step();
++            AttackSim a = auraOf(o, BattleSim.OWNER_AURA_OPPCHAR);
++            AttackSim.Obj r = o.opponent().root();
++            if (o.opponentX() != x0) moved++;
++            if (a == null || a.root() == null || r == null) continue;
++            seenO++;
++            int ox = (r.objFlags & 16) != 0 ? -(4 << 16) : (4 << 16);
++            if (a.root().x - r.x != ox || a.root().y - r.y != -30 << 16) badO++;
++        }
++        System.out.println("DBG seenO=" + seenO + " moved=" + moved + " x0=" + x0 + " x=" + o.opponentX());
++        check("a aura do oponente apareceu e o oponente foi empurrado", seenO > 10 && moved > 5, true);
++        check("a aura do oponente acompanha o corpo dele em TODO tick (knockback)", badO, 0);
++
++        // ---- prévia: tocar o chao leva os links junto
++        A[] lk = new A[3];
++        for (int i = 0; i < lk.length; i++) lk[i] = new A().mpt(new M().time(30).img(1));
++        Dac d = dac(lk);
++        AttackSim sim = new AttackSim(d, 0, false, 0, 0);
++        AttackSim.Obj root = sim.root();
++        root.y = 5 << 16;
++        AnimPreview.groundSim(sim);
++        check("groundSim limita a raiz ao chao", root.y, 0);
++        System.out.println("LinkSyncTest fails=" + fails);
 +    }
 +}
 diff -ruN a/test/MoveTransplantTest.java b/test/MoveTransplantTest.java
