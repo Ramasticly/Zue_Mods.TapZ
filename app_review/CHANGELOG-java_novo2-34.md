@@ -550,7 +550,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | FrameOpsTest | 56 |
 | SpriteMassTest | 23 |
 | AudioTest | 20 |
-| SpriteAllocTest | 13 |
+| SpriteAllocTest | 20 |
 | OptimizeTest | 13 |
 | EffectsTest | 12 |
 | GroupsTest | 4 |
