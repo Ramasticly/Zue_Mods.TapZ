@@ -491,7 +491,7 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 
 ### 3.1zzr ⓘ: gesto de joystick completo (direções + botão A) e gesto do Z corrigido
 - O `CmdCheck` só avalia especial por gesto no tick em que um botão é apertado (`JoyTrig & 670056704`: o A, 16384 / 256, e os atalhos Y / X / B / Z / IRA; as direções não estão na máscara). O ⓘ mostrava só as direções; agora mostra a sequência **completa, terminando no A**: Y `↓ → + A`, X `→ ↓ + A`, B `↓ ← + A`, **Z `↓ ← → + A`** (antes estava `↓ → →`, errado: o código pede ↓, depois exatamente ← e depois →), IRA `↓ ← ↓ ← + A` (com AngryOn).
-- Nota azul no ⓘ do golpe: até 1 s; pode deslizar pela diagonal (o ↘ entre ↓ e → não vira estado próprio no `KeyBuf`) ou soltar entre as direções (o histórico só zera após 60 ticks de neutro); o A vem por último; “frente” é para onde o personagem olha.
+- A nota explicativa do gesto (tempo, diagonal, soltar entre as direções) foi **retirada**: o ⓘ mostra só o comando (`ou joystick: ↓ → + A`).
 - `GridOpsTest` 44 (gestos completos e a nota só nos golpes com gesto). AJUDA (PT/EN/ES) e MD atualizados. Gestos vindos da leitura do `CmdCheck`, não testados no jogo.
 
 ### 3.3 Menu AJUDA
