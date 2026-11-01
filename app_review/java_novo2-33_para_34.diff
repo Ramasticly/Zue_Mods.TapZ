@@ -35982,7 +35982,7 @@ diff -ruN a/TimelineTools.java b/TimelineTools.java
      }
 diff -ruN a/TimelineView.java b/TimelineView.java
 --- a/TimelineView.java	2026-10-20 01:14:59.000000000 +0000
-+++ b/TimelineView.java	2026-11-01 21:11:47.862078575 +0000
++++ b/TimelineView.java	2026-11-01 21:18:42.239447102 +0000
 @@ -25,13 +25,15 @@
      public static final int T_NONE = -1, T_SPRITE = 0, T_OBJ = 1, T_SOUND = 2, T_MOVE = 3, T_STYLE = 4, T_LINK = 5, T_SEQ = 6;
  
@@ -36024,7 +36024,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      private int total;
      private List<ObjModel.Obj> objs = new ArrayList<ObjModel.Obj>();
      private boolean loop, expanded;
-@@ -76,25 +81,53 @@
+@@ -76,25 +81,49 @@
      private float ppt;
      private float scrollY, contentH, desiredH;
      /** Filtro de categorias visiveis: 0 sprites, 1 hitbox, 2 hurtbox, 3 projetil, 4 efeito, 5 acao, 6 som, 7 velocidade, 8 estilo, 9 links. */
@@ -36057,10 +36057,6 @@ diff -ruN a/TimelineView.java b/TimelineView.java
 +    public void setSeqMarks(List<SeqMark> m) {
 +        seqMarks = m == null ? new ArrayList<SeqMark>() : m;
 +        int before = seqLaneCount;
-+        int[] sp = new int[ano.mpts.length];
-+        for (int i = 0; i < sp.length; i++) sp[i] = FrameOps.span(ano.mpts[i]);
-+        moveRes[0] = MoveCells.build(ano.mpts, 0, start, sp);
-+        moveRes[1] = MoveCells.build(ano.mpts, 1, start, sp);
 +        seqLane = seqLanes(seqMarks);
 +        seqLaneCount = laneCount(seqLane);
 +        if (ano != null && before != seqLaneCount) { buildRows(); invalidate(); }
@@ -36087,7 +36083,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
  
      /** Altura maxima permitida pela area visivel da pagina (0 = sem limite): evita linhas escondidas fora da tela. */
      private int maxHeightPx;
-@@ -107,9 +140,30 @@
+@@ -107,9 +136,30 @@
      private float cap() {
          float c = VIEW_DP * d;
          if (maxHeightPx > 0) c = Math.min(c, Math.max(maxHeightPx, 96f * d));
@@ -36118,7 +36114,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      public boolean isShown(int cat) { return show[cat]; }
      public void setShown(int cat, boolean on) {
          if (show[cat] == on) return;
-@@ -190,10 +244,21 @@
+@@ -190,10 +240,21 @@
          return best;
      }
  
@@ -36141,7 +36137,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          return start[pat] + elapsed + over;
      }
  
-@@ -210,6 +275,7 @@
+@@ -210,6 +271,7 @@
          ano = a;
          pat = curPat;
          elapsed = curElapsed;
@@ -36149,9 +36145,15 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          if (ano == null) {
              start = new int[0]; total = 0; objs = new ArrayList<ObjModel.Obj>(); rows.clear(); invalidate(); return;
          }
-@@ -242,8 +308,14 @@
+@@ -241,9 +303,20 @@
+     private void buildRows() {
          rows.clear();
          if (ano == null) return;
++        int[] sp = new int[ano.mpts.length];
++        for (int i = 0; i < sp.length; i++) sp[i] = FrameOps.span(ano.mpts[i]);
++        int[] st = start.length == sp.length ? start : FrameOps.starts(ano.mpts);
++        moveRes[0] = MoveCells.build(ano.mpts, 0, st, sp);       // celulas de velocidade por Frame (uma por Frame e tipo, ver MoveCells)
++        moveRes[1] = MoveCells.build(ano.mpts, 1, st, sp);
          row(R_SPRITE, show[0] ? SPRITE_DP : 0, "SPRITES", C_SPRITE);
 -        boolean anySound = false, anyMove = false;
 -        for (Ano.Mpt m : ano.mpts) { if ((m.flags & 8) != 0) anySound = true; if ((m.flags & 4) != 0) anyMove = true; }
@@ -36166,7 +36168,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          sawSound = anySound;
          if (!expanded) {
              for (int k = 0; k < 5; k++) {
-@@ -256,21 +328,29 @@
+@@ -256,21 +329,29 @@
              if (ano.links.length > 0 && show[9]) { Row r = row(R_SUMMARY, SUM_DP, "Links", C_LINK); r.kind = 7; }
              if (!seqMarks.isEmpty() && show[10]) { Row r = row(R_SUMMARY, SUM_DP, "Transicoes", C_SEQ); r.kind = 8; }
          } else {
@@ -36203,7 +36205,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              for (int i = 0; show[9] && i < ano.links.length; i++) {
                  Row r = row(R_LINK, ROW_DP, "Link " + (i + 1), C_LINK);
                  r.link = i;
-@@ -303,6 +383,7 @@
+@@ -303,6 +384,7 @@
      private float playTick() {
          if (mode == M_SCRUB) return dragTick;
          if (pat < 0 || pat >= start.length) return 0;
@@ -36211,7 +36213,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          return start[pat] + elapsed + over;
      }
      private float xOf(float tick) { return gutter() + contentW() / 2f + (tick - playTick()) * ppt; }
-@@ -328,7 +409,7 @@
+@@ -328,7 +410,7 @@
          float g = gutter();
          if (ano == null || rows.isEmpty()) {
              t.setColor(0xFF4A505E);
@@ -36220,7 +36222,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              return;
          }
          float W = getWidth(), H = getHeight();
-@@ -358,6 +439,7 @@
+@@ -358,6 +440,7 @@
                  case R_SEQ: drawSeq(c, r); break;
                  default: drawLink(c, r); break;
              }
@@ -36228,7 +36230,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          }
          c.restore();
          // ponteiro
-@@ -397,10 +479,10 @@
+@@ -397,10 +480,10 @@
          Row f = rows.get(0);
          if (show[0]) {
              t.setColor(C_SPRITE);
@@ -36241,7 +36243,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              t.setTextSize(9.5f * d);
          }
          drawTip(c);
-@@ -430,11 +512,12 @@
+@@ -430,11 +513,12 @@
          p.setColor(0xEE000000);
          c.drawRoundRect(rf, 5 * d, 5 * d, p);
          t.setColor(0xFFFFFFFF);
@@ -36255,7 +36257,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          if (t.measureText(s) <= w) return s;
          while (s.length() > 1 && t.measureText(s + "..") > w) s = s.substring(0, s.length() - 1);
          return s + "..";
-@@ -451,7 +534,7 @@
+@@ -451,7 +535,7 @@
          for (int tk = t0; tk <= Math.min(t1, total + 600); tk += step) {
              float x = xOf(tk);
              c.drawLine(x, RULER_DP * d - 4 * d, x, H, p);
@@ -36264,7 +36266,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          }
          // fim da ANO
          p.setColor(0xFF58606E);
-@@ -480,6 +563,7 @@
+@@ -480,6 +564,7 @@
              rf.set(x0 + dl + 1, y + 2 * d, x0 + Math.max(3f * d, w + dw) - 1, y + h - 2 * d);
              c.drawRoundRect(rf, 4 * d, 4 * d, p);
              p.setAlpha(255);
@@ -36272,7 +36274,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              c.save();
              c.clipRect(rf);
              float tx = rf.left + 3 * d;
-@@ -508,10 +592,10 @@
+@@ -508,10 +593,10 @@
                  else if (mode == M_RESIZE && i == resizeFrame) shown = Math.max(1, Math.round(span(i) + dw / ppt));
                  String tt = timeText(shown);
                  if (rf.right - tx < t.measureText(tt) + 4 * d) tt = sec(shown);
@@ -36285,7 +36287,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                  t.setTextSize(9.5f * d);
              }
              c.restore();
-@@ -534,7 +618,7 @@
+@@ -534,7 +619,7 @@
          c.drawRoundRect(rf, 6 * d, 6 * d, p);
          t.setColor(loop ? 0xFFFFFFFF : 0xFF9AA3B2);
          t.setFakeBoldText(true);
@@ -36294,7 +36296,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          t.setFakeBoldText(false);
          rf.set(x + 62 * d, y, x + 62 * d + h, y + h);
          p.setColor(0xFF3A3416);
-@@ -602,7 +686,7 @@
+@@ -602,7 +687,7 @@
              c.save();
              c.clipRect(rf);
              t.setColor(0xFF2B0507);
@@ -36303,7 +36305,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              c.restore();
              if (sel) outline(c, rf.left, rf.top, rf.right, rf.bottom);
          }
-@@ -615,36 +699,37 @@
+@@ -615,36 +700,37 @@
  
      private void drawMove(Canvas c, Row r) {
          stripe(c, r);
@@ -36360,7 +36362,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          return b.length() == 0 ? "vel" : b.toString().trim();
      }
  
-@@ -658,7 +743,7 @@
+@@ -658,7 +744,7 @@
              if (ObjModel.spriteBit(m, ObjModel.FLIP_H)) b.append("↔ ");
              if (ObjModel.spriteBit(m, ObjModel.FLIP_V)) b.append("↕ ");
              if (ObjModel.spriteBit(m, ObjModel.KEEP_SPEED)) b.append("manter vel ");
@@ -36369,7 +36371,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              boolean sel = selType == T_STYLE && selIdx >= i && selIdx <= j;
              float x0 = xOf(start[i]), x1 = xOf(start[j] + span(j));
              if (sel && trimming(T_STYLE)) x1 = xOf(trimT1);
-@@ -670,31 +755,46 @@
+@@ -670,31 +756,46 @@
              c.save();
              c.clipRect(rf);
              t.setColor(0xFF2A1400);
@@ -36420,7 +36422,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      private void stripe(Canvas c, Row r) {
          p.setColor(0xFF161A21);
          c.drawRect(gutter(), r.top, getWidth(), r.top + r.h - 1, p);
-@@ -724,7 +824,7 @@
+@@ -724,7 +825,7 @@
          c.save();
          c.clipRect(rf);
          t.setColor(0xFF081018);
@@ -36429,7 +36431,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          c.restore();
          if (sel) {
              outline(c, rf.left, rf.top, rf.right, rf.bottom);
-@@ -734,15 +834,15 @@
+@@ -734,15 +835,15 @@
      }
  
      private String objLabel(ObjModel.Obj o) {
@@ -36448,7 +36450,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              boolean sel = selType == T_SEQ && selIdx == i;
              p.setColor(m.blocked ? 0xFF5E6676 : markColor(m));
              p.setAlpha(sel ? 255 : 210);
-@@ -753,7 +853,7 @@
+@@ -753,7 +854,7 @@
              c.clipRect(rf);
              t.setColor(0xFF1A0A10);
              t.setFakeBoldText(true);
@@ -36457,7 +36459,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
              t.setFakeBoldText(false);
              c.restore();
              if (sel || m.real) outline(c, rf.left, rf.top, rf.right, rf.bottom);
-@@ -772,7 +872,7 @@
+@@ -772,7 +873,7 @@
          c.save();
          c.clipRect(rf);
          t.setColor(0xFF06222A);
@@ -36466,7 +36468,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          c.restore();
          if (sel) outline(c, rf.left, rf.top, rf.right, rf.bottom);
      }
-@@ -801,6 +901,7 @@
+@@ -801,6 +902,7 @@
  
      private float playheadTickRaw() {
          if (pat < 0 || pat >= start.length) return 0;
@@ -36474,7 +36476,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          return start[pat] + elapsed + over;
      }
  
-@@ -863,7 +964,7 @@
+@@ -863,7 +965,7 @@
                          scrollY -= dy;
                          buildRows();
                      } else if (mode == M_SCRUB) {
@@ -36483,7 +36485,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                          scrub();
                      }
                  }
-@@ -895,10 +996,6 @@
+@@ -895,10 +997,6 @@
  
      /** Maior tick que a borda direita do item sendo aparado pode alcancar. */
      private int trimLimit() {
@@ -36494,7 +36496,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          return total;
      }
  
-@@ -933,9 +1030,6 @@
+@@ -933,9 +1031,6 @@
              int t0 = start[o.f0], t1 = start[o.f1] + span(o.f1);
              if (Math.abs(x - rr) < slop) beginTrim(true, T_OBJ, o.f0, t0, t1);
              else if (Math.abs(x - l) < slop) beginTrim(false, T_OBJ, o.f0, t0, t1);
@@ -36504,7 +36506,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
          } else if (r.type == R_STYLE && selType == T_STYLE && selIdx >= 0 && selIdx < ano.mpts.length && FrameOps.styleSig(ano.mpts[selIdx]) != 0) {
              int a = FrameOps.styleRunStart(ano.mpts, selIdx), j = FrameOps.styleRunEnd(ano.mpts, selIdx);
              if (Math.abs(x - xOf(start[j] + span(j))) < slop) beginTrim(true, T_STYLE, a, start[a], start[j] + span(j));
-@@ -944,9 +1038,12 @@
+@@ -944,9 +1039,12 @@
  
      private void scrub() {
          int tk = (int) dragTick;
@@ -36518,7 +36520,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
      }
  
      private void send(int type, int idx, int flag, int occ) {
-@@ -996,7 +1093,7 @@
+@@ -996,7 +1094,7 @@
                  }
                  if (!expanded) {      // fechada: leva o ponteiro ate o sprite e expande, sem abrir a edicao
                      setExpanded(true);
@@ -36527,7 +36529,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                      return;
                  }
                  send(T_SPRITE, f, -1, -1);
-@@ -1006,7 +1103,7 @@
+@@ -1006,7 +1104,7 @@
                  if (f < 0) return;
                  if (!expanded) {
                      setExpanded(true);
@@ -36536,7 +36538,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                      return;
                  }
                  send(T_SPRITE, f, -1, -1);
-@@ -1015,14 +1112,19 @@
+@@ -1015,14 +1113,19 @@
              case R_AUDIO: case R_MOVE: case R_STYLE: {
                  if (f < 0) return;
                  Ano.Mpt mp = ano.mpts[f];
@@ -36558,7 +36560,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                  return;
              }
              case R_SEQ: {
-@@ -1030,7 +1132,7 @@
+@@ -1030,7 +1133,7 @@
                  RectF mr = new RectF();
                  int first = -1;
                  for (int i = 0; i < seqMarks.size(); i++) {
@@ -36567,7 +36569,7 @@ diff -ruN a/TimelineView.java b/TimelineView.java
                      if (first < 0) first = i;
                      markRect(i, -1e6f, 1e6f, mr);
                      if (x >= mr.left && x <= mr.right) { send(T_SEQ, i, -1, -1); return; }
-@@ -1042,7 +1144,7 @@
+@@ -1042,7 +1145,7 @@
                  ObjModel.Obj o = f < 0 ? null : objAt(r, f);
                  if (o == null) return;
                  send(T_OBJ, -1, o.flag, o.occ);
