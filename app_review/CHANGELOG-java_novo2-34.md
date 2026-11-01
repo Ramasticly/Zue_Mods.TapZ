@@ -549,6 +549,10 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes: `ReactionHitTest` reescrito (18: hold no fim do frame, posição fixa, sem SEQ, sem hit longe com oponente idle), `LockReactionTest` (10: COMP, 255, fim voando e parede com/sem trava), `MapPosTest` (7: ESQ/MEIO/DIR só mudam x), `ReactionOccurrencesTest` (20: passagens, origem/destino, fatias, tabela teórica, `WallRules`, ações especiais do COMP); `ReactionSetupTest` removido.
 - **Só compilado/revisado, não executado no aparelho**: menu superior, avisos sobre a prévia, gestos da câmera, chips da faixa SEQ, página SEQ, grade COMP com especiais, botões ESQ/MEIO/DIR no diálogo POS. Testado de verdade (Java puro): simulação (hold, sem hit, trava, mapPos), ocorrências/fatias/teórica, `WallRules`, lista do COMP.
 
+### 3.1zzza Chip da faixa SEQ abre um menu em vez de trocar de reação
+- Tocar no chip `→ reação N` / `← reação X` da faixa SEQ **não troca mais a timeline**: abre a gaveta com a reação (prévia animada, resumo da tabela, motivo do salto; nota se for do jogo) e o botão **IR PARA SEQUÊNCIA** (só ele faz a troca) e FECHAR. Se a timeline já chegou nessa reação (play/barra de tempo), o menu fecha sozinho.
+- Só compilado/revisado, não executado no aparelho (gaveta e botão); os 1978 testes seguem OK (sem lógica nova em Java puro).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
