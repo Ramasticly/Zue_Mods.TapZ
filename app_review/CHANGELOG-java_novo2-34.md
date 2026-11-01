@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1949 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1978 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -537,6 +537,18 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Câmera e movimento iguais à principal**: `CameraModes` (puro) é usado pelo `AttackView` e pela prévia: `CENTRO: NORMAL` (1 dedo arrasta, pinça = zoom) / `TELA` / `CHAR`. `POS` abre o **mesmo diálogo** da principal (`AttackView.openPosDialog` → `LayoutManager.showPosDialog`; arrastar atacante/oponente, alturas, FLY — ex.: oponente no alto para testar a reação que o joga do céu ao chão) e a tela refaz trace + prévia ao fechar. `ESQ.` / `MEIO` / `DIR.` encostam o oponente numa parede (o golpe vem do lado oposto) e `PADRÃO` volta à posição da principal; as paredes valem pelo WALL do passo. Saíram o arrasto do personagem e a câmera livre da 3.1zzx. **`COMP: n`** abre o seletor da próxima reação do passo sob o ponteiro.
 - Testes: `ReactionHitTest` (13: acha o hit certo e ignora outras reações, atacante preso 60 ticks no ANO 40 / frame 1 e solto sem hold, hold só da reação pedida, trace "primed" com tick 0 = hit e hitstop), `CameraModesTest` (4), `ReactionLayoutTest` (29: faixas só com dados, linha duplicada, stack). **Só a lógica foi testada**; o desenho da prévia, os gestos, os botões, o diálogo POS reaproveitado e o seletor só foram compilados/revisados, não rodados no aparelho. Não incluso: ticks **antes** do hit na timeline (começa no hit).
 
+### 3.1zzz REMAKE do editor de reações: menu superior, hit real sem bug, atacante parado no fim do frame, sequência (parede + COMP) numa página, timeline por reação
+- **Bug do hit forçado**: removido (`setReactionSpot`, `forceHit` na prévia, `ReactionSetup`). A prévia sempre usa o golpe real (`AttackView.newReactionRun(ano, pat, tipo, origem)`); se o golpe não acerta na posição (personagens longe), **não há hit**: aviso vermelho sobre a prévia, atacante parado, oponente no idle, a prévia acaba quando nada mais anima (`ReactionHit.ticksUntilQuiet`) e a timeline mostra só a tabela (`ReactionTrace.theoretical`: passos e durações; 255 = 30 ticks).
+- **Atacante**: `BattleSim.setReactionMode(on, ano, pat)` — anda normalmente até o ÚLTIMO tick do frame da hitbox, aplica só o movimento desse tick (`AttackSim.Obj.moveOnly`) e **para ali** (nenhum SEQ/END/ANIM_AO_ACERTAR/pouso: `onHitConfirmed` retorna cedo; as auras seguem acompanhando). A câmera segue o oponente conforme o CENTRO.
+- **Menu superior** como o da principal (linha rolável): `POS` (fixo no início), `CENTRO: NORMAL | TELA | CHAR` (2º), `TRANSIÇÃO: LIVRE | TRAVADA`, `CHÃO | AR` (muda a altura do oponente = o POS) e `FECHAR`. Saíram `ESQ.`/`MEIO`/`DIR.`/`PADRÃO` e `COMP` da tela da reação. O **retângulo da tela (azul), o do zoom (amarelo) e as bordas do mapa (vermelho) são sempre desenhados** (`StageEdges`, usado também pela principal).
+- **POS ganhou `ESQ.` / `MEIO` / `DIR.`** (diálogo da principal e da reação): `BattleSim.mapPos` leva o **par** inteiro para a borda esquerda, o meio ou a borda direita do mapa; **só o x muda** (distância e alturas ficam). Tocar de novo no botão ligado volta ao padrão.
+- **TRANSIÇÃO TRAVADA** (`BattleSim.lockReaction`): a sequência inteira deixa de trocar de reação — sem parede, sem COMP ao pousar, sem quique, 255 ticks e fim da tabela só terminam a reação (sem 13/2). Aviso âmbar com `DESTRAVAR`.
+- **Timeline por reação**: `ReactionTrace.occurrences()` agrupa as passagens por tabela; a timeline mostra **uma reação por vez** (`ReactionTrace.slice`) e troca sozinha quando o ponteiro (play, barra de tempo ou chip) entra em outra; a barra de tempo cobre a cadeia toda. Faixa **SEQ**: chip amarelo `→ reação N (motivo)` no ponto do salto e, na nova, `← reação X, passo k (motivo)` (tocar vai até lá). Saíram as marcas `reasonMarks`.
+- **Avisos** (`NoticeBar` + `QuickNotice`, mesmas cores e botões da principal) sobre a prévia: sem hit (vermelho, botão POS), transição travada (âmbar), reação do jogo (azul: "sequências do jogo não podem ser editadas"; tentar editar mostra de novo).
+- **Página SEQ = sequência**: no topo a PAREDE (`WallRules`: Desligado 0, Borda do mapa 2, Borda da tela 3 (só tabela do personagem; na do jogo age como 2), Câmera segue 1; outro valor vale 0, com a explicação do modo); depois a PRÓXIMA REAÇÃO (COMP): prévia, `− N +` (anda por 0, 11, 12, 50, jogo, personagem) e `ESCOLHER` (grade com as **ações especiais no topo**: 11 faz pousar, 12 faz quicar, 50+ só pousa e termina). A página EFEITOS saiu (a parede é parte da SEQ). `TimelineTools` passa ao editor o ANO e o frame da hitbox.
+- Testes: `ReactionHitTest` reescrito (18: hold no fim do frame, posição fixa, sem SEQ, sem hit longe com oponente idle), `LockReactionTest` (10: COMP, 255, fim voando e parede com/sem trava), `MapPosTest` (7: ESQ/MEIO/DIR só mudam x), `ReactionOccurrencesTest` (20: passagens, origem/destino, fatias, tabela teórica, `WallRules`, ações especiais do COMP); `ReactionSetupTest` removido.
+- **Só compilado/revisado, não executado no aparelho**: menu superior, avisos sobre a prévia, gestos da câmera, chips da faixa SEQ, página SEQ, grade COMP com especiais, botões ESQ/MEIO/DIR no diálogo POS. Testado de verdade (Java puro): simulação (hold, sem hit, trava, mapPos), ocorrências/fatias/teórica, `WallRules`, lista do COMP.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -632,10 +644,12 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **OppLinkSyncTest (novo)** | 118 |
 | **AuraLinkFrozenTest (novo)** | 9 |
 | **AnoNotesTest (novo)** | 11 |
-| **ReactionHitTest (novo)** | 13 |
+| **ReactionHitTest (novo)** | 18 |
+| **MapPosTest (novo)** | 7 |
+| **LockReactionTest (novo)** | 10 |
+| **ReactionOccurrencesTest (novo)** | 20 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
-| **ReactionSetupTest (novo)** | 13 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
