@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1978 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1990 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -553,6 +553,17 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Tocar no chip `→ reação N` / `← reação X` da faixa SEQ **não troca mais a timeline**: abre a gaveta com a reação (prévia animada, resumo da tabela, motivo do salto; nota se for do jogo) e o botão **IR PARA SEQUÊNCIA** (só ele faz a troca) e FECHAR. Se a timeline já chegou nessa reação (play/barra de tempo), o menu fecha sozinho.
 - Só compilado/revisado, não executado no aparelho (gaveta e botão); os 1978 testes seguem OK (sem lógica nova em Java puro).
 
+### 3.1zzzb Setas na régua, caixas + REPOSICIONAR, voltar do editor sem reiniciar, sem compensar zoom, EMPURRAR do projétil, flags do atacante fora do projétil
+- **Origem/destino da sequência = setas na régua**: `◀` antes do início da reação e `▶` depois do fim (na régua, que não é escurecida e não cobre faixa nenhuma); tocar abre o mesmo menu com **IR PARA SEQUÊNCIA**. Os chips da faixa SEQ e a faixa SEQ forçada saíram.
+- **Caixas na prévia da reação**: hitbox (vermelha) e hurtbox (azul) dos dois personagens (`AttackRenderer.drawOverlay`, a mesma da principal).
+- **REPOSICIONAR** (aviso vermelho do hit que não pega: `POS` à esquerda, `REPOSICIONAR` à direita): `RepositionHit` (puro) acha a distância e a altura do oponente em que a hitbox do atacante, parado no fim do frame, cruza a hurtbox dele (centro com centro, repete até 4 vezes porque corpo/câmera deslocam; limites 0–480 e 0–200; se não couber avisa e não mexe). Novos: `BattleSim.worldRect`, `AttackView.newHeldSim/isFacingLeft`. Hit vindo de projétil não é reposicionado.
+- **Tirada a opção "Compensar o zoom da trava"** (UI, `CineZoomComp`, `CineZoomCompTest`, ajuda e catálogo); `CINE_ZOOM` do simulador fica.
+- **Voltar de um editor não recomeça mais a animação**: ao voltar do editor de ANO o golpe/ANO volta **no frame em que estava e pausado** (`MainActivity.retFrame` + `seekTo` + `pause`). Reações, links, sprites, sons, cutscenes e opções do golpe pausam a prévia principal ao abrir (ela já mantinha o frame).
+- **Projétil empurra o oponente**: nas hitboxes de um ANO de projétil, botão **EMPURRAR** ao lado de ESCOLHER. `ProjectilePush` (puro): copia a reação atual para um slot vazio; sem vazio, para um que nenhuma hitbox / COMP de outra tabela / reação de choque use; senão edita a atual **depois de perguntar** (se for do jogo, avisa e não faz nada). O passo 0 recebe a velocidade e a aceleração do projétil naquele frame (chão e ar, 0,1 px, corte em ±12,7 px/tick com aviso; os outros passos mantêm `-1`); a hitbox passa a usar o slot (grupo de efeito/som mantido). Projétil parado no frame → avisa.
+- **Flags que usam o atacante como base ficam indisponíveis no ANO de projétil** (`ObjModel.usesAttackerBase`): puxar oponente (40), teleportar (39), teleportar atrás, auto-dano (32) e 26/28/37/38 saem de `＋ > ação especial` e de `trocar ação`. Itens que já estão no arquivo continuam como estão.
+- Testes: `RepositionHitTest` (9), `ProjectilePushTest` (18: slots, velocidades, corte, flags); `CineZoomCompTest` (−15) removido.
+- **Só compilado/revisado, não executado no aparelho**: setas na régua e toque, caixas na prévia, botão REPOSICIONAR no aviso, botão EMPURRAR e diálogo de confirmação, pausa ao abrir editores e volta do editor de ANO no mesmo frame. Testado de verdade (Java puro): reposicionamento, escolha de slot/velocidades, lista de flags.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -635,7 +646,6 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **NewAnoTest (novo)** | 6 |
 | **DustTest (novo)** | 11 |
 | **CutsceneEditTest (novo)** | 25 |
-| **CineZoomCompTest (novo)** | 15 |
 | **FrameBarTest (novo)** | 20 |
 | **SpriteRenumberTest (novo)** | 14 |
 | **SpriteDedupTest (novo)** | 19 |
@@ -652,6 +662,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **MapPosTest (novo)** | 7 |
 | **LockReactionTest (novo)** | 10 |
 | **ReactionOccurrencesTest (novo)** | 20 |
+| **RepositionHitTest (novo)** | 9 |
+| **ProjectilePushTest (novo)** | 18 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
