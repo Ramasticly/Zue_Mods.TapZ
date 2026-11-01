@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1990 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1992 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -564,6 +564,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes: `RepositionHitTest` (9), `ProjectilePushTest` (18: slots, velocidades, corte, flags); `CineZoomCompTest` (−15) removido.
 - **Só compilado/revisado, não executado no aparelho**: setas na régua e toque, caixas na prévia, botão REPOSICIONAR no aviso, botão EMPURRAR e diálogo de confirmação, pausa ao abrir editores e volta do editor de ANO no mesmo frame. Testado de verdade (Java puro): reposicionamento, escolha de slot/velocidades, lista de flags.
 
+### 3.1zzzc Speed por Frame/passo (sem unir), speed e accel em linhas separadas, menu Movimento em abas SPEED X | SPEED Y
+- **Timeline principal**: cada Frame tem a sua célula de velocidade (`MoveCells`, puro). Frames que mantêm a velocidade (bit 64) **não são mais unidos num bloco**: cada um mostra o valor herdado (`x =10`, mais claro). Speed (`x 10`) e accel (`ax 2`, verde‑água) do **mesmo** Frame ficam em **duas linhas** da faixa do eixo (`Velocidade X`, `Velocidade X 2`); em Frames diferentes dividem a linha (`ReactionLayout.stack`). Tocar numa célula seleciona e abre o menu **daquele Frame** (não da cabeça do trecho); saiu a alça de aparar o trecho na timeline (a duração em Frames continua no menu Movimento).
+- **Editor de reações**: uma célula por passo e tipo (`ReactionSpeedCells`, puro): `x 10`, `x =10` (passo que mantém, com o valor efetivo da simulação), `x ½ 5`, `ax 2`; um `0` só aparece se para algo que já andava (`x 0` / `ax 0`). Speed e accel do mesmo passo em duas linhas, em passos diferentes na mesma. `ReactionRuns` perdeu as "corridas" (`runs/runOf/setRunEnd/removeRun/startRun`) e a alça de arrastar do bloco; toque na célula abre a página SPEED (`onOpenSpeed(eixo, tipo, passo)`); EXCLUIR numa célula de speed grava `−1` (mantém) e numa de accel grava `0`; o menu ＋ ganhou "Accel X/Y neste passo". Filtros "Speed X/Y" (sem "blocos"); novo `ReactionLayout.rowAt`.
+- **Menu Movimento (principal)**: duas **abas SPEED X | SPEED Y** em vez das duas seções no mesmo scroll; a aba inicial é o eixo da célula tocada (`TimelineView.moveAxisTapped`). Frame inicial, duração em Frames e MANTER VELOCIDADE aparecem nas duas abas.
+- Testes: `MoveCellsTest` (11), `ReactionRunsTest` reescrito (17: colunas, uma célula por passo, `=` com efetivo, duas linhas no mesmo passo, `rowAt`); bloco de corridas do `ReactionEditTest` removido.
+- **Só compilado/revisado, não executado no aparelho**: desenho das células e linhas, toque por célula, abas do menu Movimento, página SPEED das reações. Testado de verdade (Java puro): `MoveCells`, `ReactionSpeedCells`, empilhamento em linhas.
+- A faixa "efeito img" continua agrupando "manter vel" (não é a faixa de speed).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -664,6 +672,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionOccurrencesTest (novo)** | 20 |
 | **RepositionHitTest (novo)** | 9 |
 | **ProjectilePushTest (novo)** | 18 |
+| **MoveCellsTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
