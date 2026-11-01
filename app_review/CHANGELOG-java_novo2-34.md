@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1883 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 1926 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -523,6 +523,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - AJUDA (PT/EN/ES) e MD de IA: a frase "as folhas ficam intactas no disco" agora diz que só mudam ao adicionar ou substituir.
 - `SpriteAllocTest` +7 (`uncovered`: sem outras entradas, uma no meio, outra folha, cobre tudo, retângulo vazio, duas sobrepostas sem contar duas vezes; e a sprite menor cabe no buraco da antiga, no canto 0,0). **Só a lógica de áreas foi testada**; o desenho dos pixels (`SpriteLib.erase` / `restore`, usam `Bitmap`) só foi compilado e revisado, não rodado no aparelho.
 
+### 3.1zzx Notas manuais das ANOs (AnoNotes) + editor de reações: SPEED X/Y, caminho percorrido, próxima reação em grade, mover oponente/câmera
+- **`AnoNotes.java`** (novo, Java puro): um `switch (ano)` para editar à mão — `case 0: blue("Idle Chão"); break;` (azul = fixo no código do jogo), `green(...)` (vem do Bin) e `plain(...)`; várias linhas por `case`. Semeado com as 28 ANOs que você testou (`char13.txt`). O ⓘ da ANO mostra a nota; ANO sem nota cai no nome antigo de `FixedAnos`. Saíram do `FixedAnos` os textos que você refutou (2/3 "Esquiva rápida", 18, 22, 24). O teste de cobertura de tradução ignora `AnoNotes` (texto novo não exige tradução; as 28 semeadas já têm EN/ES).
+- **SPEED X e SPEED Y separadas** (como `Velocidade X / Y` da timeline principal): `ReactionRuns` ganhou o eixo (o jogo trata `xs` e `ys` de forma independente; −1 mantém só aquele eixo); `ReactionLayout` passa a 7 faixas; arrastar a borda do bloco move só o eixo; menu ＋ ganhou "Speed Y neste passo"; EXCLUIR remove o bloco do eixo selecionado.
+- **Caminho percorrido**: `BattleSim.DamageTick.reason` (início, tempo do passo, 255 ticks, pousou/COMP, parede/COMP, parede abaixo do chão, fim voando → 13, fim KO → 2), gravado no ponto exato de `tickDamage` onde a linha/tabela troca (sem mudar o comportamento). Faixa SEQ: marca amarela em cada troca importante; página TOTAL: cada trecho com `[motivo → destino]`; página SEQ: texto "Como o jogo escolhe a sequência".
+- **Próxima reação (COMP) e parede (WALL) visuais**: página SEQ → `ESCOLHER NA GRADE…` (`ReactionCompPicker`: abas JOGO 1–29 e PERSONAGEM 30–49, miniatura do 1º ANO + resumo; `NENHUMA`) e 3 botões de parede (nada / volta à próxima 2 / forçada 3). Lista das candidatas em `ReactionSlots.compCandidates` (puro).
+- **Mover personagem e câmera na prévia**: `ReactionSetup` (puro: posição do oponente no mapa −720…719 px, lado do golpe, altura). Botões `ESQ.` / `CENTRO` / `DIR.` / `PADRÃO`; na prévia, 1 dedo arrasta o oponente (aplica ao soltar; em AR a vertical muda a altura), 2 dedos movem a câmera (`CÂMERA: LIVRE`; tocar volta a seguir). `BattleSim.setReactionSpot` posiciona o oponente e a câmera como o `initCamera` do jogo. O **mesmo setup** alimenta o trace da timeline e a prévia (a parede muda o caminho).
+- Testes novos/alterados: `AnoNotesTest` (11), `ReactionRunsTest` (12: corridas por eixo independentes), `ReactionSetupTest` (13: presets, clamp, posição na simulação e a troca PAREDE → reação 3 só perto da parede), `ReactionTraceTest` (+3: motivos), `ReactionSlotsTest` (+4: candidatas COMP), `ReactionLayoutTest` (23, 7 faixas), `GridOpsTest`/`AnoFilterTest` ajustados às notas. **Só a lógica foi testada**: o desenho das faixas, os gestos da prévia, a grade do seletor e os botões só foram compilados/revisados, não rodados no aparelho.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -563,8 +571,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ToolbarTest (novo)** | 83 |
 | **ObjMoveTest (novo)** | 42 |
 | **MoveTransplantTest (novo)** | 37 |
-| **ReactionSlotsTest (novo)** | 20 |
-| **ReactionTraceTest (novo)** | 26 |
+| **ReactionSlotsTest (novo)** | 24 |
+| **ReactionTraceTest (novo)** | 29 |
 | **SaverCopyTest (novo)** | 17 |
 | **ReactionEditTest (novo)** | 35 |
 | **HelpSearchTest (novo)** | 48 |
@@ -617,6 +625,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **LinkSyncTest (novo)** | 6 |
 | **OppLinkSyncTest (novo)** | 118 |
 | **AuraLinkFrozenTest (novo)** | 9 |
+| **AnoNotesTest (novo)** | 11 |
+| **ReactionRunsTest (novo)** | 12 |
+| **ReactionSetupTest (novo)** | 13 |
 | **FrameIndexRobustTest (novo)** | 1 |
 
 ## 6. Já estava conforme (conferido, sem mudança)
