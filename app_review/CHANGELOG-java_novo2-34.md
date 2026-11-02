@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 1992 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2025 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -573,6 +573,16 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - A faixa "efeito img" continua agrupando "manter vel" (não é a faixa de speed).
 - **Correção (crash `NullPointerException` em `TimelineView.setSeqMarks`)**: o cálculo das células de velocidade (`MoveCells`) tinha ido parar dentro de `setSeqMarks` (que roda antes de haver ANO) em vez de `buildRows`; movido para `buildRows`, onde `ano` já existe.
 
+### 3.1zzzd Manter velocidade só no menu, regras de união de speed/accel, menu Golpes (Ver Fluxo | Copiar | Colar | Trocar)
+- **"Manter velocidade" não é mais faixa**: saíram as células herdadas (`x =10`) da timeline principal e das reações (`-1`/`-2` não geram célula); a faixa "efeito img" não mostra nem copia mais o bit 64 (`FrameOps.styleSig`/`setStyleRun`, `A_STYLE` da página Copiar). O manter aparece **só** no menu Movimento.
+- **Nada liga o manter sozinho**: `FrameOps.setMoveRun` (duração do trecho) liga o manter nos Frames — ação explícita — mas **não copia mais a accel** (a accel não continua no jogo: `AttackSim.loadFrame` zera a cada Frame). Ao **dar uma speed** a um Frame (`FrameTools.applySpeed`/`shouldMerge`) ele só une ao anterior (manter ligado, sem speed própria) se a velocidade final do anterior no eixo for **igual**, o anterior **não tiver accel no eixo** e a união não mudar o outro eixo; senão grava a speed própria **sem** ligar o manter (7 → 3 dá 3, nem soma nem ignora). DIVIDIR/inserir chave continuam propagando o 64 (preservam a física, ação do usuário).
+- **Campo speed = valor absoluto** (substitui a recebida, como o jogo); a recebida fica só como informação (amarelo + Remover). **Accel independente de speed**: o campo aparece sempre e uma accel sozinha é uma célula. `FrameOps.defaultsMove` não apaga mais o outro eixo do Frame; `nextMoveHead` só para em speed própria (accel sozinha não interrompe o trecho).
+- **Menu Golpes** (`AttackGrid`): linha `VER FLUXO | COPIAR | COLAR | TROCAR` (o modo ANOs já era `＋CRIAR | EXCLUIR | COPIAR | MOVER | COLAR`). **Ver Fluxo** abre o `FlowDialog` em modo **somente leitura** (`showReadOnly`: sem trocar/definir/limpar/ir para ANO). **Copiar/Colar golpe** (mesmo personagem): `MoveTransplant.build` com `KEEP_IMAGES` (imagens iguais) + `applyInMemory`: ANOs novos no **fim do DAC**, os 18 campos do Bin renumerados e links ajustados; reação igual → reaproveita, senão slot vazio, senão `ReactionReplaceScreen` para escolher qual substituir; sobrescreve o golpe selecionado com confirmação (0/3/6 só no próprio número). **Trocar** (`MoveSwap`): troca só as 24 colunas das duas linhas do Bin (0/3/6 só entre si) e avisa que o comando que dispara o golpe é pelo número.
+- **Salvar ANOs novos**: `Saver.saveRuntime` agora **acrescenta** o bloco `$ANO_n` que o arquivo não tinha (ANOs colados ou do CRIAR) em vez de contar "bloco não achado".
+- Testes: `FrameToolsTest` (+12: união, 7→3, accel anterior, outro eixo, accel sozinha), `MoveClipTest` (23: colar no mesmo DAC, reação idêntica, salvar acrescenta ANOs, trocar), `MoveCellsTest`/`ReactionRunsTest` sem células herdadas, `TimelineEditTest` (duração não copia accel).
+- **Só compilado/revisado, não executado no aparelho**: linha de botões de Golpes, Ver Fluxo somente leitura, diálogos de colar/trocar, aba/ campo absoluto do menu Movimento. Testado de verdade (Java puro): união de speed, setMoveRun, células, colar no DAC, troca de golpes e o acréscimo no `.dac.txt`.
+- Limite: Copiar/Colar golpe vale para o **mesmo personagem** (para outro personagem continua SALVAR › outro personagem); não há desfazer para colar/trocar na grade (como nas ações de ANO).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -673,7 +683,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ReactionOccurrencesTest (novo)** | 20 |
 | **RepositionHitTest (novo)** | 9 |
 | **ProjectilePushTest (novo)** | 18 |
-| **MoveCellsTest (novo)** | 11 |
+| **MoveCellsTest (novo)** | 8 |
+| **MoveClipTest (novo)** | 23 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
