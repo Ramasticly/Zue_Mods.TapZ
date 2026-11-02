@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2150 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2177 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -620,6 +620,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Desempenho (PC)**: 400 sprites em triplas de cópias ≈ 6 s; 400 sprites de mesma paleta e formas diferentes (pior caso) ≈ 28 s. No celular será mais lento (cabe nos 4 min na maioria dos casos).
 - Testes: `SpriteVerifyTest` (44: cópias agrupam, variantes não, critérios ligados/desligados, achatamento/ampliação/espelho/90°/ângulo, cadeia ligada × desligada, `renderRect`, `quantized`, refino, marcas). **Só compilado/revisado, não executado no aparelho**: a tela (MARCAR TUDO, COMPARAR com as imagens, botões coloridos, confirmação, OPÇÕES com as barras) e o tempo real da análise no celular. Testado de verdade (Java puro): critérios, métricas, tabela de pares, agrupamento, marcas e a renderização.
 
+### 3.1zzzi Backup bruto do personagem antes de OTIMIZAR, nova tela COMPARAR (uma sprite que alterna), grupo sem caixas e VER ANOS
+- **Backup pré-OTIMIZAR = cópia bruta do personagem inteiro** (`PreOptimBackup`): DAC, CNV, Bin, `.txt`, áudios (`.wav`), todas as folhas PNG/GIF, subpastas e até a velha `salvos/` (`Saver.copyChar(..., includeSalvos)`), em `Tap Battle/TBRE/Backups/PreOptim/AAAAMMDD_HHMMSS_charNN/`. Uma cópia por execução (sufixo `_2`, `_3` se o segundo for o mesmo); falhou no meio → apaga o que copiou, **nada é alterado** e o erro aparece. Vale para *Remover Sprites repetidas* (logo depois do SIM, REMOVER) e *Otimizar PNGs* (antes de gravar a primeira folha); ocupa o mesmo espaço do personagem a cada vez (as telas avisam). Saem os antigos `backup()`/`backupDir()` que copiavam só 3 `.txt` ou só as folhas.
+- **Grupo sem caixas**: tocar numa sprite do grupo (menos a maior, referência fixa) abre a comparação. Cada linha mostra o selo **MANTER** (verde) ou **REMOVER** (vermelho, fundo avermelhado). **Saíram** COMPARAR, MARCAR/DESMARCAR TUDO e `< >` (decisão do usuário). Ao voltar da comparação a linha ganha um **destaque que sobe e some em ~0,9 s** e a lista rola até ela; fica selecionada (vermelha) se a chave foi MANTER → REMOVER.
+- **COMPARAR refeita**: **uma só sprite** em área 1:1 que **alterna a cada 400 ms** (em laço) a que fica — desenhada no espaço da comparada com o mapa **quantizado** (zoom/rotação/flip/MID que o DAC vai desenhar) — e a comparada, como dois Frames de uma animação, com a legenda `SPR_0(mantida)` ↔ `SPR_7(removida|mantida)` conforme a chave. **Chave MANTER (verde) / REMOVER (vermelha)** no canto inferior direito da imagem: tocar muda a marca, fecha e volta ao grupo (a regra "ao menos uma fica" avisa e mantém). Botões, de cima para baixo: **PLAY/PAUSE** (pausado, tocar na imagem troca o quadro), **VER ANOS**, **CANCELAR** (fecha sem mudar, com destaque na linha). Chip no canto da imagem troca a duração (200/400/800/1200 ms; 400 é o padrão). Lógica pura em `DedupCompare` (fase, legenda, duração).
+- **VER ANOS** (`DedupPreview`): lista as ANOs que usam alguma sprite do grupo (`Ano N · SPR_a, SPR_b (Frames 1, 4)`, com "· muda" nas que mudam) e, ao tocar, toca a ANO com o mesmo componente da grade (`AnimPreview`) em **DEPOIS** (marcas atuais **mais a sprite comparada como removida**) com a chave **VER ANTES/DEPOIS**. A prévia usa uma **cópia** do DAC (`Dac.copyWith` + os mesmos `SpriteDedup.apply`: ANO filha de link não troca Flip, "tudo ou nada" por sprite); o DAC real não muda.
+- Testes: `BackupTest` (10: cópia idêntica byte a byte de dac/bin/cnv/txt/png/gif/wav/subpastas/salvos/arquivo vazio, progresso, `_2`/`_3`, estado de antes preservado, origem inexistente sem pasta pela metade, cópia comum continua pulando `salvos/`), `DedupPreviewTest` (21: fase 0/1 a cada 400 ms, legenda, ciclo de duração, ANOs afetadas, linha, prévia sem tocar no DAC real, zoom 50%, filha de link com espelho = a sprite fica, fora de link vira Flip X) e as marcas novas em `SpriteVerifyTest`.
+- **Só compilado/revisado, não executado no aparelho**: a grade sem caixas e o destaque animado, a tela de comparação (alternância por `Handler`, chave no canto, PLAY/PAUSE, chip de ms), as telas VER ANOS/prévia e a cópia bruta com a barra de progresso. Testado de verdade (Java puro): a cópia do personagem, as marcas, a fase/legenda do ciclo e a prévia do DAC.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -726,7 +734,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteWizardTest (novo)** | 21 |
 | **SpriteScaleTest (novo)** | 21 |
 | **SpriteRotSearchTest (novo)** | 19 |
-| **SpriteVerifyTest (novo)** | 44 |
+| **SpriteVerifyTest (novo)** | 40 |
+| **BackupTest (novo)** | 10 |
+| **DedupPreviewTest (novo)** | 21 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
