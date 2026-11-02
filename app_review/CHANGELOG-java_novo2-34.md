@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2177 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2201 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -628,6 +628,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes: `BackupTest` (10: cópia idêntica byte a byte de dac/bin/cnv/txt/png/gif/wav/subpastas/salvos/arquivo vazio, progresso, `_2`/`_3`, estado de antes preservado, origem inexistente sem pasta pela metade, cópia comum continua pulando `salvos/`), `DedupPreviewTest` (21: fase 0/1 a cada 400 ms, legenda, ciclo de duração, ANOs afetadas, linha, prévia sem tocar no DAC real, zoom 50%, filha de link com espelho = a sprite fica, fora de link vira Flip X) e as marcas novas em `SpriteVerifyTest`.
 - **Só compilado/revisado, não executado no aparelho**: a grade sem caixas e o destaque animado, a tela de comparação (alternância por `Handler`, chave no canto, PLAY/PAUSE, chip de ms), as telas VER ANOS/prévia e a cópia bruta com a barra de progresso. Testado de verdade (Java puro): a cópia do personagem, as marcas, a fase/legenda do ciclo e a prévia do DAC.
 
+### 3.1zzzj Botão da comparação mostra a ação, maior = MANTER (FIXA) e "Foram mantidas: … (Ver motivo.)" na tela pós-remoção
+- **Comparação**: o botão do canto passa a mostrar a **ação ao tocar** — sprite **não marcada → REMOVER** (vermelho), **marcada → MANTER** (verde) —, enquanto o selo da linha no grupo continua mostrando o **estado**. A legenda do quadro da comparada segue o estado atual (`(mantida)` / `(removida)`). `DedupCompare.actionLabel` (puro).
+- **Grupo**: a maior mostra o selo **MANTER (FIXA)** (`DedupMarks.chip`), não tocável.
+- **Pós-remoção**: se alguma marcada não saiu, o diálogo final traz `Foram mantidas: SPR_3, 7 e 12 (Ver motivo.)` com o "Ver motivo." **azul e clicável** (alterna para "Ocultar motivo."); o motivo só aparece ao tocar. Os números são os **novos** (depois da renumeração) com "(antes SPR_N)" na explicação. Antes, sprites marcadas sem substituta ficavam **em silêncio** (nem entravam na lista) e as outras só diziam "algum frame não tem como ficar igual".
+- **Motivos em termos simples** (`DedupReasons`, `SpriteXform.whyNot`, `SpriteDedup.Reason`): (1) ANO usada como **link** de outra que precisaria de Flip — o jogo espelha o deslocamento do link junto; (2) um Frame **esticado só num lado e girado** ao mesmo tempo — o jogo estica antes de girar; (3) **zoom** fora do que o DAC guarda; (4) **arredondamento** (o DAC só guarda inteiros) deixaria a sprite mais de 2 px fora do lugar; (5) **nenhuma sprite do grupo serve no lugar** com os critérios atuais; (6) Frame de tamanho zero. Cada um com "Onde: ANO a, Frame f" (o primeiro Frame que impediu). Frase fixa: uma sprite só sai se **todos** os Frames que a usam puderem ser refeitos.
+- **VER ANOS**: ANO com a flag de loop toca em **laço contínuo** (sem pausa); as sem loop tocam uma vez, seguram o último Frame ~1 s e recomeçam — nos dois lados ANTES/DEPOIS. Teste novo garante que a reescrita preserva o bit de loop.
+- Testes: `DedupReasonsTest` (24: nomes "SPR_3, 7, 9 e 12", cada código de `whyNot`, `apply` registra ANO/Frame, mistura sem-substituta × sem-solução, números novos, selo da maior, rótulo da ação, loop mantido no DEPOIS). **Só compilado/revisado**: o botão/selos, a linha com o link azul e a revelação do motivo.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -737,6 +745,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteVerifyTest (novo)** | 40 |
 | **BackupTest (novo)** | 10 |
 | **DedupPreviewTest (novo)** | 21 |
+| **DedupReasonsTest (novo)** | 24 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
