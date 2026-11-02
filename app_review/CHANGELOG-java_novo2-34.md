@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2061 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2106 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -599,6 +599,18 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Teste: `SpriteWizardTest` (21: nota idêntica/espelhada/escalada/sem relação/proporção diferente/vazia, `scores`, uso por sprite com hurtbox e ANO fixa, decisões mistas + renumeração, alinhar com Flip, fallback sem solução, substituta que também sai).
 - **Só compilado/revisado, não executado no aparelho**: telas de decisão e explicação, seekbar e filtragem da lista, miniaturas e o fluxo VOLTAR/CONTINUAR. Testado de verdade (Java puro): a nota de semelhança, a aplicação das decisões, o alinhamento e a renumeração.
 
+### 3.1zzzg "Remover Sprites repetidas" acha cópias em outra escala, achatadas e giradas em qualquer ângulo; "Trocar slot SPR por outra"
+- **Por que não achava** (causas medidas): (1) o portão de proporção (`ASPECT_TOL` 4%) descartava toda cópia **achatada** (zoom X ≠ Y) e as pequenas (tamanho lógico arredondado: 30×17 → 15×8 ou 15×9 falhava); (2) a assinatura 32×32 usava limites de célula inteiros e a comparação célula a célula era rígida, então uma cópia reamostrada (box/bilinear) ficava em 65-88% (< os 90% do padrão); (3) as margens transparentes do recorte entravam na assinatura; (4) só havia as 8 transformações (flip/90°); (5) `SpriteXform.solve` podia devolver zoom 0 (a sprite sumia); (6) os testes usavam vizinho mais próximo (esconde a suavização) e só proporções iguais.
+- **Assinatura nova** (`SpriteDedup.sig`): recorte justo do conteúdo (pixels com alpha ≥ 8, **com fração de pixel** na borda, então margens e tamanhos arredondados não contam), média por área fracionária (`box`), pirâmide 32/16/8 (sprites pequenas se comparam numa grade mais grossa), histograma de cores e miniatura de 32 px. A nota por célula tolera ±1 célula e **afrouxa na borda** (tolerância = 20 + 0,7 × contraste da célula, até 160), que é onde a reamostragem muda o pixel; no liso continua 20. Sem portão de proporção: só limites de sanidade (achatamento ≤ 8×, escala 0,02–50×).
+- **Medido (Java puro)**: 84 cópias reduzidas/achatadas (64→48/32/25/37×41/64×32/20×64/45×23, box e bilinear, 6 desenhos) → **84/84 ≥ 90%**; 30×17 → 15×8 e 15×9 achados; margens diferentes = 100%; 66 pares de desenhos diferentes + cores diferentes + retângulo × elipse da mesma cor = **0 falsos positivos**; cadeia A (100%) → B (50%) → C (25%) num grupo só.
+- **Ângulo qualquer** (`SpriteRotSearch`, novo): modelo do DAC `R = Rot(θ)·diag(sx,sy)·[espelho]·K`. A miniatura de R é **desgirada** por −θ (passos de 15°, refino 7,5/3,75/1,9 e grau inteiro, com e sem espelho), recortada justo e comparada com K pelo mesmo critério; escala e achatamento saem da razão das caixas. Só pares com histograma de cores parecido (≤ 5 candidatas por sprite) e só sprites que não casam sem girar; ~0,15 s para 400 sprites. Roda **uma vez** ao abrir (tela "Procurando cópias giradas", limite de 60 s) e o resultado fica guardado, então a barra de semelhança continua instantânea. Nota máxima 99, marcada **~ (aproximado)**; piso 70. Testado: 8 ângulos (7°…170°, −135°), espelhada + 30°, achatada 100%×50% + 25°, 18 casos sem falso positivo, mapa geométrico (erro < 1,2 px) e aplicação no DAC (ponto marcado cai no mesmo lugar do mundo, erro < 0,6 px).
+- **Aplicar** (`SpriteXform.solve` geral): aceita qualquer mapa afim (inversa real em vez da transposta; resultado idêntico para as 8) e recusa o que o jogo não desenha (eixos não ortogonais), zoom fora de 1–32767 e erro de canto > máx(2 px; 1,5%). Quem fica: prefere a que não precisa ampliar (zoom ≤ 105%), depois a nota; `choose` não usa mais o portão (antes devolvia `null` em silêncio ao desmarcar o representante). `groups`: cada sprite entra na raiz de **maior nota** e, se nenhuma casa, tenta os membros (cadeia).
+- **Desempenho**: triagem por histograma e por preenchimento, orçamento exato de células diferentes (desiste cedo) e o agrupamento agora roda **fora da tela** (aparece "Comparando sprites..."): 600 sprites sem relação em ~50 ms; 600 da mesma paleta em ~2 s no PC.
+- **Tela**: cada linha mostra a relação (igual, espelhada, girada N° (aproximado), "zoom X% × Y% (achatada)") e avisa "amplia, perde qualidade". Texto de ajuda atualizado (limites: sem inclinação; hitbox/hurtbox não são reajustadas).
+- **"Trocar slot SPR por outra"** (substitui "Mudar índice (só no CNV)"): troca as duas imagens de lugar na lista **e** reescreve o DAC (`SpriteRenumber.swapMap` + `remapDac`), então as animações ficam iguais; só reorganiza. Grupos de GIF que tocam os slots são desfeitos (como antes); o DAC é gravado em `000.dac.txt`.
+- Testes: `SpriteScaleTest` (21), `SpriteRotSearchTest` (19), `SpriteRenumberTest` (+5: `swapMap`, DAC dos dois lados). As expectativas "proporção diferente não casa" (`SpriteDedupTest`, `SpriteWizardTest`) foram invertidas de propósito.
+- **Só compilado/revisado, não executado no aparelho**: tela de grupos com as novas linhas, "Procurando cópias giradas" e "Comparando sprites...", o diálogo "Trocar slot SPR por outra" (e a troca no CNV via `SpriteLib.swap`). Testado de verdade (Java puro): assinaturas, notas, agrupamento, escolha, busca de ângulo, resolução geométrica, aplicação no DAC e a permutação de slots. A busca por ângulo é aproximada (a rotação de pixels borra a borda) e o tempo no aparelho será maior que o medido no PC.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -682,7 +694,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DustTest (novo)** | 11 |
 | **CutsceneEditTest (novo)** | 25 |
 | **FrameBarTest (novo)** | 20 |
-| **SpriteRenumberTest (novo)** | 14 |
+| **SpriteRenumberTest (novo)** | 19 |
 | **SpriteDedupTest (novo)** | 19 |
 | **Png8Test (novo)** | 8 |
 | **TransplantStepsTest (novo)** | 9 |
@@ -703,6 +715,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **MoveClipTest (novo)** | 23 |
 | **SpriteReplaceTest (novo)** | 15 |
 | **SpriteWizardTest (novo)** | 21 |
+| **SpriteScaleTest (novo)** | 21 |
+| **SpriteRotSearchTest (novo)** | 19 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
