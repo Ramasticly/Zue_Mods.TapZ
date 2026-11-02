@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2040 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2061 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -591,6 +591,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Teste: `SpriteReplaceTest` (15: 0→40 e depois renumerar dá 39, `{0,3}→40` dá 38, substituta nos que saem/negativa rejeitadas, `-1` intacto, aviso de tamanho, volta pelo `.txt`).
 - **Só compilado/revisado, não executado no aparelho**: diálogo com as duas caixas, seletor sem edição, miniaturas, "Trocar os Usos". Testado de verdade (Java puro): a troca de IMG, a ordem trocar → renumerar e a gravação.
 
+### 3.1zzzf Exclusão de sprites em etapas (uma decisão por sprite), seekbar de semelhança e "Alinhar MID/RAZ"
+- **Assistente de exclusão** (`SpriteDeleteWizard`, substitui o diálogo de duas caixas): EXCLUIR (em massa) e "Remover da lista" abrem **uma tela por sprite marcada** — `SPR_N`, prévia grande, uso ("N frame(s) em M ANO(s)"), **"O que excluir?"**: *Sprite, usar outra Sprite no lugar* / *Sprite e Frames* / *Sprite, Frames ficam sem imagem* — e a caixa **Alinhar MID/RAZ**. Cada escolha abre uma **tela de explicação** (usar outra: o que acontece e a próxima tela; Frames: avisos reais por sprite — hitbox, hurtbox, projétil (`SpriteMass.Usage.hurtbox`), ANO de golpe do Bin e ANO fixa do jogo (`FixedAnos`); sem imagem: IMG -1). Sprite sem uso só sai da lista. Nada muda até o REMOVER do resumo final; cancelar/voltar em qualquer tela deixa tudo como estava.
+- **Aplicação única** (`SpriteMass.applyDecisions`, puro), com os índices antigos: substituições (por sprite) → excluir Frames → IMG -1 → `lib.removeShift` → `SpriteRenumber.remapDac` → grava o DAC. Substituta que também sai é ignorada (vira IMG -1).
+- **Seletor da substituta com semelhança**: barra **"Semelhança mínima"** no topo, de 0% (mostra todas) a 90% (só as quase idênticas); acima de 0% a lista fica plana, só com o que passa, da maior nota para a menor, cada linha com `· NN%`. Nota nova `SpriteDedup.bestAny` (as mesmas 8 transformações e a mesma conta de células do "tirar repetidas", **sem** exigir a mesma proporção, para o 0% poder listar tudo) e `SpriteDedup.scores`; as assinaturas das sprites são lidas uma vez por exclusão (`SpriteSims`, com a tela "Analisando sprites"). "Trocar os Usos" usa o mesmo seletor (referência = a sprite de origem).
+- **Alinhar MID/RAZ** (só em "usar outra"): reaproveita o `SpriteDedup.apply`/`SpriteXform` do "Remover Sprites repetidas" com a melhor relação (`bestAny`) entre a antiga e a nova: recalcula flips, MID (centro), rotação e zoom de cada Frame para a nova ocupar o lugar da antiga (proporção diferente = esticada; ANOs filhas de link não trocam Flip). Frames sem solução só trocam o IMG e a sprite entra no aviso final. Hitbox/hurtbox não são ajustadas.
+- Teste: `SpriteWizardTest` (21: nota idêntica/espelhada/escalada/sem relação/proporção diferente/vazia, `scores`, uso por sprite com hurtbox e ANO fixa, decisões mistas + renumeração, alinhar com Flip, fallback sem solução, substituta que também sai).
+- **Só compilado/revisado, não executado no aparelho**: telas de decisão e explicação, seekbar e filtragem da lista, miniaturas e o fluxo VOLTAR/CONTINUAR. Testado de verdade (Java puro): a nota de semelhança, a aplicação das decisões, o alinhamento e a renumeração.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -694,6 +702,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **MoveCellsTest (novo)** | 8 |
 | **MoveClipTest (novo)** | 23 |
 | **SpriteReplaceTest (novo)** | 15 |
+| **SpriteWizardTest (novo)** | 21 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
