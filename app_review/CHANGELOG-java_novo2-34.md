@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2106 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2150 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -611,6 +611,15 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Testes: `SpriteScaleTest` (21), `SpriteRotSearchTest` (19), `SpriteRenumberTest` (+5: `swapMap`, DAC dos dois lados). As expectativas "proporção diferente não casa" (`SpriteDedupTest`, `SpriteWizardTest`) foram invertidas de propósito.
 - **Só compilado/revisado, não executado no aparelho**: tela de grupos com as novas linhas, "Procurando cópias giradas" e "Comparando sprites...", o diálogo "Trocar slot SPR por outra" (e a troca no CNV via `SpriteLib.swap`). Testado de verdade (Java puro): assinaturas, notas, agrupamento, escolha, busca de ângulo, resolução geométrica, aplicação no DAC e a permutação de slots. A busca por ângulo é aproximada (a rotação de pixels borra a borda) e o tempo no aparelho será maior que o medido no PC.
 
+### 3.1zzzh Remover Sprites repetidas: MARCAR TUDO, COMPARAR, CANCELAR/REMOVER com confirmação e critérios de detecção configuráveis (conferência em pixels)
+- **Grade**: nada vem marcado. Cada grupo tem **MARCAR TUDO** (todas menos a maior; vira **DESMARCAR TUDO** quando todas estão marcadas) e **COMPARAR**. Rodapé: **CANCELAR** (vermelho, no lugar de VOLTAR) e **REMOVER MARCADAS** (verde) que agora **pergunta se tem certeza** ("Remover N sprite(s) de M grupo(s)?…", SIM, REMOVER / VOLTAR) antes de mexer. A lógica das marcas é pura (`DedupMarks`: marcar/desmarcar tudo, "ao menos uma fica", passo `<` `>` circular).
+- **COMPARAR**: tela com a que **fica desenhada com os ajustes de zoom/rotação/flip/MID** (o mapa quantizado, ou seja, o que o DAC vai desenhar) ao lado da que **será removida**, na mesma escala; **caixa grande** em cima ("Remover SPR_N") sincronizada com a grade (respeita "ao menos uma fica"); `<` `>` percorrem as sprites do grupo; a que fica é a que `choose` escolheria no estado atual das marcas; legenda com a relação, o zoom e as notas de forma/cor/detalhes. (`SpriteVerify.renderRect`, puro.)
+- **Por que juntava imagens pouco parecidas** (a 90% inclusive): (1) **regressão minha da 3.1zzzg**: o agrupamento em **cadeia** deixava uma sprite entrar no grupo por casar com *qualquer membro* (B), sem casar com a maior (A) — agora é uma opção, **desligada** (todas precisam casar com a maior); (2) só a grade 32×32 decidia, com tolerância de borda alta, e não havia conferência real dos pixels.
+- **Conferência em pixels** (`SpriteVerify`, novo): a triagem por células e a busca de ângulo continuam (rápidas) e geram os pares candidatos **uma vez ao abrir** (tela "Comparando sprites" / "Procurando cópias giradas" / "Conferindo pixels", limite de 4 min; o que não der tempo fica sem conferência e entra de fora, com aviso "análise incompleta"). Cada par é conferido assim: K é desenhada no espaço de R com o mapa (média por área + amostragem bilinear), **refina-se escala X, escala Y, posição e rotação** (busca local com passos que diminuem; rotação em graus inteiros) e mede-se **forma** (Dice das máscaras tolerando 1 px), **cor** (% do miolo com a mesma cor, vizinho mais parecido a 1 px), **detalhes** (correlação das bordas internas) e **paleta** — tudo no mapa **quantizado** (zoom e rotação inteiros, como o jogo desenha). O mapa refinado também é o que `apply` usa. Cada sprite só leva suas 8 melhores parceiras para a conferência; pares com forma < 88% ou cor < 70% já no mapa inicial nem são refinados.
+- **Critérios configuráveis** (botão **OPÇÕES** ao lado da barra de semelhança; `DedupOptions`): Forma 96%, Cor 95%, Detalhes 65%, Paleta 70%, Achatamento máximo 4,0×, Ampliação máxima da que fica (desligado, 125%), Aceitar espelhadas, Aceitar giradas 90°/180°, Aceitar giradas em qualquer ângulo (nota mínima 80%) e Agrupar em cadeia (desligado). Cada um liga/desliga e tem a sua tolerância; **REDEFINIR** volta ao padrão. Mudar qualquer coisa só refiltra a tabela (a barra continua instantânea). Os padrões foram calibrados em dados sintéticos: **168/168 cópias reamostradas** (box/bilinear, escala, achatamento) e 48/50 giradas passam; só 4/20, 0/20 e 5/20 das variantes "parecidas mas diferentes" (uma elipse de outra cor, um quarto deslocado, uma elipse a mais) agrupam.
+- **Desempenho (PC)**: 400 sprites em triplas de cópias ≈ 6 s; 400 sprites de mesma paleta e formas diferentes (pior caso) ≈ 28 s. No celular será mais lento (cabe nos 4 min na maioria dos casos).
+- Testes: `SpriteVerifyTest` (44: cópias agrupam, variantes não, critérios ligados/desligados, achatamento/ampliação/espelho/90°/ângulo, cadeia ligada × desligada, `renderRect`, `quantized`, refino, marcas). **Só compilado/revisado, não executado no aparelho**: a tela (MARCAR TUDO, COMPARAR com as imagens, botões coloridos, confirmação, OPÇÕES com as barras) e o tempo real da análise no celular. Testado de verdade (Java puro): critérios, métricas, tabela de pares, agrupamento, marcas e a renderização.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -717,6 +726,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteWizardTest (novo)** | 21 |
 | **SpriteScaleTest (novo)** | 21 |
 | **SpriteRotSearchTest (novo)** | 19 |
+| **SpriteVerifyTest (novo)** | 44 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
