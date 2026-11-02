@@ -286,7 +286,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-02 17:20:25.551633882 +0000
++++ b/AiHelpDoc.java	2026-11-02 19:24:20.785876429 +0000
 @@ -0,0 +1,852 @@
 +package com.zue.attackeditor;
 +
@@ -637,7 +637,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "### 11.1 Top menu (16 buttons; the user can long-press and drag them to reorder; the first is pinned)\n" +
 +        "- `SALVAR` — save (section 13).\n" +
 +        "- `CHAR` — choose the **attacker** and the **opponent** characters; `POS` sets distance/height between them by dragging on screen (plus `ESQ.` / `MEIO` / `DIR.` to take the pair to the left edge / middle / right edge of the map, changing only x) (and `FLY`: attacker airborne); `CHAR OBJ` shows body box and sprite anchors and edits the body size. The +1 tick counter locks during hitstop and the cinematic lock and then continues at locked+1 (frozen ticks do not count). The ANO/move selector is a button that opens a grid. A `GOLPES | ANOS` switch at the top changes mode on the spot. The grid shows the first Frame of each item; tapping a card expands it and plays the animation without opening (landing simulation for aerial moves; loop for ANOs with wActFlag 1, others play once, hold the last Frame 1 s and restart; the hit/projectile box is drawn); the big `➜ ABRIR` button opens it for editing. In ANO mode: `FILTRAR` cycles Padrão / Importância / Golpes / Ataque / Tempo / Frames / Efeitos (reorders without hiding: matches go first with a green frame); in GOLPES mode the bottom row is `VER FLUXO` (opens the move's flow view-only), `COPIAR`, `COLAR` and `TROCAR`: `COLAR` pastes the copied move over the selected one (same character; 0, 3, 6 only over their own number) — its ANOs become NEW ANOs at the end of the DAC, the Bin row is renumbered, equal reactions are reused, otherwise they go to empty slots and with none free the user picks which to replace; `TROCAR` swaps the Bin rows of two moves only (the move number — and so the command that triggers it — changes; 0, 3, 6 only among themselves); both only change memory until SAVE (new ANOs are appended to 000.dac.txt). In ANOS mode at the bottom `＋ CRIAR` (new ANO = last+1, one frame IMG -1 with 6 ticks), `EXCLUIR` (empties the ANO, it keeps existing; warns if it has a hitbox/projectile or belongs to a BIN attack), `COPIAR`, `MOVER` (pick another ANO; the Frames go there and the original becomes empty) and `COLAR` (same warning); holding a card starts selection mode to delete several. The `ⓘ` button: on an ANO only its role (`ANIM_INICIAL do Golpe N`, `SEQ do golpe N`, `Projétil do golpe N`, `Animação de pouso padrão`, fixed game ANOs such as `Parado` or `Carga de ki`; ANOs 29–39 are the normal A attacks and 30/32 have the OPT 512 combo window); on a move, the button that triggers it with its icon from effect.pac plus a `Sequências:` block. Colors: blue = fixed in the game's source code, green = from the BIN or another source. Move block: green = BIN (`SEQ (chão/ar)`, `END (chão/ar)`, `SEQ PROJ` = `ANIM_AO_ACERTAR`, grab `OPONENTE_AGARRADO`); blue with `(automática)` = code (special repeat ANO 42/40-41 for moves 0/3/6 with `MAX_REPETICOES`, grab → `ANIM_INICIAL + 1`); landing is not listed. ANOs 29–39 show their continuation: ANO 30 → A:32, A+forward:31, A+back:37, A+down:36; ANO 32 → A:33 and the same directions; the others `Sem continuação`. Game buttons (`CreateGamepad` + `Controller`; pad key = 6th `AddPad` argument): A (effect.pac ANO 209) = normal attacks, fixed ANOs 29–39, not in HDAT 4 (ground: A neutral 30, forward 31, back 37, down 36, from a run 29; jumping: 34/35/39/38; combo window OPT 512 in ANOs 30/32: 30→32→33, or 31/36/37 with a direction); Y (330) = moves 0/3/6; X (333) = 1/4/7; B (336) = 2/5/8 (ground / jumping-falling / flying); Z (339, 100 Synchro = 1 ki bar) = moves 9 (ground/flying) and 10 (jump); IRA (ANO 45, no button of its own: tap of the corner button while `AngryOn`, 200 Synchro) = moves 11 (ground/flying) and 12 (air); the same tap without `AngryOn` and Angry >= 100 = Rage = moves 14/15. Y, X, B and Z exist only in the game's button layout (`iControlType == 1`); otherwise the specials come from a joystick gesture **followed by the A button** (the game only reads the gesture on the tick A is pressed, `JoyTrig & 670056704`): Y `↓ → + A`, X `→ ↓ + A`, B `↓ ← + A`, Z `↓ ← → + A`, IRA `↓ ← ↓ ← + A` (with `AngryOn`). Special moves 9-12 have the game's cinematic lock: the +1 tick button shows a yellow notice with a `PULAR` (skip) button that passes through the lock and releases the tick, and the camera zooms to 200% (4 ticks, centered on the owner: 40 px outward, 48 px above the feet) and back to 100% in 12 ticks after it. The attacker/opponent pickers are dark grids (3 columns) where each `charNN` plays its own ANO 76 (ANO 0 if it has none); the current one is highlighted. The opponent row is `OPONENTE: charNN | DEF`: the `DEF` checkbox (off by default) makes the opponent block, to test how the move behaves when blocked: no damage or reaction, guard stance (ANO 4, or 81 in the air), pushback 13 decaying 2 per tick, the OPT 1 hitstop, block effect ANO 2 and SE 8 (groups 0-3), 2 chip damage only when the hitting ANO is >= 40 and damage is not 0; hitbox flag 26 (enemy does not block) and grabs are not blocked, and a blocked hit still confirms the move (ANIM_SEQ/ANIM_END happen). With the opponent's `DEF` box on, a guarded hit does **not** confirm the hit (no SEQ / `ANIM_AO_ACERTAR` / landing-on-hit; those only happen when the move connects). Effects placed on the opponent's own frames (hit flags 71–125 → his character's ANO 201+, 10–17 effect, 41–70 charf; e.g. the visual of the defense on ANO 4) are created and drawn too.\n" +
-+        "- `SPRITES` — the character's sprite list: add, replace (the old sprite's pixels are erased from the sheet BEFORE the new one is placed, except what another sprite still uses, so a smaller sprite can take the same spot and the rest stays free and clean), remove (removing only takes it out of the CNV and RENUMBERS the following sprites: SPR_0 out → 1 becomes 0, and the CNV, GIF groups and every DAC frame follow), reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame. Its `OTIMIZAR` button (next to `+ ADICIONAR`) has two functions: `Remover Sprites repetidas` (groups equal/similar sprites, also mirrored, rotated 90° or at another scale; a minimum-similarity bar; you tick which to remove, at least one per group stays; the DAC frames are rewritten to use the kept sprite with Flip/zoom/rotation/position adjusted so the drawing is identical, then the sprites are renumbered) and `Otimizar PNGs` (sheets converted to 8-bit palette PNG, up to 256 colors per sheet, originals copied first to `Backups/PreOptim/charNN/`). Tapping a sprite offers `Mostrar usos` (right below `Substituir imagem`): where it appears, one line per ANO (`Ano 3, Frame 1`, `Ano 5, Frames 2, 4 e 7`).\n" +
++        "- `SPRITES` — the character's sprite list: add, replace (the old sprite's pixels are erased from the sheet BEFORE the new one is placed, except what another sprite still uses, so a smaller sprite can take the same spot and the rest stays free and clean), remove (removing only takes it out of the CNV and RENUMBERS the following sprites: SPR_0 out → 1 becomes 0, and the CNV, GIF groups and every DAC frame follow; in the removal dialog the box `Excluir Frames com essa Sprite` deletes the frames that used it, and the box `Substituir os Frames por outra Sprite` (`ESCOLHER SPRITE…`) first changes their IMG to the chosen sprite — every IMG 0 becomes IMG 40, for example — and only then renumbers, so the chosen one follows the new numbering (40 becomes 39); with neither the frames get IMG -1; the sprite tap menu also has `Trocar os Usos`: the same IMG swap to another sprite WITHOUT deleting or renumbering; only the IMG changes, so a different size is warned about), reorder, change the cut, import PNG/JPG/GIF; also choose the sprite for a frame. Its `OTIMIZAR` button (next to `+ ADICIONAR`) has two functions: `Remover Sprites repetidas` (groups equal/similar sprites, also mirrored, rotated 90° or at another scale; a minimum-similarity bar; you tick which to remove, at least one per group stays; the DAC frames are rewritten to use the kept sprite with Flip/zoom/rotation/position adjusted so the drawing is identical, then the sprites are renumbered) and `Otimizar PNGs` (sheets converted to 8-bit palette PNG, up to 256 colors per sheet, originals copied first to `Backups/PreOptim/charNN/`). Tapping a sprite offers `Mostrar usos` (right below `Substituir imagem`): where it appears, one line per ANO (`Ano 3, Frame 1`, `Ano 5, Frames 2, 4 e 7`).\n" +
 +        "- `SONS` — sound manager only (does not pick a sound for a frame): the character's WAVs (ids 80+) and the game's common OGGs; `+` adds a sound, tap an item to play, trim, adjust volume/pitch/speed, replace or silence it.\n" +
 +        "- `LINKS` — linked animations of the current ANO (list, edit, sync flags `SPAWN_POS`/`XY`/`MPT`, edit position over the base animation).\n" +
 +        "- `GOLPE SET` — the move's `ATK_FLAGS` options (checkboxes; table in 5.5).\n" +
@@ -16697,7 +16697,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-11-02 17:20:03.669686123 +0000
++++ b/HelpText.java	2026-11-02 19:24:14.390098292 +0000
 @@ -0,0 +1,621 @@
 +package com.zue.attackeditor;
 +
@@ -17054,7 +17054,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +                "Os sons do frame (SE) usam ids: de 0 até o último som comum do jogo, e a partir do 80 os áudios do personagem (arquivos NNN.wav da pasta dele). A lista de sons deixa tocar, trocar, cortar (áudios com mais de 20 s sugerem cortar), ajustar o volume e remover (o som vira silêncio e os usos são retirados dos ANOs)."
 +                + " O id do SE vai de 0 a 255 (valores acima de 127 só valem no TCBManajer com o patch do byte sem sinal): 1 a 79 = sons comuns se_00 a se_78, 80 a 99 = áudios do personagem e 100 a 255 = sons comuns novos (se_99 a se_254; o arquivo é se_NNN.ogg a partir do 100). O + da lista também adiciona um SOM GLOBAL (OGG, precisa do Android 10 ou mais novo): ele vira o próximo se_; depois do se_78 o primeiro novo é o se_100 e o app cria arquivos silenciosos se_79 a se_99 para não deixar buraco. Os sons comuns têm as mesmas ferramentas dos WAV (ouvir, cortar, ajustar, substituir e silenciar — nunca se apaga um se_). O .ogg gravado usa o codec Opus.");
 +        sn.add("Sprites e CNV",
-+                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) só mudam ao adicionar ou substituir sprites — Substituir imagem apaga da folha os pixels da sprite antiga (menos o que outra sprite ainda usa) antes de pôr a nova, então uma sprite menor pode ocupar o mesmo lugar e o resto fica livre e sem pixels; Remover só tira a sprite do CNV —; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1). O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). Botões do jogo (no ⓘ dos golpes): A (ANO 209 do effect.pac) faz os golpes normais — ANOs fixos 29 a 39 (30 → 32 → 33 em pé, com a janela OPT 512 liberando o próximo A), que não passam pelo HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (chão / pulando ou caindo / voando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando); IRA (ANO 45, sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar), e o mesmo toque sem AngryOn, com Angry em 100 ou mais, é Rage (golpes 14/15). Y, X, B e Z só existem no layout de botões do jogo; no outro layout os especiais saem por gesto de joystick seguido do botão A: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (com AngryOn).");
++                "O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) só mudam ao adicionar ou substituir sprites — Substituir imagem apaga da folha os pixels da sprite antiga (menos o que outra sprite ainda usa) antes de pôr a nova, então uma sprite menor pode ocupar o mesmo lugar e o resto fica livre e sem pixels; Remover só tira a sprite do CNV —; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Na exclusão, a caixa \"Excluir Frames com essa Sprite\" tira os frames que usavam a sprite; a caixa \"Substituir os Frames por outra Sprite\" (ESCOLHER SPRITE…) troca o IMG deles pela sprite escolhida (todo IMG 0 vira IMG 40, por exemplo) e só depois renumera, então a escolhida acompanha a nova numeração (a 40 vira 39); sem nenhuma das duas os frames ficam sem imagem (IMG -1). Tocar numa sprite abre também \"Trocar os Usos\": faz a mesma troca de IMG para outra sprite sem excluir nem renumerar nada (a sprite continua na lista). Só o IMG troca: se o tamanho for diferente o app avisa que o desenho muda de tamanho e de âncora. O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). Botões do jogo (no ⓘ dos golpes): A (ANO 209 do effect.pac) faz os golpes normais — ANOs fixos 29 a 39 (30 → 32 → 33 em pé, com a janela OPT 512 liberando o próximo A), que não passam pelo HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (chão / pulando ou caindo / voando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando); IRA (ANO 45, sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar), e o mesmo toque sem AngryOn, com Angry em 100 ou mais, é Rage (golpes 14/15). Y, X, B e Z só existem no layout de botões do jogo; no outro layout os especiais saem por gesto de joystick seguido do botão A: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (com AngryOn).");
 +        c.add(sn);
 +
 +        Chapter sv = new Chapter("salvar", "Salvar e backups", "Pasta separada, Runtime, salvar em outro personagem e onde ficam as cópias de segurança.");
@@ -17626,7 +17626,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-11-02 17:18:18.642226223 +0000
++++ b/I18nCatalog.java	2026-11-02 19:23:44.445763733 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -17640,7 +17640,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-11-02 17:18:18.636920086 +0000
++++ b/I18nCatalog0.java	2026-11-02 19:23:44.427130446 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -17913,7 +17913,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-11-02 17:18:18.637710000 +0000
++++ b/I18nCatalog1.java	2026-11-02 19:23:44.441031312 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -18186,7 +18186,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-11-02 17:18:18.638568278 +0000
++++ b/I18nCatalog2.java	2026-11-02 19:23:44.441813323 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -18459,7 +18459,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-11-02 17:18:18.639230491 +0000
++++ b/I18nCatalog3.java	2026-11-02 19:23:44.442438659 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -18732,7 +18732,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-11-02 17:18:18.639806611 +0000
++++ b/I18nCatalog4.java	2026-11-02 19:23:44.443238968 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -19005,7 +19005,7 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-11-02 17:18:18.640621230 +0000
++++ b/I18nCatalog5.java	2026-11-02 19:23:44.444138731 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -19278,7 +19278,7 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +}
 diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
 --- a/I18nCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog6.java	2026-11-02 17:18:18.641523482 +0000
++++ b/I18nCatalog6.java	2026-11-02 19:23:44.444901078 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -19551,8 +19551,8 @@ diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
 +}
 diff -ruN a/I18nCatalog7.java b/I18nCatalog7.java
 --- a/I18nCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog7.java	2026-11-02 17:18:18.642062984 +0000
-@@ -0,0 +1,173 @@
++++ b/I18nCatalog7.java	2026-11-02 19:23:44.445402902 +0000
+@@ -0,0 +1,195 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 7 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -19724,6 +19724,28 @@ diff -ruN a/I18nCatalog7.java b/I18nCatalog7.java
 +        {"Slot sem ANO: o fluxo não passa por aqui.", "Slot without ANO: the flow does not pass here.", "Slot sin ANO: el flujo no pasa por aquí."},
 +        {"Slot vazio: nenhuma ANO definida.", "Empty slot: no ANO defined.", "Slot vacío: ningún ANO definido."},
 +        {"Só visualização: toque numa miniatura para ampliar e ver a animação até a transição. Seta tracejada: o slot está vazio e o fluxo desvia para o outro; no jogo, um slot vazio simplesmente não troca de ANO. ", "View only: tap a thumbnail to enlarge it and see the animation up to the transition. Dashed arrow: the slot is empty and the flow detours to the other one; in the game an empty slot simply does not switch ANO. ", "Solo visualización: toque una miniatura para ampliarla y ver la animación hasta la transición. Flecha discontinua: el slot está vacío y el flujo se desvía al otro; en el juego un slot vacío simplemente no cambia de ANO. "},
++        {"\n(não pode: é a que sai)", "\n(not allowed: it is the one being removed)", "\n(no se puede: es la que sale)"},
++        {" está vazia: escolha outra.", " is empty: choose another one.", " está vacía: elija otra."},
++        {" é a sprite que sai: escolha outra.", " is the sprite being removed: choose another one.", " es la sprite que sale: elija otra."},
++        {"Trocar os Usos", "Swap the Uses", "Cambiar los Usos"},
++        {" tem tamanho diferente de SPR_", " has a different size from SPR_", " tiene un tamaño distinto de SPR_"},
++        {"): só o IMG troca, então o desenho muda de tamanho e de âncora.", "): only the IMG changes, so the drawing changes size and anchor.", "): solo cambia el IMG, así que el dibujo cambia de tamaño y de ancla."},
++        {" ANO(s) agora usam a SPR_", " ANO(s) now use SPR_", " ANO(s) ahora usan la SPR_"},
++        {" ANO(s) vão de SPR_", " ANO(s) go from SPR_", " ANO(s) van de la SPR_"},
++        {" continua na lista e nada é renumerado.", " stays in the list and nothing is renumbered.", " sigue en la lista y nada se renumera."},
++        {" e ficam sem imagem (imagem -1), a não ser que você marque uma das opções abaixo.", " and are left without an image (image -1), unless you tick one of the options below.", " y quedan sin imagen (imagen -1), a menos que marque una de las opciones de abajo."},
++        {" frame(s) agora usam a SPR_", " frame(s) now use SPR_", " frame(s) ahora usan la SPR_"},
++        {" para SPR_", " to SPR_", " a la SPR_"},
++        {" passa a usar a escolhida (só o IMG muda) e depois as sprites são renumeradas: a escolhida acompanha a nova numeração. Não pode ser uma das que saem.", " now uses the chosen one (only the IMG changes) and then the sprites are renumbered: the chosen one follows the new numbering. It cannot be one of those being removed.", " pasa a usar la elegida (solo cambia el IMG) y luego las sprites se renumeran: la elegida sigue la nueva numeración. No puede ser una de las que salen."},
++        {". A SPR_", ". SPR_", ". La SPR_"},
++        {": não há o que trocar.", ": there is nothing to swap.", ": no hay nada que cambiar."},
++        {"ESCOLHER SPRITE…", "CHOOSE SPRITE…", "ELEGIR SPRITE…"},
++        {"Escolha a sprite que vai substituir (ela não pode ser uma das que saem).", "Choose the sprite that will replace them (it cannot be one of those being removed).", "Elija la sprite que las sustituirá (no puede ser una de las que salen)."},
++        {"Escolha outra sprite (que exista).", "Choose another sprite (one that exists).", "Elija otra sprite (que exista)."},
++        {"Nenhum Frame de nenhuma ANO usa a SPR_", "No Frame of any ANO uses SPR_", "Ningún Frame de ningún ANO usa la SPR_"},
++        {"Nenhuma sprite escolhida.", "No sprite chosen.", "Ninguna sprite elegida."},
++        {"Substituir os Frames por outra Sprite", "Replace the Frames with another Sprite", "Sustituir los Frames por otra Sprite"},
++        {"Todo Frame que usava ", "Every Frame that used ", "Todo Frame que usaba "},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -19773,7 +19795,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-11-02 17:21:48.585135462 +0000
++++ b/I18nHelpCatalog.java	2026-11-02 19:24:14.429903508 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -19787,7 +19809,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-11-02 17:21:48.583704030 +0000
++++ b/I18nHelpCatalog0.java	2026-11-02 19:24:14.428664591 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -19872,7 +19894,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-11-02 17:21:48.583870927 +0000
++++ b/I18nHelpCatalog1.java	2026-11-02 19:24:14.428784348 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -19957,7 +19979,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-11-02 17:21:48.584103892 +0000
++++ b/I18nHelpCatalog2.java	2026-11-02 19:24:14.428959954 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20042,7 +20064,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-11-02 17:21:48.584281025 +0000
++++ b/I18nHelpCatalog3.java	2026-11-02 19:24:14.429103722 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20127,7 +20149,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-11-02 17:21:48.584424897 +0000
++++ b/I18nHelpCatalog4.java	2026-11-02 19:24:14.429244063 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20212,7 +20234,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-11-02 17:21:48.584516919 +0000
++++ b/I18nHelpCatalog5.java	2026-11-02 19:24:14.429360012 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20297,7 +20319,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-11-02 17:21:48.584611366 +0000
++++ b/I18nHelpCatalog6.java	2026-11-02 19:24:14.429448575 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20382,7 +20404,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-11-02 17:21:48.584804592 +0000
++++ b/I18nHelpCatalog7.java	2026-11-02 19:24:14.429683383 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20467,7 +20489,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-11-02 17:21:48.585048505 +0000
++++ b/I18nHelpCatalog8.java	2026-11-02 19:24:14.429829708 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -20497,9 +20519,9 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +        {"Sprites e CNV",
 +         "Sprites and CNV",
 +         "Sprites y CNV"},
-+        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) só mudam ao adicionar ou substituir sprites — Substituir imagem apaga da folha os pixels da sprite antiga (menos o que outra sprite ainda usa) antes de pôr a nova, então uma sprite menor pode ocupar o mesmo lugar e o resto fica livre e sem pixels; Remover só tira a sprite do CNV —; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Com a caixa \"Excluir Frames com essa Sprite\" os frames que usavam a sprite saem; sem ela ficam sem imagem (IMG -1). O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). Botões do jogo (no ⓘ dos golpes): A (ANO 209 do effect.pac) faz os golpes normais — ANOs fixos 29 a 39 (30 → 32 → 33 em pé, com a janela OPT 512 liberando o próximo A), que não passam pelo HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (chão / pulando ou caindo / voando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando); IRA (ANO 45, sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar), e o mesmo toque sem AngryOn, com Angry em 100 ou mais, é Rage (golpes 14/15). Y, X, B e Z só existem no layout de botões do jogo; no outro layout os especiais saem por gesto de joystick seguido do botão A: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (com AngryOn).",
-+         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) only change when you add or replace sprites — Replace image erases the old sprite's pixels from the sheet (except what another sprite still uses) before placing the new one, so a smaller sprite can take the same spot and the rest stays free and clean; Remove only takes the sprite out of the CNV —; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV. Removing one or several sprites RENUMBERS the following ones (if SPR_0 goes, 1 becomes 0, 2 becomes 1...): the CNV, the GIF groups and every DAC frame follow, and the changed ANOs are written to 000.dac.txt. With the \"Delete Frames with this Sprite\" box the frames that used the sprite are removed; without it they are left without an image (IMG -1). The OPTIMIZE button, next to + ADD, opens two functions. REMOVE REPEATED SPRITES finds equal or similar sprites (also mirrored, rotated 90° or at another scale), shows a preview of each group and a minimum-similarity bar; you mark which ones to remove (at least one must stay in each group) and the DAC frames start using the one that stays, with Flip, zoom, rotation and position adjusted so the drawing looks the same; then the sprites are renumbered. OPTIMIZE PNGs converts the sheets to 8 bits with a palette (up to 256 colors per sheet) to reduce the size, copying the originals first to Backups/PreOptim/charNN/. When you tap a sprite, right below Replace image there is SHOW USES: a list of where it appears, one line per ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 and 7\"). Game buttons (in the moves' ⓘ): A (effect.pac ANO 209) does the normal attacks — fixed ANOs 29 to 39 (30 → 32 → 33 standing, with the OPT 512 window releasing the next A), which do not go through HDAT 4; Y (330) = moves 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (ground / jumping or falling / flying); Z (339, costs 100 Synchro = 1 ki bar) = moves 9 (ground or flying) and 10 (jumping); IRA (ANO 45, no button of its own: tap the corner button with AngryOn on, costs 200 Synchro) = moves 11 (ground or flying) and 12 (in the air), and the same tap without AngryOn, with Angry at 100 or more, is Rage (moves 14/15). Y, X, B and Z only exist in the game's button layout; in the other layout the specials come from a joystick gesture followed by the A button: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (with AngryOn).",
-+         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) solo cambian al agregar o reemplazar sprites — Reemplazar imagen borra de la hoja los píxeles del sprite anterior (salvo lo que otro sprite aún usa) antes de poner el nuevo, así que un sprite menor puede ocupar el mismo lugar y el resto queda libre y limpio; Quitar solo saca el sprite del CNV —; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV. Quitar uno o varios sprites RENUMERA los siguientes (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...): el CNV, los grupos de GIF y todos los frames del DAC los siguen, y las ANOs cambiadas se guardan en 000.dac.txt. Con la casilla \"Eliminar Frames con este Sprite\" salen los frames que usaban el sprite; sin ella quedan sin imagen (IMG -1). El botón OPTIMIZAR, junto a + AÑADIR, abre dos funciones. QUITAR SPRITES REPETIDOS busca sprites iguales o parecidos (también reflejados, girados 90° o en otra escala), muestra la vista previa de cada grupo y una barra de semejanza mínima; marcas cuáles quitar (en cada grupo debe quedar al menos uno) y los frames del DAC pasan a usar el que se queda, con Flip, zoom, rotación y posición ajustados para que el dibujo quede igual; después los sprites se renumeran. OPTIMIZAR PNG convierte las hojas a 8 bits con paleta (hasta 256 colores por hoja) para reducir el tamaño, copiando antes los originales en Backups/PreOptim/charNN/. Al tocar un sprite, justo debajo de Reemplazar imagen está MOSTRAR USOS: una lista de dónde aparece, una línea por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 y 7\"). Botones del juego (en el ⓘ de los golpes): A (ANO 209 del effect.pac) hace los golpes normales — ANOs fijos 29 a 39 (30 → 32 → 33 de pie, con la ventana OPT 512 liberando la siguiente A), que no pasan por el HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (suelo / saltando o cayendo / volando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (suelo o volando) y 10 (saltando); IRA (ANO 45, sin botón propio: toque en el botón de la esquina con AngryOn activo, gasta 200 de Synchro) = golpes 11 (suelo o volando) y 12 (en el aire), y el mismo toque sin AngryOn, con Angry en 100 o más, es Rage (golpes 14/15). Y, X, B y Z solo existen en el diseño de botones del juego; en el otro diseño los especiales salen por un gesto de joystick seguido del botón A: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (con AngryOn)."},
++        {"O botão SPRITES lista as sprites do personagem (SPR_0, SPR_1...), já recortadas: dá para adicionar, substituir, remover, trocar de lugar, mudar o recorte e importar imagens (PNG, JPG, BMP e GIF/APNG/WebP animados viram várias sprites seguidas). As folhas (NNN.png) só mudam ao adicionar ou substituir sprites — Substituir imagem apaga da folha os pixels da sprite antiga (menos o que outra sprite ainda usa) antes de pôr a nova, então uma sprite menor pode ocupar o mesmo lugar e o resto fica livre e sem pixels; Remover só tira a sprite do CNV —; quem recorta é o CNV (000.cnv.txt, uma linha $SPR_n com folha, x, y, largura e altura em pixels). Sprite nova procura espaço livre nas folhas e só cria folha nova se não couber. Em + ADICIONAR, ao tocar num arquivo .cnv (ou .cnv.txt) de outra pasta — efeito, charf, bobj ou outro personagem — o app lê o CNV e recorta as folhas PNG que estão na mesma pasta (sem alterar nada lá) e abre uma lista com as sprites dele: marque quais adicionar ou use TODAS. Sprites de pacs de escala 1 entram ampliadas 2x para manter o tamanho na tela, e recortes repetidos entram uma vez só. O arquivo .cnv de outro pac pode ser texto (CNV_TXT_ { $SPR_n:{...} }) com as coordenadas originais, sem a multiplicação por 2 do personagem — o recorte multiplica —, ou o .cnv.txt, que já tem as coordenadas finais (×2 no personagem); o app lê os dois (e o binário, se não houver texto). Em Substituir imagem também dá para tocar num .cnv e escolher uma só sprite dele para pôr no lugar. VOLTAR, na escolha das sprites de um CNV, leva de volta à pasta onde estava o arquivo. Nos seletores de arquivos (sprites e sons), a primeira linha “...↑” de qualquer pasta (menos a raiz) sobe um nível. A folha de um recorte ($src) é o ÍNDICE dela na lista dos PNG da pasta, em ordem de nome, e não o número do arquivo: com 017.png, 018.cnv e 019.png, o $src 18 é a 019.png. Quando um recorte falha (folha que não existe, PNG ilegível, recorte fora da folha...), o app abre um alerta com o motivo exato de cada sprite, com o texto selecionável e o botão COPIAR; o mesmo motivo aparece em vermelho na lista de sprites e no seletor de sprites de outro CNV. Remover uma ou várias sprites RENUMERA as seguintes (se sai a SPR_0, a 1 vira 0, a 2 vira 1...): o CNV, os grupos de GIF e todos os frames do DAC acompanham, e as ANOs alteradas são gravadas no 000.dac.txt. Na exclusão, a caixa \"Excluir Frames com essa Sprite\" tira os frames que usavam a sprite; a caixa \"Substituir os Frames por outra Sprite\" (ESCOLHER SPRITE…) troca o IMG deles pela sprite escolhida (todo IMG 0 vira IMG 40, por exemplo) e só depois renumera, então a escolhida acompanha a nova numeração (a 40 vira 39); sem nenhuma das duas os frames ficam sem imagem (IMG -1). Tocar numa sprite abre também \"Trocar os Usos\": faz a mesma troca de IMG para outra sprite sem excluir nem renumerar nada (a sprite continua na lista). Só o IMG troca: se o tamanho for diferente o app avisa que o desenho muda de tamanho e de âncora. O botão OTIMIZAR, ao lado de + ADICIONAR, abre duas funções. REMOVER SPRITES REPETIDAS acha sprites iguais ou parecidas (também espelhadas, giradas 90° ou em outra escala), mostra a prévia de cada grupo e uma barra de semelhança mínima; você marca quais remover (em cada grupo precisa ficar ao menos uma) e os frames do DAC passam a usar a que fica, com Flip, zoom, rotação e posição ajustados para o desenho ficar igual; depois as sprites são renumeradas. OTIMIZAR PNGs converte as folhas para 8 bits com paleta (até 256 cores por folha) para diminuir o tamanho, copiando os originais antes para Backups/PreOptim/charNN/. Ao tocar numa sprite, logo abaixo de Substituir imagem há MOSTRAR USOS: uma lista de onde ela aparece, uma linha por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 e 7\"). Botões do jogo (no ⓘ dos golpes): A (ANO 209 do effect.pac) faz os golpes normais — ANOs fixos 29 a 39 (30 → 32 → 33 em pé, com a janela OPT 512 liberando o próximo A), que não passam pelo HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (chão / pulando ou caindo / voando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (chão ou voando) e 10 (pulando); IRA (ANO 45, sem botão próprio: toque no botão do canto com AngryOn ligado, gasta 200 de Synchro) = golpes 11 (chão ou voando) e 12 (no ar), e o mesmo toque sem AngryOn, com Angry em 100 ou mais, é Rage (golpes 14/15). Y, X, B e Z só existem no layout de botões do jogo; no outro layout os especiais saem por gesto de joystick seguido do botão A: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (com AngryOn).",
++         "The SPRITES button lists the character's sprites (SPR_0, SPR_1...), already cropped: you can add, replace, remove, swap places, change the crop and import images (PNG, JPG, BMP and animated GIF/APNG/WebP become several consecutive sprites). The sheets (NNN.png) only change when you add or replace sprites — Replace image erases the old sprite's pixels from the sheet (except what another sprite still uses) before placing the new one, so a smaller sprite can take the same spot and the rest stays free and clean; Remove only takes the sprite out of the CNV —; the CNV does the cropping (000.cnv.txt, one $SPR_n line with sheet, x, y, width and height in pixels). A new sprite looks for free space in the sheets and only creates a new sheet if it does not fit. In + ADD, tapping a .cnv (or .cnv.txt) file from another folder — effect, charf, bobj or another character — makes the app read the CNV and crop the PNG sheets that sit in the same folder (changing nothing there) and open a list with its sprites: check which ones to add or use ALL. Sprites from scale-1 packs come in enlarged 2x to keep the on-screen size, and repeated crops are added only once. The .cnv of another pac can be text (CNV_TXT_ { $SPR_n:{...} }) with the original coordinates, without the character's 2x multiplication — the crop applies it —, or the .cnv.txt, which already has the final coordinates (x2 for a character); the app reads both (and the binary, if there is no text). In Replace image you can also tap a .cnv and pick a single sprite from it to put in its place. BACK, in the sprite choice of a CNV, returns to the folder where the file was. In the file pickers (sprites and sounds), the first row “...↑” of any folder (except the root) goes up one level. The sheet of a crop ($src) is its INDEX in the folder's list of PNGs, in name order, not the file number: with 017.png, 018.cnv and 019.png, $src 18 is 019.png. When a crop fails (sheet that does not exist, unreadable PNG, crop outside the sheet...), the app opens an alert with the exact reason for each sprite, with selectable text and a COPY button; the same reason shows in red in the sprite list and in the sprite picker of another CNV. Removing one or several sprites RENUMBERS the following ones (if SPR_0 goes, 1 becomes 0, 2 becomes 1...): the CNV, the GIF groups and every DAC frame follow, and the changed ANOs are written to 000.dac.txt. On removal, the \"Delete Frames with this Sprite\" box removes the frames that used the sprite; the \"Replace the Frames with another Sprite\" box (CHOOSE SPRITE…) changes their IMG to the chosen sprite (every IMG 0 becomes IMG 40, for example) and only then renumbers, so the chosen one follows the new numbering (40 becomes 39); with neither box the frames are left without an image (IMG -1). Tapping a sprite also offers \"Swap the Uses\": the same IMG swap to another sprite without deleting or renumbering anything (the sprite stays in the list). Only the IMG changes: if the size differs the app warns that the drawing changes size and anchor. The OPTIMIZE button, next to + ADD, opens two functions. REMOVE REPEATED SPRITES finds equal or similar sprites (also mirrored, rotated 90° or at another scale), shows a preview of each group and a minimum-similarity bar; you mark which ones to remove (at least one must stay in each group) and the DAC frames start using the one that stays, with Flip, zoom, rotation and position adjusted so the drawing looks the same; then the sprites are renumbered. OPTIMIZE PNGs converts the sheets to 8 bits with a palette (up to 256 colors per sheet) to reduce the size, copying the originals first to Backups/PreOptim/charNN/. When you tap a sprite, right below Replace image there is SHOW USES: a list of where it appears, one line per ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 and 7\"). Game buttons (in the moves' ⓘ): A (effect.pac ANO 209) does the normal attacks — fixed ANOs 29 to 39 (30 → 32 → 33 standing, with the OPT 512 window releasing the next A), which do not go through HDAT 4; Y (330) = moves 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (ground / jumping or falling / flying); Z (339, costs 100 Synchro = 1 ki bar) = moves 9 (ground or flying) and 10 (jumping); IRA (ANO 45, no button of its own: tap the corner button with AngryOn on, costs 200 Synchro) = moves 11 (ground or flying) and 12 (in the air), and the same tap without AngryOn, with Angry at 100 or more, is Rage (moves 14/15). Y, X, B and Z only exist in the game's button layout; in the other layout the specials come from a joystick gesture followed by the A button: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (with AngryOn).",
++         "El botón SPRITES lista los sprites del personaje (SPR_0, SPR_1...), ya recortados: se puede agregar, reemplazar, quitar, cambiar de lugar, cambiar el recorte e importar imágenes (PNG, JPG, BMP y GIF/APNG/WebP animados se vuelven varios sprites seguidos). Las hojas (NNN.png) solo cambian al agregar o reemplazar sprites — Reemplazar imagen borra de la hoja los píxeles del sprite anterior (salvo lo que otro sprite aún usa) antes de poner el nuevo, así que un sprite menor puede ocupar el mismo lugar y el resto queda libre y limpio; Quitar solo saca el sprite del CNV —; quien recorta es el CNV (000.cnv.txt, una línea $SPR_n con hoja, x, y, ancho y alto en píxeles). Un sprite nuevo busca espacio libre en las hojas y solo crea una hoja nueva si no cabe. En + AGREGAR, al tocar un archivo .cnv (o .cnv.txt) de otra carpeta — efecto, charf, bobj u otro personaje — la app lee el CNV y recorta las hojas PNG que están en la misma carpeta (sin cambiar nada allí) y abre una lista con sus sprites: marca cuáles agregar o usa TODAS. Los sprites de pacs de escala 1 entran ampliados 2x para mantener el tamaño en pantalla, y los recortes repetidos se agregan una sola vez. El .cnv de otro pac puede ser texto (CNV_TXT_ { $SPR_n:{...} }) con las coordenadas originales, sin la multiplicación por 2 del personaje — el recorte la aplica —, o el .cnv.txt, que ya tiene las coordenadas finales (×2 en el personaje); la app lee los dos (y el binario, si no hay texto). En Reemplazar imagen también se puede tocar un .cnv y elegir un solo sprite de él para ponerlo en su lugar. VOLVER, en la elección de sprites de un CNV, regresa a la carpeta donde estaba el archivo. En los selectores de archivos (sprites y sonidos), la primera fila “...↑” de cualquier carpeta (salvo la raíz) sube un nivel. La hoja de un recorte ($src) es su ÍNDICE en la lista de PNG de la carpeta, en orden de nombre, y no el número del archivo: con 017.png, 018.cnv y 019.png, el $src 18 es la 019.png. Cuando un recorte falla (hoja que no existe, PNG ilegible, recorte fuera de la hoja...), la app abre una alerta con el motivo exacto de cada sprite, con el texto seleccionable y el botón COPIAR; el mismo motivo aparece en rojo en la lista de sprites y en el selector de sprites de otro CNV. Quitar uno o varios sprites RENUMERA los siguientes (si sale SPR_0, el 1 pasa a 0, el 2 pasa a 1...): el CNV, los grupos de GIF y todos los frames del DAC los siguen, y las ANOs cambiadas se guardan en 000.dac.txt. Al quitar, la casilla \"Eliminar Frames con este Sprite\" saca los frames que usaban el sprite; la casilla \"Sustituir los Frames por otra Sprite\" (ELEGIR SPRITE…) cambia su IMG por la sprite elegida (todo IMG 0 pasa a IMG 40, por ejemplo) y solo después renumera, así la elegida sigue la nueva numeración (la 40 pasa a 39); sin ninguna de las dos los frames quedan sin imagen (IMG -1). Al tocar un sprite también aparece \"Cambiar los Usos\": el mismo cambio de IMG a otra sprite sin eliminar ni renumerar nada (la sprite sigue en la lista). Solo cambia el IMG: si el tamaño es distinto la app avisa que el dibujo cambia de tamaño y de ancla. El botón OPTIMIZAR, junto a + AÑADIR, abre dos funciones. QUITAR SPRITES REPETIDOS busca sprites iguales o parecidos (también reflejados, girados 90° o en otra escala), muestra la vista previa de cada grupo y una barra de semejanza mínima; marcas cuáles quitar (en cada grupo debe quedar al menos uno) y los frames del DAC pasan a usar el que se queda, con Flip, zoom, rotación y posición ajustados para que el dibujo quede igual; después los sprites se renumeran. OPTIMIZAR PNG convierte las hojas a 8 bits con paleta (hasta 256 colores por hoja) para reducir el tamaño, copiando antes los originales en Backups/PreOptim/charNN/. Al tocar un sprite, justo debajo de Reemplazar imagen está MOSTRAR USOS: una lista de dónde aparece, una línea por ANO (\"Ano 3, Frame 1\", \"Ano 5, Frames 2, 4 y 7\"). Botones del juego (en el ⓘ de los golpes): A (ANO 209 del effect.pac) hace los golpes normales — ANOs fijos 29 a 39 (30 → 32 → 33 de pie, con la ventana OPT 512 liberando la siguiente A), que no pasan por el HDAT 4; Y (330) = golpes 0/3/6, X (333) = 1/4/7, B (336) = 2/5/8 (suelo / saltando o cayendo / volando); Z (339, gasta 100 de Synchro = 1 barra de ki) = golpes 9 (suelo o volando) y 10 (saltando); IRA (ANO 45, sin botón propio: toque en el botón de la esquina con AngryOn activo, gasta 200 de Synchro) = golpes 11 (suelo o volando) y 12 (en el aire), y el mismo toque sin AngryOn, con Angry en 100 o más, es Rage (golpes 14/15). Y, X, B y Z solo existen en el diseño de botones del juego; en el otro diseño los especiales salen por un gesto de joystick seguido del botón A: Y ↓ → + A, X → ↓ + A, B ↓ ← + A, Z ↓ ← → + A, IRA ↓ ← ↓ ← + A (con AngryOn)."},
 +        {"Salvar e backups",
 +         "Saving and backups",
 +         "Guardar y respaldos"},
@@ -20552,7 +20574,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-11-02 17:21:48.585105499 +0000
++++ b/I18nHelpCatalog9.java	2026-11-02 19:24:14.429872351 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -32223,8 +32245,32 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
              wavs.get(i).renameTo(new File(dir, String.format(Locale.US, "%03d.wav", n)));
 diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 --- a/SpriteListScreen.java	2026-10-20 12:29:22.000000000 +0000
-+++ b/SpriteListScreen.java	2026-10-30 20:45:01.391119024 +0000
-@@ -61,6 +61,10 @@
++++ b/SpriteListScreen.java	2026-11-02 19:22:50.878845340 +0000
+@@ -29,6 +29,7 @@
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
++import java.util.Set;
+ 
+ /**
+  * Lista de sprites (SPR_0, SPR_1...) de uma pasta: as folhas ficam intactas no disco, aqui elas aparecem cortadas pelo CNV.
+@@ -47,6 +48,15 @@
+ 
+     /** {@code picker} null = gerenciar; senao escolher. {@code selected} = indice atual (destacado), -1 se nenhum. */
+     static void show(final Activity a, final String title, final CharAssets ca, final int selected, final Picker picker, final Runnable changed) {
++        show(a, title, ca, selected, picker, changed, null);
++    }
++
++    /**
++     * Como {@link #show}, mas com {@code excluded} nao nulo vira "so escolher uma sprite": sem + ADICIONAR / OTIMIZAR, sem acoes de edicao no toque longo e sem
++     * limpar sprites vazias ao abrir (os indices nao mudam por baixo de quem esta escolhendo), e as sprites de {@code excluded} (as que saem / a origem) nao podem ser escolhidas.
++     */
++    static void show(final Activity a, final String title, final CharAssets ca, final int selected, final Picker picker, final Runnable changed, final Set<Integer> excluded) {
++        final boolean chooseOnly = excluded != null && picker != null;
+         final SpriteLib lib = ca.lib();
+         final Dialog d = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+         final LinearLayout root = new LinearLayout(a);
+@@ -61,6 +71,10 @@
          final TextView sub = text(a, "", 11, DIM, false);
          sub.setPadding(dp(a, 14), 0, dp(a, 14), dp(a, 8));
          root.addView(sub);
@@ -32235,7 +32281,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
  
          final Map<Integer, Bitmap> thumbs = new HashMap<Integer, Bitmap>();
          final java.util.TreeSet<Integer> sel = new java.util.TreeSet<Integer>();      // sprites marcadas (acoes em massa)
-@@ -92,15 +96,16 @@
+@@ -92,15 +106,17 @@
                      if (tb != null) iv.setImageBitmap(tb);
                      row.addView(iv, new LinearLayout.LayoutParams(dp(a, 60), dp(a, 60)));
                  }
@@ -32251,11 +32297,12 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 -                            : e.width + "x" + e.height + "  folha " + e.source + "  x " + e.x + "  y " + e.y));
 -                    t.setTextColor(empty ? DIM : i == selected ? OK : TEXT);
 +                            : e.width + "x" + e.height + "  folha " + e.source + "  x " + e.x + "  y " + e.y) + (why != null ? "\n\u26A0 " + why : ""));
-+                    t.setTextColor(why != null ? 0xFFFF6B6B : empty ? DIM : i == selected ? OK : TEXT);
++                    t.setTextColor(why != null ? 0xFFFF6B6B : empty || (chooseOnly && excluded.contains(Integer.valueOf(i))) ? DIM : i == selected ? OK : TEXT);
++                    if (chooseOnly && excluded.contains(Integer.valueOf(i))) t.setText(t.getText() + "\n(não pode: é a que sai)");
                  } else if (type == 1) {
                      Cnv.Entry e = ca.cnv.byImage(i);
                      t.setText("GIF  " + g.name + "\nSPR_" + g.first + " a SPR_" + g.last() + "  \u00b7  " + framesText(g)
-@@ -117,7 +122,7 @@
+@@ -117,7 +133,7 @@
                      final int fi = i;
                      final boolean grp = type == 1;
                      final SpriteGroups.Group gg = g;
@@ -32264,7 +32311,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                      boolean on;
                      if (grp) { on = true; for (int k = gg.first; k <= gg.last() && k < lib.count(); k++) if (lib.has(k) && !sel.contains(Integer.valueOf(k))) on = false; }
                      else on = sel.contains(Integer.valueOf(fi));
-@@ -155,6 +160,17 @@
+@@ -155,6 +171,17 @@
                  ti.setText((picker == null ? "Sprites \u2014 " : "Escolher sprite \u2014 ") + title);
                  sub.setText(lib.count() + " imagem(ns)  \u00b7  " + lib.groups.list.size() + " GIF(s)  \u00b7  " + lib.sheetCount() + " folha(s) PNG  \u00b7  escala " + lib.scale
                          + (picker == null ? "  \u00b7  toque para editar" : ""));
@@ -32282,7 +32329,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  java.util.Iterator<Integer> it = sel.iterator();
                  while (it.hasNext()) { int k = it.next().intValue(); if (k >= lib.count() || !lib.has(k)) it.remove(); }
                  if (selChanged[0] != null) selChanged[0].run();
-@@ -180,15 +196,12 @@
+@@ -180,15 +207,12 @@
          bar.setGravity(Gravity.CENTER_VERTICAL);
          bar.setPadding(dp(a, 12), 0, dp(a, 12), dp(a, 8));
          final TextView addBtn = button(a, "+ ADICIONAR", new View.OnClickListener() {
@@ -32295,14 +32342,48 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 -            }
 +            @Override public void onClick(View v) { openAdd(a, title, lib, applied, uiOnly, lv); }
          });
-         bar.addView(addBtn);
-+        bar.addView(button(a, "OTIMIZAR", new View.OnClickListener() {
+-        bar.addView(addBtn);
++        if (!chooseOnly) bar.addView(addBtn);
++        if (!chooseOnly) bar.addView(button(a, "OTIMIZAR", new View.OnClickListener() {
 +            @Override public void onClick(View v) { SpriteOptimize.menu(a, ca, lib, applied); }
 +        }), lpm(a, 8));
          bar.addView(button(a, "FECHAR", new View.OnClickListener() { @Override public void onClick(View v) { d.dismiss(); } }), lpm(a, 8));
          root.addView(bar);
  
-@@ -309,7 +322,7 @@
+@@ -244,6 +268,14 @@
+                     return;
+                 }
+                 if (type == 2) { open.remove(Integer.valueOf(idx)); refresh.run(); return; }
++                if (chooseOnly) {
++                    if (type == 1) { open.add(Integer.valueOf(lib.groups.startingAt(idx).first)); refresh.run(); return; }      // abre o GIF: escolhe-se uma sprite so
++                    if (excluded.contains(Integer.valueOf(idx))) { toast(a, "SPR_" + idx + " é a sprite que sai: escolha outra."); return; }
++                    if (!lib.has(idx)) { toast(a, "SPR_" + idx + " está vazia: escolha outra."); return; }
++                    d.dismiss();
++                    picker.onPick(idx);
++                    return;
++                }
+                 if (type == 1) {
+                     SpriteGroups.Group g = lib.groups.startingAt(idx);
+                     if (picker != null) pickGroup(a, ca, lib, g, picker, d);
+@@ -254,7 +286,7 @@
+                 actions(a, ca, lib, idx, applied);
+             }
+         });
+-        if (picker != null) {
++        if (picker != null && !chooseOnly) {
+             lv.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                 @Override public boolean onItemLongClick(AdapterView<?> p, View v, int pos, long id) {
+                     int type = rows.get(pos)[0], idx = rows.get(pos)[1];
+@@ -269,7 +301,7 @@
+             @Override public void onDismiss(DialogInterface x) { for (Bitmap b : thumbs.values()) if (b != null && !b.isRecycled()) b.recycle(); thumbs.clear(); }
+         });
+         refresh.run();
+-        if (lib.trimTrailing() > 0) applied.run();      // vazias no fim da tabela: descartadas ao abrir
++        if (!chooseOnly && lib.trimTrailing() > 0) applied.run();      // vazias no fim da tabela: descartadas ao abrir
+         d.show();
+         if (selected >= 0) {
+             for (int r = 0; r < rows.size(); r++) if (rows.get(r)[0] == 0 && rows.get(r)[1] == selected) { lv.setSelection(Math.max(0, r - 2)); break; }
+@@ -309,7 +341,7 @@
          String msg = framesText(g) + " (SPR_" + g.first + " a SPR_" + g.last() + ").\n\n"
                  + "MODO GIF: coloca todos os quadros na timeline, depois do frame atual, formando a animacao completa com os tempos do GIF.\n\n"
                  + "MODO PNG: voce marca quais quadros quer, e so eles entram na timeline.";
@@ -32311,7 +32392,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setPositiveButton("MODO GIF", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) {
                          // quadros sem sprite (removidos) saem e o anterior segura o tempo; quadros seguidos com a mesma sprite viram um so
-@@ -377,7 +390,7 @@
+@@ -377,7 +409,7 @@
                  Bitmap tb = thumb(lib, thumbs, g.spriteAt(i));
                  if (tb != null) iv.setImageBitmap(tb);
                  row.addView(iv, new LinearLayout.LayoutParams(dp(a, 60), dp(a, 60)));
@@ -32320,7 +32401,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 12), 0, 0, 0);
                  t.setText((on[i] ? "\u2713  " : "") + "Quadro " + (i + 1) + "  (SPR_" + g.spriteAt(i) + ")\n" + g.delayAt(i) + " ms");
-@@ -425,13 +438,13 @@
+@@ -425,13 +457,13 @@
      private static void groupActions(final Activity a, final CharAssets ca, final SpriteLib lib, final SpriteGroups.Group g,
                                       final java.util.HashSet<Integer> open, final Runnable applied, final Runnable refresh) {
          String[] items = {"Editar os quadros um a um", "Otimizar GIF (tirar quadros repetidos)", "Desagrupar (viram sprites comuns)", "Remover o GIF inteiro"};
@@ -32336,7 +32417,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                                  .setMessage("As " + g.count + " sprites (SPR_" + g.first + " a SPR_" + g.last() + ") tem as coordenadas zeradas e o espaco na folha fica livre. Os frames do DAC que as usam passam a imagem -1.")
                                  .setNegativeButton("CANCELAR", null)
                                  .setPositiveButton("REMOVER", new DialogInterface.OnClickListener() {
-@@ -522,7 +535,7 @@
+@@ -522,7 +554,7 @@
                  row.setPadding(dp(a, 12), dp(a, 6), dp(a, 12), dp(a, 6));
                  if (changed) row.setBackgroundColor(HI);
                  row.addView(thumbView(a, lib, thumbs, an.sprite[i]), new LinearLayout.LayoutParams(dp(a, 56), dp(a, 56)));
@@ -32345,13 +32426,13 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 10), 0, dp(a, 6), 0);
                  String uses = usedBy(an, i);
-@@ -636,23 +649,50 @@
+@@ -636,23 +668,51 @@
      // ---- acoes de uma sprite ----
  
      private static void actions(final Activity a, final CharAssets ca, final SpriteLib lib, final int idx, final Runnable applied) {
 -        String[] items = {"Substituir imagem", "Mudar recorte na folha", "Mudar índice (só no CNV)", "Hurtbox / hitbox / efeito dos frames (com prévia)", "Remover da lista"};
 -        new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("SPR_" + idx)
-+        String[] items = {"Substituir imagem", "Mostrar usos", "Mudar recorte na folha", "Mudar índice (só no CNV)", "Hurtbox / hitbox / efeito dos frames (com prévia)", "Remover da lista"};
++        String[] items = {"Substituir imagem", "Mostrar usos", "Mudar recorte na folha", "Mudar índice (só no CNV)", "Hurtbox / hitbox / efeito dos frames (com prévia)", "Trocar os Usos", "Remover da lista"};
 +        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("SPR_" + idx)
                  .setItems(items, new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int which) {
@@ -32363,6 +32444,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +                        else if (which == 2) crop(a, ca, lib, idx, applied);
 +                        else if (which == 3) reindex(a, lib, idx, applied);
 +                        else if (which == 4) { ArrayList<Integer> one = new ArrayList<Integer>(); one.add(Integer.valueOf(idx)); SpriteBoxEditor.show(a, ca, one, applied); }
++                        else if (which == 5) SpriteMassDialogs.swapUses(a, ca, lib, idx, applied);
                          else remove(a, ca, lib, idx, applied);
                      }
                  }).setNegativeButton("FECHAR", null).show();
@@ -32402,7 +32484,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
              @Override public void onPicked(final List<File> files) {
                  final BusyDialog busy = BusyDialog.show(a, "Abrindo imagem");
                  busy.set(files.get(0).getName(), 0, 0);
-@@ -675,6 +715,12 @@
+@@ -675,6 +735,12 @@
                      }
                  }).start();
              }
@@ -32415,7 +32497,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          });
      }
  
-@@ -704,7 +750,7 @@
+@@ -704,7 +770,7 @@
          };
          if (ld.notice == null) { go.run(); return; }
          String msg = file.getName() + ":\n" + ld.notice + (ld.animated() ? "\n\nAo substituir so o primeiro quadro e usado." : "");
@@ -32424,7 +32506,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface x, int w) { recycle(ld); } })
                  .setPositiveButton("CONTINUAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface x, int w) { go.run(); } })
                  .setOnCancelListener(new DialogInterface.OnCancelListener() { @Override public void onCancel(DialogInterface x) { recycle(ld); } })
-@@ -808,7 +854,7 @@
+@@ -808,7 +874,7 @@
          if (fail.length() > 0) msg.append("Nao abriu:\n").append(fail);
          if (msg.length() == 0) { go.run(); return; }
          msg.append(frames).append(" sprite(s) serao criadas, a partir de SPR_").append(first).append('.');
@@ -32433,7 +32515,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) { for (ImageImport.Loaded ld : ok) recycle(ld); }
                  })
-@@ -831,7 +877,7 @@
+@@ -831,7 +897,7 @@
          et.setText(String.valueOf(idx));
          et.setSelectAllOnFocus(true);
          et.setPadding(dp(a, 20), dp(a, 12), dp(a, 20), dp(a, 12));
@@ -32442,7 +32524,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setMessage("A sprite vai para o índice digitado e a que estava la vem para SPR_" + idx + " (troca de lugar). So o CNV muda: as folhas PNG continuam iguais e o DAC continua apontando para os mesmos numeros.")
                  .setView(et).setNegativeButton("CANCELAR", null)
                  .setPositiveButton("MUDAR", new DialogInterface.OnClickListener() {
-@@ -925,7 +971,7 @@
+@@ -925,7 +991,7 @@
          sync.run();
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(box);
@@ -32451,7 +32533,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", null)
                  .setPositiveButton("APLICAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int w) {
-@@ -949,7 +995,7 @@
+@@ -949,7 +1015,7 @@
          }
      }
  
@@ -32460,7 +32542,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
  
      static int dp(Activity a, int v) { return (int) (v * a.getResources().getDisplayMetrics().density + 0.5f); }
  
-@@ -966,7 +1012,7 @@
+@@ -966,7 +1032,7 @@
      }
  
      static TextView text(Activity a, String s, int sp, int color, boolean bold) {
@@ -32471,7 +32553,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          t.setTextColor(color);
 diff -ruN a/SpriteMass.java b/SpriteMass.java
 --- a/SpriteMass.java	2026-10-20 11:36:09.000000000 +0000
-+++ b/SpriteMass.java	2026-10-28 13:17:50.000000000 +0000
++++ b/SpriteMass.java	2026-11-02 19:21:16.300452872 +0000
 @@ -66,7 +66,7 @@
              removed += a.mpts.length - keep.size();
              lastChanged.add(Integer.valueOf(i));
@@ -32481,10 +32563,53 @@ diff -ruN a/SpriteMass.java b/SpriteMass.java
          }
          // ANO vazia nao faz sentido como link: tira os links que apontam para as que ficaram vazias
          if (!emptied.isEmpty()) {
+@@ -85,6 +85,42 @@
+         return removed;
+     }
+ 
++    /** Frames que a ultima chamada de replaceUses trocou de imagem. */
++    static int lastReplaced;
++
++    /**
++     * Troca o IMG de todo Frame de toda ANO que usa uma das imagens de {@code from} por {@code to} (so o indice: posicao, zoom e caixas ficam). Devolve as ANOs
++     * alteradas; vazio e nada feito se {@code to} for negativo ou estiver em {@code from}. Na exclusao com substituicao roda ANTES da renumeracao, com os indices antigos.
++     */
++    static java.util.TreeSet<Integer> replaceUses(Dac dac, Set<Integer> from, int to) {
++        java.util.TreeSet<Integer> changed = new java.util.TreeSet<Integer>();
++        lastReplaced = 0;
++        if (dac == null || from == null || to < 0 || from.contains(Integer.valueOf(to))) return changed;
++        for (int i = 0; i < dac.size(); i++) {
++            Ano a = dac.getAno(i);
++            if (a == null || !a.present) continue;
++            boolean any = false;
++            for (Ano.Mpt m : a.mpts) {
++                if (m.image >= 0 && from.contains(Integer.valueOf(m.image))) { m.image = to; lastReplaced++; any = true; }
++            }
++            if (any) changed.add(Integer.valueOf(i));
++        }
++        return changed;
++    }
++
++    /** Aviso quando a imagem que entra tem tamanho diferente de alguma das que saem (so o IMG troca: o desenho muda de tamanho); vazio se nao ha diferenca. */
++    static String sizeWarning(Cnv cnv, Set<Integer> from, int to) {
++        Cnv.Entry t = cnv == null ? null : cnv.byImage(to);
++        if (t == null) return "";
++        StringBuilder b = new StringBuilder();
++        for (Integer i : new java.util.TreeSet<Integer>(from)) {
++            Cnv.Entry e = cnv.byImage(i.intValue());
++            if (e == null || e.width <= 0 || e.height <= 0) continue;
++            if (e.width != t.width || e.height != t.height) b.append(b.length() == 0 ? "" : ", ").append("SPR_").append(i).append(" (").append(e.width).append("x").append(e.height).append(")");
++        }
++        return b.length() == 0 ? "" : b + " tem tamanho diferente de SPR_" + to + " (" + t.width + "x" + t.height + "): só o IMG troca, então o desenho muda de tamanho e de âncora.";
++    }
++
+     // ---- edicao de dados em massa
+ 
+     /** 0 = nao mexer, 1 = definir, 2 = remover. */
 diff -ruN a/SpriteMassDialogs.java b/SpriteMassDialogs.java
 --- a/SpriteMassDialogs.java	2026-10-20 12:14:43.000000000 +0000
-+++ b/SpriteMassDialogs.java	2026-10-30 19:49:48.230457562 +0000
-@@ -33,19 +33,19 @@
++++ b/SpriteMassDialogs.java	2026-11-02 19:22:50.879511846 +0000
+@@ -33,36 +33,138 @@
          LinearLayout col = new LinearLayout(a);
          col.setOrientation(LinearLayout.VERTICAL);
          col.setPadding(SpriteListScreen.dp(a, 20), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 20), 0);
@@ -32492,7 +32617,8 @@ diff -ruN a/SpriteMassDialogs.java b/SpriteMassDialogs.java
 +        TextView msg = SpriteListScreen.text(a, "As sprites seguintes são RENUMERADAS (se sai a SPR_0, a 1 vira 0, a 2 vira 1...) e todos os frames do DAC acompanham. "
                  + (u.frames == 0 ? "Nenhum frame do DAC usa " + (sprites.size() == 1 ? "esta sprite." : "estas sprites.")
                  : u.frames + " frame(s) em " + u.anos.size() + " ANO(s) usam " + (sprites.size() == 1 ? "esta sprite" : "estas sprites")
-                 + " e ficam sem imagem (imagem -1), a não ser que você marque a opção abaixo."), 13, TEXT, false);
+-                + " e ficam sem imagem (imagem -1), a não ser que você marque a opção abaixo."), 13, TEXT, false);
++                + " e ficam sem imagem (imagem -1), a não ser que você marque uma das opções abaixo."), 13, TEXT, false);
          col.addView(msg);
 -        final CheckBox cb = new CheckBox(a);
 +        final CheckBox cb = new I18nCheckBox(a);
@@ -32503,22 +32629,158 @@ diff -ruN a/SpriteMassDialogs.java b/SpriteMassDialogs.java
          TextView ex = SpriteListScreen.text(a, "Tira o frame completamente e os que sobram seguem em sequência. Se uma ANO ficar sem nenhum frame, ela fica vazia ($ANO_n: { }).", 11, DIM, false);
          col.addView(ex);
 -        new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Remover " + name + "?").setView(col)
-+        new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Remover " + name + "?").setView(col)
++        // substituir: os Frames passam a usar outra sprite (so o IMG), depois a exclusao renumera
++        final CheckBox cr = new I18nCheckBox(a);
++        cr.setText("Substituir os Frames por outra Sprite");
++        cr.setTextColor(TEXT);
++        cr.setEnabled(u.frames > 0);
++        col.addView(cr);
++        final LinearLayout repBox = new LinearLayout(a);
++        repBox.setOrientation(LinearLayout.VERTICAL);
++        repBox.setVisibility(View.GONE);
++        final int[] chosen = {-1};
++        final ThumbView thumb = new ThumbView(a);
++        final TextView repInfo = SpriteListScreen.text(a, "Nenhuma sprite escolhida.", 12, TEXT, false);
++        final TextView repWarn = SpriteListScreen.text(a, "", 11, WARN, false);
++        LinearLayout repRow = new LinearLayout(a);
++        repRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
++        repRow.addView(thumb, new LinearLayout.LayoutParams(SpriteListScreen.dp(a, 64), SpriteListScreen.dp(a, 64)));
++        LinearLayout rt = new LinearLayout(a);
++        rt.setOrientation(LinearLayout.VERTICAL);
++        rt.setPadding(SpriteListScreen.dp(a, 10), 0, 0, 0);
++        rt.addView(repInfo);
++        rt.addView(SpriteListScreen.button(a, "ESCOLHER SPRITE…", new View.OnClickListener() { @Override public void onClick(View v) {
++            pickSprite(a, ca, lib, set, chosen[0], new Chosen() { @Override public void on(int sprite) {
++                chosen[0] = sprite;
++                thumb.set(ca.sprites, sprite);
++                Cnv.Entry e = ca.cnv.byImage(sprite);
++                repInfo.setText("SPR_" + sprite + (e == null ? "" : "  (" + e.width + "x" + e.height + ")"));
++                repWarn.setText(SpriteMass.sizeWarning(ca.cnv, set, sprite));
++            } });
++        } }));
++        repRow.addView(rt, new LinearLayout.LayoutParams(0, -2, 1f));
++        repBox.addView(repRow);
++        repBox.addView(repWarn);
++        col.addView(repBox);
++        TextView ex2 = SpriteListScreen.text(a, "Todo Frame que usava " + (sprites.size() == 1 ? "esta sprite" : "estas sprites") + " passa a usar a escolhida (só o IMG muda) e depois as sprites são renumeradas: a escolhida acompanha a nova numeração. Não pode ser uma das que saem.", 11, DIM, false);
++        col.addView(ex2);
++        cb.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() { @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
++            if (on && cr.isChecked()) cr.setChecked(false);
++        } });
++        cr.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() { @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
++            if (on && cb.isChecked()) cb.setChecked(false);
++            repBox.setVisibility(on ? View.VISIBLE : View.GONE);
++        } });
++        ScrollView sv = new ScrollView(a);
++        sv.addView(col);
++        final AlertDialog dlg = new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Remover " + name + "?").setView(sv)
                  .setNegativeButton("CANCELAR", null)
-                 .setPositiveButton("REMOVER", new DialogInterface.OnClickListener() {
-                     @Override public void onClick(DialogInterface dlg, int w) {
-@@ -53,7 +53,7 @@
-                         if (frames && (u.hitOrProjectile || u.attackAno)) {
-                             String why = (u.hitOrProjectile ? "• há frames com hitbox ou lançamento de projétil entre os que serão excluídos\n" : "")
-                                     + (u.attackAno ? "• alguma sprite é de uma ANO de ataque do BIN (HDAT 4)\n" : "");
+-                .setPositiveButton("REMOVER", new DialogInterface.OnClickListener() {
+-                    @Override public void onClick(DialogInterface dlg, int w) {
+-                        final boolean frames = cb.isChecked() && u.frames > 0;
+-                        if (frames && (u.hitOrProjectile || u.attackAno)) {
+-                            String why = (u.hitOrProjectile ? "• há frames com hitbox ou lançamento de projétil entre os que serão excluídos\n" : "")
+-                                    + (u.attackAno ? "• alguma sprite é de uma ANO de ataque do BIN (HDAT 4)\n" : "");
 -                            new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Atenção")
-+                            new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Atenção")
-                                     .setMessage("Excluir esses frames pode causar bugs no personagem (hitbox, projétil ou golpe deixam de existir ou mudam de frame):\n\n" + why
-                                             + "\nContinuar mesmo assim?")
-                                     .setNegativeButton("CANCELAR", null)
-@@ -101,11 +101,13 @@
+-                                    .setMessage("Excluir esses frames pode causar bugs no personagem (hitbox, projétil ou golpe deixam de existir ou mudam de frame):\n\n" + why
+-                                            + "\nContinuar mesmo assim?")
+-                                    .setNegativeButton("CANCELAR", null)
+-                                    .setPositiveButton("EXCLUIR", new DialogInterface.OnClickListener() {
+-                                        @Override public void onClick(DialogInterface d2, int w2) { doDelete(a, ca, lib, sprites, set, true, applied); }
+-                                    }).show();
+-                        } else doDelete(a, ca, lib, sprites, set, frames, applied);
++                .setPositiveButton("REMOVER", null).create();
++        dlg.show();
++        dlg.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
++            @Override public void onClick(View v) {
++                final boolean frames = cb.isChecked() && u.frames > 0;
++                final boolean replace = cr.isChecked() && u.frames > 0;
++                if (replace) {
++                    int r = chosen[0];
++                    if (r < 0 || set.contains(Integer.valueOf(r)) || !lib.has(r)) {      // revalida: a escolha precisa existir e nao pode sair junto
++                        SpriteListScreen.toast(a, "Escolha a sprite que vai substituir (ela não pode ser uma das que saem).");
++                        return;
+                     }
+-                }).show();
++                }
++                dlg.dismiss();
++                if (frames && (u.hitOrProjectile || u.attackAno)) {
++                    String why = (u.hitOrProjectile ? "• há frames com hitbox ou lançamento de projétil entre os que serão excluídos\n" : "")
++                            + (u.attackAno ? "• alguma sprite é de uma ANO de ataque do BIN (HDAT 4)\n" : "");
++                    new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Atenção")
++                            .setMessage("Excluir esses frames pode causar bugs no personagem (hitbox, projétil ou golpe deixam de existir ou mudam de frame):\n\n" + why
++                                    + "\nContinuar mesmo assim?")
++                            .setNegativeButton("CANCELAR", null)
++                            .setPositiveButton("EXCLUIR", new DialogInterface.OnClickListener() {
++                                @Override public void onClick(DialogInterface d2, int w2) { doDelete(a, ca, lib, sprites, set, MODE_FRAMES, -1, applied); }
++                            }).show();
++                } else doDelete(a, ca, lib, sprites, set, replace ? MODE_REPLACE : frames ? MODE_FRAMES : MODE_BLANK, replace ? chosen[0] : -1, applied);
++            }
++        });
++    }
++
++    /** Escolha de uma sprite (o resultado de "ESCOLHER SPRITE…"). */
++    interface Chosen { void on(int sprite); }
++
++    /** Abre a lista de sprites so para escolher uma (sem editar; as de {@code excluded} nao podem ser escolhidas). */
++    static void pickSprite(final Activity a, final CharAssets ca, final SpriteLib lib, final Set<Integer> excluded, int current, final Chosen out) {
++        SpriteListScreen.show(a, ca.dir.getName(), ca, current, new SpriteListScreen.Picker() {
++            @Override public void onPick(int image) { out.on(image); }
++            @Override public void onPickFrames(int[] images, int[] delaysMs) { }
++        }, null, excluded);
++    }
++
++    /** "Trocar os Usos" (menu da sprite): os Frames que usam {@code from} passam a usar outra sprite; nada e excluido nem renumerado. */
++    static void swapUses(final Activity a, final CharAssets ca, final SpriteLib lib, final int from, final Runnable applied) {
++        final Set<Integer> one = new HashSet<Integer>();
++        one.add(Integer.valueOf(from));
++        final SpriteMass.Usage u = SpriteMass.usage(ca.dac, ca.data, one);
++        if (u.frames == 0) { SpriteListScreen.toast(a, "Nenhum Frame de nenhuma ANO usa a SPR_" + from + ": não há o que trocar."); return; }
++        pickSprite(a, ca, lib, one, -1, new Chosen() { @Override public void on(final int to) {
++            if (to < 0 || to == from || !lib.has(to)) { SpriteListScreen.toast(a, "Escolha outra sprite (que exista)."); return; }
++            LinearLayout col = new LinearLayout(a);
++            col.setOrientation(LinearLayout.VERTICAL);
++            col.setPadding(SpriteListScreen.dp(a, 20), SpriteListScreen.dp(a, 8), SpriteListScreen.dp(a, 20), 0);
++            LinearLayout row = new LinearLayout(a);
++            row.setGravity(android.view.Gravity.CENTER);
++            ThumbView t1 = new ThumbView(a), t2 = new ThumbView(a);
++            t1.set(ca.sprites, from);
++            t2.set(ca.sprites, to);
++            row.addView(t1, new LinearLayout.LayoutParams(SpriteListScreen.dp(a, 84), SpriteListScreen.dp(a, 84)));
++            row.addView(SpriteListScreen.text(a, "  →  ", 20, TEXT, true));
++            row.addView(t2, new LinearLayout.LayoutParams(SpriteListScreen.dp(a, 84), SpriteListScreen.dp(a, 84)));
++            col.addView(row);
++            col.addView(SpriteListScreen.text(a, u.frames + " frame(s) em " + u.anos.size() + " ANO(s) vão de SPR_" + from + " para SPR_" + to
++                    + ". A SPR_" + from + " continua na lista e nada é renumerado.", 13, TEXT, false));
++            String w = SpriteMass.sizeWarning(ca.cnv, one, to);
++            if (!w.isEmpty()) col.addView(SpriteListScreen.text(a, w, 11, WARN, false));
++            new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Trocar os Usos").setView(col)
++                    .setNegativeButton("CANCELAR", null)
++                    .setPositiveButton("TROCAR", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface d, int wh) {
++                        java.util.TreeSet<Integer> changed = SpriteMass.replaceUses(ca.dac, one, to);
++                        int n = SpriteMass.lastReplaced;
++                        String saved = persist(ca, changed);
++                        applied.run();
++                        SpriteListScreen.toast(a, n + " frame(s) em " + changed.size() + " ANO(s) agora usam a SPR_" + to + saved);
++                    } }).show();
++        } });
+     }
+ 
+     /** Resultado da ultima gravacao do DAC (texto para o usuario conferir). */
+@@ -96,19 +198,30 @@
+         return r;
+     }
+ 
+-    private static void doDelete(Activity a, CharAssets ca, SpriteLib lib, List<Integer> sprites, Set<Integer> set, boolean frames, Runnable applied) {
++    static final int MODE_BLANK = 0, MODE_FRAMES = 1, MODE_REPLACE = 2;
++
++    private static void doDelete(Activity a, CharAssets ca, SpriteLib lib, List<Integer> sprites, Set<Integer> set, int mode, int replacement, Runnable applied) {
+         int n;
++        boolean frames = mode == MODE_FRAMES;
          java.util.TreeSet<Integer> changed = new java.util.TreeSet<Integer>();
-         if (frames) { n = SpriteMass.deleteFrames(ca.dac, set); changed.addAll(SpriteMass.lastChanged); }
+-        if (frames) { n = SpriteMass.deleteFrames(ca.dac, set); changed.addAll(SpriteMass.lastChanged); }
++        if (mode == MODE_FRAMES) { n = SpriteMass.deleteFrames(ca.dac, set); changed.addAll(SpriteMass.lastChanged); }
++        else if (mode == MODE_REPLACE) { changed.addAll(SpriteMass.replaceUses(ca.dac, set, replacement)); n = SpriteMass.lastReplaced; }       // com os indices antigos
          else { changed.addAll(SpriteMass.usage(ca.dac, ca.data, set).anos); n = 0; for (Integer i : sprites) n += ca.clearImageUses(i.intValue()); }
 -        for (Integer i : sprites) lib.remove(i.intValue());
 +        // exclui e RENUMERA (a SPR_1 vira 0 se a 0 sai...): o DAC inteiro acompanha, senao os frames apontariam para outras sprites
@@ -32531,8 +32793,17 @@ diff -ruN a/SpriteMassDialogs.java b/SpriteMassDialogs.java
 +        if (!changed.isEmpty()) new I18nBuilder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("DAC gravado")
                  .setMessage(lastPersist).setPositiveButton("OK", null).show();
          String name = sprites.size() == 1 ? "SPR_" + sprites.get(0) + " removida" : sprites.size() + " sprites removidas";
-         SpriteListScreen.toast(a, name + (n > 0 ? (frames ? "; " + n + " frame(s) excluído(s)" + (SpriteMass.lastLinksRemoved > 0 ? "; " + SpriteMass.lastLinksRemoved + " link(s) para ANO vazia removido(s)" : "") : "; " + n + " frame(s) do DAC ficaram com imagem -1") + saved : saved));
-@@ -212,7 +214,7 @@
+-        SpriteListScreen.toast(a, name + (n > 0 ? (frames ? "; " + n + " frame(s) excluído(s)" + (SpriteMass.lastLinksRemoved > 0 ? "; " + SpriteMass.lastLinksRemoved + " link(s) para ANO vazia removido(s)" : "") : "; " + n + " frame(s) do DAC ficaram com imagem -1") + saved : saved));
++        String what;
++        if (n <= 0) what = saved;
++        else if (mode == MODE_REPLACE) what = "; " + n + " frame(s) agora usam a SPR_" + (replacement >= 0 && replacement < map.length ? map[replacement] : replacement) + saved;
++        else if (frames) what = "; " + n + " frame(s) excluído(s)" + (SpriteMass.lastLinksRemoved > 0 ? "; " + SpriteMass.lastLinksRemoved + " link(s) para ANO vazia removido(s)" : "") + saved;
++        else what = "; " + n + " frame(s) do DAC ficaram com imagem -1" + saved;
++        SpriteListScreen.toast(a, name + what);
+     }
+ 
+     // ------------------------------------------------------------------ editar frames
+@@ -212,7 +325,7 @@
          fl.addView(cycle(a, flip, sFv, null));
          col.addView(fl);
  
@@ -40152,7 +40423,7 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-11-02 17:18:18.773521431 +0000
++++ b/test/I18nIgnored.java	2026-11-02 19:23:44.563522143 +0000
 @@ -0,0 +1,562 @@
 +package com.zue.attackeditor;
 +
@@ -43971,6 +44242,87 @@ diff -ruN a/test/SpriteRenumberTest.java b/test/SpriteRenumberTest.java
 +        SpriteRenumber.remapDac(d2, map);
 +        check("frames das excluidas saem e os outros descem", imgs(d2.getAno(0)), "0,2");
 +        System.out.println("SpriteRenumberTest fails=" + fails);
++    }
++}
+diff -ruN a/test/SpriteReplaceTest.java b/test/SpriteReplaceTest.java
+--- a/test/SpriteReplaceTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/SpriteReplaceTest.java	2026-11-02 19:21:50.584476065 +0000
+@@ -0,0 +1,77 @@
++package com.zue.attackeditor;
++
++import java.util.HashSet;
++import java.util.Set;
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Excluir sprites SUBSTITUINDO os Frames por outra sprite (e "Trocar os Usos"): troca o IMG com os indices antigos e depois renumera. */
++public class SpriteReplaceTest {
++    static M mpt(int image) { return new M().time(4).img(image); }
++
++    static Set<Integer> set(Integer... v) { return new HashSet<Integer>(java.util.Arrays.asList(v)); }
++
++    public static void main(String[] args) throws Exception {
++        // ANO 0: 0,1,0,40 | ANO 1: 3,40,-1 | ANO 2: 5
++        Dac dac = dac(new A[]{
++                new A().mpt(mpt(0)).mpt(mpt(1)).mpt(mpt(0)).mpt(mpt(40)),
++                new A().mpt(mpt(3)).mpt(mpt(40)).mpt(mpt(-1)),
++                new A().mpt(mpt(5))});
++        java.util.TreeSet<Integer> ch = SpriteMass.replaceUses(dac, set(0), 40);
++        check("0 -> 40: as ANOs alteradas (so a 0)", ch.toString(), "[0]");
++        check("2 Frames trocados", SpriteMass.lastReplaced, 2);
++        check("ANO 0 ficou 40,1,40,40; as outras nao mudam", SpriteRenumberTest.imgs(dac.getAno(0)) + "|" + SpriteRenumberTest.imgs(dac.getAno(1)) + "|" + SpriteRenumberTest.imgs(dac.getAno(2)), "40,1,40,40|3,40,-1|5");
++
++        // depois da troca, excluir a 0 e renumerar: o 40 vira 39
++        boolean[] rem = new boolean[50];
++        rem[0] = true;
++        int[] map = SpriteRenumber.map(50, rem);
++        java.util.TreeSet<Integer> ch2 = SpriteRenumber.remapDac(dac, map);
++        check("depois de renumerar a 0 fora: 40 -> 39, 1 -> 0", SpriteRenumberTest.imgs(dac.getAno(0)) + "|" + SpriteRenumberTest.imgs(dac.getAno(1)) + "|" + SpriteRenumberTest.imgs(dac.getAno(2)), "39,0,39,39|2,39,-1|4");
++        check("o remap tambem acusa as ANOs que mudaram", ch2.toString(), "[0, 1, 2]");
++
++        // varias saem com UMA substituta: {0,3} -> 40, depois renumera (40 -> 38)
++        Dac d2 = dac(new A[]{new A().mpt(mpt(0)).mpt(mpt(3)).mpt(mpt(40)).mpt(mpt(7))});
++        SpriteMass.replaceUses(d2, set(0, 3), 40);
++        boolean[] r2 = new boolean[50];
++        r2[0] = true; r2[3] = true;
++        SpriteRenumber.remapDac(d2, SpriteRenumber.map(50, r2));
++        check("{0,3} -> 40, renumerado: 38,38,38 e a 7 vira 5", SpriteRenumberTest.imgs(d2.getAno(0)), "38,38,38,5");
++
++        // regras: substituta no conjunto ou negativa = nada
++        Dac d3 = dac(new A[]{new A().mpt(mpt(0)).mpt(mpt(3))});
++        check("a substituta nao pode estar entre as que saem", SpriteMass.replaceUses(d3, set(0, 3), 3).isEmpty() && SpriteMass.lastReplaced == 0 && SpriteRenumberTest.imgs(d3.getAno(0)).equals("0,3"), true);
++        check("substituta negativa: nada", SpriteMass.replaceUses(d3, set(0), -1).isEmpty() && SpriteRenumberTest.imgs(d3.getAno(0)).equals("0,3"), true);
++        check("sem uso nenhum: vazio", SpriteMass.replaceUses(d3, set(9), 4).isEmpty() && SpriteMass.lastReplaced == 0, true);
++        check("-1 nunca e trocado", SpriteMass.replaceUses(dac(new A[]{new A().mpt(mpt(-1))}), set(0), 2).isEmpty(), true);
++
++        // "Trocar os Usos": troca sem excluir (a sprite continua; nada de renumerar)
++        Dac d4 = dac(new A[]{new A().mpt(mpt(2)).mpt(mpt(2)).mpt(mpt(5))});
++        SpriteMass.replaceUses(d4, set(2), 5);
++        check("trocar os usos da 2 pela 5: indices de todo o resto ficam", SpriteRenumberTest.imgs(d4.getAno(0)), "5,5,5");
++
++        // aviso de tamanho (CNV: largura 10+i, altura 20+i)
++        Cnv cnv = SpriteRenumberTest.cnv(6);
++        check("tamanhos diferentes: avisa quais saem", SpriteMass.sizeWarning(cnv, set(0, 2), 4).contains("SPR_0 (10x20)") && SpriteMass.sizeWarning(cnv, set(0, 2), 4).contains("SPR_2 (12x22)"), true);
++        check("mesma sprite/mesmo tamanho: sem aviso", SpriteMass.sizeWarning(cnv, set(4), 4), "");
++        check("destino sem entrada: sem aviso", SpriteMass.sizeWarning(cnv, set(0), 99), "");
++
++        // grava no .txt e le de volta (o persist usa isto)
++        java.io.File dir = new java.io.File(System.getProperty("java.io.tmpdir"), "spritereplace_test");
++        File0.del(dir);
++        dir.mkdirs();
++        Dac src = dac(new A[]{new A().mpt(mpt(0)).mpt(mpt(1))});
++        Saver.write(new java.io.File(dir, "000.dac.txt"), Saver.dacText(src, null));
++        java.util.TreeSet<Integer> c5 = SpriteMass.replaceUses(src, set(0), 1);
++        Saver.saveRuntime(dir, src, null == null ? chr(move(new int[]{0, 4}), new byte[0][]) : null, c5, null, false);
++        String txt = Saver.readText(new java.io.File(dir, "000.dac.txt"));
++        int[] b0 = Saver.findBlock(txt, "ANO_0");
++        Ano back = DacText.parseAno(txt.substring(b0[0], b0[2] + 1), 0, null);
++        check("o .txt traz o IMG novo", SpriteRenumberTest.imgs(back), "1,1");
++        File0.del(dir);
++        System.out.println("SpriteReplaceTest fails=" + fails);
++    }
++
++    static final class File0 {
++        static void del(java.io.File f) { java.io.File[] k = f.listFiles(); if (k != null) for (java.io.File c : k) del(c); f.delete(); }
 +    }
 +}
 diff -ruN a/test/TeleportBehindTest.java b/test/TeleportBehindTest.java

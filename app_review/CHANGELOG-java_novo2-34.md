@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2025 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2040 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -583,6 +583,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Só compilado/revisado, não executado no aparelho**: linha de botões de Golpes, Ver Fluxo somente leitura, diálogos de colar/trocar, aba/ campo absoluto do menu Movimento. Testado de verdade (Java puro): união de speed, setMoveRun, células, colar no DAC, troca de golpes e o acréscimo no `.dac.txt`.
 - Limite: Copiar/Colar golpe vale para o **mesmo personagem** (para outro personagem continua SALVAR › outro personagem); não há desfazer para colar/trocar na grade (como nas ações de ANO).
 
+### 3.1zzze Excluir sprites com "Substituir os Frames por outra Sprite" e "Trocar os Usos"
+- **Diálogo de exclusão** (`SpriteMassDialogs.confirmDelete`): ao lado de "Excluir Frames com essa Sprite" entra **"Substituir os Frames por outra Sprite"** (as duas se excluem). Com ela, `ESCOLHER SPRITE…` abre a lista só para escolher (miniatura + `SPR_n (LxA)` + aviso de tamanho diferente) e a exclusão faz: **trocar o IMG com os índices antigos** (`SpriteMass.replaceUses`: todo `IMG 0` vira `IMG 40`) → `lib.removeShift` → `SpriteRenumber.remapDac` (o 40 passa a 39) → grava o DAC. Vários removidos usam **uma** substituta; ela não pode ser uma das que saem (revalidada ao confirmar). O aviso de hitbox/projétil só vale para "Excluir Frames".
+- **Seletor só para escolher** (`SpriteListScreen.show(..., excluded)`): sem + ADICIONAR/OTIMIZAR, sem ações de edição no toque longo e sem limpar sprites vazias ao abrir (os índices não mudam por baixo da escolha); as sprites que saem aparecem apagadas e não são escolhíveis; um GIF abre para escolher uma sprite só.
+- **"Trocar os Usos"** no menu ao tocar na sprite: escolhe a sprite de destino, mostra "N frame(s) em M ANO(s) vão de SPR_a para SPR_b" com as duas miniaturas e troca só o IMG, **sem excluir nem renumerar**; grava as ANOs alteradas no `000.dac.txt`.
+- Só o IMG troca (posição, zoom e caixas ficam): se as sprites têm tamanhos diferentes o app avisa que o desenho muda de tamanho e de âncora.
+- Teste: `SpriteReplaceTest` (15: 0→40 e depois renumerar dá 39, `{0,3}→40` dá 38, substituta nos que saem/negativa rejeitadas, `-1` intacto, aviso de tamanho, volta pelo `.txt`).
+- **Só compilado/revisado, não executado no aparelho**: diálogo com as duas caixas, seletor sem edição, miniaturas, "Trocar os Usos". Testado de verdade (Java puro): a troca de IMG, a ordem trocar → renumerar e a gravação.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -685,6 +693,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **ProjectilePushTest (novo)** | 18 |
 | **MoveCellsTest (novo)** | 8 |
 | **MoveClipTest (novo)** | 23 |
+| **SpriteReplaceTest (novo)** | 15 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
