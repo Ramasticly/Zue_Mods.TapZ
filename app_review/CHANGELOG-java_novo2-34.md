@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2221 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2229 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -644,6 +644,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Núcleo puro: `SpriteMove` (`moveMap`, `moveCnv`, `isPermutation`), `SpriteGroups.remapMove`, `SpriteLib.move`; `reindex()` saiu da tela (`swap`/`swapMap` seguem testados).
 - Testes: `SpriteMoveTest` (20: permutações para cima/baixo/igual/inválido, todo movimento é permutação, recorte do CNV vai com a sprite, DAC reescrito mantém **cada Frame no mesmo recorte**, 7 regras de GIF). **Só compilado/revisado, não executado no aparelho**: o menu expansível, o gesto de segurar/arrastar (tempo, resistência, rolagem automática, realce) e a prévia flutuante. Testado de verdade (Java puro): o remapeamento do CNV, do DAC e dos GIFs.
 
+### 3.1zzzl Puxador no GIF encolhido (move todas as sprites juntas); GIF aberto sem puxador
+- **GIF encolhido** ganha o puxador "–" (mesmo gesto: tocar e segurar, arrastar pesado no começo) e **move todas as sprites do GIF juntas** (`SpriteMove.moveBlockMap`, `SpriteLib.moveBlock`): o bloco vai para antes/depois de outra sprite ou GIF, as de fora mantêm a ordem e deslocam; CNV, DAC (`000.dac.txt`) e grupos de GIF são reescritos (o GIF mantém os atrasos e a sequência; outros GIFs deslocados acompanham). Toast: "GIF SPR_a a SPR_b agora começa em SPR_c".
+- **GIF aberto** (cabeçalho e quadros) **não tem puxador**; sprites soltas continuam com ele. Como não há mais arrastar de quadros dentro de GIF, qualquer soltura (sprite ou bloco) **cai antes ou depois de um GIF, nunca no meio** (o ponto de soltura vira "antes da sprite N" arredondado para a ponta do GIF) — nada de desfazer GIF sem querer. As regras de `remapMove` (GIF cortado se desfaz) ficam só como proteção.
+- Testes: `SpriteMoveTest` +8 (permutação de bloco para cima/baixo/inválido, toda combinação é permutação, ponto de soltura, recortes do CNV vão juntos, dois GIFs acompanham sem se desfazer, bloco no meio de outro GIF desfaz o cortado). **Só compilado/revisado**: o puxador na linha do GIF encolhido, o arraste do bloco e o ponto de soltura na lista.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -754,7 +759,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **BackupTest (novo)** | 10 |
 | **DedupPreviewTest (novo)** | 21 |
 | **DedupReasonsTest (novo)** | 24 |
-| **SpriteMoveTest (novo)** | 20 |
+| **SpriteMoveTest (novo)** | 28 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
