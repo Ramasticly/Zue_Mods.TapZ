@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2605 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2644 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -674,6 +674,17 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Prévias do menu de substituir +20%**: 40 → 48 dp (`previewStrip`, usada pelo seletor de substituta, "Outra Sprite do personagem", "Escolher do Dispositivo" e a escolha de sprite de um `.cnv`).
 - Testes: `SheetPackTest` (320: exemplo do pedido, vão→folha esvazia→`unreferenced`, não cabe, primeira folha que couber, maiores primeiro, recortes idênticos juntos, sobreposição parcial/fixa/fora da folha ficam, 60 rodadas aleatórias: sem sobreposição, dentro da folha, nunca para trás, idempotente), `DragPlanTest` (18: +arrastar até o topo). **Só compilado/revisado, não executado no aparelho**: o loading, a cópia/limpeza real de pixels em Bitmap/Canvas e a gravação dos PNG, o `DragListView`/fantasma/overlay e o gesto de arrastar até o topo rolando.
 
+### 3.1zzzp Igualar sprites + Editar Frames vira padrão visual por sprite (com prévia), Copiar "todas as ANOs" grava o padrão, FLUXO editável + "＋ > SEQ", ◀ ▶ mantém a seleção, arquivos de apoio em TBRE/utils/charNN
+
+- **Igualar sprites** (Substituir > Igualar sprites): a nova vem de outra sprite do personagem ou de uma imagem do dispositivo (que entra no slot da original). Tela `SpriteEqualizeScreen` com **prévia** (`Matrix.setPolyToPoly` sobre os cantos de `SpriteXform.place`) e a **original esmaecida por baixo**; os campos (zoom X/Y, rotação, alpha, centro MID, flips) são o **ajuste da nova em relação à original**: rotação, alpha e MID **somam**, zoom **multiplica**, flip **inverte** (nova com +5° = rotação da antiga + 5). Ao aplicar: todos os Frames de todas as ANOs que usam a original passam a usar a nova com o ajuste somado (`SpriteDefaults.retarget`) **e** o ajuste vira o padrão da nova (padrão da original + ajuste). Nada é excluído nem renumerado no caminho "outra sprite"; no caminho "dispositivo" a imagem só é trocada depois do SUBSTITUIR da tela.
+- **EDITAR FRAMES redesenhado**: sem "não mexer/definir/remover"; os campos ficam sempre visíveis (valores padrão quando nada está definido), com a mesma prévia. Agora **só define o PADRÃO da sprite** para novas adições na timeline; **não muda os Frames existentes**. Hurtbox/hitbox/efeito seguem no botão "uma imagem por vez" (`SpriteBoxEditor`).
+- **Padrão visual por sprite** (`SpriteDefaults` + `Store`, puro): linhas `SPR_n zx zy rot alpha midX midY flipH flipV` em `Tap Battle/TBRE/utils/charNN/padroes_sprites.txt`; `remap` acompanha exclusão/reordenação (os 4 pontos de `remapDac` chamam `SpriteMassDialogs.renumbered`). **Trocar a Imagem de um Frame** na timeline (stepper, lista de sprites, inserir GIF) troca o padrão da sprite antiga pelo da nova **de forma relativa** (`changeImage`): o que o usuário ajustou além do padrão fica.
+- **Copiar > "esta sprite (todas as ANOs)"** (e "nesta ANO"): além de copiar para os outros Frames, grava como padrão da sprite os campos copiados marcados (posição/MID, flip, zoom, rotação, alpha); o toast acrescenta "· padrão da SPR_n atualizado".
+- **FLUXO editável**: o botão "VER FLUXO" da grade de GOLPES virou **FLUXO** e abre o fluxo em modo de edição (`FlowDialog.show`, com navegação para as ANOs); `LayoutManager.openFlow()` também serve ao novo item **"SEQ (fluxo de sequencias)" do ＋ azul** (cria a primeira SEQ/END/pouso de um golpe sem nenhuma) e ao toque na faixa Transições fora de uma marca (`onEmpty(T_SEQ)`). Marcas continuam abrindo o painel da marca (botão "⇢ FLUXO").
+- **◀ ▶ do Frame**: o contorno de seleção agora acompanha o Frame movido (`swap` chama `tl.select`, como o duplicar já fazia).
+- **Regra "só arquivos do char no char"**: `TBRE/utils/charNN/` guarda apoio à edição e temporários. `sprite_grupos.json` migrou da pasta do char para lá (migração automática na leitura, apaga o antigo); os `.tmp` das gravações atômicas (`NNN.png`, `.cnv.txt`, cópias de personagem) passam por `utils/charNN/tmp` e vão ao destino por `Saver.moveInto` (rename, com cópia se for outro volume); o backup PreOptim e "salvar em outra pasta" levam `utils/` junto.
+- Testes: `SpriteDefaultsTest` (28: composição, Frame↔padrão, troca relativa de imagem e volta, Igualar, texto, renumeração, arquivo em `utils`), `GroupsTest` (+5: migração e nada de `.json`/`.tmp` no char), `BackupTest` (+4: `utils/` no backup), `FrameOpsTest` (+4: ◀ ▶ e item SEQ). **Só compilado/revisado, não executado no aparelho**: as telas (`SpriteEqualizeScreen`, prévia com Matrix/Canvas), o fluxo "dispositivo" do Igualar, o FLUXO editável aberto pela grade, o `＋ > SEQ`, a seleção após ◀ ▶ e a gravação real dos arquivos em `TBRE/utils`. Limite assumido: a composição é componente a componente (não recalcula posição visual quando há rotação e zoom ao mesmo tempo).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -788,6 +799,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SheetPurgeTest (novo)** | 23 |
 | **DragPlanTest (novo)** | 18 |
 | **SheetPackTest (novo)** | 320 |
+| **SpriteDefaultsTest (novo)** | 28 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
