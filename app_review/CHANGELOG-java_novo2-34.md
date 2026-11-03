@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2201 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2221 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -636,6 +636,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **VER ANOS**: ANO com a flag de loop toca em **laço contínuo** (sem pausa); as sem loop tocam uma vez, seguram o último Frame ~1 s e recomeçam — nos dois lados ANTES/DEPOIS. Teste novo garante que a reescrita preserva o bit de loop.
 - Testes: `DedupReasonsTest` (24: nomes "SPR_3, 7, 9 e 12", cada código de `whyNot`, `apply` registra ANO/Frame, mistura sem-substituta × sem-solução, números novos, selo da maior, rótulo da ação, loop mantido no DEPOIS). **Só compilado/revisado**: o botão/selos, a linha com o link azul e a revelação do motivo.
 
+### 3.1zzzk Menu da Sprite reordenado, puxador "–" para reorganizar slots (segurar e arrastar) e prévia flutuante da miniatura
+- **Menu ao tocar numa sprite**, nesta ordem: **Substituir** (expande para baixo: **Outra Sprite do personagem** = o antigo "Trocar os Usos", e **Escolher do Dispositivo** = o antigo "Substituir imagem") · **Mostrar usos** · **Predefinições** (antes "Hurtbox / hitbox / efeito dos frames (com prévia)") · **Mudar recorte** · **Excluir** (antes "Remover da lista"; abre o assistente de exclusão). **Saiu** "Mudar slot / Trocar slot SPR por outra".
+- **Puxador "–"** à esquerda da caixa de marcar (só nas linhas de sprite, no modo de edição): **toque simples não faz nada**; **tocar e SEGURAR** (tempo padrão de pressão longa) vibra, **infla e realça** a linha e mostra o toast "arraste para reorganizar as Sprites"; se o dedo andar antes disso a lista rola normalmente. O arraste é **pesado no começo**: nada se move até o dedo andar ~28 dp, depois a linha acompanha amortecida (0,5× nos primeiros ~70 dp). A linha-alvo fica esmaecida, a lista **rola sozinha** perto das bordas, e **ao soltar** a sprite vai para o slot da linha sob ela: as do meio deslocam 1 e **CNV, DAC (`000.dac.txt`) e grupos de GIF são reescritos** — as animações ficam iguais. Soltar antes do limiar cancela. Toast: "SPR_5 agora é SPR_2 · N ANO(s) ajustada(s) · M GIF(s) desfeito(s)".
+- **Regras dos GIFs ao mover** (`SpriteGroups.remapMove`): GIF inteiro dentro da faixa deslocada acompanha; **reordenar quadros dentro do mesmo GIF** o mantém (o atraso vai junto com a sprite; a sequência com reaproveitamento segue a sprite); sprite que **sai ou entra** num GIF, ou que o corta no meio, **desfaz** aquele GIF (o toast avisa). Seleção em massa e GIFs abertos são reindexados. Fora desta entrega: mover um GIF inteiro de uma vez; arrastar não cria backup (grava como as outras edições de sprite).
+- **Prévia flutuante**: tocar na **miniatura** abre a sprite inteira (resolução cheia, sem suavização) numa área quadrada flutuante com `SPR_N · L×A`; tocar fora (ou nela) fecha. Vale também nos seletores de sprite. O toque na miniatura não abre o menu da linha.
+- Núcleo puro: `SpriteMove` (`moveMap`, `moveCnv`, `isPermutation`), `SpriteGroups.remapMove`, `SpriteLib.move`; `reindex()` saiu da tela (`swap`/`swapMap` seguem testados).
+- Testes: `SpriteMoveTest` (20: permutações para cima/baixo/igual/inválido, todo movimento é permutação, recorte do CNV vai com a sprite, DAC reescrito mantém **cada Frame no mesmo recorte**, 7 regras de GIF). **Só compilado/revisado, não executado no aparelho**: o menu expansível, o gesto de segurar/arrastar (tempo, resistência, rolagem automática, realce) e a prévia flutuante. Testado de verdade (Java puro): o remapeamento do CNV, do DAC e dos GIFs.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -746,6 +754,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **BackupTest (novo)** | 10 |
 | **DedupPreviewTest (novo)** | 21 |
 | **DedupReasonsTest (novo)** | 24 |
+| **SpriteMoveTest (novo)** | 20 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
