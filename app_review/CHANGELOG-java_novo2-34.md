@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2681 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2687 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -708,6 +708,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ao confirmar: cópia bruta em `Backups/PreOptim/…` (se falhar, nada é alterado) → `lib.removeShift` (apaga o recorte na folha PNG, folhas sem sprite saem da pasta, renumera CNV e grupos) → `SpriteRenumber.remapDac` (Frames do DAC) → padrões visuais renumerados → DAC gravado. Se toda sprite tem uso, avisa e não abre a tela.
 - Testes: `UnusedSpritesTest` (10: usadas em várias ANOs/Frames, -1 e fora do intervalo ignoradas, ANO ausente não conta, vazia, GIF, ordem e consistência com "Mostrar usos"). **Só compilado/revisado, não executado no aparelho**: a tela `UnusedScreen`, as miniaturas, a confirmação e a remoção real (PNG/CNV/DAC).
 
+### 3.1zzzt Reordenar por arrastar: slot vermelho no lugar de origem + só reordena ao tirar o dedo
+
+- **Bug "soltou ao arrastar para cima"**: depois de armado, os eventos vêm pelo `DragListView`, mas o puxador (view filha) continuava sendo o alvo de toque; quando a lista rolava (auto-scroll ao subir) e a linha original era desanexada, o Android entregava `ACTION_CANCEL` direto ao `onTouch` do puxador, que fazia `end(false)` e **encerrava o arraste com o dedo ainda na tela**. Agora, com o arraste ativo, o puxador ignora MOVE/UP/CANCEL; só o `ACTION_UP` visto pelo `DragListView` grava (mesmo que o dedo saia da área da lista; MOVE usa `getRawY`). Ao armar, toda a cadeia de pais recebe `requestDisallowInterceptTouchEvent(true)`. Um `ACTION_CANCEL` real do sistema continua descartando sem mover nada.
+- **Dois slots**: o **azul** (destino, onde a sprite cai) e o novo **vermelho no lugar de origem**. As vizinhas **não preenchem** mais a origem: só as linhas do ponto de inserção em diante descem uma altura para abrir o azul (`DragPlan.pushed` / `blueAt`). Soltar sobre o vermelho (ou com a inserção colada na origem) **não muda nada** — é a forma de desistir. Se a linha de origem rolou para fora da tela o vermelho some até ela reaparecer. Aviso ao armar: "arraste para reorganizar as Sprites (solte no vermelho para cancelar)".
+- Testes: `DragPlanTest` (24: +`pushed` descendo/subindo/colado, `blueAt`, a origem nunca desce, soltar no vermelho = sem azul). **Só compilado/revisado, não executado no aparelho**: o gesto (puxador ignorando o CANCEL), o desenho dos dois slots no `ViewOverlay` e a rolagem automática.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -820,7 +826,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DedupReasonsTest (novo)** | 24 |
 | **SpriteMoveTest (novo)** | 28 |
 | **SheetPurgeTest (novo)** | 23 |
-| **DragPlanTest (novo)** | 18 |
+| **DragPlanTest (novo)** | 24 |
 | **SheetPackTest (novo)** | 320 |
 | **SpriteDefaultsTest (novo)** | 28 |
 | **HoldTest (novo)** | 7 |
