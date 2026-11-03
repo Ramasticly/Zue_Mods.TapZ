@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2233 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2283 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -654,6 +654,17 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Por quê: tirar uma sprite de dentro de um GIF mexe nos quadros e nos atrasos; isso é feito pelo "Otimizar GIF (tirar quadros repetidos)", que cuida do GIF inteiro.
 - Testes: `SpriteVerifyTest` +4 (fixa não compara, não marca, selo, regra comum intacta). **Só compilado/revisado**: o selo com o "?" e o diálogo.
 
+### 3.1zzzn Excluir apaga de verdade o recorte na folha PNG (e a folha sem sprites), varredura do que está fora dos recortes, reordenar com vizinhas que se mexem (e subir funciona), Otimizar GIF ANTES/DEPOIS + remoção das vazias, prévia da sprite substituída
+- **SÉRIO — excluir sprite apaga o quadrado na folha.** `removeShift`, `remove`, `removeGroup` e as sprites liberadas pelo Otimizar GIF só tiravam a entrada do CNV: os pixels continuavam na folha (o único apagador, `erase`, só servia em *Substituir* e ainda poupava a área de outras sprites). Agora cada sprite que sai tem **o retângulo inteiro do recorte zerado (transparente) na folha, independente de outra sprite usar a mesma área** (`SpriteLib.eraseHard`, `Canvas` com `CLEAR`), **antes** de a entrada sair do CNV. Por isso a entrada some do CNV (não fica "vazia com coordenadas") **e** a área vira transparente: o alocador (`SpriteAlloc.find`) passa a poder pôr ali **qualquer sprite que caiba**, e a sprite nova não se mistura com pixels velhos — testado: folha cheia → exclui uma → a sprite do mesmo tamanho (e uma menor) cai no retângulo liberado em vez de abrir folha nova.
+- **Folhas PNG sem sprites saem da pasta**: toda folha que perdeu algum recorte e que nenhuma sprite com tamanho referencia mais é retirada da lista, o arquivo é apagado no `commit()` (folha nova ainda não gravada só é descartada) e o `$src` do CNV das folhas seguintes é **renumerado** (o `$src` é o índice na ordem do nome). Os nomes das demais folhas não mudam (pode sobrar "buraco" no número). Lógica pura em `SheetPurge` (`rect`, `referenced`, `unreferenced`, `renumberSources`).
+- **Varredura automática do que está fora dos recortes**: em cada folha o complemento da união dos recortes do CNV (`SpriteAlloc.uncovered` × escala) é **zerado**, em todo `commit()` (folhas que vão ser gravadas) e **ao abrir a lista de Sprites** (todas as folhas; só regrava a que realmente tinha pixel fora). Salvaguardas por ser irreversível: não roda com recorte quebrado (`cutProblems`) nem sem nenhuma sprite com tamanho; folha sem nenhuma sprite não é varrida; uma folha lida só para conferir é reciclada se nada mudou.
+- **Avisos** (assistente de exclusão, remover GIF, confirmação do dedup): o recorte é apagado da folha mesmo que outra sprite use a área e folhas sem sprite são apagadas. Exclusão comum não faz backup (o dedup e o Otimizar PNG já fazem a cópia bruta).
+- **Reordenar — subir não funcionava**: `ListView.pointToPosition` usa o `getHitRect` das views, que **inclui a transformação**; a linha arrastada (inchada e transladada) contém o próprio centro e, ao subir, tem índice maior que as de cima e era testada primeiro → o alvo virava ela mesma (cancelava). Agora o alvo vem de `DragPlan.hit` sobre as posições de layout **ignorando a arrastada**. Também: **as outras linhas sobem/descem** (animação de 150 ms) conforme ela passa, o **vão de destino fica destacado** (`ViewOverlay`) e a soltura cai sempre antes/depois de um GIF (aberto ou encolhido), nunca no meio. Sem alvo enquanto o centro ainda está sobre a posição original.
+- **Seleção**: com sprite(s) marcada(s) somem **puxador, FECHAR, OTIMIZAR** (e ADICIONAR); as linhas se refazem sem o "–" ao passar de vazio para marcado e vice-versa.
+- **Otimizar GIF**: **ANTES | DEPOIS** lado a lado (`GifPlayView`, atrasos do GIF em laço; DEPOIS acompanha a barra de semelhança, mostrando a sprite que cada quadro passa a usar e sem os quadros de sprites vazias). O **APLICAR** agora (1) reaproveita quadros (pixels das liberadas apagados), (2) passa os Frames do DAC para a sprite que ficou, (3) **remove todas as sprites vazias do GIF** (liberadas + as que já eram vazias; `GifOptimizer.toDelete`) com apagar pixels/folhas, e (4) **renumera os Frames no DAC** (`SpriteRenumber.remapDac`; as removidas viram IMG -1). Liga também quando só há vazias.
+- **Prévia pequena da sprite substituída** (40 dp, "Substituindo SPR_N · L×A"): no seletor de substituta (assistente de exclusão e "Outra Sprite do personagem"), no seletor de arquivos ("Escolher do Dispositivo") e na escolha de sprite de um `.cnv`.
+- Testes: `SheetPurgeTest` (23), `DragPlanTest` (16: inclui **subir**), `GifOptimizeTest` (11: vazias, DAC liberada→que ficou→renumerado, CNV, GIF encolhe, tempo do GIF). **Só compilado/revisado, não executado no aparelho**: a escrita real de PNG (Canvas/Bitmap) e a remoção de arquivos, a varredura ao abrir, o gesto com vizinhas animadas/vão destacado, o `GifPlayView` e as faixas de prévia.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -765,6 +776,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DedupPreviewTest (novo)** | 21 |
 | **DedupReasonsTest (novo)** | 24 |
 | **SpriteMoveTest (novo)** | 28 |
+| **SheetPurgeTest (novo)** | 23 |
+| **DragPlanTest (novo)** | 16 |
+| **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
 | **FrameIndexRobustTest (novo)** | 1 |
