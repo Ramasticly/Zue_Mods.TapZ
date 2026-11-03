@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2644 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2665 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -685,6 +685,15 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Regra "só arquivos do char no char"**: `TBRE/utils/charNN/` guarda apoio à edição e temporários. `sprite_grupos.json` migrou da pasta do char para lá (migração automática na leitura, apaga o antigo); os `.tmp` das gravações atômicas (`NNN.png`, `.cnv.txt`, cópias de personagem) passam por `utils/charNN/tmp` e vão ao destino por `Saver.moveInto` (rename, com cópia se for outro volume); o backup PreOptim e "salvar em outra pasta" levam `utils/` junto.
 - Testes: `SpriteDefaultsTest` (28: composição, Frame↔padrão, troca relativa de imagem e volta, Igualar, texto, renumeração, arquivo em `utils`), `GroupsTest` (+5: migração e nada de `.json`/`.tmp` no char), `BackupTest` (+4: `utils/` no backup), `FrameOpsTest` (+4: ◀ ▶ e item SEQ). **Só compilado/revisado, não executado no aparelho**: as telas (`SpriteEqualizeScreen`, prévia com Matrix/Canvas), o fluxo "dispositivo" do Igualar, o FLUXO editável aberto pela grade, o `＋ > SEQ`, a seleção após ◀ ▶ e a gravação real dos arquivos em `TBRE/utils`. Limite assumido: a composição é componente a componente (não recalcula posição visual quando há rotação e zoom ao mesmo tempo).
 
+### 3.1zzzq Igualar sprites: prévia só com o recorte, tela 1:1 com a âncora da prévia principal, − N + acelerados; Substituir com 2 opções e confirmação "Cancelar | Igualar Sprites | Confirmar"; Predefinições = Editar Frames
+
+- **Bug**: a prévia do Igualar desenhava a folha PNG inteira (o `bitmap` do `SpriteCache` é a folha; o recorte é o `src`). Novo `SpriteDraw.crop` (`clipRect(src)` antes de desenhar) na tela, e a prévia da confirmação usa `drawBitmap(bitmap, src, dst)`.
+- **Tela 1:1**: prévia quadrada com a largura da tela, escala = densidade (a mesma da prévia principal, `AttackView.recenter`) e âncora em (50% da largura, 55% da altura) — centro, abaixo do corpo real. Toque amplia/reduz (×2/×0,5). **− / +**: segurar acelera (`Hold.Rep` + `Hold.multiplier`: 1× nos 6 primeiros passos, depois 5×, 10×, 25×; só nesta tela — os `Stepper` do resto do app seguem com passo fixo).
+- **Predefinições** (menu da sprite) agora abre o mesmo menu do EDITAR FRAMES; hurtbox/hitbox/efeito ficam no botão dele.
+- **Substituir** tem só **"Escolher do Personagem"** (antes "Outra Sprite do personagem") e **"Escolher do Dispositivo"**. Os 3 caminhos — sprite do personagem, imagem do dispositivo e **sprite de um `.cnv` de outro pac** (vale: é uma sprite normal) — terminam em `ReplaceConfirm`: "Você quer trocar a SPR_N por SPR_M? / por esta imagem? / por SPR_k de arquivo.cnv?", prévia 1:1 (antiga | → nova, mesma escala nas duas, reduz só se não couber) e **CANCELAR | IGUALAR SPRITES | CONFIRMAR** (CONFIRMAR troca sem ajuste, como antes; IGUALAR abre a tela e troca com o ajuste: Frames + padrão). Aviso de tamanho diferente (`SpriteMass.sizeWarningDims`). PNG/`.cnv` **da pasta do próprio personagem** é recusado ("use Escolher do Personagem").
+- Código: `PacSpritePicker.ReplaceHook` (a sprite escolhida no CNV vai para a confirmação em vez de trocar logo), `PacSpritePicker.replaceWith(..., afterOk)`, `SpriteMassDialogs.equalizeToSprite/applyAdjustInSlot`, `SpriteListScreen.cnvHook/freshSprite`.
+- Testes: `HoldTest` (7), `SpriteEqualizeScreenTest` (14: âncora/escala, cantos com zoom/rotação/flip/MID, aviso de tamanho, escala comum da confirmação). **Só compilado/revisado, não executado no aparelho**: o desenho do recorte (clip/Matrix), a tela quadrada, o gesto de segurar − / +, o diálogo `ReplaceConfirm` e os três caminhos de troca.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -800,6 +809,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DragPlanTest (novo)** | 18 |
 | **SheetPackTest (novo)** | 320 |
 | **SpriteDefaultsTest (novo)** | 28 |
+| **HoldTest (novo)** | 7 |
+| **SpriteEqualizeScreenTest (novo)** | 14 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
