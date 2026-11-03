@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2283 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2605 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -665,6 +665,15 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Prévia pequena da sprite substituída** (40 dp, "Substituindo SPR_N · L×A"): no seletor de substituta (assistente de exclusão e "Outra Sprite do personagem"), no seletor de arquivos ("Escolher do Dispositivo") e na escolha de sprite de um `.cnv`.
 - Testes: `SheetPurgeTest` (23), `DragPlanTest` (16: inclui **subir**), `GifOptimizeTest` (11: vazias, DAC liberada→que ficou→renumerado, CNV, GIF encolhe, tempo do GIF). **Só compilado/revisado, não executado no aparelho**: a escrita real de PNG (Canvas/Bitmap) e a remoção de arquivos, a varredura ao abrir, o gesto com vizinhas animadas/vão destacado, o `GifPlayView` e as faixas de prévia.
 
+### 3.1zzzo Ao abrir SPRITES: loading que apaga o que está fora dos recortes e realoca sprites nos vãos das folhas do início; reordenar só grava ao soltar (dá para ir até o topo); prévias de substituição 20% maiores
+
+- **Compactar as folhas** (antes os vãos deixados por sprites excluídas ficavam vazios para sempre). Ao abrir a tela de SPRITES (modo normal, uma vez por sessão do personagem) aparece o loading **"Organizando as folhas"** e, numa thread: (1) descarta entradas vazias do fim da tabela; (2) apaga tudo o que fica fora dos recortes (`sweepOutside`, com as mesmas salvaguardas: CNV sem erro de recorte e ao menos uma sprite); (3) lê os vãos de todas as folhas e **leva cada sprite que caiba num vão de uma folha ANTERIOR para lá** — a primeira folha que couber vence, então as folhas do início enchem e as do fim esvaziam; (4) as folhas que ficaram sem sprites saem da pasta e o `$src` das seguintes é renumerado (regras do 3.1zzzn); grava e só então a lista abre. Toast só se algo mudou: "N sprite(s) realocada(s) · M folha(s) apagada(s) · K folha(s) limpa(s)". Exemplo do pedido: vão de 70×50 na folha 0 e sprite 30×30 na folha 20 → ela passa para a folha 0.
+- **Regras**: o número da sprite e o DAC **não mudam** (só folha/x/y no CNV); **nunca cria folha nova** e nunca passa do tamanho de uma folha existente, então o limite de 1024×1024 de folha nova (só uma sprite que sozinha o exceda ganha folha maior) não é tocado. Sprites com o **mesmo recorte** (reaproveitadas) andam juntas; sprite cujo recorte **sobrepõe só em parte** outro, sai da folha ou tem erro de recorte **não é movida**. Ordem: folhas do fim primeiro, maiores primeiro; até 4 passadas; idempotente.
+- **Código**: `SpriteAlloc.findIn` (melhor encaixe dentro de UMA folha), `SheetPack.plan` (planejador puro sobre o `Cnv`), `SpriteLib.organize(Progress)`/`relocate` (copia o retângulo para o destino, apaga o antigo, marca folhas sujas/tocadas) e `SpriteListScreen.show` agora abre o loading antes de `showScreen`. A varredura solta que ficava no fim do `show` foi substituída.
+- **Reordenar só ao soltar**: causa da gravação "no meio do caminho": ao rolar a lista até o topo o `ListView` retira a linha arrastada e o Android manda `ACTION_CANCEL` ao puxador, que o tratava como soltar. Agora `DragListView.dispatchTouchEvent` entrega **todos** os eventos ao `Dragger` enquanto há arraste; **só `ACTION_UP` grava**, `CANCEL` desfaz sem mover nada. A linha arrastada vira um **fantasma** (foto da linha) desenhado no `ViewOverlay` e preso ao dedo (amortecido no começo), a original fica esmaecida; o alvo vem do centro do fantasma (acima da primeira linha = antes dela, ou seja, **SPR_0** com a lista no topo), a rolagem automática, as vizinhas que deslizam e o vão destacado continuam.
+- **Prévias do menu de substituir +20%**: 40 → 48 dp (`previewStrip`, usada pelo seletor de substituta, "Outra Sprite do personagem", "Escolher do Dispositivo" e a escolha de sprite de um `.cnv`).
+- Testes: `SheetPackTest` (320: exemplo do pedido, vão→folha esvazia→`unreferenced`, não cabe, primeira folha que couber, maiores primeiro, recortes idênticos juntos, sobreposição parcial/fixa/fora da folha ficam, 60 rodadas aleatórias: sem sobreposição, dentro da folha, nunca para trás, idempotente), `DragPlanTest` (18: +arrastar até o topo). **Só compilado/revisado, não executado no aparelho**: o loading, a cópia/limpeza real de pixels em Bitmap/Canvas e a gravação dos PNG, o `DragListView`/fantasma/overlay e o gesto de arrastar até o topo rolando.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -777,7 +786,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DedupReasonsTest (novo)** | 24 |
 | **SpriteMoveTest (novo)** | 28 |
 | **SheetPurgeTest (novo)** | 23 |
-| **DragPlanTest (novo)** | 16 |
+| **DragPlanTest (novo)** | 18 |
+| **SheetPackTest (novo)** | 320 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
