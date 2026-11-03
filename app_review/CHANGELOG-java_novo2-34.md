@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2687 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2692 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -714,6 +714,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Dois slots**: o **azul** (destino, onde a sprite cai) e o novo **vermelho no lugar de origem**. As vizinhas **não preenchem** mais a origem: só as linhas do ponto de inserção em diante descem uma altura para abrir o azul (`DragPlan.pushed` / `blueAt`). Soltar sobre o vermelho (ou com a inserção colada na origem) **não muda nada** — é a forma de desistir. Se a linha de origem rolou para fora da tela o vermelho some até ela reaparecer. Aviso ao armar: "arraste para reorganizar as Sprites (solte no vermelho para cancelar)".
 - Testes: `DragPlanTest` (24: +`pushed` descendo/subindo/colado, `blueAt`, a origem nunca desce, soltar no vermelho = sem azul). **Só compilado/revisado, não executado no aparelho**: o gesto (puxador ignorando o CANCEL), o desenho dos dois slots no `ViewOverlay` e a rolagem automática.
 
+### 3.1zzzu Igualar Sprites: antiga e nova zeradas (âncora 0,0, RAZ padrão); os valores da nova são somados em cada Frame
+
+- **Correção do conceito**: a tela do Igualar desenhava a antiga com o **padrão visual guardado dela** (`ca.defaults().get(...)`) e a nova com `padrão da antiga + campos`. Agora as duas aparecem **zeradas**: **ancoradas em 0,0, com zoom 100%, rotação 0, alpha 0, MID 0,0 e sem flip** (nem os valores de um Frame, nem o padrão guardado). A nova parte exatamente sobre a antiga e o usuário ajusta até igualar (`SpriteEqualizeScreen.ghostDefFor` / `mainDefFor`, puros).
+- **Aplicar** (sem mudança na conta): os valores da nova são **somados nos de cada Frame** que usava a antiga (`SpriteDefaults.retarget` / `applyAdjustInSlot`): rotação, alpha e MID somam, **zoom multiplica**, flip se inverte. O padrão guardado da nova passa a ser o da antiga + esses valores. Vale para os três caminhos (sprite do personagem, imagem do dispositivo, sprite de CNV de outro pac).
+- Dicas da tela e AJUDA/manual atualizadas (PT/EN/ES).
+- Testes: `SpriteEqualizeScreenTest` (15: original sempre zerada, nova sem nada herdado, cantos coincidem zerados, Frame rot 30/zoom 150/MID 5,−3/flip H + valores rot 5/zoom 110/MID 2,2 = rot 35/zoom 165/MID 7,−1/flip desligado), `SpriteDefaultsTest` (29: padrão da nova = antiga + valores). **Só compilado/revisado, não executado no aparelho**: a tela do Igualar.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -828,9 +835,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SheetPurgeTest (novo)** | 23 |
 | **DragPlanTest (novo)** | 24 |
 | **SheetPackTest (novo)** | 320 |
-| **SpriteDefaultsTest (novo)** | 28 |
+| **SpriteDefaultsTest (novo)** | 29 |
 | **HoldTest (novo)** | 7 |
-| **SpriteEqualizeScreenTest (novo)** | 11 |
+| **SpriteEqualizeScreenTest (novo)** | 15 |
 | **PreviewCamTest (novo)** | 9 |
 | **UnusedSpritesTest (novo)** | 10 |
 | **GifOptimizeTest (novo)** | 11 |
