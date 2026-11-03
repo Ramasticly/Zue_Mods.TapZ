@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2665 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2671 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -694,6 +694,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Código: `PacSpritePicker.ReplaceHook` (a sprite escolhida no CNV vai para a confirmação em vez de trocar logo), `PacSpritePicker.replaceWith(..., afterOk)`, `SpriteMassDialogs.equalizeToSprite/applyAdjustInSlot`, `SpriteListScreen.cnvHook/freshSprite`.
 - Testes: `HoldTest` (7), `SpriteEqualizeScreenTest` (14: âncora/escala, cantos com zoom/rotação/flip/MID, aviso de tamanho, escala comum da confirmação). **Só compilado/revisado, não executado no aparelho**: o desenho do recorte (clip/Matrix), a tela quadrada, o gesto de segurar − / +, o diálogo `ReplaceConfirm` e os três caminhos de troca.
 
+### 3.1zzzr Editar Frame: prévia igual à principal (grade, linha do chão, linha central, câmera livre) e novo nome
+
+- **Prévia do Editar Frame / Igualar Sprites** agora é a mesma da principal: fundo, **grade** (32 × escala), **linha central** vertical na âncora e **chão** (preenchimento + linha dos pés), com **câmera livre** — arrastar com um dedo move, pinça dá zoom no ponto tocado (limites 0,5 a 24, os mesmos do `AttackView`) e toque duplo volta ao enquadramento inicial (centro, 55% da altura, escala = densidade). A original esmaecida e a sprite desenham sobre a câmera (só o recorte).
+- Código compartilhado: `PreviewCam` (câmera pura: `recenter`, `pan`, `zoomAt`) e `PreviewGrid.draw` (o fundo); `AttackView.drawGrid` passou a chamar o mesmo helper, então a prévia principal não muda.
+- **Nome**: "Predefinições" (menu da sprite) e "EDITAR FRAMES" (barra de seleção) viram **"Editar Frame"** / **"EDITAR FRAME"**, assim como o título da tela; AJUDA (PT/EN/ES) e manual acompanham.
+- Testes: `PreviewCamTest` (9: enquadramento, mover, zoom que mantém o foco, ida e volta, limites). `SpriteEqualizeScreenTest` ficou com as contas de cantos/avisos (11). **Só compilado/revisado, não executado no aparelho**: o desenho da grade/chão na tela do Editar Frame e os gestos de arrastar, pinça e toque duplo.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -810,7 +817,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SheetPackTest (novo)** | 320 |
 | **SpriteDefaultsTest (novo)** | 28 |
 | **HoldTest (novo)** | 7 |
-| **SpriteEqualizeScreenTest (novo)** | 14 |
+| **SpriteEqualizeScreenTest (novo)** | 11 |
+| **PreviewCamTest (novo)** | 9 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
