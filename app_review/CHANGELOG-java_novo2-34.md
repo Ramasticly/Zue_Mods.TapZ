@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2229 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2233 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -649,6 +649,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **GIF aberto** (cabeçalho e quadros) **não tem puxador**; sprites soltas continuam com ele. Como não há mais arrastar de quadros dentro de GIF, qualquer soltura (sprite ou bloco) **cai antes ou depois de um GIF, nunca no meio** (o ponto de soltura vira "antes da sprite N" arredondado para a ponta do GIF) — nada de desfazer GIF sem querer. As regras de `remapMove` (GIF cortado se desfaz) ficam só como proteção.
 - Testes: `SpriteMoveTest` +8 (permutação de bloco para cima/baixo/inválido, toda combinação é permutação, ponto de soltura, recortes do CNV vão juntos, dois GIFs acompanham sem se desfazer, bloco no meio de outro GIF desfaz o cortado). **Só compilado/revisado**: o puxador na linha do GIF encolhido, o arraste do bloco e o ponto de soltura na lista.
 
+### 3.1zzzm Remover Sprites repetidas reconhece sprites de GIF ("Sprite de Gif, mantida" + "?")
+- No grupo, a sprite que **faz parte de um GIF** (`lib.groups.at`) vira **fixa**: o selo mostra **"Sprite de Gif, mantida"** (também quando é a maior do grupo) e ao lado há um **"?" azul clicável** com o aviso: *As sprites de um Gif só podem ser removidas pela função "Otimizar Gif". Toque em {nome do GIF} na lista de Sprites e, em seguida, em Otimizar Gif.* A linha **não abre a comparação** e a sprite **nunca é marcada** (`DedupMarks`: `fixed`, `canCompare`, `set`, `chip`). Ela continua podendo ser a que **fica** no lugar de uma cópia solta.
+- Por quê: tirar uma sprite de dentro de um GIF mexe nos quadros e nos atrasos; isso é feito pelo "Otimizar GIF (tirar quadros repetidos)", que cuida do GIF inteiro.
+- Testes: `SpriteVerifyTest` +4 (fixa não compara, não marca, selo, regra comum intacta). **Só compilado/revisado**: o selo com o "?" e o diálogo.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -755,7 +760,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteWizardTest (novo)** | 21 |
 | **SpriteScaleTest (novo)** | 21 |
 | **SpriteRotSearchTest (novo)** | 19 |
-| **SpriteVerifyTest (novo)** | 40 |
+| **SpriteVerifyTest (novo)** | 44 |
 | **BackupTest (novo)** | 10 |
 | **DedupPreviewTest (novo)** | 21 |
 | **DedupReasonsTest (novo)** | 24 |
