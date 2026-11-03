@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2692 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2705 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -721,6 +721,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Dicas da tela e AJUDA/manual atualizadas (PT/EN/ES).
 - Testes: `SpriteEqualizeScreenTest` (15: original sempre zerada, nova sem nada herdado, cantos coincidem zerados, Frame rot 30/zoom 150/MID 5,−3/flip H + valores rot 5/zoom 110/MID 2,2 = rot 35/zoom 165/MID 7,−1/flip desligado), `SpriteDefaultsTest` (29: padrão da nova = antiga + valores). **Só compilado/revisado, não executado no aparelho**: a tela do Igualar.
 
+### 3.1zzzv Editar Frame / Igualar: MID no topo, Unir zoom, − N + de um em um com teclado, zoom inicial ajustado às sprites, sem linhas do chão e do centro
+
+- **Ordem dos campos** (`SpriteEqualizeScreen`): **Centro X/Y (MID)** no topo → **Zoom** com a caixa **"Unir zoom" marcada por padrão** (um só campo muda X e Y; desmarcada mostra Zoom X e Zoom Y; marcar de novo faz Y = X; a caixa só nasce desmarcada se o valor inicial já tem X ≠ Y) → **Rotação** → **Flips** → **Alpha**.
+- **− N +**: agora são os `Stepper` do app em todos os campos — **de um em um**, **segurar repete continuamente**, **tocar no número abre o teclado** (vale enquanto digita); **zoom e alpha nunca ficam abaixo de 0** (`clampZoom` / `clampAlpha`). O "segurar pula mais números" do 3.1zzzq deixa de valer nesta tela.
+- **Zoom inicial da prévia ajustado às sprites**: `PreviewCam.fitBox` enquadra a caixa das sprites (antiga e nova zeradas no Igualar; sprite com o padrão no Editar Frame) com 25% de folga, **diminuindo para as grandes e aumentando para as pequenas**, com o centro da caixa no centro da vista; vale ao abrir e no toque duplo. A câmera desta tela aceita escala mínima 0,02 (sprites enormes) sem mudar o limite da prévia principal (0,5).
+- **Sem linhas do chão e do centro** nesta prévia (só a grade): `PreviewGrid.draw(..., showAxes)`; a prévia principal continua igual.
+- Testes: `PreviewCamTest` (17: +`fitBox` pequena/enorme/limites/centro/caixa degenerada e mínimo da câmera), `SpriteEqualizeScreenTest` (20: +limites ≥ 0, caixa de enquadramento). **Só compilado/revisado, não executado no aparelho**: a tela reorganizada, o teclado nos campos, o segurar contínuo e o enquadramento inicial.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -837,8 +845,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SheetPackTest (novo)** | 320 |
 | **SpriteDefaultsTest (novo)** | 29 |
 | **HoldTest (novo)** | 7 |
-| **SpriteEqualizeScreenTest (novo)** | 15 |
-| **PreviewCamTest (novo)** | 9 |
+| **SpriteEqualizeScreenTest (novo)** | 20 |
+| **PreviewCamTest (novo)** | 17 |
 | **UnusedSpritesTest (novo)** | 10 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
