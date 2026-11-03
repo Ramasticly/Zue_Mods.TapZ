@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2671 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2681 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -701,6 +701,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Nome**: "Predefinições" (menu da sprite) e "EDITAR FRAMES" (barra de seleção) viram **"Editar Frame"** / **"EDITAR FRAME"**, assim como o título da tela; AJUDA (PT/EN/ES) e manual acompanham.
 - Testes: `PreviewCamTest` (9: enquadramento, mover, zoom que mantém o foco, ida e volta, limites). `SpriteEqualizeScreenTest` ficou com as contas de cantos/avisos (11). **Só compilado/revisado, não executado no aparelho**: o desenho da grade/chão na tela do Editar Frame e os gestos de arrastar, pinça e toque duplo.
 
+### 3.1zzzs OTIMIZAR > Remover Sprites não usadas
+
+- Nova opção no menu OTIMIZAR, **entre "Remover Sprites repetidas" e "Otimizar PNGs (8 bits)"**: lista as sprites que **nenhum Frame de nenhuma ANO presente do DAC usa** (, puro), com miniatura (toque = prévia flutuante), tamanho e folha (ou "(vazia)"). **Nenhuma vem marcada**: toque na linha marca/desmarca (chip MANTER / REMOVER);  / ; ** (vermelho)** e ** (verde)**, que pergunta se tem certeza.
+- **Sprites de GIF** sem uso aparecem **fixas** (selo "Sprite de Gif" e o "?" que explica que só saem por "Otimizar GIF"), como no Remover repetidas. Slots vazios sem uso são marcáveis.
+- Ao confirmar: cópia bruta em  (se falhar, nada é alterado) →  (apaga o recorte na folha PNG, folhas sem sprite saem da pasta, renumera CNV e grupos) →  (Frames do DAC) → padrões visuais renumerados → DAC gravado. Se toda sprite tem uso, avisa e não abre a tela.
+- Testes:  (10: usadas em várias ANOs/Frames, -1 e fora do intervalo ignoradas, ANO ausente não conta, vazia, GIF, ordem e consistência com "Mostrar usos"). **Só compilado/revisado, não executado no aparelho**: a tela , as miniaturas, a confirmação e a remoção real (PNG/CNV/DAC).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -819,6 +826,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **HoldTest (novo)** | 7 |
 | **SpriteEqualizeScreenTest (novo)** | 11 |
 | **PreviewCamTest (novo)** | 9 |
+| **UnusedSpritesTest (novo)** | 10 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
