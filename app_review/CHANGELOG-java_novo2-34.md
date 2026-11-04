@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2722 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2735 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -736,6 +736,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Página Efeitos**: com a interpolação ligada e truncando, aparece uma **faixa âmbar** + `VER AJUSTES`; **ao ligar** a interpolação já abre o diálogo **Ajustes** com a mudança mínima (`time de N para N.`, `Rot de N para N.`, `Zoom de N para N.`, `Posição de N, N para N, N.`, `Alpha…`) e **VER OUTRAS OPÇÕES | ACEITAR**. As outras opções mostram **lado a lado** a versão atual (que trunca) e a variação, animadas em laço, com **`< variação N de M >`** e as tags; **ACEITAR** grava (1 passo de desfazer), **CANCELAR** sai.
 - Testes: `InterpFixTest` (17): a detecção **bate com o `_Hokan` real** (`AttackSim`) em 400 casos aleatórios e **toda variação gerada, depois de aplicada, não deixa resto no `_Hokan` real**; caso rot 0→3 em 6 ticks; vários campos; só um campo; último frame; tempo entre 1 e 255. **Só compilado/revisado, não executado no aparelho**: a faixa, o diálogo, a tela lado a lado e os previews em laço.
 
+### 3.1zzzx Lista de Sprites: ORDENAR (bytes, Px, mais/menos usos, mais parecidas)
+
+- Novo botão **ORDENAR** (barra da lista, modo normal): **Número (padrão)**, **Tamanho em bytes** ↓/↑ (L×A×4 do recorte, calculado do CNV, sem ler PNG), **Tamanho em Px** ↓/↑ (L×A lógicos), **Mais usos** / **Menos usos** (Frames do DAC que usam a sprite) e **Mais parecidas**.
+- **Mais parecidas** = ordem de semelhança geral, não em relação a uma sprite: para cada sprite a **melhor nota contra qualquer outra** (todas contra todas com `SpriteDedup.bestAny`, loading "Comparando sprites", limite de 2 min com aviso de resultado parcial); ordena por nota ↓ (idênticas, 100%, no topo; depois 95%…), depois pelo menor índice do par (as parecidas entre si ficam juntas), depois pelo número; sem par por último; a linha mostra "NN%". O resultado vale até a lista mudar.
+- Com uma ordem ativa a lista é **plana** (sem cabeçalhos de GIF e **sem puxador** de reordenar; a seleção é limpa) e cada linha mostra o valor do critério ("1.280 B", "32×40 px", "5 usos", "100%"). Sprites vazias vão por último em toda ordem. Tudo no núcleo puro `SpriteSort`.
+- Testes: `SpriteSortTest` (13: bytes/Px asc-desc, usos, empates pelo número, vazias por último, parecidas com idênticas juntas no topo e par junto, formatação, contagem de usos no DAC). **Só compilado/revisado, não executado no aparelho**: o botão/menu, a lista plana e o cálculo de semelhança com loading.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -856,6 +863,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **PreviewCamTest (novo)** | 17 |
 | **UnusedSpritesTest (novo)** | 10 |
 | **InterpFixTest (novo)** | 17 |
+| **SpriteSortTest (novo)** | 13 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
