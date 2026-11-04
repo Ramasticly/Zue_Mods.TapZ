@@ -97,6 +97,36 @@ diff -ruN a/AccelPresets.java b/AccelPresets.java
 +        return out;
 +    }
 +}
+diff -ruN a/AddSprites.java b/AddSprites.java
+--- a/AddSprites.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AddSprites.java	2026-11-04 12:49:05.467152554 +0000
+@@ -0,0 +1,26 @@
++package com.zue.attackeditor;
++
++/** "Adicionar Sprite" da timeline com varias sprites do personagem: um Frame por sprite, em sequencia depois do frame {@code after}, todos com o mesmo time, cada um nascendo no padrao da sprite. Java puro. */
++final class AddSprites {
++    private AddSprites() { }
++
++    static final int MIN_TIME = 1, MAX_TIME = 255;
++
++    static int clampTime(int t) { return Math.max(MIN_TIME, Math.min(MAX_TIME, t)); }
++
++    /**
++     * Lista nova com {@code images.length} Frames depois de {@code after} (cada um com {@code time} ticks); o Frame base fornece o resto (hitboxes, som, velocidade nao entram,
++     * como em {@link FrameOps#insertSprites}). Cada Frame novo recebe o padrao visual da sprite ({@code st}: zoom, rotacao, alpha, MID e flips - ABSOLUTO, nao relativo).
++     * Devolve a lista original se nao deu para inserir.
++     */
++    static Ano.Mpt[] insert(Ano.Mpt[] mp, int after, int[] images, int time, SpriteDefaults.Store st) {
++        if (mp == null || images == null || images.length == 0 || !FrameOps.ok(mp, after)) return mp;
++        int t = clampTime(time);
++        int[] ticks = new int[images.length];
++        java.util.Arrays.fill(ticks, t);
++        Ano.Mpt[] out = FrameOps.insertSprites(mp, after, images, ticks);
++        if (out == mp || out.length != mp.length + images.length) return mp;
++        if (st != null) for (int k = 0; k < images.length; k++) if (images[k] >= 0) out[after + 1 + k] = SpriteDefaults.write(out[after + 1 + k], st.get(images[k]));
++        return out;
++    }
++}
 diff -ruN a/AiHelp.java b/AiHelp.java
 --- a/AiHelp.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/AiHelp.java	2026-10-24 22:23:41.000000000 +0000
@@ -286,7 +316,7 @@ diff -ruN a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-04 12:47:12.671535528 +0000
++++ b/AiHelpDoc.java	2026-11-04 12:50:58.872127705 +0000
 @@ -0,0 +1,852 @@
 +package com.zue.attackeditor;
 +
@@ -651,7 +681,7 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "",
 +        "### 11.2 Timeline\n" +
-+        "The `Efeitos` page `Interpolar` (the game divides (target − current) by the frame's time in whole numbers — position/zoom ×128, rotation/alpha unscaled — so a remainder means the frame does not reach the next one exactly and, with a difference smaller than the time, rotation/alpha do not move): the app shows an amber warning and, on turning it on, the `Ajustes` dialog with the smallest change (`time de N para N`, `Rot de N para N`, `Zoom de N para N`, `Posição de N, N para N, N`) and `VER OUTRAS OPÇÕES` / `ACEITAR`; the other options show the current (truncating) version and each variation side by side with `< variação N de M >` and tags (`Mantém tempo igual`, `Mantém posição igual`…); accepting changes the frame's time and the destination frame's values. Tap a sprite clip to open its drawer. In the GOLPES grid the `FLUXO` button opens the move's flow in EDIT mode (it replaces the old view-only one); the `＋` menu has `SEQ`, which opens the same flow (the way to create the first SEQ/END/landing of a move that has none: the Transitions lane only appears once one exists), and tapping the Transitions lane outside a mark opens it too; the Frame bar's `◀`/`▶` keep the selection outline on the moved Frame. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE X / VELOCIDADE Y (green: one cell per Frame for its OWN speed (`x 10`) and its own accel (`ax 2`, teal); Frames are not merged and \"keep speed\" is NOT a lane (it only shows in the `Movimento` menu); the speed and the accel of the same Frame sit on two separate lines of the axis lane, in different Frames they share the line), `efeito img` (orange: flip/interpolation), LINKS, TRANSIÇÕES (SEQ/END/landing marks). The `＋` at the end of the sprite lane opens a menu: `CAMADA` (− N +, higher = the ANO draws on top; stored as the inverted `$PRIO`) and `Adicionar Sprite`. Special actions include `Teleportar atras do oponente` (= action 40 with a negative x, default −120, plus Flip X on the sprite, handled as one item). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a sprite or speed clip at the pointer (an object — hitbox, hurtbox, projectile, effect, action — belongs to its frame, so it splits at the frame boundary nearest to the pointer and the pointer moves there), `DUPLICAR`, `EXCLUIR`, `↶`/`↷` (undo/redo, two levels: with an edit drawer open they act only on that menu — every changed field/button is a step, back to the original and forth again; after `APLICAR` the whole menu is ONE step of the bar's undo/redo; a new change after undoing clears the redo). Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes. When a hitbox connects the game freezes the attacker a fixed number of ticks (hitstop: 10 normally, half for OPT1 group 3, none for group 4; the hitspark is not awaited, it plays in parallel at normal speed). The tick step button then locks the tick number and shows a yellow notice with the ticks left; the timeline counts only frame ticks (hitstop takes no place on it: dragging/tapping goes straight to the requested animation tick), while the progress bar and playback follow simulation ticks.\n" +
++        "The `Efeitos` page `Interpolar` (the game divides (target − current) by the frame's time in whole numbers — position/zoom ×128, rotation/alpha unscaled — so a remainder means the frame does not reach the next one exactly and, with a difference smaller than the time, rotation/alpha do not move): the app shows an amber warning and, on turning it on, the `Ajustes` dialog with the smallest change (`time de N para N`, `Rot de N para N`, `Zoom de N para N`, `Posição de N, N para N, N`) and `VER OUTRAS OPÇÕES` / `ACEITAR`; the other options show the current (truncating) version and each variation side by side with `< variação N de M >` and tags (`Mantém tempo igual`, `Mantém posição igual`…); accepting changes the frame's time and the destination frame's values. Tap a sprite clip to open its drawer. The `Adicionar Sprite` of the `＋` menu at the end of the timeline opens the list of the CHARACTER's sprites (no new sprites are created): mark one or more, set `Time` (ticks; 7 = all with time 7) and tap `ADICIONAR N`; each becomes a Frame, in sequence (number order) after the pointer's frame, born with the sprite's default (Editar Frame's zoom and MID; with no stored default, zoom 100 and MID with the feet on the anchor); cancelling creates nothing. In the GOLPES grid the `FLUXO` button opens the move's flow in EDIT mode (it replaces the old view-only one); the `＋` menu has `SEQ`, which opens the same flow (the way to create the first SEQ/END/landing of a move that has none: the Transitions lane only appears once one exists), and tapping the Transitions lane outside a mark opens it too; the Frame bar's `◀`/`▶` keep the selection outline on the moved Frame. Lanes: SPRITES (yellow clips), then hitbox/hurtbox/projectile/effect/special-action lanes, SOM (blue), VELOCIDADE X / VELOCIDADE Y (green: one cell per Frame for its OWN speed (`x 10`) and its own accel (`ax 2`, teal); Frames are not merged and \"keep speed\" is NOT a lane (it only shows in the `Movimento` menu); the speed and the accel of the same Frame sit on two separate lines of the axis lane, in different Frames they share the line), `efeito img` (orange: flip/interpolation), LINKS, TRANSIÇÕES (SEQ/END/landing marks). The `＋` at the end of the sprite lane opens a menu: `CAMADA` (− N +, higher = the ANO draws on top; stored as the inverted `$PRIO`) and `Adicionar Sprite`. Special actions include `Teleportar atras do oponente` (= action 40 with a negative x, default −120, plus Flip X on the sprite, handled as one item). `＋` adds at the pointer (sprite, hitbox, hurtbox, projectile, effect, sound, speed, link, special action); `#` filters lanes. Tool row: `DIVIDIR` splits a sprite or speed clip at the pointer (an object — hitbox, hurtbox, projectile, effect, action — belongs to its frame, so it splits at the frame boundary nearest to the pointer and the pointer moves there), `DUPLICAR`, `EXCLUIR`, `↶`/`↷` (undo/redo, two levels: with an edit drawer open they act only on that menu — every changed field/button is a step, back to the original and forth again; after `APLICAR` the whole menu is ONE step of the bar's undo/redo; a new change after undoing clears the redo). Drag a clip's edge to change its duration; drag item edges to trim. Pinch = zoom; vertical drag scrolls lanes. When a hitbox connects the game freezes the attacker a fixed number of ticks (hitstop: 10 normally, half for OPT1 group 3, none for group 4; the hitspark is not awaited, it plays in parallel at normal speed). The tick step button then locks the tick number and shows a yellow notice with the ticks left; the timeline counts only frame ticks (hitstop takes no place on it: dragging/tapping goes straight to the requested animation tick), while the progress bar and playback follow simulation ticks.\n" +
 +        "\n" +
 +        "### 11.3 Edit drawer pages\n" +
 +        "Sprite grid → `Imagem` (sprite picker, position, zoom, rotation, alpha, \"move links together\"), `Tempo` (ticks), `Som` (sound id list with preview), `Movimento` (two tabs, `SPEED X` | `SPEED Y`, the starting tab is the axis of the timeline cell tapped: speed/accel, received speed, total pixels and `REMOVER SPEED` for the chosen axis; the speed field is the frame's FINAL value and replaces the received one (like the game); giving a frame a speed only merges it with the previous frame — keep speed on, no own speed stored — when the previous frame's speed is the same and it has no accel, otherwise only the user turns `MANTER VELOCIDADE` on; the axis accel is independent of speed and applies only in its own frame (it never carries to the next); the stretch's start frame/duration (the duration turns keep speed on in those frames, without copying accel) and `MANTER VELOCIDADE` show in both tabs and one updates the other), `Efeitos` (flip X/Y, interpolation), `Copiar` (apply this frame's properties to other frames: next N, previous N, all, this sprite in ANO / in all ANOs). Hitbox/hurtbox menu: type switch, start frame & duration, preview, x/y/w/h (a hurtbox also has `Aplicar a todas as Hurtboxes (neste ANO)` / `(todos os ANOs)`, which copy its position and size to every other hurtbox of the ANO / of the whole character; the other ANOs still need `SALVAR` → all ANOs), and (hitbox) `DANO`, `REAÇÃO` (◀ ▶, `ESCOLHER`, `EDITAR REAÇÃO`), transition (SEQ/END, `MUDAR ANO DESTINO`, `BLOQUEAR SEQUÊNCIA`). Projectile screen: start & duration, branching tree, projectile ANO, position/speed, homing, sequence. The grid also has a Frame strip on top: `DUPLICAR` (copies only the sprite: image, time, offset, style), `◀`/`▶` (move the Frame back/forward) and `EXCLUIR` (deletes the whole Frame, with confirmation). The timeline lane `efeito img` shows only what the `Efeitos` page sets (Flip X/Y, interpolation); every lane draws darker vertical lines at tick borders; the pointer can reach the end of the last tick. The blue `＋` > sprite inserts after the current Frame when the pointer is mid-Frame, and before it when the pointer is on a Frame border/start (after the last Frame when at the end). In the `Imagem` page, rotation is a signed 16-bit value (negative allowed) and ALPHA's high byte selects the blend (256 = additive, any other value including negative = \"other mode\").\n" +
@@ -719,11 +749,11 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**How do I change how far the opponent flies?** In the reaction (`EDITAR REAÇÃO`): steps' speeds (unit 0.1 px/tick), durations, and whether ground or air columns apply (opponent height). Use the other reaction group for different hitstop/knockback (5.4).\n" +
 +        "\n" +
++        "",
 +        "**Where do I save?** Section 13: recommended `Salvar em pasta separada` → `Tap Battle/TBRE/Chars/charNN/`.\n" +
 +        "\n" +
 +        "**I added/deleted a character folder or replaced a `.txt` and the app does not show it.** Tap `↻` in the title bar (confirm). It rereads the character folders, effects, scenes and sounds and keeps the same character/move if they still exist. Unsaved edits are lost, so `SALVAR` first.\n" +
 +        "\n" +
-+        "",
 +        "**How do I undo?** `DESFAZER`/`↶`. Saved files keep what was saved; backups are in `Tap Battle/TBRE/Backups/`.\n" +
 +        "\n" +
 +        "**Can you make me a sprite/sound?** No. Tell me what is needed (size, frames, names); the user imports them (11.5).\n" +
@@ -829,9 +859,9 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 27, 28 | `charf00##` (face) |\n" +
 +        "| 29 / 30 | card_preview / font00 |\n" +
 +        "\n" +
++        "",
 +        "(`effect_en` etc. chosen by `iLanguage*17`, `GetResName2` jogo:28447.) **Read once**: the pacs at load. **Read every tick**: the DAC bytes through `_ActReqMain`/`_SetAct`; the HDAT 4 fields while md 882/883/970/971/940/941 run; HDAT 3 body data; the reaction table row on each reaction tick; HDAT 1 (Synchro/Angry gain ratios), HDAT 5 (score/combo scaling), HDAT 37[0] (rage multiplier), HDAT 6 (CPU sequences), HDAT 42 (touch buttons: [0] command, [2] cost in hundreds), HDAT 13 (cutscene rows), HDAT 0 (AI move table).\n" +
 +        "\n" +
-+        "",
 +        "**HDAT 4 — the move table [CODE].** Row = `SpecialType` = the move number; row stride = `2 * piGameDataXSize[4]` bytes (24 fields of 16-bit little-endian = 48 bytes); field `k` is at byte `2k` of the row. The editor's `$GOLPE_n` text keys map to these **byte offsets** (the app reads exactly these in `CharData.read`):\n" +
 +        "\n" +
 +        "| Byte | `$KEY` in `$GOLPE_n` | Used by the game as |\n" +
@@ -912,11 +942,11 @@ diff -ruN a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**KO and hitstop [CODE].** If `Life[tgt] <= 0` after damage the OPT1 reaction is **overridden**: `DamageType = 2, DamageIndex = 0, DamageTime = 0, DamageOldType = 2`, md 876 (jogo:3993-4000); in md 876 a KO in type 2 becomes type 29 (jogo:20989-20992); after the reaction the game plays ANO 24 and enters md 888 → 889 and stays down. Hitstop: `iHitStop = PlayerHitStop[atk]` for **both** players (6 for basic attacks, 10 for specials); group 3 uses half for body hits, group 4 none; projectiles give the target full hitstop and the projectile half; it decrements at the start of md 935 and pauses animation and reaction movement; in md 876 hitstop the defender jitters ±1 px. Invulnerable when: defender `wObjFlag & 8` (alternating frames in md 876 hitstop), either player's life ≤ 0, either player in md 923/926/927/928/911 (the whole hit step is skipped), `iTimer == 0` (no life loss). Hits **during a reaction are allowed** (no untechable window): `DamageChange` resets `DamageTime/Index` and re-enters the reaction.\n" +
 +        "\n" +
++        "",
 +        "**What the app's simulator omits [CODE-compared].** `BattleSim.applyDamage` matches flag 28, min-2, ANO 92, combo scaling, life cap and combo count; it omits the rage multiplier, guard/chip, score and gauge gain.\n" +
 +        "\n" +
 +        "### 15.5 Reactions, COMP and recovery (questions 34–45)\n" +
 +        "\n" +
-+        "",
 +        "**Resolving OPT1 [CODE].** `group = OPT1 / 50`, `index = OPT1 % 50` (jogo:3518-3519). `index >= 30` → md 877 with `DamageType = index - 30` and the **attacker's** character table HDAT 14+type; `index < 30` → md 876 with `DamageType = index` and the gamedata table HDAT 10+type (jogo:3824-3828, 20995, 21264). Example: **OPT1 116 = group 2 (strong), index 16 = game-wide reaction 16**; OPT1 52 = group 1, index 2.\n" +
 +        "\n" +
 +        "**Groups [CODE].** `HitEffectActNo = {0,0,1,0,-1}`, `HitSound = {3,4,6,3,7}`, `GuardEffectActNo = {2,2,2,2,-1}` (jogo:601-603). Group 4: no effect, no sound, no combo increment. Push-back (`DamageMove`) only for groups < 3 and it is always 0. Hitstop: group 3 half (body hits), group 4 none. Combo count (cap 99) increments only when the effect ANO is 0 or 1 and the hit is not flag 37. Sound is SE 8 for any effect other than ANO 0/1, else `HitSound[group]`. A hit with OPT1 forced by a trade or clash is always group 0.\n" +
@@ -18392,7 +18422,7 @@ diff -ruN a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-11-04 12:47:12.588673127 +0000
++++ b/HelpText.java	2026-11-04 12:50:58.755608405 +0000
 @@ -0,0 +1,618 @@
 +package com.zue.attackeditor;
 +
@@ -18600,7 +18630,7 @@ diff -ruN a/HelpText.java b/HelpText.java
 +        tl.add("Faixas da timeline",
 +                "A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE X e VELOCIDADE Y (uma faixa por eixo; cada Frame tem a sua própria célula de speed e de accel, sem unir Frames; o \"manter velocidade\" não é faixa (só aparece no menu Movimento); speed e accel do mesmo Frame ficam em linhas separadas da faixa; em Frames diferentes dividem a linha), ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. Tocar no nome da faixa de sprites abre ou recolhe o resumo. A faixa \"efeito img\" mostra só o que está na página Efeitos da sprite (Flip X/Y e interpolação). Cada faixa tem traços verticais, da cor dela mais escuros, nas divisas dos ticks (somem quando o zoom afasta demais). O ponteiro vai até o fim da timeline (o fim do último tick).");
 +        tl.add("＋ e #",
-+                "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame.");
++                "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. Já o Adicionar Sprite do menu ＋ do fim da timeline abre a lista de sprites do PERSONAGEM (não cria sprites novas): marque uma ou mais, defina o Time (em ticks; 7 = todas com time 7) e toque ADICIONAR N — cada uma vira um Frame, em sequência (na ordem do número) depois do frame do ponteiro, nascendo no padrão da sprite (zoom e MID do Editar Frame; sem padrão guardado, zoom 100 e MID com os pés na âncora). Cancelar não cria nada. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame.");
 +        tl.add("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
 +                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto na divisa de frames mais próxima do ponteiro (o objeto pertence ao frame, então nunca corta no meio dele) e o ponteiro vai para essa divisa, ou, com um trecho de VELOCIDADE selecionado, começa um segundo trecho no ponteiro (a velocidade segue a mesma); "
 +                + "DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição."
@@ -19358,7 +19388,7 @@ diff -ruN a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-11-04 12:46:48.347730916 +0000
++++ b/I18nCatalog.java	2026-11-04 12:50:38.962801776 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -19372,7 +19402,7 @@ diff -ruN a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-11-04 12:46:48.337159808 +0000
++++ b/I18nCatalog0.java	2026-11-04 12:50:38.954917304 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -19645,7 +19675,7 @@ diff -ruN a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-11-04 12:46:48.338212140 +0000
++++ b/I18nCatalog1.java	2026-11-04 12:50:38.956212172 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -19918,7 +19948,7 @@ diff -ruN a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-11-04 12:46:48.339018219 +0000
++++ b/I18nCatalog2.java	2026-11-04 12:50:38.957118372 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -20191,7 +20221,7 @@ diff -ruN a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-11-04 12:46:48.340003387 +0000
++++ b/I18nCatalog3.java	2026-11-04 12:50:38.958170380 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -20464,7 +20494,7 @@ diff -ruN a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-11-04 12:46:48.341602982 +0000
++++ b/I18nCatalog4.java	2026-11-04 12:50:38.959038173 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -20737,7 +20767,7 @@ diff -ruN a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-11-04 12:46:48.342803626 +0000
++++ b/I18nCatalog5.java	2026-11-04 12:50:38.959909592 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -21010,7 +21040,7 @@ diff -ruN a/I18nCatalog5.java b/I18nCatalog5.java
 +}
 diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
 --- a/I18nCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog6.java	2026-11-04 12:46:48.344053808 +0000
++++ b/I18nCatalog6.java	2026-11-04 12:50:38.960807472 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -21283,7 +21313,7 @@ diff -ruN a/I18nCatalog6.java b/I18nCatalog6.java
 +}
 diff -ruN a/I18nCatalog7.java b/I18nCatalog7.java
 --- a/I18nCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog7.java	2026-11-04 12:46:48.345679119 +0000
++++ b/I18nCatalog7.java	2026-11-04 12:50:38.961733051 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -21556,8 +21586,8 @@ diff -ruN a/I18nCatalog7.java b/I18nCatalog7.java
 +}
 diff -ruN a/I18nCatalog8.java b/I18nCatalog8.java
 --- a/I18nCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog8.java	2026-11-04 12:46:48.347107501 +0000
-@@ -0,0 +1,259 @@
++++ b/I18nCatalog8.java	2026-11-04 12:50:38.962514918 +0000
+@@ -0,0 +1,262 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 8 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -21815,6 +21845,9 @@ diff -ruN a/I18nCatalog8.java b/I18nCatalog8.java
 +        {"Não achei a 1ª sprite do Parado (ANO 0, frame 1) para servir de referência de altura.", "I could not find the 1st Idle sprite (ANO 0, frame 1) to use as the height reference.", "No encontré el 1er sprite del Parado (ANO 0, frame 1) para usarlo de referencia de altura."},
 +        {"Rotação, alpha e flips dos Frames não mudam.\n\n", "The Frames' rotation, alpha and flips do not change.\n\n", "La rotación, el alpha y los flips de los Frames no cambian.\n\n"},
 +        {"arraste o bloco para reorganizar as Sprites (solte no vermelho para cancelar)", "drag the block to reorder the Sprites (drop on the red one to cancel)", "arrastra el bloque para reorganizar los Sprites (suelta en el rojo para cancelar)"},
++        {"ADICIONAR", "ADD", "AGREGAR"},
++        {"Adicionar sprites — marque uma ou mais — ", "Add sprites — mark one or more — ", "Agregar sprites — marca uno o más — "},
++        {"nao da para adicionar as sprites aqui", "cannot add the sprites here", "no se pueden agregar los sprites aquí"},
 +    };
 +}
 diff -ruN a/I18nCheckBox.java b/I18nCheckBox.java
@@ -21864,7 +21897,7 @@ diff -ruN a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-11-04 12:47:12.627419731 +0000
++++ b/I18nHelpCatalog.java	2026-11-04 12:50:58.819131019 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -21878,7 +21911,7 @@ diff -ruN a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-11-04 12:47:12.626184439 +0000
++++ b/I18nHelpCatalog0.java	2026-11-04 12:50:58.816703535 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -21963,7 +21996,7 @@ diff -ruN a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-11-04 12:47:12.626327966 +0000
++++ b/I18nHelpCatalog1.java	2026-11-04 12:50:58.816924541 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22048,7 +22081,7 @@ diff -ruN a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-11-04 12:47:12.626459580 +0000
++++ b/I18nHelpCatalog2.java	2026-11-04 12:50:58.817174553 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22133,7 +22166,7 @@ diff -ruN a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-11-04 12:47:12.626570749 +0000
++++ b/I18nHelpCatalog3.java	2026-11-04 12:50:58.817447615 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22166,9 +22199,9 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"＋ e #",
 +         "＋ and #",
 +         "＋ y #"},
-+        {"O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame.",
-+         "The ＋ adds at the pointer a sprite, hitbox, hurtbox, projectile, effect, sound, speed, linked animation or a special action (shake the stage, cutscene, camera zoom, teleport to the opponent, pull the opponent, heal life...). The SEQ item of the ＋ opens the move's editable flow, where the sequence (SEQ/END/landing) is defined, even when there is no Transitions lane yet. The # chooses what the timeline shows (turns each category on and off; SHOW ALL). The special actions also include TELEPORT BEHIND THE OPPONENT: the CHARACTER goes to the opponent's position (flag 39), flips the sprite (Flip X) and the frame's speed X takes it to the other side, by the chosen distance (default 60 px); the opponent is not moved. The three count as a single item, one Frame long — deleting it deletes the Flip X and the speed too. The game separates the two bodies when they overlap and pushes the opponent: turn on \"Characters pass through each other\" in GOLPE SET to keep him still. Old items (Pull opponent flag with a negative x) still open, with an old-format warning. The ＋ at the end of the sprite lane opens a menu: LAYER (− N +: higher = the ANO shows on top, lower = further down; saves $PRIO inverted) and ADD SPRITE (creates the sprite after the pointer and opens the Image page to pick the image and position). The blue ＋ (ADD > sprite) puts the new sprite after the current Frame if the pointer is in the middle of it, and before the Frame if the pointer is on the border between Frames or at its start; at the end of the timeline it goes after the last Frame.",
-+         "El ＋ agrega en el puntero un sprite, hitbox, hurtbox, proyectil, efecto, sonido, velocidad, animación ligada o una acción especial (temblor de escenario, cutscene, zoom de cámara, teletransportar hasta el oponente, jalar al oponente, curar vida...). El elemento SEQ del ＋ abre el flujo editable del golpe, donde se define la secuencia (SEQ/END/aterrizaje), aunque aún no haya franja Transiciones. El # elige lo que la timeline muestra (activa y desactiva cada categoría; MOSTRAR TODO). Las acciones especiales también incluyen TELETRANSPORTAR DETRÁS DEL OPONENTE: el PERSONAJE va a la posición del oponente (flag 39), voltea el sprite (Flip X) y la speed X del frame lo lleva al otro lado, por la distancia elegida (60 px por defecto); el oponente no se mueve. Los tres cuentan como un solo ítem, de un solo Frame: borrarlo borra también el Flip X y la speed. El juego separa los dos cuerpos cuando se superponen y empuja al oponente: activa \"Los personajes se atraviesan\" en GOLPE SET para que quede quieto. Los ítems antiguos (flag Tirar del oponente con x negativo) siguen abriéndose, con aviso de formato antiguo. El ＋ al final de la franja de sprites abre un menú: CAPA (− N +: mayor = la ANO aparece más arriba, menor = más abajo; guarda el $PRIO invertido) y AGREGAR SPRITE (crea el sprite después del puntero y abre la página Imagen para elegir la imagen y la posición). El ＋ azul (AÑADIR > sprite) pone el sprite nuevo después del Frame actual si el puntero está en medio de él, y antes del Frame si el puntero está en el límite entre Frames o en su inicio; al final de la timeline entra después del último Frame."},
++        {"O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. Já o Adicionar Sprite do menu ＋ do fim da timeline abre a lista de sprites do PERSONAGEM (não cria sprites novas): marque uma ou mais, defina o Time (em ticks; 7 = todas com time 7) e toque ADICIONAR N — cada uma vira um Frame, em sequência (na ordem do número) depois do frame do ponteiro, nascendo no padrão da sprite (zoom e MID do Editar Frame; sem padrão guardado, zoom 100 e MID com os pés na âncora). Cancelar não cria nada. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame.",
++         "The ＋ adds at the pointer a sprite, hitbox, hurtbox, projectile, effect, sound, speed, linked animation or a special action (shake the stage, cutscene, camera zoom, teleport to the opponent, pull the opponent, heal life...). The SEQ item of the ＋ opens the move's editable flow, where the sequence (SEQ/END/landing) is defined, even when there is no Transitions lane yet. The Add Sprite of the ＋ menu at the end of the timeline opens the list of the CHARACTER's sprites (it does not create new ones): mark one or more, set the Time (in ticks; 7 = all with time 7) and tap ADD N — each one becomes a Frame, in sequence (in number order) after the pointer's frame, born with the sprite's default (Edit Frame's zoom and MID; with no stored default, zoom 100 and MID with the feet on the anchor). Cancel creates nothing. The # chooses what the timeline shows (turns each category on and off; SHOW ALL). The special actions also include TELEPORT BEHIND THE OPPONENT: the CHARACTER goes to the opponent's position (flag 39), flips the sprite (Flip X) and the frame's speed X takes it to the other side, by the chosen distance (default 60 px); the opponent is not moved. The three count as a single item, one Frame long — deleting it deletes the Flip X and the speed too. The game separates the two bodies when they overlap and pushes the opponent: turn on \"Characters pass through each other\" in GOLPE SET to keep him still. Old items (Pull opponent flag with a negative x) still open, with an old-format warning. The ＋ at the end of the sprite lane opens a menu: LAYER (− N +: higher = the ANO shows on top, lower = further down; saves $PRIO inverted) and ADD SPRITE (creates the sprite after the pointer and opens the Image page to pick the image and position). The blue ＋ (ADD > sprite) puts the new sprite after the current Frame if the pointer is in the middle of it, and before the Frame if the pointer is on the border between Frames or at its start; at the end of the timeline it goes after the last Frame.",
++         "El ＋ agrega en el puntero un sprite, hitbox, hurtbox, proyectil, efecto, sonido, velocidad, animación ligada o una acción especial (temblor de escenario, cutscene, zoom de cámara, teletransportar hasta el oponente, jalar al oponente, curar vida...). El elemento SEQ del ＋ abre el flujo editable del golpe, donde se define la secuencia (SEQ/END/aterrizaje), aunque aún no haya franja Transiciones. En cambio, Agregar Sprite del menú ＋ del final de la timeline abre la lista de sprites del PERSONAJE (no crea sprites nuevos): marca uno o más, define el Time (en ticks; 7 = todos con time 7) y toca AGREGAR N — cada uno se vuelve un Frame, en secuencia (en orden de número) después del frame del puntero, naciendo con el predeterminado del sprite (zoom y MID de Editar Frame; sin predeterminado guardado, zoom 100 y MID con los pies en el ancla). Cancelar no crea nada. El # elige lo que la timeline muestra (activa y desactiva cada categoría; MOSTRAR TODO). Las acciones especiales también incluyen TELETRANSPORTAR DETRÁS DEL OPONENTE: el PERSONAJE va a la posición del oponente (flag 39), voltea el sprite (Flip X) y la speed X del frame lo lleva al otro lado, por la distancia elegida (60 px por defecto); el oponente no se mueve. Los tres cuentan como un solo ítem, de un solo Frame: borrarlo borra también el Flip X y la speed. El juego separa los dos cuerpos cuando se superponen y empuja al oponente: activa \"Los personajes se atraviesan\" en GOLPE SET para que quede quieto. Los ítems antiguos (flag Tirar del oponente con x negativo) siguen abriéndose, con aviso de formato antiguo. El ＋ al final de la franja de sprites abre un menú: CAPA (− N +: mayor = la ANO aparece más arriba, menor = más abajo; guarda el $PRIO invertido) y AGREGAR SPRITE (crea el sprite después del puntero y abre la página Imagen para elegir la imagen y la posición). El ＋ azul (AÑADIR > sprite) pone el sprite nuevo después del Frame actual si el puntero está en medio de él, y antes del Frame si el puntero está en el límite entre Frames o en su inicio; al final de la timeline entra después del último Frame."},
 +        {"adicionar mais novo criar numero",
 +         "add more new create number",
 +         "agregar mas nuevo crear numero"},
@@ -22218,7 +22251,7 @@ diff -ruN a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-11-04 12:47:12.626681545 +0000
++++ b/I18nHelpCatalog4.java	2026-11-04 12:50:58.817773119 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22303,7 +22336,7 @@ diff -ruN a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-11-04 12:47:12.626751397 +0000
++++ b/I18nHelpCatalog5.java	2026-11-04 12:50:58.817926711 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22388,7 +22421,7 @@ diff -ruN a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-11-04 12:47:12.626825543 +0000
++++ b/I18nHelpCatalog6.java	2026-11-04 12:50:58.818072870 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22473,7 +22506,7 @@ diff -ruN a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-11-04 12:47:12.626958235 +0000
++++ b/I18nHelpCatalog7.java	2026-11-04 12:50:58.818369210 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22558,7 +22591,7 @@ diff -ruN a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-11-04 12:47:12.627262604 +0000
++++ b/I18nHelpCatalog8.java	2026-11-04 12:50:58.818940246 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -22643,7 +22676,7 @@ diff -ruN a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-11-04 12:47:12.627388447 +0000
++++ b/I18nHelpCatalog9.java	2026-11-04 12:50:58.819079905 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -23144,7 +23177,7 @@ diff -ruN a/LayerOps.java b/LayerOps.java
 +}
 diff -ruN a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-11-03 03:10:03.241008814 +0000
++++ b/LayoutManager.java	2026-11-04 12:50:08.608253313 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -23640,7 +23673,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -531,23 +751,42 @@
+@@ -531,23 +751,49 @@
                  tl.clearSelection();
                  if (!tools.sheetOpen()) return;
                  int n = tools.discardSession();
@@ -23650,6 +23683,13 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
 +            @Override public void toast(String msg) { I18nUi.toast(a, msg, android.widget.Toast.LENGTH_SHORT).show(); }
 +            @Override public void endMenu() { showEndMenu(a, tl, endOps[0]); }
 +            @Override public void openFlow() { LayoutManager.this.openFlow(); }
++            @Override public void pickSprites(SpriteListScreen.MultiListener l) {
++                AttackData ad = view.attackData();
++                if (ad == null || ad.attacker == null) return;
++                SpriteListScreen.showMulti(a, ad.attacker.dir.getName(), ad.attacker, new Runnable() {
++                    @Override public void run() { view.refreshAfterExternalEdit(); tl.invalidate(); changed.run(); }
++                }, l);
++            }
 +            @Override public void showImagePage(int index) {
 +                tl.select(TimelineView.T_SPRITE, index, -1, -1);
 +                tools.imageFirst();
@@ -23687,7 +23727,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          timelineRef = tl;
          sc.addView(bottom, lp(-1, -2, 0, 6, 0, 0));
  
-@@ -587,19 +826,18 @@
+@@ -587,19 +833,18 @@
              boolean h;
              @Override public void onClick(View v) { h = !h; view.setHideEff(h); setChecked(bHide, h); }
          });
@@ -23714,7 +23754,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          bFlip.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { apply.set(8, !on[8]); } });
          setChecked(bLand, BattleSim.landingOn);
          bLand.setOnClickListener(new View.OnClickListener() {
-@@ -657,7 +895,7 @@
+@@ -657,7 +902,7 @@
                  tbox.setPadding(dp(16), dp(8), dp(16), dp(8));
                  for (int k = 0; k < ids.length; k++) {
                      final int id = ids[k];
@@ -23723,7 +23763,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      cb.setText(names[k]);
                      cb.setTextColor(TEXT);
                      cb.setChecked(checked[k]);
-@@ -666,7 +904,7 @@
+@@ -666,7 +911,7 @@
                      });
                      tbox.addView(cb);
                  }
@@ -23732,7 +23772,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbBox.setText("Box dos sprites (amarela, bordas de todas as sprites)");
                  cbBox.setTextColor(0xFFFFE04C);
                  cbBox.setChecked(spriteBoxesOn[0]);
-@@ -674,14 +912,45 @@
+@@ -674,14 +919,45 @@
                      @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean isOn) { spriteBoxesOn[0] = isOn; view.setSpriteBoxes(isOn); }
                  });
                  tbox.addView(cbBox);
@@ -23781,7 +23821,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                          .setView(tsv).setPositiveButton("OK", null).show();
              }
          });
-@@ -715,7 +984,7 @@
+@@ -715,7 +991,7 @@
              final String[] nm = {"Âncora dos sprites (amarelo)", "Âncora das hurtboxes (azul)", "Âncora das hitboxes (vermelho)", "Âncora dos efeitos/animações (cinza) e globais (roxo)", "Âncora dos projéteis (laranja)"};
              for (int k = 0; k < nm.length; k++) {
                  final int kk = k;
@@ -23790,7 +23830,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  if (k == 3) {
                      android.text.SpannableString sp = new android.text.SpannableString(nm[k]);
                      int g = nm[k].indexOf("cinza"), pu = nm[k].indexOf("roxo");
-@@ -729,7 +998,7 @@
+@@ -729,7 +1005,7 @@
                  });
                  ob.addView(cb);
              }
@@ -23799,7 +23839,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              cl.setText("Links (linhas e pontos entre objetos)"); cl.setTextColor(0xFF7CFFB2); cl.setChecked(on[2]);
              cl.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                  @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { on[2] = v; applyObj.run(); }
-@@ -759,17 +1028,17 @@
+@@ -759,17 +1035,17 @@
                  ap.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) {
                      int w, h;
                      try { w = Integer.parseInt(ew.getText().toString().trim()); h = Integer.parseInt(eh.getText().toString().trim()); }
@@ -23820,7 +23860,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      .setView(osv).setPositiveButton("OK", null).show();
          } };
          bChar.setOnClickListener(new View.OnClickListener() {
-@@ -782,13 +1051,24 @@
+@@ -782,13 +1058,24 @@
                  bA.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); openPicker(a, "Atacante", cs); } });
                  TextView bO = button(a, "OPONENTE:  " + os.getSelectedItem(), false);
                  bO.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); openPicker(a, "Oponente", os); } });
@@ -23846,7 +23886,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  cbObj.setChecked(objOn[0]);
                  cbObj.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                      @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { objOn[0] = v; applyObj.run(); }
-@@ -797,9 +1077,12 @@
+@@ -797,9 +1084,12 @@
                  objRow.addView(cbObj, new LinearLayout.LayoutParams(-2, -2));
                  box.addView(objRow, lp(-1, -2, 0, 0, 0, 8));
                  box.addView(bA, lp(-1, -2, 0, 0, 0, 8));
@@ -23862,7 +23902,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                          .setTitle("Personagens").setView(box).setNegativeButton("FECHAR", null).create();
                  dlg[0].show();
              }
-@@ -856,7 +1139,9 @@
+@@ -856,7 +1146,9 @@
              }
          });
  
@@ -23873,7 +23913,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -877,18 +1162,45 @@
+@@ -877,18 +1169,45 @@
      /** SPRITES: lista de sprites do personagem atacante atual. */
      private void showSpritePacks(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
@@ -23922,7 +23962,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setItems(items, new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { askWhere(a, view, d, which); }
                  }).setNegativeButton("FECHAR", null).show();
-@@ -896,20 +1208,28 @@
+@@ -896,20 +1215,28 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -23957,7 +23997,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          try {
              File dir = d.attacker.dir;
              Dac dac = d.attacker.dac;
-@@ -918,39 +1238,284 @@
+@@ -918,39 +1245,284 @@
              int idx = d.moveIndex;
              if ((which == 0) && m.generic) {
                  CharData.Move own = cd.ownerOf(d.moveIndex);
@@ -24265,7 +24305,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -976,25 +1541,21 @@
+@@ -976,25 +1548,21 @@
          }
      }
  
@@ -24301,7 +24341,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      /** Dialogo com -10 / -1 / +1 / +10 que aplica na hora. */
-@@ -1019,7 +1580,7 @@
+@@ -1019,7 +1587,7 @@
              row.addView(b, lpw(1f, k == 0 ? 0 : 3, 0, k == 3 ? 0 : 3, 0));
          }
          box.addView(row, lp(-1, -2, 0, 0, 0, 0));
@@ -24310,7 +24350,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title).setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1045,22 +1606,49 @@
+@@ -1045,22 +1613,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -24370,7 +24410,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1121,7 +1709,7 @@
+@@ -1121,7 +1716,7 @@
                  c.drawLine(pad(), y, w - pad(), y, p);
                  p.setColor(0xFFB8C2D6);
                  p.setTextAlign(android.graphics.Paint.Align.LEFT);
@@ -24379,7 +24419,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
              // grade vertical: distancias predefinidas ao redor do personagem parado
              float ref = drag == 0 ? ox : drag == 1 ? ax : ax;
-@@ -1135,7 +1723,7 @@
+@@ -1135,7 +1730,7 @@
                      if (sg > 0 || ref - px < 0) {
                          p.setColor(0xFFFFC857);
                          p.setTextAlign(android.graphics.Paint.Align.CENTER);
@@ -24388,7 +24428,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      }
                  }
              }
-@@ -1145,9 +1733,9 @@
+@@ -1145,9 +1740,9 @@
              p.setTextAlign(android.graphics.Paint.Align.CENTER);
              p.setTextSize(11f * den);
              p.setTextSize(10.5f * den);
@@ -24400,7 +24440,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                      w / 2f, gy() + 31f * den, p);
          }
  
-@@ -1226,6 +1814,24 @@
+@@ -1226,6 +1821,24 @@
          box.setOrientation(LinearLayout.VERTICAL);
          box.setPadding(dp(10), dp(6), dp(10), dp(6));
          box.addView(prev, new LinearLayout.LayoutParams(-1, dp(300)));
@@ -24425,7 +24465,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          final TextView fly = button(a, view.isFly() ? "FLY: LIGADO" : "FLY: DESLIGADO", view.isFly());
          fly.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              boolean on = !view.isFly();
-@@ -1235,13 +1841,16 @@
+@@ -1235,13 +1848,16 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -24445,7 +24485,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      }
  
      // ---- OPCOES DO GOLPE: checkboxes das flags do ATK_FLAGS (HDAT 4, byte 0)
-@@ -1253,9 +1862,10 @@
+@@ -1253,9 +1869,10 @@
          final AttackView view = attackView;
          final AttackData d = view == null ? null : view.attackData();
          if (d == null || d.move == null || d.move.generic) {
@@ -24457,7 +24497,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          final CharData.Move mv = d.move;
          optMoveIndex = d.moveIndex;
          final boolean[] busy = {false};
-@@ -1294,21 +1904,21 @@
+@@ -1294,21 +1911,21 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -24483,7 +24523,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cb.setText(label);
          cb.setTextColor(TEXT);
          box.addView(cb, lp(-1, -2, 0, 4, 0, 0));
-@@ -1346,11 +1956,30 @@
+@@ -1346,11 +1963,30 @@
      }
  
      /** F-GHOST SET: o que a previa mostra (alem do personagem) e a transparencia. */
@@ -24515,7 +24555,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cp.setText("Mostrar projeteis");
          cp.setTextColor(TEXT);
          cp.setChecked(view.isGhostProj());
-@@ -1358,7 +1987,7 @@
+@@ -1358,7 +1994,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostProj(on); }
          });
          box.addView(cp);
@@ -24524,7 +24564,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          ce.setText("Mostrar efeitos (os mesmos do HIDE-EFF, menos projeteis)");
          ce.setTextColor(TEXT);
          ce.setChecked(view.isGhostFx());
-@@ -1366,7 +1995,7 @@
+@@ -1366,7 +2002,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostFx(on); }
          });
          box.addView(ce);
@@ -24533,7 +24573,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          cc.setText("Aplicar tambem ao Frame atual");
          cc.setTextColor(TEXT);
          cc.setChecked(view.isGhostCurrent());
-@@ -1389,7 +2018,7 @@
+@@ -1389,7 +2025,7 @@
              @Override public void onStopTrackingTouch(SeekBar s2) { }
          });
          box.addView(gs);
@@ -24542,7 +24582,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1403,7 +2032,7 @@
+@@ -1403,7 +2039,7 @@
          seek.setMax(Math.max(1, length - 1));
          if (seek instanceof ExtSeekBar) ((ExtSeekBar) seek).setAnoEnd(attackView.getAnoEnd() - 1);
          seek.setProgress(frame);
@@ -24551,7 +24591,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          btnPlay.setText(playing ? "PAUSAR" : "TOCAR");
          if (timelineRef != null) {
              timelineRef.setSprites(attackView.attackerSprites());
-@@ -1416,6 +2045,7 @@
+@@ -1416,6 +2052,7 @@
              statusLine.setText(attackView.status());
              refreshInfo(false);
          }
@@ -24559,7 +24599,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          String problem = attackView.spriteProblem();
          if (problem.length() > 0) {
              warning.setTextColor(WARN);
-@@ -1423,6 +2053,7 @@
+@@ -1423,6 +2060,7 @@
          }
      }
  
@@ -24567,7 +24607,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      // ---- aviso piscando: transicao travada + play ----
      private boolean lockTrans, blinking, blinkOn, landBeforeLock = true;
      private final Runnable blinkRun = new Runnable() {
-@@ -1528,7 +2159,7 @@
+@@ -1528,7 +2166,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -24576,7 +24616,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1544,7 +2175,7 @@
+@@ -1544,7 +2182,7 @@
          et.setText(attackView.editText(tab));
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(et);
@@ -24585,7 +24625,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +2190,7 @@
+@@ -1559,7 +2197,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -24594,7 +24634,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +2198,9 @@
+@@ -1567,9 +2205,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -24606,7 +24646,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2231,7 @@
+@@ -1600,7 +2238,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -24615,7 +24655,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2245,7 @@
+@@ -1614,7 +2252,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -24624,7 +24664,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1636,11 +2267,9 @@
+@@ -1636,11 +2274,9 @@
  
      private HeaderSpinner attackHeaderSpinner;
  
@@ -24637,7 +24677,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
      private HeaderSpinner headerSpinner(Context c) {
          HeaderSpinner s = new HeaderSpinner(c);
          setBg(s, roundRect(PANEL, 8, 0, 0));
-@@ -1648,52 +2277,14 @@
+@@ -1648,52 +2284,14 @@
          return s;
      }
  
@@ -24693,7 +24733,7 @@ diff -ruN a/LayoutManager.java b/LayoutManager.java
          }
      }
  
-@@ -1766,12 +2357,13 @@
+@@ -1766,12 +2364,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -36600,7 +36640,7 @@ diff -ruN a/SpriteLib.java b/SpriteLib.java
      public void release() {
 diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 --- a/SpriteListScreen.java	2026-10-20 12:29:22.000000000 +0000
-+++ b/SpriteListScreen.java	2026-11-04 12:46:15.466482216 +0000
++++ b/SpriteListScreen.java	2026-11-04 12:50:08.603156307 +0000
 @@ -15,10 +15,14 @@
  import android.text.InputType;
  import android.view.Gravity;
@@ -36624,7 +36664,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
  
  /**
   * Lista de sprites (SPR_0, SPR_1...) de uma pasta: as folhas ficam intactas no disco, aqui elas aparecem cortadas pelo CNV.
-@@ -43,11 +48,82 @@
+@@ -43,11 +48,99 @@
          void onPickFrames(int[] images, int[] delaysMs);
      }
  
@@ -36697,8 +36737,25 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +        }).start();
 +    }
 +
++    /** Modo "varias": marcar uma ou mais sprites (na ordem do numero) e dar o time delas; ADICIONAR devolve {@code images} e o time. */
++    interface MultiListener { void onPick(int[] images, int time); }
++    private static MultiListener pendingMulti;
++    private static int lastMultiTime = 6;
++
++    /** Lista de sprites do personagem para ESCOLHER varias de uma vez (Adicionar Sprite da timeline), com o campo Time (ticks) e o botao ADICIONAR N. */
++    static void showMulti(Activity a, String title, CharAssets ca, Runnable changed, MultiListener l) {
++        pendingMulti = l;
++        show(a, title, ca, -1, new Picker() {
++            @Override public void onPick(int image) { }
++            @Override public void onPickFrames(int[] images, int[] delaysMs) { }
++        }, changed);
++    }
++
 +    private static void showScreen(final Activity a, final String title, final CharAssets ca, final int selected, final Picker picker, final Runnable changed, final Set<Integer> excluded,
 +                                   final Map<Integer, Integer> scores, final int replacing) {
++        final MultiListener multi = pendingMulti;
++        pendingMulti = null;
++        final Runnable[] multiRefresh = {null};
 +        final boolean chooseOnly = excluded != null && picker != null;
 +        final int[] minPct = {0};
 +        final Runnable[] rebuild = {null};
@@ -36708,7 +36765,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          final Dialog d = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
          final LinearLayout root = new LinearLayout(a);
          root.setOrientation(LinearLayout.VERTICAL);
-@@ -61,13 +137,41 @@
+@@ -61,13 +154,41 @@
          final TextView sub = text(a, "", 11, DIM, false);
          sub.setPadding(dp(a, 14), 0, dp(a, 14), dp(a, 8));
          root.addView(sub);
@@ -36751,7 +36808,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          lv.setDividerHeight(1);
          lv.setDivider(new android.graphics.drawable.ColorDrawable(LINE));
          final BaseAdapter ad = new BaseAdapter() {
-@@ -77,30 +181,35 @@
+@@ -77,30 +198,35 @@
              @Override public View getView(int pos, View cv, ViewGroup parent) {
                  int type = rows.get(pos)[0], i = rows.get(pos)[1];
                  SpriteGroups.Group g = type == 0 ? null : lib.groups.startingAt(i);
@@ -36792,10 +36849,11 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  } else if (type == 1) {
                      Cnv.Entry e = ca.cnv.byImage(i);
                      t.setText("GIF  " + g.name + "\nSPR_" + g.first + " a SPR_" + g.last() + "  \u00b7  " + framesText(g)
-@@ -112,12 +221,25 @@
+@@ -112,12 +238,25 @@
                      t.setTextColor(ACCENT);
                  }
                  row.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+-                if (picker == null && type != 2) {
 +                final int[] blk = picker == null && sortMode[0] == SpriteSort.NUMBER && !sel.isEmpty() ? SpriteBlock.contiguous(sel) : null;
 +                final boolean showHandle = picker == null && sortMode[0] == SpriteSort.NUMBER
 +                        && (sel.isEmpty() ? ((type == 0 && !inGroup) || type == 1) : (blk != null && i == blk[0] && type != 2));
@@ -36809,7 +36867,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +                    handle.setOnTouchListener(new Dragger(dctx, row, i, blk != null ? blk[1] : type == 1 && g != null ? g.count : 1));      // marcadas seguidas: o puxador da primeira move o bloco
 +                    row.addView(handle, new LinearLayout.LayoutParams(-2, -2));
 +                }
-                 if (picker == null && type != 2) {
++                if ((picker == null || multi != null) && type != 2) {
                      // caixa de marcar (acoes em massa); GIF marca/desmarca todos os quadros
                      final int fi = i;
                      final boolean grp = type == 1;
@@ -36819,7 +36877,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                      boolean on;
                      if (grp) { on = true; for (int k = gg.first; k <= gg.last() && k < lib.count(); k++) if (lib.has(k) && !sel.contains(Integer.valueOf(k))) on = false; }
                      else on = sel.contains(Integer.valueOf(fi));
-@@ -138,11 +260,30 @@
+@@ -138,11 +277,30 @@
          };
          lv.setAdapter(ad);
  
@@ -36853,10 +36911,11 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  for (int i = 0; i < lib.count(); i++) {
                      SpriteGroups.Group g = lib.groups.startingAt(i);
                      if (g == null) { rows.add(new int[]{0, i}); continue; }
-@@ -152,15 +293,34 @@
+@@ -152,15 +310,34 @@
                      } else rows.add(new int[]{1, i});
                      i = Math.min(g.last(), lib.count() - 1);
                  }
+-                ti.setText((picker == null ? "Sprites \u2014 " : "Escolher sprite \u2014 ") + title);
 +            }
 +        };
 +        final Runnable refresh = new Runnable() {
@@ -36864,7 +36923,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +                for (Bitmap b : thumbs.values()) if (b != null && !b.isRecycled()) b.recycle();
 +                thumbs.clear();
 +                buildRows.run();
-                 ti.setText((picker == null ? "Sprites \u2014 " : "Escolher sprite \u2014 ") + title);
++                ti.setText(multi != null ? "Adicionar sprites \u2014 marque uma ou mais \u2014 " + title : (picker == null ? "Sprites \u2014 " : "Escolher sprite \u2014 ") + title);
                  sub.setText(lib.count() + " imagem(ns)  \u00b7  " + lib.groups.list.size() + " GIF(s)  \u00b7  " + lib.sheetCount() + " folha(s) PNG  \u00b7  escala " + lib.scale
                          + (picker == null ? "  \u00b7  toque para editar" : ""));
 +                final java.util.List<String> badCuts = lib.cutProblems(80);        // recorte que nao funciona: motivo exato (alerta copiavel)
@@ -36888,7 +36947,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          // aplica no disco, atualiza preview e lista
          final Runnable uiOnly = new Runnable() {
              @Override public void run() { ca.reloadSprites(); refresh.run(); if (changed != null) changed.run(); }   // recicla bitmaps: so na UI thread
-@@ -170,26 +330,40 @@
+@@ -170,26 +347,66 @@
              @Override public void run() {
                  try { lib.commit(); } catch (Exception ex) { toast(a, "Erro ao gravar: " + ex.getMessage()); }
                  ca.reloadSprites();
@@ -36911,7 +36970,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +        final TextView optBtn = button(a, "OTIMIZAR", new View.OnClickListener() {
 +            @Override public void onClick(View v) { SpriteOptimize.menu(a, ca, lib, applied); }
 +        });
-+        if (!chooseOnly) bar.addView(optBtn, lpm(a, 8));
++        if (!chooseOnly && multi == null) bar.addView(optBtn, lpm(a, 8));
 +        final TextView sortBtn = button(a, "ORDENAR", new View.OnClickListener() {
              @Override public void onClick(View v) {
 -                FilePicker.show(a, "Adicionar sprites a " + title, true, new FilePicker.Listener() {
@@ -36932,10 +36991,36 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +        if (picker == null) bar.addView(sortBtn, lpm(a, 8));
 +        final TextView closeBtn = button(a, "FECHAR", new View.OnClickListener() { @Override public void onClick(View v) { d.dismiss(); } });
 +        bar.addView(closeBtn, lpm(a, 8));
++        if (multi != null) {
++            // Time das sprites (em ticks; 7 = todas com time 7) e ADICIONAR N
++            LinearLayout mb = new LinearLayout(a);
++            mb.setGravity(Gravity.CENTER_VERTICAL);
++            mb.setPadding(dp(a, 12), 0, dp(a, 12), dp(a, 6));
++            mb.addView(text(a, "Time", 13, TEXT, false), new LinearLayout.LayoutParams(dp(a, 56), -2));
++            final int[] timeV = {AddSprites.clampTime(lastMultiTime)};
++            mb.addView(new Stepper(a).step(1).range(AddSprites.MIN_TIME, AddSprites.MAX_TIME).keyboard(new Stepper.OnValue() {
++                @Override public void on(double v) { timeV[0] = AddSprites.clampTime((int) v); lastMultiTime = timeV[0]; }
++            }).live(true).value(timeV[0]).view());
++            final TextView go = button(a, "ADICIONAR", new View.OnClickListener() {
++                @Override public void onClick(View v) {
++                    if (sel.isEmpty()) { toast(a, "marque pelo menos uma sprite"); return; }
++                    int[] imgs = new int[sel.size()];
++                    int k = 0;
++                    for (Integer i : sel) imgs[k++] = i.intValue();
++                    d.dismiss();
++                    multi.onPick(imgs, timeV[0]);
++                }
++            });
++            go.setTextColor(OK);
++            mb.addView(go, lpm(a, 10));
++            multiRefresh[0] = new Runnable() { @Override public void run() { go.setText("ADICIONAR " + sel.size()); go.setAlpha(sel.isEmpty() ? 0.4f : 1f); } };
++            root.addView(mb);
++            multiRefresh[0].run();
++        }
          root.addView(bar);
  
          // barra das acoes em massa (aparece quando ha sprites marcadas)
-@@ -200,9 +374,12 @@
+@@ -200,9 +417,12 @@
          selBar.setVisibility(View.GONE);
          final TextView selCount = text(a, "", 12, ACCENT, true);
          selBar.addView(selCount, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -36949,7 +37034,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          selBar.addView(button(a, "EXCLUIR", new View.OnClickListener() { @Override public void onClick(View v) {
              final ArrayList<Integer> list = new ArrayList<Integer>(sel);
              SpriteMassDialogs.confirmDelete(a, ca, lib, list, new Runnable() { @Override public void run() { sel.clear(); applied.run(); } });
-@@ -221,10 +398,16 @@
+@@ -221,16 +441,23 @@
                  return false;
              }
          });
@@ -36964,11 +37049,19 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
 +            optBtn.setVisibility(empty ? View.VISIBLE : View.GONE);
 +            closeBtn.setVisibility(empty ? View.VISIBLE : View.GONE);
              selCount.setText(sel.size() + " marcada(s)  (voltar limpa)");
++            if (multiRefresh[0] != null) multiRefresh[0].run();
 +            if (picker == null) { wasEmpty[0] = empty; ad.notifyDataSetChanged(); }      // as linhas se refazem: o puxador some/volta e, com marcadas seguidas, fica so na primeira
          } };
  
          lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-@@ -244,6 +427,14 @@
+             @Override public void onItemClick(AdapterView<?> p, View v, int pos, long id) {
+                 int type = rows.get(pos)[0], idx = rows.get(pos)[1];
+-                if (picker == null && !sel.isEmpty() && type != 2) {
++                if (((picker == null && !sel.isEmpty()) || multi != null) && type != 2) {
+                     // com algo marcado, tocar na linha so marca/desmarca
+                     if (type == 0) { if (!sel.remove(Integer.valueOf(idx))) sel.add(Integer.valueOf(idx)); }
+                     else {
+@@ -244,6 +471,14 @@
                      return;
                  }
                  if (type == 2) { open.remove(Integer.valueOf(idx)); refresh.run(); return; }
@@ -36983,16 +37076,16 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  if (type == 1) {
                      SpriteGroups.Group g = lib.groups.startingAt(idx);
                      if (picker != null) pickGroup(a, ca, lib, g, picker, d);
-@@ -254,7 +445,7 @@
+@@ -254,7 +489,7 @@
                  actions(a, ca, lib, idx, applied);
              }
          });
 -        if (picker != null) {
-+        if (picker != null && !chooseOnly) {
++        if (picker != null && !chooseOnly && multi == null) {
              lv.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                  @Override public boolean onItemLongClick(AdapterView<?> p, View v, int pos, long id) {
                      int type = rows.get(pos)[0], idx = rows.get(pos)[1];
-@@ -266,10 +457,18 @@
+@@ -266,10 +501,18 @@
          }
          root.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1f));
          d.setOnDismissListener(new DialogInterface.OnDismissListener() {
@@ -37013,7 +37106,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          d.show();
          if (selected >= 0) {
              for (int r = 0; r < rows.size(); r++) if (rows.get(r)[0] == 0 && rows.get(r)[1] == selected) { lv.setSelection(Math.max(0, r - 2)); break; }
-@@ -288,6 +487,45 @@
+@@ -288,6 +531,45 @@
          return t;
      }
  
@@ -37059,7 +37152,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
      private static Bitmap thumb(SpriteLib lib, Map<Integer, Bitmap> thumbs, int i) {
          Bitmap tb = thumbs.get(Integer.valueOf(i));
          if (tb == null && lib.has(i)) {
-@@ -309,7 +547,7 @@
+@@ -309,7 +591,7 @@
          String msg = framesText(g) + " (SPR_" + g.first + " a SPR_" + g.last() + ").\n\n"
                  + "MODO GIF: coloca todos os quadros na timeline, depois do frame atual, formando a animacao completa com os tempos do GIF.\n\n"
                  + "MODO PNG: voce marca quais quadros quer, e so eles entram na timeline.";
@@ -37068,7 +37161,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setPositiveButton("MODO GIF", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) {
                          // quadros sem sprite (removidos) saem e o anterior segura o tempo; quadros seguidos com a mesma sprite viram um so
-@@ -377,7 +615,7 @@
+@@ -377,7 +659,7 @@
                  Bitmap tb = thumb(lib, thumbs, g.spriteAt(i));
                  if (tb != null) iv.setImageBitmap(tb);
                  row.addView(iv, new LinearLayout.LayoutParams(dp(a, 60), dp(a, 60)));
@@ -37077,7 +37170,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  t.setTextSize(13);
                  t.setPadding(dp(a, 12), 0, 0, 0);
                  t.setText((on[i] ? "\u2713  " : "") + "Quadro " + (i + 1) + "  (SPR_" + g.spriteAt(i) + ")\n" + g.delayAt(i) + " ms");
-@@ -425,14 +663,14 @@
+@@ -425,14 +707,14 @@
      private static void groupActions(final Activity a, final CharAssets ca, final SpriteLib lib, final SpriteGroups.Group g,
                                       final java.util.HashSet<Integer> open, final Runnable applied, final Runnable refresh) {
          String[] items = {"Editar os quadros um a um", "Otimizar GIF (tirar quadros repetidos)", "Desagrupar (viram sprites comuns)", "Remover o GIF inteiro"};
@@ -37095,7 +37188,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                                  .setNegativeButton("CANCELAR", null)
                                  .setPositiveButton("REMOVER", new DialogInterface.OnClickListener() {
                                      @Override public void onClick(DialogInterface d2, int w) {
-@@ -504,6 +742,31 @@
+@@ -504,6 +786,31 @@
          final int[][] repr = new int[1][];
          final java.util.ArrayList<Integer> shown = new java.util.ArrayList<Integer>();
          final Map<Integer, Bitmap> thumbs = new HashMap<Integer, Bitmap>();
@@ -37127,7 +37220,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          final ListView lv = new ListView(a);
          lv.setDividerHeight(1);
          lv.setDivider(new android.graphics.drawable.ColorDrawable(LINE));
-@@ -522,11 +785,11 @@
+@@ -522,11 +829,11 @@
                  row.setPadding(dp(a, 12), dp(a, 6), dp(a, 12), dp(a, 6));
                  if (changed) row.setBackgroundColor(HI);
                  row.addView(thumbView(a, lib, thumbs, an.sprite[i]), new LinearLayout.LayoutParams(dp(a, 56), dp(a, 56)));
@@ -37141,7 +37234,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  else if (changed) {
                      t.setText("SPR_" + an.sprite[i] + "  (" + uses + ")\nigual \u00e0 SPR_" + an.sprite[r] + " (" + an.score[r][i] + "%) \u2192 usa SPR_" + an.sprite[r]);
                      t.setTextColor(OK);
-@@ -549,10 +812,24 @@
+@@ -549,10 +856,24 @@
                  shown.clear();
                  for (int k = 0; k < an.n; k++) if (an.first[k] == k) shown.add(Integer.valueOf(k));
                  int rem = GifOptimizer.removedCount(an, repr[0]), valid = GifOptimizer.distinctSprites(an);
@@ -37169,7 +37262,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
              }
          };
          sb.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-@@ -568,34 +845,48 @@
+@@ -568,34 +889,48 @@
          ok.setOnClickListener(new View.OnClickListener() {
              @Override public void onClick(View v) {
                  final int[] rp = repr[0];
@@ -37234,7 +37327,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                              }
                          });
                      }
-@@ -604,13 +895,36 @@
+@@ -604,13 +939,36 @@
          });
          foot.addView(ok, lpm(a, 8));
          root.addView(foot);
@@ -37272,7 +37365,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
      /** "quadro 3" / "quadros 1, 4, 6": em quais quadros do GIF a sprite do quadro i aparece. */
      private static String usedBy(GifOptimizer.Analysis an, int i) {
          StringBuilder sb = new StringBuilder();
-@@ -635,25 +949,210 @@
+@@ -635,25 +993,210 @@
  
      // ---- acoes de uma sprite ----
  
@@ -37495,7 +37588,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  final BusyDialog busy = BusyDialog.show(a, "Abrindo imagem");
                  busy.set(files.get(0).getName(), 0, 0);
                  new Thread(new Runnable() {
-@@ -670,17 +1169,24 @@
+@@ -670,17 +1213,24 @@
                          final ImageImport.Loaded ld = ld0;
                          final String fe = err;
                          a.runOnUiThread(new Runnable() {
@@ -37522,7 +37615,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
          final Runnable go = new Runnable() {
              @Override public void run() {
                  final BusyDialog busy = BusyDialog.show(a, "Substituindo sprite");
-@@ -695,6 +1201,7 @@
+@@ -695,6 +1245,7 @@
                          a.runOnUiThread(new Runnable() {
                              @Override public void run() {
                                  if (fe != null) toast(a, "Erro: " + fe);
@@ -37530,7 +37623,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                                  uiOnlyR.run();
                              }
                          });
-@@ -702,15 +1209,77 @@
+@@ -702,15 +1253,77 @@
                  }).start();
              }
          };
@@ -37611,7 +37704,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
      private static void recycle(ImageImport.Loaded ld) {
          for (Bitmap b : ld.frames) if (b != null && !b.isRecycled()) b.recycle();
          ld.frames.clear();
-@@ -808,7 +1377,7 @@
+@@ -808,7 +1421,7 @@
          if (fail.length() > 0) msg.append("Nao abriu:\n").append(fail);
          if (msg.length() == 0) { go.run(); return; }
          msg.append(frames).append(" sprite(s) serao criadas, a partir de SPR_").append(first).append('.');
@@ -37620,7 +37713,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface x, int w) { for (ImageImport.Loaded ld : ok) recycle(ld); }
                  })
-@@ -825,24 +1394,347 @@
+@@ -825,24 +1438,347 @@
          SpriteMassDialogs.confirmDelete(a, ca, lib, one, applied);
      }
  
@@ -37985,7 +38078,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
      }
  
      // ---- recorte ----
-@@ -925,7 +1817,7 @@
+@@ -925,7 +1861,7 @@
          sync.run();
          android.widget.ScrollView sv = new android.widget.ScrollView(a);
          sv.addView(box);
@@ -37994,7 +38087,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
                  .setNegativeButton("CANCELAR", null)
                  .setPositiveButton("APLICAR", new DialogInterface.OnClickListener() {
                      @Override public void onClick(DialogInterface dlg, int w) {
-@@ -949,7 +1841,7 @@
+@@ -949,7 +1885,7 @@
          }
      }
  
@@ -38003,7 +38096,7 @@ diff -ruN a/SpriteListScreen.java b/SpriteListScreen.java
  
      static int dp(Activity a, int v) { return (int) (v * a.getResources().getDisplayMetrics().density + 0.5f); }
  
-@@ -966,7 +1858,7 @@
+@@ -966,7 +1902,7 @@
      }
  
      static TextView text(Activity a, String s, int sp, int color, boolean bold) {
@@ -40027,8 +40120,8 @@ diff -ruN a/TickDisplay.java b/TickDisplay.java
 +}
 diff -ruN a/TimelineOps.java b/TimelineOps.java
 --- a/TimelineOps.java	2026-10-20 00:25:45.000000000 +0000
-+++ b/TimelineOps.java	2026-11-03 03:09:55.811431777 +0000
-@@ -14,10 +14,16 @@
++++ b/TimelineOps.java	2026-11-04 12:50:08.606642107 +0000
+@@ -14,10 +14,18 @@
          void cancelTools();
          void toast(String msg);
          void choose(String title, String[] items, Pick pick);
@@ -40038,6 +40131,8 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
 +        void showImagePage(int idx);
 +        /** Abre o fluxo do golpe (editavel), onde se definem SEQ/END/pouso... */
 +        void openFlow();
++        /** Lista de sprites do personagem para marcar varias (com o time delas); {@code l} recebe as escolhidas. */
++        void pickSprites(SpriteListScreen.MultiListener l);
      }
  
      // itens do menu "ADICIONAR"
@@ -40046,7 +40141,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
  
      private final AttackView v;
      private final TimelineView tl;
-@@ -60,35 +66,52 @@
+@@ -60,35 +68,52 @@
          Ano a = v.currentAno();
          if (a == null) return;
          switch (item) {
@@ -40105,7 +40200,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          int occ = ObjModel.count(mp[f], flag);
          Ano.Hit proto = ObjModel.defaultHit(flag);
          // hitbox/hurtbox novas herdam a caixa da ultima do mesmo tipo (facilita ajustar)
-@@ -130,6 +153,7 @@
+@@ -130,6 +155,7 @@
          if (mp == null) return;
          int tick = tl.playheadTick();
          if (tl.selectedType() == TimelineView.T_OBJ) { splitObject(mp, tick); return; }
@@ -40113,7 +40208,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          FrameOps.Split s = FrameOps.splitAt(mp, tick);
          if (s == null) { host.toast("nao da para dividir aqui"); return; }
          if (!s.changed) { host.toast("o ponteiro ja esta no inicio de um sprite"); return; }
-@@ -137,25 +161,35 @@
+@@ -137,25 +163,35 @@
          host.closeTools();          // so divide: nenhum dos dois pedacos fica selecionado nem abre a edicao
      }
  
@@ -40160,7 +40255,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          host.closeTools();          // so divide: nenhum dos dois objetos fica selecionado
      }
  
-@@ -172,12 +206,15 @@
+@@ -172,12 +208,15 @@
              int occ = ObjModel.count(mp[f], o.flag);
              Ano.Hit proto = ObjModel.find(mp[o.f1], o.flag, o.occ);
              if (proto == null) return;
@@ -40177,7 +40272,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
              Ano.Mpt[] n = FrameOps.duplicate(mp, i);
              apply(n, FrameOps.starts(n)[i + 1]);
              host.show(TimelineView.T_SPRITE, i + 1, -1, -1);
-@@ -190,6 +227,7 @@
+@@ -190,6 +229,7 @@
          if (a == null || ty == TimelineView.T_NONE) { host.toast("selecione um item"); return; }
          int tick = tl.playheadTick();
          if (ty == TimelineView.T_SPRITE) {
@@ -40185,7 +40280,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
              Ano.Mpt[] n = FrameOps.delete(a.mpts, i);
              if (n == null) { host.toast("a ANO precisa de ao menos um sprite"); return; }
              apply(n, FrameOps.starts(n)[Math.min(i, n.length - 1)]);
-@@ -198,7 +236,7 @@
+@@ -198,7 +238,7 @@
              if (o == null) return;
              apply(ObjModel.remove(a.mpts, o), tick);
          } else if (ty == TimelineView.T_LINK) {
@@ -40194,7 +40289,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
              Ano.Link[] ls = new Ano.Link[a.links.length - 1];
              for (int k = 0, o = 0; k < a.links.length; k++) if (k != i) ls[o++] = a.links[k];
              v.replaceAno(new Ano(a.index, true, ls.length > 0 ? a.flags | 2 : a.flags & ~2, a.priority, ls, a.mpts));
-@@ -206,7 +244,7 @@
+@@ -206,7 +246,7 @@
              int track = ty == TimelineView.T_SOUND ? FrameOps.SOM : ty == TimelineView.T_MOVE ? FrameOps.MOV : -1;
              if (track < 0) {            // estilo: limpa espelhar/manter e transformacao
                  Ano.Mpt c = a.mpts[i].copy();
@@ -40203,7 +40298,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
                  if (c.wActFlag == 0) c.flags &= ~2;
                  c.normalize();
                  Ano.Mpt[] n = a.mpts.clone();
-@@ -225,18 +263,45 @@
+@@ -225,18 +265,45 @@
  
      @Override public void onSelect(int type, int idx, int flag, int occ) {
          if (type == TimelineView.T_NONE) { host.cancelTools(); return; }
@@ -40252,7 +40347,7 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          apply(FrameOps.setDuration(mp, frame, newTime), tl.playheadTick());
          host.show(TimelineView.T_SPRITE, frame, -1, -1);
      }
-@@ -271,24 +336,46 @@
+@@ -271,24 +338,56 @@
      @Override public void onLoop(boolean on) {
          Ano.Mpt[] mp = mpts();
          if (mp == null) return;
@@ -40271,11 +40366,21 @@ diff -ruN a/TimelineOps.java b/TimelineOps.java
          Ano.Mpt[] mp = mpts();
          if (mp == null) return;
 -        addSpriteAfter(mp.length - 1);
-+        int f = frameAtPlayhead(mp);
-+        Ano.Mpt[] n = FrameOps.duplicate(mp, f);
-+        if (n == mp || n.length == mp.length) { host.toast("nao da para adicionar a sprite aqui"); return; }
-+        apply(n, FrameOps.starts(n)[f + 1]);
-+        host.showImagePage(f + 1);
++        final int f = frameAtPlayhead(mp);
++        final AttackData ad = v.attackData();
++        if (ad == null || ad.attacker == null) return;
++        // escolher uma ou mais sprites do personagem (com o time delas): so cria os Frames depois de escolher
++        host.pickSprites(new SpriteListScreen.MultiListener() {
++            @Override public void onPick(int[] images, int time) {
++                Ano.Mpt[] cur = mpts();
++                if (cur == null) return;
++                int at = Math.min(f, cur.length - 1);
++                Ano.Mpt[] n = AddSprites.insert(cur, at, images, time, ad.attacker.defaults());
++                if (n == cur) { host.toast("nao da para adicionar as sprites aqui"); return; }
++                apply(n, FrameOps.starts(n)[at + 1]);
++                host.show(TimelineView.T_SPRITE, at + 1, -1, -1);
++            }
++        });
 +    }
 +
 +    int layer() { return LayerOps.layerOf(v.currentAno()); }
@@ -44412,6 +44517,53 @@ diff -ruN a/WallRules.java b/WallRules.java
 +        }
 +    }
 +}
+diff -ruN a/test/AddSpritesTest.java b/test/AddSpritesTest.java
+--- a/test/AddSpritesTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/AddSpritesTest.java	2026-11-04 12:49:05.471941660 +0000
+@@ -0,0 +1,43 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Adicionar Sprite da timeline com varias: um Frame por sprite, mesmo time, padrao da sprite (absoluto), clamp de time. */
++public class AddSpritesTest {
++    static Ano.Mpt mpt(int image, int time) {
++        Ano.Mpt m = new Ano.Mpt();
++        m.image = image; m.flags = 0x20; m.time = time; m.normalize();
++        return m;
++    }
++
++    public static void main(String[] args) throws Exception {
++        Ano.Mpt[] base = {mpt(0, 4), mpt(1, 5), mpt(2, 6)};
++        SpriteDefaults.Store st = new SpriteDefaults.Store();
++        st.setSizes(new SpriteDefaults.Store.Sizes() { public int[] logical(int sp) { return sp == 10 ? new int[]{40, 60} : sp == 11 ? new int[]{20, 30} : null; } });
++        SpriteDefaults.Def d11 = new SpriteDefaults.Def();
++        d11.zx = 150; d11.zy = 150; d11.midX = -15; d11.midY = -45; d11.rot = 3;
++        st.set(11, d11);
++        Ano.Mpt[] r = AddSprites.insert(base, 0, new int[]{10, 11}, 7, st);
++        check("2 sprites entram depois do frame 0: 5 frames", r.length, 5);
++        check("ordem: base, 10, 11, depois o resto", r[0].image + "," + r[1].image + "," + r[2].image + "," + r[3].image + "," + r[4].image, "0,10,11,1,2");
++        check("todos os novos com time 7", r[1].time == 7 && r[2].time == 7, true);
++        check("o frame de antes e os de depois ficam como estavam", r[0].time == 4 && r[3].time == 5 && r[4].time == 6, true);
++        SpriteDefaults.Def a = SpriteDefaults.read(r[1]), b = SpriteDefaults.read(r[2]);
++        check("sprite 10 (sem padrao guardado) nasce com o automatico: zoom 100, MID (-20,-60)", a.zx == 100 && a.midX == -20 && a.midY == -60, true);
++        check("sprite 11 nasce com o padrao guardado: zoom 150, MID (-15,-45), rot 3", b.zx == 150 && b.zy == 150 && b.midX == -15 && b.midY == -45 && b.rot == 3, true);
++        // absoluto: um Frame base com zoom/rotacao proprios nao contamina os novos
++        Ano.Mpt tweaked = mpt(0, 4);
++        SpriteDefaults.Def td = new SpriteDefaults.Def();
++        td.zx = 300; td.zy = 300; td.rot = 90; td.flipH = true;
++        Ano.Mpt[] r2 = AddSprites.insert(new Ano.Mpt[]{SpriteDefaults.write(tweaked, td)}, 0, new int[]{10}, 6, st);
++        SpriteDefaults.Def n = SpriteDefaults.read(r2[1]);
++        check("padrao absoluto: o zoom/rot/flip do frame base nao passam para o novo", n.zx == 100 && n.rot == 0 && !n.flipH, true);
++        // time fora dos limites
++        check("time 0 vira 1 e 999 vira 255", AddSprites.insert(base, 2, new int[]{10}, 0, st)[3].time + "," + AddSprites.insert(base, 2, new int[]{10}, 999, st)[3].time, "1,255");
++        check("no ultimo frame tambem insere no fim", AddSprites.insert(base, 2, new int[]{10, 11}, 6, st).length, 5);
++        check("nada marcado / frame invalido: lista igual", AddSprites.insert(base, 0, new int[0], 6, st) == base && AddSprites.insert(base, 9, new int[]{10}, 6, st) == base, true);
++        check("a lista original nao muda", base.length == 3 && base[0].time == 4, true);
++        check("clampTime", AddSprites.clampTime(-3) + "," + AddSprites.clampTime(7) + "," + AddSprites.clampTime(300), "1,7,255");
++        check("ida e volta ms <-> ticks: time N em ticks vira o mesmo N", SpriteGroups.ticks(Math.round(7 * 1000f / 60f)) + "," + SpriteGroups.ticks(Math.round(1 * 1000f / 60f)) + "," + SpriteGroups.ticks(Math.round(255 * 1000f / 60f)), "7,1,255");
++    }
++}
 diff -ruN a/test/AiHelpTest.java b/test/AiHelpTest.java
 --- a/test/AiHelpTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/AiHelpTest.java	2026-10-24 23:27:17.000000000 +0000
@@ -47808,8 +47960,8 @@ diff -ruN a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-11-04 12:46:48.463494855 +0000
-@@ -0,0 +1,595 @@
++++ b/test/I18nIgnored.java	2026-11-04 12:50:39.070647942 +0000
+@@ -0,0 +1,596 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -48205,6 +48357,7 @@ diff -ruN a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "TOTAL",
 +        "TRAVAR_VIT",
 +        "TRUE",
++        "Time",
 +        "Timeline",
 +        "Total ",
 +        "US-ASCII",

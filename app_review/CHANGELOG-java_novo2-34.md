@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2765 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2778 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -750,6 +750,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **MID padrão**: sprite **sem entrada guardada** passa a ter padrão **zoom 100 e MID (−largura/2, −altura)** — nasce com os pés na âncora e centrada (`SpriteDefaults.Store.auto`, com os tamanhos do CNV). O **Editar Frame** mostra esse MID e seu REDEFINIR volta a ele; guardar o próprio automático não cria entrada; entrada 0,0 explícita é válida. O **Igualar** continua zerado (0,0, RAZ padrão). Trocar a Imagem de um Frame (relativo) agora também recentra o pé; **Frames existentes não mudam**.
 - Testes: `CenterTest` (17: bloco contíguo/com espaço/uma só; altura de referência com zoom; zoom e MID de vários tamanhos; zoom ≥ 1; reescrita só dos Frames da sprite; rotação/alpha/flip preservados), `SpriteDefaultsTest` (37: padrão automático com e sem fornecedor de tamanhos, guardar o automático remove, neutro 0,0 vira entrada, troca de sprite recentra), `DragPlanTest` (29: +bloco). **Só compilado/revisado, não executado no aparelho**: o arraste do bloco (fantasma empilhado, slots), o botão/diálogo/loading do CENTRALIZAR e a gravação.
 
+### 3.1zzzz Adicionar Sprite da timeline com várias sprites do personagem
+
+- O **Adicionar Sprite** do menu ＋ do fim da timeline agora abre a **lista de sprites do PERSONAGEM** (não cria sprites novas) em **modo múltiplo** (`SpriteListScreen.showMulti`): caixas de marcar (inclusive GIF, que marca todos os quadros), campo **Time** (`Stepper`, 1–255 ticks, teclado; o último valor fica lembrado; ex.: 7 = todas com time 7) e botão **ADICIONAR N**. Antes o app duplicava o frame e só depois pedia a imagem; agora **nada é criado até confirmar** (cancelar não cria nada).
+- Ao confirmar, `AddSprites.insert` põe **um Frame por sprite marcada, em sequência (na ordem do número da sprite) depois do frame do ponteiro**, todos com o **mesmo time**, pelo mesmo caminho do GIF (`FrameOps.insertSprites`); cada Frame **nasce no padrão da sprite** — **absoluto**, não relativo ao frame base: zoom, rotação, alpha, MID e flips do Editar Frame; sem padrão guardado, zoom 100 e MID (−largura/2, −altura) (pés na âncora, centrada). A seleção vai para o 1º Frame novo.
+- Testes: `AddSpritesTest` (13: N frames na ordem, mesmo time, frames vizinhos intactos, padrão guardado e automático, absoluto (zoom/rot/flip do frame base não contaminam), time 0→1 e 999→255, último frame, nada marcado/frame inválido, lista original intacta, ida e volta ms↔ticks). **Só compilado/revisado, não executado no aparelho**: o modo múltiplo da lista (caixas, Time, ADICIONAR N) e a inserção na timeline.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -872,6 +878,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **InterpFixTest (novo)** | 17 |
 | **SpriteSortTest (novo)** | 13 |
 | **CenterTest (novo)** | 17 |
+| **AddSpritesTest (novo)** | 13 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
