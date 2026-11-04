@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2778 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2798 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -756,6 +756,14 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Ao confirmar, `AddSprites.insert` põe **um Frame por sprite marcada, em sequência (na ordem do número da sprite) depois do frame do ponteiro**, todos com o **mesmo time**, pelo mesmo caminho do GIF (`FrameOps.insertSprites`); cada Frame **nasce no padrão da sprite** — **absoluto**, não relativo ao frame base: zoom, rotação, alpha, MID e flips do Editar Frame; sem padrão guardado, zoom 100 e MID (−largura/2, −altura) (pés na âncora, centrada). A seleção vai para o 1º Frame novo.
 - Testes: `AddSpritesTest` (13: N frames na ordem, mesmo time, frames vizinhos intactos, padrão guardado e automático, absoluto (zoom/rot/flip do frame base não contaminam), time 0→1 e 999→255, último frame, nada marcado/frame inválido, lista original intacta, ida e volta ms↔ticks). **Só compilado/revisado, não executado no aparelho**: o modo múltiplo da lista (caixas, Time, ADICIONAR N) e a inserção na timeline.
 
+### 3.1zzzzz Adicionar Sprites: selo de ordem, rodapé com 4 modos e Reescalar no Copiar
+
+- **Lista em modo múltiplo (Adicionar Sprite da timeline)** sem caixa de marcar: **tocar na linha marca/desmarca** e **tocar na miniatura abre a prévia**. No lugar da caixa fica um **selo com a ordem da marcação** (1, 2, 3…); o **1º** vem destacado (selo cheio e linha com fundo) e, ao desmarcar um, os seguintes **renumeram**. Linha de GIF marca/desmarca todos os quadros (selo ✓). A ordem de inserção dos Frames passa a ser a **da marcação**, não a numérica (`SpriteListScreen`: `pickOrder`).
+- **Rodapé** (embaixo da lista): `Time` (6 por padrão), **USAR N IMAGEM(NS)** e o botão de **MODO** (cada toque troca: CENTRAR → REESCALAR → PADRÃO → DEFINIR; um aviso explica o modo). Em DEFINIR aparece **DEFINIR…** (e abre ao entrar no modo).
+- **Modos** (`AddSprites`, núcleo puro): **CENTRAR** = MID `(−L·z/2, −A·z)` mantendo o zoom do padrão guardado (100 se não há); **REESCALAR** = zoom pela altura da 1ª sprite do Parado (ANO 0, frame 1) + MID centrado (`Centralize.plan`); sem Parado/imagem cai em CENTRAR e avisa; **PADRÃO** = o padrão do Editar Frame (zoom, MID, rot, alpha, flips); **DEFINIR** = valores do usuário só para os Frames adicionados: posição (centralizada por sprite por padrão, ou X/Y fixos), RAZ (zoom X/Y 100, rot 0, alpha 100%) e **Hitbox/Hurtbox** opcionais (X, Y, largura, altura; hurtbox = flag 1, hitbox = flag 2; os Frames vizinhos não ganham nada).
+- **Copiar → REESCALAR ESTE FRAME** (`TimelineTools.rescaleFrame`): aplica `Centralize.plan` só no Frame atual (zoom X=Y e MID; rotação, alpha e flips ficam; padrão da sprite e outros Frames não mudam), com 1 passo de desfazer. Novos: `Centralize.applyToFrame` (usado também por `applyToFrames`) e `CharAssets.sizes()`.
+- Testes: `AddSpritesTest` (30: ordem da seleção, 4 modos com MID/zoom esperados, REESCALAR sem referência → CENTRAR, DEFINIR com e sem posição centrada, alpha 100%/50%/0%, hurtbox+hitbox só nos Frames novos, time) e `CenterTest` (20: `applyToFrame` = `applyToFrames`, original intacto). Telas, selo, rodapé e diálogo DEFINIR só foram compilados/revisados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -877,8 +885,8 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **UnusedSpritesTest (novo)** | 10 |
 | **InterpFixTest (novo)** | 17 |
 | **SpriteSortTest (novo)** | 13 |
-| **CenterTest (novo)** | 17 |
-| **AddSpritesTest (novo)** | 13 |
+| **CenterTest** | 20 |
+| **AddSpritesTest** | 30 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
