@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2798 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2818 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -764,6 +764,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Copiar → REESCALAR ESTE FRAME** (`TimelineTools.rescaleFrame`): aplica `Centralize.plan` só no Frame atual (zoom X=Y e MID; rotação, alpha e flips ficam; padrão da sprite e outros Frames não mudam), com 1 passo de desfazer. Novos: `Centralize.applyToFrame` (usado também por `applyToFrames`) e `CharAssets.sizes()`.
 - Testes: `AddSpritesTest` (30: ordem da seleção, 4 modos com MID/zoom esperados, REESCALAR sem referência → CENTRAR, DEFINIR com e sem posição centrada, alpha 100%/50%/0%, hurtbox+hitbox só nos Frames novos, time) e `CenterTest` (20: `applyToFrame` = `applyToFrames`, original intacto). Telas, selo, rodapé e diálogo DEFINIR só foram compilados/revisados.
 
+### 3.1zzzzzz Menu do ANO: loop, copiar ANO e Ver Frames (copiar, excluir, colar entre itens)
+
+- O **nome do ANO** no canto da timeline (acima de SPRITES) ficou **amarelo e sublinhado** e agora é botão (`TimelineView.tap` → `Listener.onAnoMenu`, implementado em `TimelineOps`; `Host.openAnoMenu` → `AnoMenu.show`). O menu tem: **Loop** ligado/desligado (o mesmo `AttackView.setLoop` do botão da faixa), **Copiar ANO** (monta o `AnoOps.Clip` da ANO como está na edição — com links e prioridade — e o guarda em `AttackGrid.clip`, que passou a ser compartilhado: o **COLAR da lista de ANOs** cola essa cópia) e **Ver Frames**.
+- **Ver Frames** (`FramesScreen`, tela cheia): lista os Frames da ANO (miniatura, `SPR_n`, time, nº de caixas). **Tocar seleciona/deseleciona** (vários, ✓ e fundo verde). **COPIAR n** leva os selecionados para a área de transferência (`FrameClip.current`, vale entre ANOs do **mesmo personagem**), **EXCLUIR n** (confirma; nunca apaga todos; 1 passo de desfazer) e **COLAR**: a lista passa a mostrar **COLAR AQUI** entre cada item e nas pontas (`Colar aqui / Frame 0 / Colar aqui / Frame 1 / … / Colar aqui`); tocar num deles insere as cópias ali e sai do modo (CANCELAR também sai). Tudo entra pelo `TimelineOps.applyFrames` (desfazer/refazer e ponteiro no Frame novo).
+- Núcleo puro `FrameClip` (`copy`, `delete`, `paste`, `normalize`): cópias profundas (hits independentes), Frame sem TIME que deixa de ser o último ganha o tempo mostrado (`FrameOps.timed`) e o colado no fim não trava a ANO.
+- Testes: `FrameClipTest` (20: índices fora/repetidos, cópia na ordem e profunda, excluir vários/último/nunca esvazia, colar no início/meio/fim com o antigo último ganhando tempo, pos fora da faixa, original intacto, área de transferência). Tela, menu e toque no nome do ANO só foram compilados/revisados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -886,7 +893,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **InterpFixTest (novo)** | 17 |
 | **SpriteSortTest (novo)** | 13 |
 | **CenterTest** | 20 |
-| **AddSpritesTest** | 30 |
+| **AddSpritesTest** | 30 |\n| **FrameClipTest (novo)** | 20 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
