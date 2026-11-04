@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2735 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2765 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -743,6 +743,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Com uma ordem ativa a lista é **plana** (sem cabeçalhos de GIF e **sem puxador** de reordenar; a seleção é limpa) e cada linha mostra o valor do critério ("1.280 B", "32×40 px", "5 usos", "100%"). Sprites vazias vão por último em toda ordem. Tudo no núcleo puro `SpriteSort`.
 - Testes: `SpriteSortTest` (13: bytes/Px asc-desc, usos, empates pelo número, vazias por último, parecidas com idênticas juntas no topo e par junto, formatação, contagem de usos no DAC). **Só compilado/revisado, não executado no aparelho**: o botão/menu, a lista plana e o cálculo de semelhança com loading.
 
+### 3.1zzzy Arrastar bloco de marcadas, CENTRALIZAR e MID padrão (pés no chão)
+
+- **Bloco**: marcadas **seguidas, sem espaço** (`SpriteBlock.contiguous`) mantêm o **puxador da primeira**; arrastá-lo move **todas as marcadas juntas** (`SpriteLib.moveBlock`, o `Dragger` já aceitava `len > 1`). Fantasma com as linhas do bloco empilhadas, slot **vermelho** cobrindo o bloco e **azul** com a altura dele (`DragPlan.pushed/blueAt` com `n` linhas); soltar dentro do próprio bloco ou colado a ele não muda nada. Marcadas com espaço = sem puxador. A lista se refaz a cada marcação (o puxador vai e volta conforme a contiguidade). Grupos de GIF tocados pelo bloco seguem a regra de `moveBlock`.
+- **CENTRALIZAR** (barra das marcadas): função para centralizar sprites, com aviso explícito (muda **o padrão E os Frames do DAC** que usam as marcadas; sprites posicionadas antes podem ficar descentralizadas; faz antes a cópia bruta PreOptim). Altura de referência = altura lógica da **1ª sprite do Parado (ANO 0, frame 1) × o zoom dela**; para cada marcada: `zoom = referência / altura` (%, ≥ 1) e **MID = (−largura·zoom/2, −altura·zoom)**. Zoom X=Y e MID reescritos nos Frames (rotação, alpha e flips ficam) e no padrão guardado (`Centralize`, puro). Sem Parado/imagem: avisa e não muda nada.
+- **MID padrão**: sprite **sem entrada guardada** passa a ter padrão **zoom 100 e MID (−largura/2, −altura)** — nasce com os pés na âncora e centrada (`SpriteDefaults.Store.auto`, com os tamanhos do CNV). O **Editar Frame** mostra esse MID e seu REDEFINIR volta a ele; guardar o próprio automático não cria entrada; entrada 0,0 explícita é válida. O **Igualar** continua zerado (0,0, RAZ padrão). Trocar a Imagem de um Frame (relativo) agora também recentra o pé; **Frames existentes não mudam**.
+- Testes: `CenterTest` (17: bloco contíguo/com espaço/uma só; altura de referência com zoom; zoom e MID de vários tamanhos; zoom ≥ 1; reescrita só dos Frames da sprite; rotação/alpha/flip preservados), `SpriteDefaultsTest` (37: padrão automático com e sem fornecedor de tamanhos, guardar o automático remove, neutro 0,0 vira entrada, troca de sprite recentra), `DragPlanTest` (29: +bloco). **Só compilado/revisado, não executado no aparelho**: o arraste do bloco (fantasma empilhado, slots), o botão/diálogo/loading do CENTRALIZAR e a gravação.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -855,15 +862,16 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **DedupReasonsTest (novo)** | 24 |
 | **SpriteMoveTest (novo)** | 28 |
 | **SheetPurgeTest (novo)** | 23 |
-| **DragPlanTest (novo)** | 24 |
+| **DragPlanTest (novo)** | 29 |
 | **SheetPackTest (novo)** | 320 |
-| **SpriteDefaultsTest (novo)** | 29 |
+| **SpriteDefaultsTest (novo)** | 37 |
 | **HoldTest (novo)** | 7 |
 | **SpriteEqualizeScreenTest (novo)** | 20 |
 | **PreviewCamTest (novo)** | 17 |
 | **UnusedSpritesTest (novo)** | 10 |
 | **InterpFixTest (novo)** | 17 |
 | **SpriteSortTest (novo)** | 13 |
+| **CenterTest (novo)** | 17 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
