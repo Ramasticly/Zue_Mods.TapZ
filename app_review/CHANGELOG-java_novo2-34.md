@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2705 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2722 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -729,6 +729,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Sem linhas do chão e do centro** nesta prévia (só a grade): `PreviewGrid.draw(..., showAxes)`; a prévia principal continua igual.
 - Testes: `PreviewCamTest` (17: +`fitBox` pequena/enorme/limites/centro/caixa degenerada e mínimo da câmera), `SpriteEqualizeScreenTest` (20: +limites ≥ 0, caixa de enquadramento). **Só compilado/revisado, não executado no aparelho**: a tela reorganizada, o teclado nos campos, o segurar contínuo e o enquadramento inicial.
 
+### 3.1zzzw Interpolação que trunca: aviso e ajustes sem truncar (variações lado a lado)
+
+- **Causa** (jogo = app, `AttackSim.hokan`): o passo de cada campo é `(destino − atual) / time` em inteiros — posição e zoom ×128, **rotação e alpha sem escala**. Com resto o frame não chega exatamente no próximo e, com diferença menor que o tempo, rotação e alpha ficam parados ("como se a interpolação não funcionasse"). O jogo é igual; não é bug: ajustar os valores.
+- **`InterpFix`** (puro, espelha o `hokan`): detecta quais campos truncam e gera **variações** em que nada trunca, alterando o **tempo do frame que interpola** e/ou os **valores do frame de destino** (o seguinte; no último, o 1). A primeira é a de **menos grupos alterados** (depois menor custo). **Tags** "Mantém tempo/posição/rotação/zoom/alpha igual". **Se só um campo trunca, só há variações dele.**
+- **Página Efeitos**: com a interpolação ligada e truncando, aparece uma **faixa âmbar** + `VER AJUSTES`; **ao ligar** a interpolação já abre o diálogo **Ajustes** com a mudança mínima (`time de N para N.`, `Rot de N para N.`, `Zoom de N para N.`, `Posição de N, N para N, N.`, `Alpha…`) e **VER OUTRAS OPÇÕES | ACEITAR**. As outras opções mostram **lado a lado** a versão atual (que trunca) e a variação, animadas em laço, com **`< variação N de M >`** e as tags; **ACEITAR** grava (1 passo de desfazer), **CANCELAR** sai.
+- Testes: `InterpFixTest` (17): a detecção **bate com o `_Hokan` real** (`AttackSim`) em 400 casos aleatórios e **toda variação gerada, depois de aplicada, não deixa resto no `_Hokan` real**; caso rot 0→3 em 6 ticks; vários campos; só um campo; último frame; tempo entre 1 e 255. **Só compilado/revisado, não executado no aparelho**: a faixa, o diálogo, a tela lado a lado e os previews em laço.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -848,6 +855,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **SpriteEqualizeScreenTest (novo)** | 20 |
 | **PreviewCamTest (novo)** | 17 |
 | **UnusedSpritesTest (novo)** | 10 |
+| **InterpFixTest (novo)** | 17 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
