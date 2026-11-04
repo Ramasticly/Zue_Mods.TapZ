@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2818 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2837 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -771,6 +771,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Núcleo puro `FrameClip` (`copy`, `delete`, `paste`, `normalize`): cópias profundas (hits independentes), Frame sem TIME que deixa de ser o último ganha o tempo mostrado (`FrameOps.timed`) e o colado no fim não trava a ANO.
 - Testes: `FrameClipTest` (20: índices fora/repetidos, cópia na ordem e profunda, excluir vários/último/nunca esvazia, colar no início/meio/fim com o antigo último ganhando tempo, pos fora da faixa, original intacto, área de transferência). Tela, menu e toque no nome do ANO só foram compilados/revisados.
 
+### 3.1zzzzzzz REESCALAR (ex-CENTRALIZAR) com prévia ANTES | DEPOIS por ANO
+
+- O botão **CENTRALIZAR** da barra das marcadas na lista de Sprites passou a se chamar **REESCALAR** e agora é uma **revisão ANO por ANO**: depois do aviso explícito (muda zoom e MID dos Frames; sprites posicionadas antes podem ficar descentralizadas; vem a cópia bruta antes de gravar) abre a `RescaleScreen`, que percorre cada **sprite marcada** (ordem crescente) e cada **ANO que a usa** (ordem crescente): título `SPR_n · ANO m`, `k de total`, **duas prévias em laço lado a lado — ANTES | DEPOIS** (`AnimPreview`; o DEPOIS é o DAC com `Dac.copyWith` da ANO só com os Frames daquela sprite reescalados), o resumo `zoom A% → B% · MID (x, y) → (x, y)` e os botões **REESCALAR** (aceita) e **NÃO REESCALAR** (pula). Ao escolher vai para a próxima ANO da sprite e, acabando, para a próxima sprite; o ANTES dos passos seguintes já inclui o que foi aceito. Voltar/**CANCELAR TUDO** pede para descartar.
+- No fim, **só os passos aceitos** são gravados: `PreOptimBackup` (cópia bruta) → `RescaleReview.apply` → `SpriteMassDialogs.persist` → atualiza a lista; o resumo diz quantos Frames/ANOs mudaram e quais sprites não são usadas por nenhuma ANO. Sem a 1ª sprite do Parado (ANO 0) nada muda e o app avisa; sprite sem desenho é ignorada.
+- **O padrão da sprite (Editar Frame) NÃO muda mais** (revoga o 3.1zzzy, em que o CENTRALIZAR também gravava o padrão): só zoom X=Y e MID dos Frames; rotação, alpha e flips ficam.
+- Núcleo puro `RescaleReview` (`steps`, `unused`, `afterAno`, `afterDac`, `apply`, `summary`). Testes: `RescaleReviewTest` (19: passos na ordem sprite→ANO, ANO ausente/sem uso fora, "depois" altera só os Frames da sprite naquela ANO sem mexer no DAC original, aceitar só alguns passos, rotação/alpha ficam, nenhum aceito = nada, plano ausente ignora). Tela, prévias lado a lado e gravação só foram compiladas/revisadas.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -893,7 +900,9 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **InterpFixTest (novo)** | 17 |
 | **SpriteSortTest (novo)** | 13 |
 | **CenterTest** | 20 |
-| **AddSpritesTest** | 30 |\n| **FrameClipTest (novo)** | 20 |
+| **AddSpritesTest** | 30 |
+| **FrameClipTest (novo)** | 20 |
+| **RescaleReviewTest (novo)** | 19 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
