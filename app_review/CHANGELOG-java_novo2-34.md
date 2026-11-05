@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2837 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2868 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -778,6 +778,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **O padrão da sprite (Editar Frame) NÃO muda mais** (revoga o 3.1zzzy, em que o CENTRALIZAR também gravava o padrão): só zoom X=Y e MID dos Frames; rotação, alpha e flips ficam.
 - Núcleo puro `RescaleReview` (`steps`, `unused`, `afterAno`, `afterDac`, `apply`, `summary`). Testes: `RescaleReviewTest` (19: passos na ordem sprite→ANO, ANO ausente/sem uso fora, "depois" altera só os Frames da sprite naquela ANO sem mexer no DAC original, aceitar só alguns passos, rotação/alpha ficam, nenhum aceito = nada, plano ausente ignora). Tela, prévias lado a lado e gravação só foram compiladas/revisadas.
 
+### 3.1zzzzzzzz ⓘ de parede e pouso nas thumbs de reação
+
+- Cada thumb de reação ganhou um **ⓘ** (canto superior direito, como na grade de ANOs) em **"Escolher reação"** (jogo 0–29 e personagem 0–19, `TimelineTools.pickReaction`) e no seletor de **próxima reação** (`ReactionCompPicker`). Tocar abre uma caixa (`InfoBubble`) que diz **como a reação trata a parede e o pouso, passo a passo**: se a animação **muda na parede**, para **qual reação** (e a ANO inicial dela), o que acontece **ao pousar** e avisos. Azul = regra fixa do jogo, verde = dado da tabela. O toque no ⓘ não seleciona a thumb.
+- Regras explicadas (jogo:21095-21200 md 876, 21369-21482 md 877, 15380-15426 câmera): **WALL 0** não muda a animação (o oponente só fica preso na borda); **WALL 1** só faz a câmera acompanhar quem já bateu na parede; **WALL 2/3 + COMP 1..49** reinicia na reação COMP ao encostar na parede (no chão quica na reação de jogo 12) — em reação do jogo só no limite do cenário e se o oponente não estiver subindo, em reação do personagem WALL 3 vale em qualquer borda da tela; **WALL 2/3 sem COMP útil** não faz nada; **COMP** fora da parede só vale ao pousar (11 deita, 12 quica, 1..49 vai para a reação, 50+ só pousa). Avisos: COMP ≥ 30 em reação do jogo (tabela inexistente), destino vazio, reação que aponta para si mesma. Passos seguidos iguais viram uma linha ("Passos 1–3").
+- Sobre o encurtamento que você via: era a **borda da tela** (o jogo trava X nas bordas todo tick, jogo:15537-15562, e sem WALL 2/3 a reação não reinicia) e as **cutscenes**, não COMP/WALL.
+- Núcleo puro `ReactionWallInfo` (+ `InfoBubble` para a tela). Testes: `ReactionWallInfoTest` (31: WALL 0/1/2/3, personagem × jogo, sem COMP útil, pouso 11/12/N/50+, agrupamento de passos, avisos, ANO de destino, cores CODE/BIN, tradução EN). Telas só compiladas/revisadas. Fora desta entrega: o ⓘ nas bases de cópia (`pickSourceGrid`) e em `ReactionReplaceScreen`.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -903,6 +910,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **AddSpritesTest** | 30 |
 | **FrameClipTest (novo)** | 20 |
 | **RescaleReviewTest (novo)** | 19 |
+| **ReactionWallInfoTest (novo)** | 31 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
