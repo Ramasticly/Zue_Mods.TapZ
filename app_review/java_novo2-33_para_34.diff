@@ -506,8 +506,8 @@ diff -ruN -x fixtures a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-07 16:10:20.640628761 +0000
-@@ -0,0 +1,851 @@
++++ b/AiHelpDoc.java	2026-11-07 16:13:17.502243551 +0000
+@@ -0,0 +1,852 @@
 +package com.zue.attackeditor;
 +
 +/** Texto fixo do TBRHelp.md (gerado a partir de aihelp_src/*.md); os {{MARCADORES}} sao preenchidos por {@link AiHelp}. Nao editar a mao. */
@@ -580,7 +580,7 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "    Backups/           safety copies (e.g. before transplanting a move into another character)\n" +
 +        "```\n" +
 +        "\n" +
-+        "**The app reads ONLY the `.txt` files — never a binary.** `NAME` is any name: the game extractor writes `000.dac.txt`, `000.bin.txt`, `000.cnv.txt`, but many mods save other names (`char13.dac.txt`...), and the app accepts them (the `000.` one first if there are several; normally there is only one of each kind per folder). Animations (`$ANO_n`) come from `*.dac.txt`, moves (`$GOLPE_n`), cutscenes and reactions from `*.bin.txt` (format `BIN_CNV_ {$COUNT, $HDAT_n...}`), sprite cuts from `*.cnv.txt`. The game data (`gamedata` folder) is also read from its `*.dac.txt` (it is `BIN_CNV_` inside). If a needed `.txt` is missing the app shows a clear error naming the missing file and does not open that folder; it does not fall back to the binary (some apps extract only the `.txt`). So **a change is delivered as text** and the binaries are irrelevant to the app.\n" +
++        "**The app reads ONLY the `.txt` files — never a binary.** `NAME` is any name: the game extractor writes `000.dac.txt`, `000.bin.txt`, `000.cnv.txt`, but many mods save other names (`char13.dac.txt`...), and the app accepts them (the `000.` one first if there are several; normally there is only one of each kind per folder). Animations (`$ANO_n`) come from `*.dac.txt`, moves (`$GOLPE_n`), cutscenes and reactions from `*.bin.txt` (format `BIN_CNV_ {$COUNT, $HDAT_n...}`), sprite cuts from `*.cnv.txt`. The game data (`gamedata` folder) is also read from its `*.dac.txt` (it is `BIN_CNV_` inside). Its simple tables are rows with names (`$DISTANCIAS_IA`: `$GUARDA_PROJETIL`, `$PERTO`, `$MEDIO`; `$MULTIPLICADOR_COMBO`: `$PONTOS_POR_COMBO`, `$VALOR_POR_COMBO`) and the damage reactions are `$REACAO_DANO_GD_n` (`$FR_k`). If a needed `.txt` is missing the app shows a clear error naming the missing file and does not open that folder; it does not fall back to the binary (some apps extract only the `.txt`). So **a change is delivered as text** and the binaries are irrelevant to the app.\n" +
 +        "\n" +
 +        "To make the app re-read the disk after files were changed outside the app: pick the character again in `CHAR` (or restart the app).\n" +
 +        "\n" +
@@ -685,6 +685,7 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "Other numbers *(unknown / unused)*. Boxes with the same flag in consecutive frames are shown as one object by the timeline.\n" +
 +        "\n" +
++        "",
 +        "### 5.3 `$OPT` (extra frame data)\n" +
 +        "`$OPT: { $FLAG: F, $DATA: B[d0, d1, d2, d3] }`\n" +
 +        "- `d0` = **damage** of the hitbox in this frame (also the amount for flag 32).\n" +
@@ -696,7 +697,6 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "### 5.4 Hit reactions\n" +
 +        "`OPT1 = group*50 + index`.\n" +
 +        "\n" +
-+        "",
 +        "- `index` 0..29 = a **game-wide** reaction (read-only, in the game data). `index` 30..49 = **this character's own** reaction slot `index − 30` (0..19), stored in HDAT 14..33 of `000.bin.txt` (editable; may be empty).\n" +
 +        "- `group` 0..4 chooses effect/sound/knockback:\n" +
 +        "\n" +
@@ -838,6 +838,7 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "## 10. How to test in the app\n" +
 +        "\n" +
++        "",
 +        "1. Open the character (`CHAR`), choose the move (`MODO: GOLPES`) or the ANO (`MODO: ANO`).\n" +
 +        "2. Press play (`TOCAR`) or drag the time bar / timeline; use `-1` / `+1` to step tick by tick; `INICIO` resets.\n" +
 +        "3. Top-menu helpers: `CHAR`→`POS` changes distance/height between fighters (tests which projectile ANO spawns: normal/below/above) and `FLY`; `HITBOX` shows boxes (red hit, blue hurt, yellow others); `TEMPO` NORMAL/ESTENDIDO/ATAQUE (extended keeps the attacker on the last frame so you can see projectiles and the opponent's reaction to the end); `POUSO` ON/OFF; `TRANSIÇÃO` LIVRE/TRAVADA; `VIRAR` flips sides; `HIDE-EFF` hides effects; `FR-PREVIEW` ghost of previous/next frame; `TELA` grid/sounds/cutscenes options and a game-camera view; `CENTRO` camera modes.\n" +
@@ -47810,8 +47811,8 @@ diff -ruN -x fixtures a/test/BattleTest.java b/test/BattleTest.java
              else if (mode == 3) check("agarrao 128 sem hit nao puxa", pulledAt, -1);
 diff -ruN -x fixtures a/test/BinTxtTest.java b/test/BinTxtTest.java
 --- a/test/BinTxtTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/BinTxtTest.java	2026-11-07 13:15:33.288204004 +0000
-@@ -0,0 +1,93 @@
++++ b/test/BinTxtTest.java	2026-11-07 16:11:51.631039708 +0000
+@@ -0,0 +1,122 @@
 +package com.zue.attackeditor;
 +
 +import java.io.File;
@@ -47879,9 +47880,38 @@ diff -ruN -x fixtures a/test/BinTxtTest.java b/test/BinTxtTest.java
 +        check("gamedata TXT: reacao 0 com 2 passos, ANO 7, COMP 13, WALL 2, X -3", gd.reaction(0).rows + "," + gd.reaction(0).s8(0, 2) + "," + gd.reaction(0).u8(0, 11) + "," + gd.reaction(0).u8(0, 12) + "," + gd.reaction(0).s8(0, 3), "2,7,13,2,-3");
 +        check("gamedata TXT: ANO negativo e 255", gd.reaction(0).s8(1, 2) + "," + gd.reaction(0).u8(1, 0), "-8,255");
 +        check("gamedata TXT: reacao 29 e a 39a tabela", gd.reaction(29).rows + "," + gd.reaction(29).s8(0, 2), "1,39");
-+        check("gamedata TXT: combo (short, -5) e IA", gd.comboScale(2) == 80 || true, true);
++        check("gamedata TXT: combo (short, -5)", gd.comboScale(1), -5);
 +        check("gamedata TXT: distancia da IA linha 1 col 1", gd.cpuDist(1, true), 21);
 +        check("nome da fonte", gd.sourceName, "gamedata.dac.txt");
++
++        // ---- verificacao cruzada: os bytes do BinTxt contra os do BinBuilder REAL do compilador (gerados offline: *.hdat)
++        String[][] pares = {{"char.bin.txt", "char.hdat"}, {"gamedata.dac.txt", "gamedata.hdat"}};
++        for (String[] par : pares) {
++            File ft = fixture(par[0]), fh = fixture(par[1]);
++            if (ft == null || fh == null) { System.out.println("(sem fixtures: " + par[0] + ")"); continue; }
++            byte[] mine = BinTxt.compile(TxtFiles.read(ft));
++            byte[] real = java.nio.file.Files.readAllBytes(fh.toPath());
++            HdatTable tm = HdatTable.parse(mine), tr = HdatTable.parse(real);
++            boolean isChar = par[0].startsWith("char");
++            StringBuilder diff = new StringBuilder(), appDiff = new StringBuilder();
++            for (int h = 0; h < Math.max(tm.size(), tr.size()); h++) {
++                boolean same = tm.cols(h) == tr.cols(h) && tm.rows(h) == tr.rows(h) && java.util.Arrays.equals(tm.bytes(h), tr.bytes(h));
++                if (same) continue;
++                diff.append(h).append(' ');
++                if (!isChar || h == 3 || h == 4 || h == 7 || h == 13 || (h >= 14 && h <= 33)) appDiff.append(h).append(' ');
++            }
++            // os HDATs que o app edita (char: 3, 4, 7, 13, 14-33; gamedata: todos os que decodifica) saem IGUAIS aos do BinBuilder real; os outros (textos, cartas...) o app nao decodifica
++            check(par[0] + ": HDATs que o app usa iguais ao BinBuilder real (diferentes: " + appDiff.toString().trim() + ")", appDiff.length() == 0, true);
++            if (!isChar) check(par[0] + ": arquivo inteiro igual byte a byte", java.util.Arrays.equals(mine, real), true);
++            else System.out.println("(char.bin.txt: HDATs que o app nao decodifica e ficam vazios na memoria: " + diff.toString().trim() + ")");
++        }
++        File fgd = fixture("gamedata.dac.txt");
++        if (fgd != null) {
++            GameData real = GameData.fromTxt(TxtFiles.read(fgd), "gamedata.dac.txt");
++            check("gamedata do extrator real: IA perto/medio (linhas nomeadas)", real.cpuDist(1, false) + "," + real.cpuDist(1, true) + "," + real.cpuDist(2, true), "20,21,31");
++            check("gamedata do extrator real: escala de combo (short, 2a linha, 2o combo = -5)", real.comboScale(1) + "," + real.comboScale(0), "-5,90");
++            check("gamedata do extrator real: 30 reacoes, a 5a (t=5) com COMP 11", real.reaction(5).u8(0, 11) + "," + real.reaction(0).rows + "," + real.reaction(29).rows, "11,1,3");
++        }
 +
 +        // GameData.load: pasta gamedata (qualquer caixa) com *.dac.txt de nome qualquer; nenhum binario existe
 +        java.io.File root = java.nio.file.Files.createTempDirectory("gdroot").toFile();

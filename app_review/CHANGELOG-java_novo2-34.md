@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2948 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2954 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -826,6 +826,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 
 - Investigado com simulação (`TeleportBehindTest`, +2 testes): as duas ações **não são iguais**. Mesmo golpe, atacante à esquerda, 12 ticks: sem "Personagens se atravessam", *até o oponente* termina com o atacante a 60 px do oponente (a separação de corpos do jogo afasta os dois) e *atrás* termina a 120 px, do outro lado e virado para ele; com o fantasma ligado, *até* fica em cima (0 px) e *atrás* a 60 px. Nenhum bug na simulação; o que faltava era **ver** quem é quem: as caixas do CHAR OBJ agora são brancas (atacante) e ciano (oponente) (3.3a).
 - AJUDA e manual descrevem o resultado esperado de cada uma.
+
+### 3.3c Gamedata real e verificação cruzada com o BinBuilder do compilador
+
+- Exemplo da gamedata: o extrator real (`hdatGD`/`HdatTabela`, do `compiler.zip`). Rodei **offline** (fora do app) o `BinExtractor` do compilador sobre um gamedata binário montado por mim (HDAT 2, 5 e 10–39) e guardei o `.dac.txt` gerado como amostra de teste (`gamedata.dac.txt`, com os comentários de documentação e as linhas nomeadas `$GUARDA_PROJETIL/$PERTO/$MEDIO`, `$PONTOS_POR_COMBO/$VALOR_POR_COMBO`, `$REACAO_DANO_GD_n`). O `BinTxt` lê esse formato (comentários ignorados, linhas por ordem).
+- **Verificação cruzada** (`BinTxtTest`, 34): os bytes que o `BinTxt` monta do `gamedata.dac.txt` são **idênticos byte a byte** aos do `BinBuilder` real; do `000.bin.txt` do personagem, os HDATs que o app usa (3, 4, 7, 13, 14–33) saem idênticos aos do `BinBuilder` real. Os HDATs que o app não decodifica (0, 1, 2, 5, 6, 34–42: textos, cartas…) ficam vazios na memória — o app não os usa. Também conferidos: `cpuDist` (IA perto/médio), `comboScale` (curto negativo) e as 30 reações da amostra; o teste antigo que tinha `|| true` foi corrigido.
+- Só Java puro. A gamedata real do jogo (com todos os HDATs de cartas etc.) não foi testada: só a amostra montada pelo extrator real.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
