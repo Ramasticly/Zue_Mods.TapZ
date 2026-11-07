@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2986 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 3015 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -840,6 +840,24 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **`PackCheck`** (puro): packs necessários = `gamedata` (`*.dac.txt`) e `effect` (dac + cnv) sempre; `charNN` (dac, bin, cnv), `charfNN`, `bobjNN` (dac, cnv) quando a pasta ou o `.pac` existem. Diz o que falta de cada um e se o `.pac` existe.
 - **`PackAlert`** (tela): ao abrir o app, ao tocar em ↻ e quando um personagem não abre por falta de TXT, mostra o alerta com a lista; **CONTINUAR ASSIM** segue (e não repete o mesmo alerta ao voltar ao app) e **EXTRAIR** extrai, com loading e progresso por segmento, todos os que têm `.pac`, e recarrega. **`ExtractorBridge`**: sem a pasta, extrai direto em `assets/` (igual ao jogo); com a pasta já existente (faltando só alguns TXT), extrai numa pasta temporária (`TBRE/tmp`) e copia **só os TXT que faltam** — nada que você já editou é sobrescrito; a temporária é apagada.
 - Testes (`ExtractorBridgeTest`, 32): `PackCheck` (pasta vazia, nomes `charNN`/`charf`/`bobj`, caixa mista `.PAC`, pastas `charNN_copia` ignoradas, assinatura); **extração real** de um `.pac` sintético (png + bin + cnv + dac) pelos extratores copiados, lida de volta por `TxtFiles`/`CharData.fromTxt`/`Dac.fromTxt`/`Cnv` (nenhum binário na pasta); extração parcial que preserva o `000.dac.txt` editado e apaga a pasta temporária; e o `char.hdat` real (compilado pelo BinBuilder real do `000.bin.txt` do usuário) extraído pela camada de compatibilidade, com HDAT 3, 4, 7, 13, 14, 15, 20 e 33 em formato detalhado. **Só compilado/revisado**: os diálogos (`PackAlert`), o `MainActivity` e o `SprExtractor` (usa `android.graphics`).
+
+### 3.4a Avisos de PACs: sem repetir e sem erro velho
+
+- **Causa da repetição**: o alerta era chamado no `onCreate` **e** no `onResume` (que roda logo depois, com a lista de personagens ainda vazia): dois alertas empilhados. O segundo guardava a lista antiga e, ao tocar EXTRAIR depois do primeiro, dava "o charNN.pac não tem os TXT que faltam" (o erro "logo depois de extrair"). Além disso, o gancho de "faltou TXT" ao abrir um personagem reabria o alerta depois de CONTINUAR ASSIM, e `loadCharacters` não limpava as notas/erros de antes (`effect: Falta o arquivo…` ficava na tela mesmo depois de extrair).
+- **Correções**: `PackAlert` tem uma porta só (nunca abre outro alerta com um na tela; `PackAlertGate.shouldShow`); o `onResume` só reconfere se a pasta estava ilegível na abertura (permissão), não a cada volta ao app; o gancho de "faltou TXT" respeita o CONTINUAR ASSIM já dado; ao tocar EXTRAIR a lista é **reconferida no disco** (`PackCheck.scanOne`): o que já estava completo vira "já estava completo" em vez de erro; depois de extrair, `reloadFolders(true)` faz uma **recarga limpa** (solta atacante/oponente/effect/charf/bobj, zera `gameData`, notas, avisos e o texto de erro) e o que ainda falta (sem PAC) não reabre o alerta.
+- Testes (`ExtractorBridgeTest`, 41): `scanOne` (completo, parcial, caixa mista, inexistente), `PackAlertGate` (nada faltando, algo faltando, já na tela, já dispensado, forçado pelo ↻, mudou o que falta). Diálogos e `onResume` só compilados/revisados.
+
+### 3.4b Menu CHAR
+
+- O menu CHAR agora lista, de cima para baixo: **ATACANTE**, **OPONENTE | DEF**, **POS** e **CHAR OBJ**. O botão do editor de cutscenes saiu: o editor abre só pelo hit da cutscene na timeline → **EDITAR CUTSCENE**. AJUDA e manual atualizados.
+
+### 3.4c Novo editor de cutscenes
+
+- **Layout**: em cima a **prévia das 2 animações** (ANIM_ID virado para a direita e ANIM_FLIP para a esquerda); logo abaixo o **EVENTO** (toque abre a **grade de eventos**) e **USAR NESTE HIT**; embaixo os campos. Tocar num evento só o seleciona/edita; o hit só muda com USAR NESTE HIT.
+- **Grade de eventos** (cartões de 3 colunas com a miniatura do 1º frame, `EV nn`, selo `×N` das ANOs que usam o evento e `HIT` no que o hit usa): **NOVO**, **DUPLICAR**, **COPIAR**, **COLAR** (cola sobre o selecionado; vale entre personagens), **ZERAR** e **USAR ESTE EVENTO**. Não há excluir (decisão: só zerar, porque o número dos eventos seguintes é usado pelos hits). ↶ desfaz tudo isso.
+- **POSIÇÃO (X/Y do hit)** com o modo em texto: *segue o mundo* (cam 0 com animação: X/Y editáveis), *segue a tela* (cam ≠ 0: presa ao canto (0, 0), X/Y fixos em 0; eventos 8 e 9 só no 1º tick), *segue a câmera* (FLAG 3: o X é o alvo da câmera; com TRAVAR_VIT vira o estado do alvo, X fixo em 0) e *sem animação* (posição não usada). Os X/Y editam o hit da timeline; quando o modo é fixo o campo fica **esmaecido, desligado** e com "fixo em 0 para este modo/evento (motivo)".
+- **Campos fixos/ignorados** (`CutsceneFields`, deduzido de `BattleSim.runCut`): sem animação (ANIM_ID = 0) → ALVO, ANIM_FLIP, Z_LAYER (e CAM_MODE se a FLAG não é 3) esmaecidos; FLAG 3 → DURAÇÃO esmaecida (a cena termina quando a câmera chega).
+- Testes (`CutsceneFieldsTest`, 20): cada regra de campo fixo, os modos de posição, eventos 8/9, FLAG 3 com e sem stun, colar/desfazer/zerar/duplicar sobre o modelo (`CharData.setEventRow`). Tela, grade, esmaecido e toque só compilados/revisados.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
