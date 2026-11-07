@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2868 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2873 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -785,6 +785,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Sobre o encurtamento que você via: era a **borda da tela** (o jogo trava X nas bordas todo tick, jogo:15537-15562, e sem WALL 2/3 a reação não reinicia) e as **cutscenes**, não COMP/WALL.
 - Núcleo puro `ReactionWallInfo` (+ `InfoBubble` para a tela). Testes: `ReactionWallInfoTest` (31: WALL 0/1/2/3, personagem × jogo, sem COMP útil, pouso 11/12/N/50+, agrupamento de passos, avisos, ANO de destino, cores CODE/BIN, tradução EN). Telas só compiladas/revisadas. Fora desta entrega: o ⓘ nas bases de cópia (`pickSourceGrid`) e em `ReactionReplaceScreen`.
 
+### 3.2a ⓘ cinza/vermelho nas reações e correção do travamento do editor de cutscenes
+
+- **ⓘ das thumbs de reação**: **cinza** quando a reação não muda a animação na parede, **vermelho** quando muda (algum passo com `WALL` 2/3 e `COMP` de 1 a 49). Núcleo puro `ReactionWallInfo.hasWallReaction`; `InfoBubble.colorFor/attach(…, cor, …)`. A 1ª linha da caixa usa a mesma cor (`AttackInfo.RED/DIM`).
+- **Crash `IllegalArgumentException: parameter must be a descendant of this view`** (`ScrollView.onSizeChanged` → `isWithinDeltaOfScreen`) ao editar as **cutscenes HDAT 13**. Causa: o `Stepper` confirma o valor dentro do `onFocusChange`/IME do próprio `EditText` e `CutsceneScreen.set()` reconstruía os campos (`removeAllViews`) nessa hora; o `ScrollView` ficava com um foco que já não era filho dela. Correção: (1) `CutsceneScreen.set()` agora **adia** a reconstrução (`detail.post`, uma só por vez) e `rebuild/rebuildDetail` **soltam o foco** antes de remover (`SafeScrollView.releaseFocus`); (2) novo **`SafeScrollView`** (engole esse erro de layout e solta o foco) no lugar de **todos** os `new ScrollView(` do app (47 usos); (3) `releaseFocus` também antes de `removeAllViews` em `TimelineTools` (gaveta) e `ReactionScreen` (páginas).
+- Testes: `ReactionWallInfoTest` (36: `hasWallReaction` — WALL 2/3 com COMP 1..49 sim; sem COMP, COMP 50, WALL 1/0, nulo e vazia não; cor do resumo RED/DIM). `SafeScrollView`, foco e cor do ⓘ só foram compilados/revisados (precisam de Android).
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -910,7 +916,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **AddSpritesTest** | 30 |
 | **FrameClipTest (novo)** | 20 |
 | **RescaleReviewTest (novo)** | 19 |
-| **ReactionWallInfoTest (novo)** | 31 |
+| **ReactionWallInfoTest** | 36 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
