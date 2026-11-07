@@ -12,12 +12,9 @@ Two modes: **GOLPES** (moves: a move is one row of HDAT 4 with its ANOs, project
 /storage/emulated/0/Tap Battle/
   assets/
     charNN/            one folder per character (NN = 2 digits). The game reads this ("Runtime").
-      000.dac          binary animations      (never rewritten by the app)
-      000.bin          binary data/HDATs       (never rewritten by the app)
-      000.cnv          binary sprite-cut table (never rewritten by the app)
-      000.dac.txt      readable animations     -> the app WRITES here
-      000.bin.txt      readable data (moves, reactions) -> the app WRITES here
-      000.cnv.txt      readable sprite cuts    -> the app WRITES here
+      NAME.dac.txt     readable animations     -> the app READS and WRITES here
+      NAME.bin.txt     readable data (moves, reactions) -> the app READS and WRITES here
+      NAME.cnv.txt     readable sprite cuts    -> the app READS and WRITES here
       NNN.png          sprite sheets (000.png, 001.png, ...) — read-only for the app (kept intact)
       *.wav            character sounds (ids 80, 81, ... in file-name order)
     effect/            shared effects pack (dac + cnv + sheets)
@@ -28,6 +25,6 @@ Two modes: **GOLPES** (moves: a move is one row of HDAT 4 with its ANOs, project
     Backups/           safety copies (e.g. before transplanting a move into another character)
 ```
 
-**The `.txt` files win over the binaries.** When loading, the app (and the game build) takes `$ANO_n` blocks from `000.dac.txt`, moves (`$GOLPE_n`) and reactions (`$REACAO_DANO_n`) from `000.bin.txt`, and sprite cuts from `000.cnv.txt` when they exist. ANOs that exist only in the `.txt` (beyond the binary's last ANO) are appended to the animation table. So **a change is delivered as text** and the binaries need not be touched.
+**The app reads ONLY the `.txt` files — never a binary.** `NAME` is any name: the game extractor writes `000.dac.txt`, `000.bin.txt`, `000.cnv.txt`, but many mods save other names (`char13.dac.txt`...), and the app accepts them (the `000.` one first if there are several; normally there is only one of each kind per folder). Animations (`$ANO_n`) come from `*.dac.txt`, moves (`$GOLPE_n`), cutscenes and reactions from `*.bin.txt` (format `BIN_CNV_ {$COUNT, $HDAT_n...}`), sprite cuts from `*.cnv.txt`. The game data (`gamedata` folder) is also read from its `*.dac.txt` (it is `BIN_CNV_` inside). If a needed `.txt` is missing the app shows a clear error naming the missing file and does not open that folder; it does not fall back to the binary (some apps extract only the `.txt`). So **a change is delivered as text** and the binaries are irrelevant to the app.
 
 To make the app re-read the disk after files were changed outside the app: pick the character again in `CHAR` (or restart the app).

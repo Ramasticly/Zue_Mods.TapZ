@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2899 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2939 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -799,6 +799,21 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Excluir som**: `CharSounds.isEmpty` considerava "excluído" qualquer WAV de até 926 bytes (o `purge` então retirava os usos e apagava o arquivo, mesmo de um som curto de verdade). Agora vazio = **todas as amostras zero** (o resultado fica em cache por tamanho+data e a leitura para no primeiro byte não zero; `forget` ao regravar). Excluir continua mutando (o número fica reservado) e apagando só os vazios do **fim** da lista.
 - **Cache velho**: `SoundPlayer.invalidate` agora também esquece a duração guardada; antes, depois de cortar/ajustar, a prévia usava a duração antiga.
 - Testes: `CharSoundsTest` (17: curto com conteúdo não é vazio, silêncio/cabeçalho/zeros são, amostra no fim, ids dos vazios, mutar/substituir esquecem o cache, apagar vazios do fim, `nextNumber`, `addBytes`, limite de 20), `SoundIdsTest` (70: `defaultId` e `FrameOps.defaults(SOM)` ≠ 0). Telas, loading, `AudioTrack` e `MediaPlayer` só compilados/revisados.
+
+### 3.2c Qualquer `nome.ext.txt` (não só `000.ext.txt`)
+
+- O extrator do jogo grava `000.dac.txt`, `000.bin.txt` e `000.cnv.txt`, mas vários mods gravam com outros nomes. Novo `TxtFiles` (Java puro): acha `*.dac.txt`, `*.bin.txt` e `*.cnv.txt` de **qualquer nome** (caixa mista também); nunca há mais de um de cada tipo por pasta — se houver, vale o `000.` ou o primeiro por nome (como o compilador, que ordena por nome).
+- Todos os leitores/gravadores passaram a usá-lo: `CharAssets` (personagem, effect, charf/bobj, prévia), `Saver` (**grava no mesmo arquivo que leu**), `MoveTransplant` (backup inclui o `.cnv.txt` achado), `SpriteMassDialogs`, `AttackGrid`, `LayoutManager`, `ReactionSlots.readChar` (importar reação de outro personagem), `SpriteImportPlan.isCharacterPac`, `SpriteLib` (grava o CNV no `.cnv.txt` achado).
+
+### 3.2d Tudo lido do TXT, sem binário
+
+- **Nenhum binário é lido** (há apps que extraem só o TXT). Sem o TXT o app mostra um erro claro com o nome que falta ("Falta o arquivo *.dac.txt em …") e não abre a pasta; não há fallback para o `.dac/.bin/.cnv`.
+- **Novo `BinTxt`**: compila o `*.bin.txt` (formato `BIN_CNV_ {$COUNT, $HDAT_n:{$info…}}`, o mesmo do extrator do jogo) em bytes de HDAT **na memória**, no mesmo layout do binário, e reaproveita os leitores existentes (`CharData.fromTxt`, `GameData.fromTxt`). Decodifica HDAT 3 (`$STATUS_BASE_E_FISICA`, 18 bytes), HDAT 4 (`$GOLPE_n`, 48 bytes), HDAT 13 (`$ROTEIRO_CUTSCENE`), reações `$REACAO_DANO_n` (HDAT 14–33) e `$REACAO_DANO_GD_n` (gamedata), tabelas `$LINHA_n` (HDAT 2, 5, 7) e `$RAW:B[...]`.
+- **`Dac.fromTxt`**: lê os `$ANO_n` do `*.dac.txt` (tamanho = maior índice + 1, como o compilador); **`Cnv.fromTxt`** para o CNV. `CharData.moveBytes` é o inverso da leitura dos golpes.
+- **Gamedata**: `GameData.load` procura o `*.dac.txt` (formato `BIN_CNV_` por dentro, como o compilador trata a pasta `gamedata`) em `gamedata/` (qualquer caixa, também `SYSTEM/gamedata`), em `gamedata*.dac.txt` de `assets/`, ou em qualquer pasta que não seja de personagem. Assim dá para mudar a gamedata por fora, editando o TXT.
+- Os leitores binários (`Dac.read`, `CharData.read`, `HdatTable.parse`, `Cnv.read`) continuam no código **só para os testes**; os testes que checavam "TXT por cima do binário" usam `test/TxtOverlay`.
+- AJUDA (entradas da reação e do salvar) e manual da IA (`02_app_files.md`) atualizados: o app lê e grava só TXT, de qualquer nome.
+- Testes: `TxtFilesTest` (11: nomes, caixa, ordem, duplicados, ausente), `BinTxtTest` (28: as amostras reais `000.bin.txt`/`000.dac.txt`/`000.cnv.txt` — 19 golpes, 22 eventos de cutscene, 368 ANOs, HDAT 3/7/13/14–26 —, gamedata sintética `BIN_CNV_`, `GameData.load` por pasta com nome e caixa quaisquer, erros claros); `ReactionSlotsTest` e `SpriteImportPlanTest` reescritos para só TXT (binário ao lado é ignorado). **Só compilado/revisado**: as telas e os carregadores com Bitmap (`CharAssets.loadChar` etc., precisam de Android). A decodificação exata do `*.dac.txt` da gamedata real ainda depende do exemplo que o usuário vai enviar.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
