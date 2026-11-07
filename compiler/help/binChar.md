@@ -411,10 +411,10 @@ mostram efeitos de tela, mudam a câmera ou prendem o oponente.
 |---|---|---|
 | `$ALVO` | 0 | De onde vem a animação: 0 = efeitos do sistema, 1 = DAC do próprio personagem, outro = objeto do cenário |
 | `$DURACAO` | 1 | Quantos frames (`$MPT_N`) da animação do atacante o evento dura, contados a partir do frame em que a hitbox tipo 20 apareceu. Não são frames de jogo: um `$MPT` com `$TIME: 10` conta como 1. 0 ou negativo = até a animação do atacante mudar. Em qualquer caso o evento acaba se a animação do atacante mudar |
-| `$Z_LAYER` | 2 | Prioridade de desenho: 0 → 200 (eventos 8 e 9: 10); 1 → 17 (evento 8: 19, evento 9: 21); outro → 400. Para comparar: os personagens ficam entre 130 e 154 |
+| `$Z_LAYER` | 2 | Camada de desenho (maior = mais na frente). 0 → 200: na frente dos personagens (130–154). 1 → 17: atrás dos personagens, no meio das camadas do cenário (12–20). Outro → 400: na frente de tudo da luta. O HUD fica sempre por cima. Eventos 8 e 9 são exceção: 0 → 10 (atrás do cenário inteiro); 1 → 19 (evento 8) / 21 (evento 9) |
 | `$ANIM_ID` | 3 | Animação com o personagem virado para a direita. 0 = o evento não desenha nada (mas ainda aplica `$TRAVAR_VIT` e `$FLAG`) |
 | `$ANIM_FLIP` | 4 | Animação com o personagem virado para a esquerda |
-| `$CAM_MODE` | 5 | 0 = segue o ponto da hitbox (e o zoom); 1 = efeito de tela cheia; outro = fixo no canto (0,0) |
+| `$CAM_MODE` | 5 | 0 = nasce no ponto da hitbox e fica preso nesse ponto do **cenário** (acompanha a rolagem e o zoom da câmera, mas não segue o personagem). 1 = preso à **tela**, na origem (0,0) do canto superior esquerdo, e em "tela cheia": enquanto o evento dura, as camadas de fundo do cenário somem e a CPU não aperta comandos. Outro = preso à tela em (0,0), sem esconder o cenário. Em todos os modos o tamanho acompanha o zoom da câmera |
 | `$TRAVAR_VIT` | 6 | Diferente de 0 = congela o oponente enquanto o evento dura: a animação dele não avança de frame e ele não se move. No fim do evento ele volta ao estado em que estava (uma reação de dano continua de onde parou). Um hit novo durante o congelamento tira o oponente dele |
 | `$FLAG` | 7 | Efeito extra (tabela abaixo) |
 
