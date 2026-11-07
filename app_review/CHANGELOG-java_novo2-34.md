@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 3015 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 3018 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -858,6 +858,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **POSIÇÃO (X/Y do hit)** com o modo em texto: *segue o mundo* (cam 0 com animação: X/Y editáveis), *segue a tela* (cam ≠ 0: presa ao canto (0, 0), X/Y fixos em 0; eventos 8 e 9 só no 1º tick), *segue a câmera* (FLAG 3: o X é o alvo da câmera; com TRAVAR_VIT vira o estado do alvo, X fixo em 0) e *sem animação* (posição não usada). Os X/Y editam o hit da timeline; quando o modo é fixo o campo fica **esmaecido, desligado** e com "fixo em 0 para este modo/evento (motivo)".
 - **Campos fixos/ignorados** (`CutsceneFields`, deduzido de `BattleSim.runCut`): sem animação (ANIM_ID = 0) → ALVO, ANIM_FLIP, Z_LAYER (e CAM_MODE se a FLAG não é 3) esmaecidos; FLAG 3 → DURAÇÃO esmaecida (a cena termina quando a câmera chega).
 - Testes (`CutsceneFieldsTest`, 20): cada regra de campo fixo, os modos de posição, eventos 8/9, FLAG 3 com e sem stun, colar/desfazer/zerar/duplicar sobre o modelo (`CharData.setEventRow`). Tela, grade, esmaecido e toque só compilados/revisados.
+
+### 3.4d Crash ao abrir "Otimizar GIF"
+
+- `NullPointerException: Attempt to read from null array` em `GifOptimizer.distinctSprites`: a tela monta o rótulo "ANTES: N sprite(s) · M quadro(s)" **antes** de qualquer `match`, e o vetor `Analysis.first` (primeiro quadro que usa a mesma sprite) só era preenchido dentro de `match`. Agora `GifOptimizer.ensureFirst` preenche o vetor sob demanda e `match`, `distinctSprites` e `removedCount` o chamam, então funcionam em qualquer ordem.
+- Teste (`OptimizeTest`, 16): contar sprites e remoções numa `Analysis` recém-criada (sem `match`) não lança e dá o mesmo resultado de depois do `match`. A tela do Otimizar GIF só foi compilada/revisada.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).

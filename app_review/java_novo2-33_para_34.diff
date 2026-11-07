@@ -506,7 +506,7 @@ diff -ruN -x fixtures a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-07 17:30:26.074609325 +0000
++++ b/AiHelpDoc.java	2026-11-07 18:41:44.182064995 +0000
 @@ -0,0 +1,854 @@
 +package com.zue.attackeditor;
 +
@@ -19707,8 +19707,55 @@ diff -ruN -x fixtures a/GameTables.java b/GameTables.java
 +}
 diff -ruN -x fixtures a/GifOptimizer.java b/GifOptimizer.java
 --- a/GifOptimizer.java	2026-10-18 14:26:47.000000000 +0000
-+++ b/GifOptimizer.java	2026-11-03 01:26:28.679011950 +0000
-@@ -111,4 +111,14 @@
++++ b/GifOptimizer.java	2026-11-07 18:39:55.716635523 +0000
+@@ -21,7 +21,7 @@
+         int[] sprite;          // sprite de cada quadro (-1 = vazio)
+         boolean[] valid;
+         int[][] score;         // score[i][j]: 0..100 (100 = identico), simetrico
+-        int[] first;           // primeiro quadro que usa a mesma sprite (preenchido por match)
++        int[] first;           // primeiro quadro que usa a mesma sprite (preenchido sob demanda por ensureFirst)
+     }
+ 
+     static Sig sig(int[] full, int w, int h) {
+@@ -79,11 +79,7 @@
+      */
+     static int[] match(Analysis an, int minPct) {
+         int[] repr = new int[an.n];
+-        an.first = new int[an.n];
+-        for (int k = 0; k < an.n; k++) {
+-            an.first[k] = k;
+-            for (int j = 0; j < k; j++) if (an.valid[j] && an.sprite[j] == an.sprite[k]) { an.first[k] = j; break; }
+-        }
++        ensureFirst(an);
+         for (int k = 0; k < an.n; k++) {
+             if (!an.valid[k]) { repr[k] = -1; continue; }
+             if (an.first[k] != k) { repr[k] = repr[an.first[k]]; continue; }    // mesma sprite de um quadro anterior: segue a decisao dele
+@@ -98,8 +94,19 @@
+         return repr;
+     }
+ 
++    /** Preenche {@code an.first} (primeiro quadro valido que usa a mesma sprite) se ainda nao foi; seguro chamar varias vezes, em qualquer ordem. */
++    static void ensureFirst(Analysis an) {
++        if (an.first != null && an.first.length == an.n) return;
++        an.first = new int[an.n];
++        for (int k = 0; k < an.n; k++) {
++            an.first[k] = k;
++            for (int j = 0; j < k; j++) if (an.valid[j] && an.sprite[j] == an.sprite[k]) { an.first[k] = j; break; }
++        }
++    }
++
+     /** Sprites distintas (com imagem) usadas pelos quadros. */
+     static int distinctSprites(Analysis an) {
++        ensureFirst(an);
+         int n = 0;
+         for (int k = 0; k < an.n; k++) if (an.valid[k] && an.first[k] == k) n++;
+         return n;
+@@ -107,8 +114,19 @@
+ 
+     /** Quantas sprites deixam de ser usadas (cada sprite conta uma vez, mesmo usada em varios quadros). */
+     static int removedCount(Analysis an, int[] repr) {
++        ensureFirst(an);
+         int n = 0;
          for (int k = 0; k < repr.length; k++) if (repr[k] >= 0 && an.first[k] == k && repr[k] != k) n++;
          return n;
      }
@@ -61094,6 +61141,28 @@ diff -ruN -x fixtures a/test/Opt1GroupsTest.java b/test/Opt1GroupsTest.java
 +        System.out.println("Opt1GroupsTest fails=" + fails);
 +    }
 +}
+diff -ruN -x fixtures a/test/OptimizeTest.java b/test/OptimizeTest.java
+--- a/test/OptimizeTest.java	2026-10-18 14:26:47.000000000 +0000
++++ b/test/OptimizeTest.java	2026-11-07 18:40:22.513621688 +0000
+@@ -51,6 +51,18 @@
+         for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) if (i != j) ao.score[i][j] = ao.sprite[i] == ao.sprite[j] ? 100 : 0;
+         int[] rr = GifOptimizer.match(ao, 100);
+         check("ja otimizado: nenhuma sprite a remover, 2 distintas", GifOptimizer.removedCount(ao, rr) == 0 && GifOptimizer.distinctSprites(ao) == 2);
++        // regressao do crash ao abrir "Otimizar GIF": a tela conta as sprites ANTES de qualquer match (first ainda nulo)
++        GifOptimizer.Analysis fresh = new GifOptimizer.Analysis();
++        fresh.n = 5; fresh.valid = new boolean[]{true, true, false, true, true};
++        fresh.sprite = new int[]{10, 11, -1, 10, 12};
++        fresh.score = new int[5][5];
++        boolean threw = false; int cnt = -1, rem = -1;
++        try { cnt = GifOptimizer.distinctSprites(fresh); rem = GifOptimizer.removedCount(fresh, new int[]{0, 1, -1, 0, 4}); } catch (RuntimeException e) { threw = true; }
++        check("distinctSprites sem match antes nao lanca e conta sprites repetidas uma vez (vazio nao conta)", !threw && cnt == 3);
++        check("removedCount sem match antes nao lanca (o quadro 3 ja usa a sprite do 0: nada a remover)", !threw && rem == 0);
++        GifOptimizer.Analysis fresh2 = new GifOptimizer.Analysis();
++        fresh2.n = 5; fresh2.valid = fresh.valid; fresh2.sprite = fresh.sprite; fresh2.score = new int[5][5];
++        check("removedCount de uma Analysis nova = o mesmo de depois do match", GifOptimizer.removedCount(fresh2, new int[]{0, 1, -1, 0, 4}) == GifOptimizer.removedCount(fresh, new int[]{0, 1, -1, 0, 4}));
+         check("distinctSprites do grupo", distinct());
+         an.valid[2] = false;
+         check("vazio fica -1", GifOptimizer.match(an, 100)[2] == -1);
 diff -ruN -x fixtures a/test/Png8Test.java b/test/Png8Test.java
 --- a/test/Png8Test.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/Png8Test.java	2026-10-30 19:57:16.945495698 +0000
