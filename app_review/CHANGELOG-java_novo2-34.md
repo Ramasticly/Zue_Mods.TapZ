@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2946 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2948 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -821,6 +821,11 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Clique atravessando as gavetas**: `TimelineTools.root` e `ReactionSheet.root` (as gavetas de edição flutuantes) agora são `clickable`: tocar numa área vazia da gaveta não cai mais na timeline por baixo (que mudava o que estava sendo editado). Só compilado/revisado (precisa de toque no aparelho).
 - **ⓘ da grade**: o próprio botão ⓘ agora tem a cor da fonte — **verde** = definido no Bin, **azul** = só regra fixa do código do jogo. No modo ANOs: verde se alguma linha da ANO vem do Bin (papel em algum golpe), mesmo que ela também tenha regra fixa; azul se só tem regra fixa. No modo GOLPES: sempre verde (HDAT 4). `AttackInfo.infoIsBin`.
 - Testes: `AttackInfoTest` (7: ANO só com nota/nome fixo → azul, com papel no Bin → verde, os dois → verde, golpe → verde, sem dados). Cores das caixas, toque e ⓘ na tela só compilados/revisados.
+
+### 3.3b Teleportar até o oponente × Teleportar atrás
+
+- Investigado com simulação (`TeleportBehindTest`, +2 testes): as duas ações **não são iguais**. Mesmo golpe, atacante à esquerda, 12 ticks: sem "Personagens se atravessam", *até o oponente* termina com o atacante a 60 px do oponente (a separação de corpos do jogo afasta os dois) e *atrás* termina a 120 px, do outro lado e virado para ele; com o fantasma ligado, *até* fica em cima (0 px) e *atrás* a 60 px. Nenhum bug na simulação; o que faltava era **ver** quem é quem: as caixas do CHAR OBJ agora são brancas (atacante) e ciano (oponente) (3.3a).
+- AJUDA e manual descrevem o resultado esperado de cada uma.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).

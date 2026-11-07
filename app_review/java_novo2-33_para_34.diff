@@ -506,8 +506,8 @@ diff -ruN -x fixtures a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-07 16:08:14.302408666 +0000
-@@ -0,0 +1,849 @@
++++ b/AiHelpDoc.java	2026-11-07 16:10:20.640628761 +0000
+@@ -0,0 +1,851 @@
 +package com.zue.attackeditor;
 +
 +/** Texto fixo do TBRHelp.md (gerado a partir de aihelp_src/*.md); os {{MARCADORES}} sao preenchidos por {@link AiHelp}. Nao editar a mao. */
@@ -880,6 +880,8 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "### 11.5 Importing what you cannot generate\n" +
 +        "- Images: `SPRITES` → add/replace → pick the file; then set the frame's `Imagem`. In the file picker, tapping a `.cnv` of another pac opens its sprites (add several, or — when replacing — pick just one); `VOLTAR` there returns to the folder of that file, and the first row `...↑` of every folder (except the root) goes up one level. When a sprite crop fails (sheet index that does not exist, unreadable PNG, crop outside the sheet…) the app shows an alert with the exact reason per sprite (selectable text and a `COPIAR` button) — ask the user to paste that text.\n" +
 +        "- Sounds: put the `.wav` in `Tap Battle/assets/charNN/` (ids are in file-name order, from 80) or use the frame's `Som` page. The `+` of the sound list also adds a **global game sound** (`Tap Battle/assets/se_NN.ogg`, `se_NNN.ogg` from 100): same tools as the wavs (play, `Cortar`, `Mais...`, `Substituir...`, silence — never delete); the first one after `se_78` creates silent filler `se_79`..`se_99` and becomes `se_100`.\n" +
++        "\n" +
++        "Teleport actions (hitbox flags 39/40 in the `＋` menu): **Teleportar até o oponente** (flag 39) puts the attacker at the opponent's position; unless the move has `Personagens se atravessam` (ATK_FLAGS 16) the game's body separation then pushes the two apart. **Teleportar atrás** is flag 39 + Flip X + a positive speed X in the same frame (default 60 px): the attacker crosses the opponent and stops on the other side, facing them. `CHAR OBJ` shows the body boxes (white = attacker, cyan = opponent) to see the real positions.\n" +
 +        "\n" +
 +        "## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)\n" +
 +        "\n" +
@@ -19670,7 +19672,7 @@ diff -ruN -x fixtures a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-11-07 16:06:57.205873918 +0000
++++ b/HelpText.java	2026-11-07 16:09:12.615593081 +0000
 @@ -0,0 +1,609 @@
 +package com.zue.attackeditor;
 +
@@ -19877,7 +19879,7 @@ diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 +        tl.add("Faixas da timeline",
 +                "A timeline mostra, por frame: SPRITES (as imagens), e abaixo as faixas de hitbox (vermelha), hurtbox (verde), projétil, efeito, ação especial, SOM (azul), VELOCIDADE X e VELOCIDADE Y (uma faixa por eixo; cada Frame tem a sua própria célula de speed e de accel, sem unir Frames; o \"manter velocidade\" não é faixa (só aparece no menu Movimento); speed e accel do mesmo Frame ficam em linhas separadas da faixa; em Frames diferentes dividem a linha), ESTILO (espelhar/transformar), animações ligadas (links) e transições (SEQ/END). Só aparecem faixas com uso: sem som, velocidade ou estilo no ANO, a faixa some. Itens iguais em frames diferentes dividem a mesma faixa; itens iguais no mesmo frame (duas hitboxes iguais, duas transições) ficam em faixas diferentes. Tocar no nome da faixa de sprites abre ou recolhe o resumo. A faixa \"efeito img\" mostra só o que está na página Efeitos da sprite (Flip X/Y e interpolação). Cada faixa tem traços verticais, da cor dela mais escuros, nas divisas dos ticks (somem quando o zoom afasta demais). O ponteiro vai até o fim da timeline (o fim do último tick).");
 +        tl.add("＋ e #",
-+                "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. Já o Adicionar Sprite do menu ＋ do fim da timeline abre a lista de sprites do PERSONAGEM (não cria sprites novas): toque nas linhas para marcar — o selo no lugar da caixa mostra a ORDEM da marcação (1, 2, 3…; a 1ª fica destacada e, ao desmarcar uma, as seguintes renumeram); tocar na miniatura só abre a prévia. No rodapé ficam o Time (em ticks; 6 por padrão, 7 = todas com time 7), o botão de MODO e USAR N IMAGEM(NS) — cada sprite vira um Frame, em sequência, na ordem da marcação, depois do frame do ponteiro. Modos: CENTRAR (põe o MID centrado, pés no chão, sem mudar o tamanho — usa o zoom do padrão da sprite), REESCALAR (muda o zoom para a altura da 1ª sprite do Parado e centra), PADRÃO (o padrão do Editar Frame) e DEFINIR (você escolhe posição — centralizada por padrão —, RAZ, Hitbox e Hurtbox, valendo só para os Frames adicionados). Cancelar não cria nada. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame.");
++                "O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. Já o Adicionar Sprite do menu ＋ do fim da timeline abre a lista de sprites do PERSONAGEM (não cria sprites novas): toque nas linhas para marcar — o selo no lugar da caixa mostra a ORDEM da marcação (1, 2, 3…; a 1ª fica destacada e, ao desmarcar uma, as seguintes renumeram); tocar na miniatura só abre a prévia. No rodapé ficam o Time (em ticks; 6 por padrão, 7 = todas com time 7), o botão de MODO e USAR N IMAGEM(NS) — cada sprite vira um Frame, em sequência, na ordem da marcação, depois do frame do ponteiro. Modos: CENTRAR (põe o MID centrado, pés no chão, sem mudar o tamanho — usa o zoom do padrão da sprite), REESCALAR (muda o zoom para a altura da 1ª sprite do Parado e centra), PADRÃO (o padrão do Editar Frame) e DEFINIR (você escolhe posição — centralizada por padrão —, RAZ, Hitbox e Hurtbox, valendo só para os Frames adicionados). Cancelar não cria nada. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame. Teleportar até o oponente põe o atacante na posição do oponente (sem \"Personagens se atravessam\", a separação de corpos do jogo afasta os dois); Teleportar atrás atravessa o oponente e para do outro lado, virado para ele, a 60 px por padrão (editável). O CHAR OBJ ajuda a ver a diferença: caixa branca = atacante, ciano = oponente.");
 +        tl.add("DIVIDIR / DUPLICAR / EXCLUIR / DESFAZER",
 +                "Editam o item selecionado na timeline: DIVIDIR corta o sprite sob o ponteiro em dois (o resultado visual continua igual) ou, com um objeto selecionado, separa o objeto na divisa de frames mais próxima do ponteiro (o objeto pertence ao frame, então nunca corta no meio dele) e o ponteiro vai para essa divisa, ou, com um trecho de VELOCIDADE selecionado, começa um segundo trecho no ponteiro (a velocidade segue a mesma); "
 +                + "DUPLICAR copia o sprite ou o objeto para o frame seguinte; EXCLUIR remove o sprite, objeto ou link selecionado; DESFAZER volta a última edição."
@@ -23279,7 +23281,7 @@ diff -ruN -x fixtures a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-11-07 16:06:57.246985368 +0000
++++ b/I18nHelpCatalog.java	2026-11-07 16:09:12.659960152 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -23293,7 +23295,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-11-07 16:06:57.245376179 +0000
++++ b/I18nHelpCatalog0.java	2026-11-07 16:09:12.658889469 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23378,7 +23380,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-11-07 16:06:57.245508789 +0000
++++ b/I18nHelpCatalog1.java	2026-11-07 16:09:12.658979366 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23463,7 +23465,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-11-07 16:06:57.245641145 +0000
++++ b/I18nHelpCatalog2.java	2026-11-07 16:09:12.659081783 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23548,7 +23550,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-11-07 16:06:57.245784819 +0000
++++ b/I18nHelpCatalog3.java	2026-11-07 16:09:12.659186549 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23581,9 +23583,9 @@ diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +        {"＋ e #",
 +         "＋ and #",
 +         "＋ y #"},
-+        {"O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. Já o Adicionar Sprite do menu ＋ do fim da timeline abre a lista de sprites do PERSONAGEM (não cria sprites novas): toque nas linhas para marcar — o selo no lugar da caixa mostra a ORDEM da marcação (1, 2, 3…; a 1ª fica destacada e, ao desmarcar uma, as seguintes renumeram); tocar na miniatura só abre a prévia. No rodapé ficam o Time (em ticks; 6 por padrão, 7 = todas com time 7), o botão de MODO e USAR N IMAGEM(NS) — cada sprite vira um Frame, em sequência, na ordem da marcação, depois do frame do ponteiro. Modos: CENTRAR (põe o MID centrado, pés no chão, sem mudar o tamanho — usa o zoom do padrão da sprite), REESCALAR (muda o zoom para a altura da 1ª sprite do Parado e centra), PADRÃO (o padrão do Editar Frame) e DEFINIR (você escolhe posição — centralizada por padrão —, RAZ, Hitbox e Hurtbox, valendo só para os Frames adicionados). Cancelar não cria nada. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame.",
-+         "The ＋ adds at the pointer a sprite, hitbox, hurtbox, projectile, effect, sound, speed, linked animation or a special action (shake the stage, cutscene, camera zoom, teleport to the opponent, pull the opponent, heal life...). The SEQ item of the ＋ opens the move's editable flow, where the sequence (SEQ/END/landing) is defined, even when there is no Transitions lane yet. The Add Sprite of the ＋ menu at the end of the timeline opens the list of the CHARACTER's sprites (it does not create new ones): tap the rows to mark — the badge in place of the checkbox shows the ORDER of marking (1, 2, 3…; the 1st one is highlighted and, when you unmark one, the next ones are renumbered); tapping the thumbnail only opens the preview. At the bottom are the Time (in ticks; 6 by default, 7 = all with time 7), the MODE button and USE N IMAGE(S) — each sprite becomes a Frame, in sequence, in marking order, after the pointer's frame. Modes: CENTER (puts the MID centered, feet on the ground, without changing the size — uses the sprite's default zoom), RESCALE (changes the zoom to the height of the 1st Idle sprite and centers), DEFAULT (the Edit Frame default) and DEFINE (you choose position — centered by default —, RAZ, Hitbox and Hurtbox, applied only to the Frames added). Cancel creates nothing. The # chooses what the timeline shows (turns each category on and off; SHOW ALL). The special actions also include TELEPORT BEHIND THE OPPONENT: the CHARACTER goes to the opponent's position (flag 39), flips the sprite (Flip X) and the frame's speed X takes it to the other side, by the chosen distance (default 60 px); the opponent is not moved. The three count as a single item, one Frame long — deleting it deletes the Flip X and the speed too. The game separates the two bodies when they overlap and pushes the opponent: turn on \"Characters pass through each other\" in GOLPE SET to keep him still. Old items (Pull opponent flag with a negative x) still open, with an old-format warning. The ＋ at the end of the sprite lane opens a menu: LAYER (− N +: higher = the ANO shows on top, lower = further down; saves $PRIO inverted) and ADD SPRITE (creates the sprite after the pointer and opens the Image page to pick the image and position). The blue ＋ (ADD > sprite) puts the new sprite after the current Frame if the pointer is in the middle of it, and before the Frame if the pointer is on the border between Frames or at its start; at the end of the timeline it goes after the last Frame.",
-+         "El ＋ agrega en el puntero un sprite, hitbox, hurtbox, proyectil, efecto, sonido, velocidad, animación ligada o una acción especial (temblor de escenario, cutscene, zoom de cámara, teletransportar hasta el oponente, jalar al oponente, curar vida...). El elemento SEQ del ＋ abre el flujo editable del golpe, donde se define la secuencia (SEQ/END/aterrizaje), aunque aún no haya franja Transiciones. En cambio, Agregar Sprite del menú ＋ del final de la timeline abre la lista de sprites del PERSONAJE (no crea sprites nuevos): toca las filas para marcar — la insignia en lugar de la casilla muestra el ORDEN de marcado (1, 2, 3…; la 1.ª queda resaltada y, al desmarcar una, las siguientes se renumeran); tocar la miniatura solo abre la vista previa. Abajo están el Time (en ticks; 6 por defecto, 7 = todos con time 7), el botón de MODO y USAR N IMAGEN(ES) — cada sprite se vuelve un Frame, en secuencia, en el orden de marcado, después del frame del puntero. Modos: CENTRAR (pone el MID centrado, pies en el suelo, sin cambiar el tamaño — usa el zoom estándar del sprite), REESCALAR (cambia el zoom a la altura del 1.er sprite del Parado y centra), ESTÁNDAR (el estándar de Editar Frame) y DEFINIR (tú eliges posición — centrada por defecto —, RAZ, Hitbox y Hurtbox, solo para los Frames agregados). Cancelar no crea nada. El # elige lo que la timeline muestra (activa y desactiva cada categoría; MOSTRAR TODO). Las acciones especiales también incluyen TELETRANSPORTAR DETRÁS DEL OPONENTE: el PERSONAJE va a la posición del oponente (flag 39), voltea el sprite (Flip X) y la speed X del frame lo lleva al otro lado, por la distancia elegida (60 px por defecto); el oponente no se mueve. Los tres cuentan como un solo ítem, de un solo Frame: borrarlo borra también el Flip X y la speed. El juego separa los dos cuerpos cuando se superponen y empuja al oponente: activa \"Los personajes se atraviesan\" en GOLPE SET para que quede quieto. Los ítems antiguos (flag Tirar del oponente con x negativo) siguen abriéndose, con aviso de formato antiguo. El ＋ al final de la franja de sprites abre un menú: CAPA (− N +: mayor = la ANO aparece más arriba, menor = más abajo; guarda el $PRIO invertido) y AGREGAR SPRITE (crea el sprite después del puntero y abre la página Imagen para elegir la imagen y la posición). El ＋ azul (AÑADIR > sprite) pone el sprite nuevo después del Frame actual si el puntero está en medio de él, y antes del Frame si el puntero está en el límite entre Frames o en su inicio; al final de la timeline entra después del último Frame."},
++        {"O ＋ adiciona no ponteiro um sprite, hitbox, hurtbox, projétil, efeito, som, velocidade, animação ligada ou uma ação especial (tremer cenário, cutscene, zoom de câmera, teleportar até o oponente, puxar oponente, curar vida...). O item SEQ do ＋ abre o fluxo editável do golpe, onde se define a sequência (SEQ/END/pouso), mesmo quando ainda não há faixa Transições. Já o Adicionar Sprite do menu ＋ do fim da timeline abre a lista de sprites do PERSONAGEM (não cria sprites novas): toque nas linhas para marcar — o selo no lugar da caixa mostra a ORDEM da marcação (1, 2, 3…; a 1ª fica destacada e, ao desmarcar uma, as seguintes renumeram); tocar na miniatura só abre a prévia. No rodapé ficam o Time (em ticks; 6 por padrão, 7 = todas com time 7), o botão de MODO e USAR N IMAGEM(NS) — cada sprite vira um Frame, em sequência, na ordem da marcação, depois do frame do ponteiro. Modos: CENTRAR (põe o MID centrado, pés no chão, sem mudar o tamanho — usa o zoom do padrão da sprite), REESCALAR (muda o zoom para a altura da 1ª sprite do Parado e centra), PADRÃO (o padrão do Editar Frame) e DEFINIR (você escolhe posição — centralizada por padrão —, RAZ, Hitbox e Hurtbox, valendo só para os Frames adicionados). Cancelar não cria nada. O # escolhe o que a timeline mostra (liga e desliga cada categoria; MOSTRAR TUDO). Nas ações especiais há também TELEPORTAR ATRÁS DO OPONENTE: o PERSONAGEM vai até a posição do oponente (flag 39), vira o sprite (Flip X) e a speed X do frame o leva para o outro lado, na distância escolhida (padrão 60 px); o oponente não é movido. Os três contam como um item só, de um Frame só — apagá-lo apaga o Flip X e a speed junto. O jogo separa os dois corpos quando se sobrepõem e empurra o oponente: ligue \"Personagens se atravessam\" em GOLPE SET para ele ficar parado. Itens antigos (flag Puxar oponente com x negativo) continuam abrindo, com aviso de formato antigo. O ＋ do fim da faixa de sprites abre um menu: CAMADA (− N +: maior = a ANO aparece mais em cima, menor = mais embaixo; grava o $PRIO invertido) e ADICIONAR SPRITE (cria a sprite depois do ponteiro e abre a página Imagem para escolher a imagem e a posição). O ＋ azul (ADICIONAR > sprite) põe o sprite novo na frente do Frame atual se o ponteiro está no meio dele, e antes do Frame se o ponteiro está na divisa entre Frames ou no início dele; no fim da timeline ele entra depois do último Frame. Teleportar até o oponente põe o atacante na posição do oponente (sem \"Personagens se atravessam\", a separação de corpos do jogo afasta os dois); Teleportar atrás atravessa o oponente e para do outro lado, virado para ele, a 60 px por padrão (editável). O CHAR OBJ ajuda a ver a diferença: caixa branca = atacante, ciano = oponente.",
++         "The ＋ adds at the pointer a sprite, hitbox, hurtbox, projectile, effect, sound, speed, linked animation or a special action (shake the stage, cutscene, camera zoom, teleport to the opponent, pull the opponent, heal life...). The SEQ item of the ＋ opens the move's editable flow, where the sequence (SEQ/END/landing) is defined, even when there is no Transitions lane yet. The Add Sprite of the ＋ menu at the end of the timeline opens the list of the CHARACTER's sprites (it does not create new ones): tap the rows to mark — the badge in place of the checkbox shows the ORDER of marking (1, 2, 3…; the 1st one is highlighted and, when you unmark one, the next ones are renumbered); tapping the thumbnail only opens the preview. At the bottom are the Time (in ticks; 6 by default, 7 = all with time 7), the MODE button and USE N IMAGE(S) — each sprite becomes a Frame, in sequence, in marking order, after the pointer's frame. Modes: CENTER (puts the MID centered, feet on the ground, without changing the size — uses the sprite's default zoom), RESCALE (changes the zoom to the height of the 1st Idle sprite and centers), DEFAULT (the Edit Frame default) and DEFINE (you choose position — centered by default —, RAZ, Hitbox and Hurtbox, applied only to the Frames added). Cancel creates nothing. The # chooses what the timeline shows (turns each category on and off; SHOW ALL). The special actions also include TELEPORT BEHIND THE OPPONENT: the CHARACTER goes to the opponent's position (flag 39), flips the sprite (Flip X) and the frame's speed X takes it to the other side, by the chosen distance (default 60 px); the opponent is not moved. The three count as a single item, one Frame long — deleting it deletes the Flip X and the speed too. The game separates the two bodies when they overlap and pushes the opponent: turn on \"Characters pass through each other\" in GOLPE SET to keep him still. Old items (Pull opponent flag with a negative x) still open, with an old-format warning. The ＋ at the end of the sprite lane opens a menu: LAYER (− N +: higher = the ANO shows on top, lower = further down; saves $PRIO inverted) and ADD SPRITE (creates the sprite after the pointer and opens the Image page to pick the image and position). The blue ＋ (ADD > sprite) puts the new sprite after the current Frame if the pointer is in the middle of it, and before the Frame if the pointer is on the border between Frames or at its start; at the end of the timeline it goes after the last Frame. Teleport to the opponent puts the attacker at the opponent's position (without \"Characters pass through each other\", the game's body separation pushes them apart); Teleport behind crosses the opponent and stops on the other side, facing them, 60 px by default (editable). CHAR OBJ helps to see the difference: white box = attacker, cyan = opponent.",
++         "El ＋ agrega en el puntero un sprite, hitbox, hurtbox, proyectil, efecto, sonido, velocidad, animación ligada o una acción especial (temblor de escenario, cutscene, zoom de cámara, teletransportar hasta el oponente, jalar al oponente, curar vida...). El elemento SEQ del ＋ abre el flujo editable del golpe, donde se define la secuencia (SEQ/END/aterrizaje), aunque aún no haya franja Transiciones. En cambio, Agregar Sprite del menú ＋ del final de la timeline abre la lista de sprites del PERSONAJE (no crea sprites nuevos): toca las filas para marcar — la insignia en lugar de la casilla muestra el ORDEN de marcado (1, 2, 3…; la 1.ª queda resaltada y, al desmarcar una, las siguientes se renumeran); tocar la miniatura solo abre la vista previa. Abajo están el Time (en ticks; 6 por defecto, 7 = todos con time 7), el botón de MODO y USAR N IMAGEN(ES) — cada sprite se vuelve un Frame, en secuencia, en el orden de marcado, después del frame del puntero. Modos: CENTRAR (pone el MID centrado, pies en el suelo, sin cambiar el tamaño — usa el zoom estándar del sprite), REESCALAR (cambia el zoom a la altura del 1.er sprite del Parado y centra), ESTÁNDAR (el estándar de Editar Frame) y DEFINIR (tú eliges posición — centrada por defecto —, RAZ, Hitbox y Hurtbox, solo para los Frames agregados). Cancelar no crea nada. El # elige lo que la timeline muestra (activa y desactiva cada categoría; MOSTRAR TODO). Las acciones especiales también incluyen TELETRANSPORTAR DETRÁS DEL OPONENTE: el PERSONAJE va a la posición del oponente (flag 39), voltea el sprite (Flip X) y la speed X del frame lo lleva al otro lado, por la distancia elegida (60 px por defecto); el oponente no se mueve. Los tres cuentan como un solo ítem, de un solo Frame: borrarlo borra también el Flip X y la speed. El juego separa los dos cuerpos cuando se superponen y empuja al oponente: activa \"Los personajes se atraviesan\" en GOLPE SET para que quede quieto. Los ítems antiguos (flag Tirar del oponente con x negativo) siguen abriéndose, con aviso de formato antiguo. El ＋ al final de la franja de sprites abre un menú: CAPA (− N +: mayor = la ANO aparece más arriba, menor = más abajo; guarda el $PRIO invertido) y AGREGAR SPRITE (crea el sprite después del puntero y abre la página Imagen para elegir la imagen y la posición). El ＋ azul (AÑADIR > sprite) pone el sprite nuevo después del Frame actual si el puntero está en medio de él, y antes del Frame si el puntero está en el límite entre Frames o en su inicio; al final de la timeline entra después del último Frame. Teleportar hasta el oponente pone al atacante en la posición del oponente (sin \"Personajes se atraviesan\", la separación de cuerpos del juego los aparta); Teleportar detrás atraviesa al oponente y se detiene al otro lado, mirándolo, a 60 px por defecto (editable). CHAR OBJ ayuda a ver la diferencia: caja blanca = atacante, cian = oponente."},
 +        {"adicionar mais novo criar numero",
 +         "add more new create number",
 +         "agregar mas nuevo crear numero"},
@@ -23633,7 +23635,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-11-07 16:06:57.245883924 +0000
++++ b/I18nHelpCatalog4.java	2026-11-07 16:09:12.659314590 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23718,7 +23720,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-11-07 16:06:57.245983210 +0000
++++ b/I18nHelpCatalog5.java	2026-11-07 16:09:12.659396223 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23803,7 +23805,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-11-07 16:06:57.246065348 +0000
++++ b/I18nHelpCatalog6.java	2026-11-07 16:09:12.659464733 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23888,7 +23890,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-11-07 16:06:57.246199385 +0000
++++ b/I18nHelpCatalog7.java	2026-11-07 16:09:12.659593680 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -23973,7 +23975,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-11-07 16:06:57.246687165 +0000
++++ b/I18nHelpCatalog8.java	2026-11-07 16:09:12.659852268 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -24058,7 +24060,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-11-07 16:06:57.246956683 +0000
++++ b/I18nHelpCatalog9.java	2026-11-07 16:09:12.659935089 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -56486,8 +56488,8 @@ diff -ruN -x fixtures a/test/SpriteWizardTest.java b/test/SpriteWizardTest.java
 +}
 diff -ruN -x fixtures a/test/TeleportBehindTest.java b/test/TeleportBehindTest.java
 --- a/test/TeleportBehindTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/TeleportBehindTest.java	2026-10-30 02:29:33.000000000 +0000
-@@ -0,0 +1,121 @@
++++ b/test/TeleportBehindTest.java	2026-11-07 16:08:32.386855134 +0000
+@@ -0,0 +1,140 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -56599,6 +56601,25 @@ diff -ruN -x fixtures a/test/TeleportBehindTest.java b/test/TeleportBehindTest.j
 +            } else {
 +                check("sem fantasma: atravessa para o outro lado, mas a separacao dos corpos empurra o oponente", ax0 < ox0 && dx > 0 && s.opponentX() != ox0, true);
 +            }
++        }
++        // ---- "ate o oponente" (flag 39 sozinha) x "atras" (39 + Flip X + speed X): as posicoes finais precisam DIFERIR (3.3b)
++        for (int ghost = 0; ghost <= 1; ghost++) {
++            int[] end = new int[2], opp = new int[2];
++            for (int variant = 0; variant <= 1; variant++) {
++                A[] a = new A[45];
++                for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(1));
++                M tele = new M().time(5).hit(39, 0, 0, 0, 0);
++                if (variant == 1) tele = tele.act(16).speedX(12 * 65536);
++                a[40] = new A().mpt(new M().time(1)).mpt(tele).mpt(new M().time(30));
++                CharData ch = chr(move(new int[]{0, ghost == 1 ? 16 : 0}, new int[]{2, 40}), new byte[][] {});
++                BattleSim.edgeMode = 1;
++                BattleSim s = new BattleSim(dac(a), ch, ch.moves[0], false, CutsceneTest.defDac(), CutsceneTest.fxDac(), gd(new byte[][] {}), 200, 0, 0);
++                for (int i = 0; i < 12; i++) s.step();
++                end[variant] = s.attackerX() - s.opponentX();
++                opp[variant] = s.opponentX();
++                System.out.println("  ghost=" + ghost + " variante=" + (variant == 0 ? "ate o oponente" : "atras") + " dx(atacante-oponente)=" + end[variant] + " oppX=" + opp[variant]);
++            }
++            check("ghost=" + ghost + ": 'atras' termina em outro lugar que 'ate o oponente' (dx " + end[1] + " x " + end[0] + ")", end[1] != end[0] && end[1] > end[0], true);
 +        }
 +        System.out.println("TeleportBehindTest fails=" + fails);
 +    }
