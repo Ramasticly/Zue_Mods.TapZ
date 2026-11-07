@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2939 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2946 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -814,6 +814,13 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - Os leitores binários (`Dac.read`, `CharData.read`, `HdatTable.parse`, `Cnv.read`) continuam no código **só para os testes**; os testes que checavam "TXT por cima do binário" usam `test/TxtOverlay`.
 - AJUDA (entradas da reação e do salvar) e manual da IA (`02_app_files.md`) atualizados: o app lê e grava só TXT, de qualquer nome.
 - Testes: `TxtFilesTest` (11: nomes, caixa, ordem, duplicados, ausente), `BinTxtTest` (28: as amostras reais `000.bin.txt`/`000.dac.txt`/`000.cnv.txt` — 19 golpes, 22 eventos de cutscene, 368 ANOs, HDAT 3/7/13/14–26 —, gamedata sintética `BIN_CNV_`, `GameData.load` por pasta com nome e caixa quaisquer, erros claros); `ReactionSlotsTest` e `SpriteImportPlanTest` reescritos para só TXT (binário ao lado é ignorado). **Só compilado/revisado**: as telas e os carregadores com Bitmap (`CharAssets.loadChar` etc., precisam de Android). A decodificação exata do `*.dac.txt` da gamedata real ainda depende do exemplo que o usuário vai enviar.
+
+### 3.3a CHAR OBJ colorido, gavetas que não deixam o toque passar, ⓘ azul/verde
+
+- **CHAR OBJ**: a caixa do corpo do **atacante** é **branca** e a do **oponente** é **ciano** (antes as duas eram brancas e não dava para saber quem é quem, por exemplo nos Teleportar). `AttackView.BODY_ATTACKER/BODY_OPPONENT`.
+- **Clique atravessando as gavetas**: `TimelineTools.root` e `ReactionSheet.root` (as gavetas de edição flutuantes) agora são `clickable`: tocar numa área vazia da gaveta não cai mais na timeline por baixo (que mudava o que estava sendo editado). Só compilado/revisado (precisa de toque no aparelho).
+- **ⓘ da grade**: o próprio botão ⓘ agora tem a cor da fonte — **verde** = definido no Bin, **azul** = só regra fixa do código do jogo. No modo ANOs: verde se alguma linha da ANO vem do Bin (papel em algum golpe), mesmo que ela também tenha regra fixa; azul se só tem regra fixa. No modo GOLPES: sempre verde (HDAT 4). `AttackInfo.infoIsBin`.
+- Testes: `AttackInfoTest` (7: ANO só com nota/nome fixo → azul, com papel no Bin → verde, os dois → verde, golpe → verde, sem dados). Cores das caixas, toque e ⓘ na tela só compilados/revisados.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
