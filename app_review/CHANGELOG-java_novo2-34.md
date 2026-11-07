@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 2873 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 2899 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -791,6 +791,15 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Crash `IllegalArgumentException: parameter must be a descendant of this view`** (`ScrollView.onSizeChanged` → `isWithinDeltaOfScreen`) ao editar as **cutscenes HDAT 13**. Causa: o `Stepper` confirma o valor dentro do `onFocusChange`/IME do próprio `EditText` e `CutsceneScreen.set()` reconstruía os campos (`removeAllViews`) nessa hora; o `ScrollView` ficava com um foco que já não era filho dela. Correção: (1) `CutsceneScreen.set()` agora **adia** a reconstrução (`detail.post`, uma só por vez) e `rebuild/rebuildDetail` **soltam o foco** antes de remover (`SafeScrollView.releaseFocus`); (2) novo **`SafeScrollView`** (engole esse erro de layout e solta o foco) no lugar de **todos** os `new ScrollView(` do app (47 usos); (3) `releaseFocus` também antes de `removeAllViews` em `TimelineTools` (gaveta) e `ReactionScreen` (páginas).
 - Testes: `ReactionWallInfoTest` (36: `hasWallReaction` — WALL 2/3 com COMP 1..49 sim; sem COMP, COMP 50, WALL 1/0, nulo e vazia não; cor do resumo RED/DIM). `SafeScrollView`, foco e cor do ⓘ só foram compilados/revisados (precisam de Android).
 
+### 3.2b Revisão dos sons: som novo em 80, "Ouvir com ajustes", loading e exclusão
+
+- **Som 0**: adicionar som a um frame (menu `＋ Som`, tocar numa célula de som vazia, `FrameOps.addKey/defaults`) gravava a flag de som ligada com **id 0**. No jogo o id 0 é "sem som" (`SE < 80 → PushSE(se−1)`, e −1 não toca), então o frame ficava com um "Som 0" que não toca nada. Agora o som novo nasce no **1º áudio do personagem que não está vazio** (**80**, a primeira voz; `SoundIds.defaultId`, `FrameOps.soundDefault`, `TimelineOps.prepareSoundDefault`), senão no comum 1, e se o personagem não tem som nenhum o app avisa. Escolher 0 nos botões − + virou **desligar a flag** (como REMOVER ÁUDIO). Frames antigos com a flag e id 0 são limpos ao abrir a lista de sons.
+- **"Ouvir com os ajustes" (Mais…) não tocava**: gravava `ajuste_previa.wav` no cache e tocava com `MediaPlayer`; qualquer erro na thread (inclusive falta de memória) deixava `busy` preso e o botão morria calado. Agora processa fora da UI e toca **direto do PCM num `AudioTrack` estático** (o mesmo caminho do cortador, que funciona), com `try/catch Throwable`, botão "PROCESSANDO…" e aviso com o motivo se falhar. A média dos outros sons (`averageOthers`) sai da UI.
+- **Carregar/gravar áudio travava a UI**: antes só havia um toast e o `commit` rodava tudo na UI (gravar o arquivo, re-simular a prévia, retirar usos, reler os WAV). Agora **conversão, abrir (cortar/ajustar), gravar WAV/OGG e excluir** passam por `background(...)` com **loading** (`BusyDialog`) e IO fora da UI; a re-simulação e a lista aparecem com um loading "Atualizando" (`refreshAfter`).
+- **Excluir som**: `CharSounds.isEmpty` considerava "excluído" qualquer WAV de até 926 bytes (o `purge` então retirava os usos e apagava o arquivo, mesmo de um som curto de verdade). Agora vazio = **todas as amostras zero** (o resultado fica em cache por tamanho+data e a leitura para no primeiro byte não zero; `forget` ao regravar). Excluir continua mutando (o número fica reservado) e apagando só os vazios do **fim** da lista.
+- **Cache velho**: `SoundPlayer.invalidate` agora também esquece a duração guardada; antes, depois de cortar/ajustar, a prévia usava a duração antiga.
+- Testes: `CharSoundsTest` (17: curto com conteúdo não é vazio, silêncio/cabeçalho/zeros são, amostra no fim, ids dos vazios, mutar/substituir esquecem o cache, apagar vazios do fim, `nextNumber`, `addBytes`, limite de 20), `SoundIdsTest` (70: `defaultId` e `FrameOps.defaults(SOM)` ≠ 0). Telas, loading, `AudioTrack` e `MediaPlayer` só compilados/revisados.
+
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
 
@@ -917,6 +926,7 @@ Baseline 347 → ver tabela. Expectativas alteradas só onde o jogo prova que o 
 | **FrameClipTest (novo)** | 20 |
 | **RescaleReviewTest (novo)** | 19 |
 | **ReactionWallInfoTest** | 36 |
+| **CharSoundsTest (novo)** | 17 |
 | **GifOptimizeTest (novo)** | 11 |
 | **CameraModesTest (novo)** | 4 |
 | **ReactionRunsTest (novo)** | 12 |
