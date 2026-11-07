@@ -1051,12 +1051,12 @@ public final class hdatChar {
         w.write("      $ROTEIRO_CUTSCENE:{\n");
         w.write("         // Ativado por hitbox flag=20. O 3º valor da hitbox (COORDS) é o índice do evento.\n");
         w.write("         // $ALVO: 0=effect.pac | 1=char.pac do player | outro valor=ranura 2\n");
-        w.write("         // $DURACAO: 0 ou valor negativo = até mudar a animação; N positivo = limite de frames\n");
+        w.write("         // $DURACAO: N positivo = N frames ($MPT) da animação do atacante; 0 ou negativo = até a animação mudar\n");
         w.write("         // $Z_LAYER: 0=prioridade 200 (eventos 8/9: 10); 1=17 (evento 8: 19; evento 9: 21); outro=400\n");
         w.write("         // $ANIM_ID: animação virado para a direita (0=sem animação); $ANIM_FLIP: virado para a esquerda\n");
         w.write("         // $CAM_MODE: 0=câmera normal | diferente de 0=origem MID em 0,0; 1 também ativa tela cheia\n");
         w.write("         //            Eventos 8 e 9 são posicionados em MID 0,0 independentemente de $CAM_MODE.\n");
-        w.write("         // $TRAVAR_VIT: diferente de 0 congela o oponente no estado 925\n");
+        w.write("         // $TRAVAR_VIT: diferente de 0 congela o oponente no estado 925 (sem avançar frame, sem se mover)\n");
         w.write("         // $FLAG: 0=nada | 1=PlayerState do atacante | 2=PlayerState do oponente se Life<=0\n");
         w.write("         //        3=scroll até o atacante | 4=desativa seguimento de câmera | 5=foca o oponente | 6=parede na borda\n");
         w.write("         //        7=oponente atravessa bordas | 8=atacante atravessa bordas | 9=ambos atravessam bordas\n");

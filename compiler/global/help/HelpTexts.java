@@ -420,12 +420,12 @@ final class HelpTexts {
         "| Campo | Índice | O que faz |\n" +
         "|---|---|---|\n" +
         "| `$ALVO` | 0 | De onde vem a animação: 0 = efeitos do sistema, 1 = DAC do próprio personagem, outro = objeto do cenário |\n" +
-        "| `$DURACAO` | 1 | Quantos frames o evento dura enquanto o personagem continua na mesma animação. 0 = até a animação do personagem mudar |\n" +
+        "| `$DURACAO` | 1 | Quantos frames (`$MPT_N`) da animação do atacante o evento dura, contados a partir do frame em que a hitbox tipo 20 apareceu. Não são frames de jogo: um `$MPT` com `$TIME: 10` conta como 1. 0 ou negativo = até a animação do atacante mudar. Em qualquer caso o evento acaba se a animação do atacante mudar |\n" +
         "| `$Z_LAYER` | 2 | Prioridade de desenho: 0 → 200 (eventos 8 e 9: 10); 1 → 17 (evento 8: 19, evento 9: 21); outro → 400. Para comparar: os personagens ficam entre 130 e 154 |\n" +
         "| `$ANIM_ID` | 3 | Animação com o personagem virado para a direita. 0 = o evento não desenha nada (mas ainda aplica `$TRAVAR_VIT` e `$FLAG`) |\n" +
         "| `$ANIM_FLIP` | 4 | Animação com o personagem virado para a esquerda |\n" +
         "| `$CAM_MODE` | 5 | 0 = segue o ponto da hitbox (e o zoom); 1 = efeito de tela cheia; outro = fixo no canto (0,0) |\n" +
-        "| `$TRAVAR_VIT` | 6 | Diferente de 0 = congela o oponente enquanto o evento dura |\n" +
+        "| `$TRAVAR_VIT` | 6 | Diferente de 0 = congela o oponente enquanto o evento dura: a animação dele não avança de frame e ele não se move. No fim do evento ele volta ao estado em que estava (uma reação de dano continua de onde parou). Um hit novo durante o congelamento tira o oponente dele |\n" +
         "| `$FLAG` | 7 | Efeito extra (tabela abaixo) |\n" +
         "\n" +
         "Valores de `$FLAG`:\n" +
