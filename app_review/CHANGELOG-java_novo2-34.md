@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 3126 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 3141 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -916,6 +916,23 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Modo contexto** (tocar num card): a prévia toca o golpe/ANO que usa (`AnoMoves.dataFor`, ou o golpe do campo) — só visual — e a **timeline edita o ANO aberto**: `AttackView.setContext` faz `currentAno()` devolver o ANO alvo e tira frame e ticks decorridos do **rastreio** dele na simulação do host (`BattleSim.traceAno`: lutador, links, projéteis, auras, cutscenes do atacante e agarrão; segue o mesmo objeto). Abre parado no 1º tick em que ele aparece; arrastar a timeline vai ao tick certo do host; a barra de progresso se estende até ele sumir e a faixa laranja marca o fim dele. Sem marcas SEQ/END; F-GHOST, POSE e SPEEDLINE desligados (aviso no topo). Cutscene só na ANIM_FLIP liga o VIRAR enquanto durar. Se o ANO não aparece na simulação (distância/altura atuais), avisa e a timeline fica no frame 0.
 - **Voltar**: no contexto a barra vira **"◀ VOLTAR PARA ANO N" | EDITAR NOS USOS**; voltar reabre o ANO sozinho no mesmo frame. Trocar de ANO pela lista também sai do contexto. Se o ANO mudou no contexto, ele entra nos ANOs pendentes do SALVAR do app (3.7b).
 - Testes: `AnoUsesTest` (13: link uma vez por host, flag 71 só a 1ª vez, cutscene ALVO 1 × effect, ANIM_FLIP virado, projétil, SEQ, triplo +1/+2, agarrado, ANIM_INICIAL, sem uso, sem CharData, origem, rótulos, dados reais), `ContextTraceTest` (14: link, aura 71, cutscene ALVO 1 e a FLIP que não aparece com o atacante à direita, o próprio ANO do golpe, projétil, ANO sem uso — tick inicial, frame e ticks decorridos). **Só compilados/revisados**: a grade (miniaturas, destaque, rolagem), a barra com dois botões, o modo contexto na timeline/prévia (arrastar, play, edições, voltar) e a navegação.
+
+### 3.8 Botão "CENA →" e zoom/câmera da cutscene igual ao jogo
+
+- **Botão**: o "⏮ CENA" do editor de cutscenes virou **"CENA →"** (mesma ação: pausa e vai ao primeiro tick em que a cena existe).
+- **O que o jogo faz** (conferido no `TCBManajer`):
+  - Hitbox **30/31** (CheckOptFlag, jogo:917-929, a cada tick): alvo do zoom em **pixels de tela** — W = largura do hit (%), duração = altura (ticks), T = ((240 − x)·W/100, (160 − y)·W/100), com (x, y) = posição de tela do objeto + o hit (espelhado pelo lado).
+  - A câmera (md 29, jogo:16817-17012) interpola T e W em ponto fixo de 1/128, em passos inteiros `((alvo<<7) − atual)/i`, refazendo o alvo a cada tick. W 100 mantém o alvo; sem a hitbox volta a 100 % em 12 ticks; lutadores longe dão 90 % em 16 ticks; a trava dos especiais dá 200 % em 4 ticks no dono (x ±40, y − 48), refeito a cada tick.
+  - A matriz `X = 240 + fGS·W/100·(x − 240) + Tx` vale para as prioridades de 9 (ou lutador − 3 na trava) até 299 (jogo:1098-1100, 17016-17060). Por isso, na cutscene: **Fundo e Meio são ampliados e deslocados junto com o cenário** (mesmo presos ao canto da tela); **a Frente nunca** (fica 1:1); na trava o Fundo também escapa. O efeito de hit 328 também fica fora do zoom.
+  - A cena presa ao canto não rola nem treme (o tremor das flags 3-5 só mexe no y da câmera); a do mundo rola junto.
+  - O "zoom de foco" (`iZoomBase`, md 995) que a task da cutscene também consulta é **código morto** nesta versão: `HitFocusTarget` nunca recebe valor.
+- **O que mudou no app**:
+  - `BattleSim.zoomTick` agora é o md 29: estado em T e W de tela, ponto fixo <<7, mesmos passos inteiros e alvos recalculados a cada tick (antes o centro era guardado no mundo e interpolado à parte, e o alvo da trava ficava fixo no início).
+  - `GameScreen.matrix` recebe T no lugar do centro.
+  - `zoomRect()` (o retângulo amarelo) sai da matriz inversa.
+  - **NORMAL e CHAR**: o que fica fora da faixa da câmera (cutscene Frente, Fundo na trava, efeito 328) passa a ser desenhado dentro do retângulo amarelo, com escala 1/zoom (`BattleSim.worldViewXform`, aplicado em `AttackView.beginKey`) — do tamanho e no lugar em que o jogo o mostra sobre o cenário ampliado. Sem zoom nada muda. O modo TELA já aplicava a matriz por camada e agora usa o zoom do md 29.
+  - Na prévia só-cutscene (CHAR desligado), uma nota explica que ali a câmera é parada e como o zoom afeta cada camada.
+- Testes: `ActionZoomTest` (15: passos inteiros do md 29, chegada exata em W e T, retângulo amarelo, volta a 100 % em 12 ticks, W 100 e FRAMES 0 sem efeito, 90 % de longe, Frente dentro do retângulo com escala 0,5, Meio/Fundo sem mudança, TELA centrando o hit), `GameScreenTest` e `CinematicZoomTest` ajustados à matriz com T (os mesmos resultados de antes). **Só compilados/revisados**: o desenho em NORMAL/CHAR/TELA, o botão e a nota.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).

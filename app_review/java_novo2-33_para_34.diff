@@ -506,8 +506,8 @@ diff -ruN -x fixtures a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-08 10:58:36.426227727 +0000
-@@ -0,0 +1,859 @@
++++ b/AiHelpDoc.java	2026-11-08 15:22:57.394261619 +0000
+@@ -0,0 +1,861 @@
 +package com.zue.attackeditor;
 +
 +/** Texto fixo do TBRHelp.md (gerado a partir de aihelp_src/*.md); os {{MARCADORES}} sao preenchidos por {@link AiHelp}. Nao editar a mao. */
@@ -672,7 +672,7 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 2 | **Hitbox** (attack area), `[x,y,w,h]`. Uses the frame's `$OPT` (damage, reaction). |\n" +
 +        "| 3 / 4 / 5 | Screen shake light / medium / strong. |\n" +
 +        "| 10–17 | Dust/smoke effect from the shared `effect` pack (effect ANO = 50 + flag − 10) at offset (x, y). |\n" +
-+        "| 20 | **Cutscene** trigger (x, y, event). The third value is the event = row of the character's HDAT 13 table (`$HDAT_13` > `$ROTEIRO_CUTSCENE` > `$EVT_nn: { $ALVO, $DURACAO, $Z_LAYER, $ANIM_ID, $ANIM_FLIP, $CAM_MODE, $TRAVAR_VIT, $FLAG }`: ALVO 0 = effect.pac, 1 = the player's char pack, other = bobj; DURACAO 0/negative = until the ANO changes, N = frame limit; Z_LAYER 0/1/other; CAM_MODE 0 = world, else screen origin (0,0); TRAVAR_VIT != 0 freezes the opponent; FLAG 0-15 = extra effect: 3 camera to attacker, 5 focus opponent, 10-15 teleports...). The app has a full event editor (the `EDITAR CUTSCENE` button of the flag 20 hit drawer on the timeline; it is the only way in): the character's whole move/ANO on top with play (CHAR button; off = only the cutscene) and the ANO that uses the event, an event grid (switch, NOVO, DUPLICAR, COPIAR, COLAR, ZERAR — events are never deleted, only cleared), the ANIM screen (ANIM_ID and ANIM_FLIP_ID side by side on the game screen; per slot ESCOLHER = PAC first, then its ANO grid, and EDITAR ANO = inline zoom/position editor that adds the same difference to every frame of that ANO, or only the shown frame, links untouched, character PAC only; everything is a draft until SALVAR, which shows both animations together before applying), the hit X/Y and DURAÇÃO side by side (≤ 0 = until the ANO ends, N = N MPTs/frames), a progress bar under the CHAR preview that turns red where the cutscene is alive (⏮ CENA jumps to its first tick), TRAVAR OPONENTE (a switch), CAMADA (Fundo/Meio/Frente = Z_LAYER 1/0/2, or 0/1/2 in events 8 and 9), MODO DE CÂMERA as switches (\"Canto da tela\" off = CAM_MODE 0 follows the world, on = 2; with \"Tela cheia\" also on = 1), the FLAG in groups as switches (one on at a time; turning the one that is on off = FLAG 0); fields the game ignores or fixes in that mode (e.g. DURAÇÃO with FLAG 3, X/Y with the camera on the screen corner) are dimmed and cannot change; and it saves the `$EVT_nn` lines into `000.bin.txt`. |\n" +
++        "| 20 | **Cutscene** trigger (x, y, event). The third value is the event = row of the character's HDAT 13 table (`$HDAT_13` > `$ROTEIRO_CUTSCENE` > `$EVT_nn: { $ALVO, $DURACAO, $Z_LAYER, $ANIM_ID, $ANIM_FLIP, $CAM_MODE, $TRAVAR_VIT, $FLAG }`: ALVO 0 = effect.pac, 1 = the player's char pack, other = bobj; DURACAO 0/negative = until the ANO changes, N = frame limit; Z_LAYER 0/1/other; CAM_MODE 0 = world, else screen origin (0,0); TRAVAR_VIT != 0 freezes the opponent; FLAG 0-15 = extra effect: 3 camera to attacker, 5 focus opponent, 10-15 teleports...). The app has a full event editor (the `EDITAR CUTSCENE` button of the flag 20 hit drawer on the timeline; it is the only way in): the character's whole move/ANO on top with play (CHAR button; off = only the cutscene) and the ANO that uses the event, an event grid (switch, NOVO, DUPLICAR, COPIAR, COLAR, ZERAR — events are never deleted, only cleared), the ANIM screen (ANIM_ID and ANIM_FLIP_ID side by side on the game screen; per slot ESCOLHER = PAC first, then its ANO grid, and EDITAR ANO = inline zoom/position editor that adds the same difference to every frame of that ANO, or only the shown frame, links untouched, character PAC only; everything is a draft until SALVAR, which shows both animations together before applying), the hit X/Y and DURAÇÃO side by side (≤ 0 = until the ANO ends, N = N MPTs/frames), a progress bar under the CHAR preview that turns red where the cutscene is alive (`CENA →` jumps to its first tick), TRAVAR OPONENTE (a switch), CAMADA (Fundo/Meio/Frente = Z_LAYER 1/0/2, or 0/1/2 in events 8 and 9), MODO DE CÂMERA as switches (\"Canto da tela\" off = CAM_MODE 0 follows the world, on = 2; with \"Tela cheia\" also on = 1), the FLAG in groups as switches (one on at a time; turning the one that is on off = FLAG 0); fields the game ignores or fixes in that mode (e.g. DURAÇÃO with FLAG 3, X/Y with the camera on the screen corner) are dimmed and cannot change; and it saves the `$EVT_nn` lines into `000.bin.txt`. |\n" +
 +        "| 26 | Opponent cannot defend. |\n" +
 +        "| 27 | Prevent cancelling. |\n" +
 +        "| 28 | Damage ignores attack/defense stats. |\n" +
@@ -891,13 +891,15 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Back bar and `EDITAR NOS USOS` (edit in uses).** When an ANO is opened from another one (✎ EDIT of a projectile/effect/SEQ/landing, `EDITAR ANO` in the cutscene editor), the top bar shows `◀ VOLTAR AO …` and, beside it, `EDITAR NOS USOS`: a grid with a thumbnail of every ANO that uses the open ANO (links, animation flags 71–125, flag 20 cutscenes with ALVO 1, projectile/sub-projectile fields, move fields such as SEQ/END/landing/ANIM_AO_ACERTAR/grabbed). The ANO the user came from is highlighted (`ORIGEM`); after changing the event inside the cutscene editor nothing is highlighted. Tapping a card opens the ANO **in context**: the preview plays the host ANO/move (visual only) and the timeline edits the open ANO starting at the tick where it appears; F-GHOST, POSE, SPEEDLINE and transition marks are off there. The bar becomes `◀ VOLTAR PARA ANO N` | `EDITAR NOS USOS`; context edits are included in `SALVAR`.\n" +
 +        "\n" +
++        "",
++        "**Camera zoom and cutscenes (game code, md 29).** Hit flags 30/31 set, every tick, a zoom target in SCREEN pixels: zoom W = hit width (%), duration = hit height (ticks), translation `T = ((240 − x)·W/100, (160 − y)·W/100)` where (x, y) is the object's screen position + the hit offset (mirrored with the side). The camera task interpolates T and W linearly in 1/128 fixed point over that many ticks; W = 100 keeps the current target; when the hit is gone it returns to 100 % in 12 ticks; fighters more than 320 px apart (or 200 px vertically) zoom out to 90 % in 16 ticks; the special-move lock zooms 200 % in 4 ticks on its owner (x ± 40 outward, y − 48), re-targeted every tick. The matrix `X = 240 + fGS·W/100·(x − 240) + Tx` applies to draw keys from 9 (or the lower fighter key − 3 during the lock / ANOs 61, 62, 51, 260) up to 299. So cutscene layers Back (17/19/21/10) and Middle (200) are zoomed and moved with the stage and fighters — even when stuck to the screen corner — while Front (400) and the hit effect 328 are never zoomed (Back escapes too during the lock). A screen-corner cutscene (CAM_MODE ≠ 0) does not scroll or shake with the camera (shake only moves the camera Y); a world cutscene scrolls with it. The \"focus zoom\" (`iZoomBase`, md 995) that the cutscene task also checks is dead code in this game version (`HitFocusTarget` is never set). The app follows all of this: TELA draws the matrix per layer; NORMAL/CHAR show the yellow rectangle and draw the layers outside the camera range inside it.\n" +
++        "\n" +
 +        "## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)\n" +
 +        "\n" +
 +        "Use this only when the user asked you to **generate or change an attack**. Deliver **`.txt` content** — never binary, and never \"paste into `▲ DADOS / EDITAR`\". For questions about the app (Mode A) do not use this contract: answer with app steps.\n" +
 +        "\n" +
 +        "For **each** deliverable use this exact pattern:\n" +
 +        "\n" +
-+        "",
 +        "1. One line telling **what it is and which file it goes into**. Example: *\"Move 2 (`$GOLPE_2`) → replaces the `$GOLPE_2` block in `000.bin.txt`.\"* When the change is big, return the **whole file** instead of blocks.\n" +
 +        "2. A fenced code block containing **only the data**, whole block, never truncated and never with `...` or \"same as before\". First line inside the block is a comment naming the target:\n" +
 +        "   ````\n" +
@@ -1023,9 +1025,9 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| `optdata` | `ObjReq.OptData[4]` |\n" +
 +        "| `wOptFlag`, `wActFlag`, `wObjFlag` | fields of `ObjReq` |\n" +
 +        "\n" +
++        "",
 +        "**Per-tick order [CODE].** `Run` iterates the task list in ascending priority (ties in creation order): pads (12657/12660) → input md 946 (13056+p) → macro/CPU md 947/951 (13184+) → projectiles md 970/971 (13312+p) → **fighters (13569+p)** → hit effects md 965 (13598) → shadows/auras (13696+) → **hit detect md 935 (13728)** → **cutscene md 996 (13729)** → camera md 19 (13745) → HUD (13808+). So within a tick: input → projectiles → fighters (new patterns load, hit boxes become armed) → hit detect (reads those boxes) → camera. A reaction chosen by `DamageChange` in md 935 starts running on the defender's **next** tick. A task created during the pass with a lower priority than the running one first runs on the next tick (a projectile spawned by a fighter advances one tick later). With `bTaskSkip` (pause) only priorities `0x10xx` run; with `iTaskSleep != 0` or `bActionStop` all `0x3xxx` tasks (12288–16383: fighters, projectiles, hit detect, camera) are skipped (hit-stop of the whole scene, cutscene freezes).\n" +
 +        "\n" +
-+        "",
 +        "**Ending, interrupting, handing over [CODE].**\n" +
 +        "- *Normal end*: md 883 (jogo:21950) when `wActFlag & 4 == 0` and the ANO finished (`wActFlag & 2`) → md 864 (`AttackEnd`). Repeat-fire: if `HDAT4[30] > 0` and SpecialType is 0/3/6 and the ANO is not 42, it plays ANO 42 and md 882; repeat while `SpecialBulletNumber < HDAT4[30]`, `wOptFlag & 512` and `JoyTrig & 16640` swap ANO 40/41 (jogo:22012-22028). Airborne when the ANO ends: ANO 89 and md 886. Landing (`Y > ground && iYSpeed > 0`): plays the HDAT 4 landing ANO if non-zero, else `AttackEnd` + ANO 13 + md 893; SE 12 (jogo:21958-21995).\n" +
 +        "- *SEQ/END chaining (md 882, jogo:21868-21946)*: the alternate hit ANO is `DamageHitActNo[opp]` when `PlayerState & 8388608` (hit flag 38), else `HDAT4[byte 32]`, else `DamageHitActNo[opp]`. Only if the opponent is in md 876/877: `wFlag & 4096` (set by a projectile hit of the same SpecialType, jogo:24560) switches to the alternate ANO; `wFlag & 1` arms `_work[10] = 1`; if the current ANO equals the hit ANO and `_work[10] == 1` then: `ano == SEQ && END != 0` → `_SetAct(END)`; else `SEQ != 0 && ano != SEQ && ano != END` → `_SetAct(SEQ)` (and, when `END != 0`, `_work[10] = 0` re-arms). The pair is ground (bytes 10/12) when `PlayerYPos == 15728640`, else air (bytes 14/16).\n" +
@@ -1109,13 +1111,13 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**Invulnerability, dodge, teleport, throws, guard [CODE].** Hits are skipped when the defender's `wObjFlag & 8` (set on alternating frames during md 876 hit-stop, md 898/899 invulnerable pose and the ThrowDamage path, which is dead code), when either life ≤ 0, in md 923/926/927/928/911, and obviously when the defender's current frame has no type-1 box (an invulnerable animation is simply one without hurtboxes). Evades (SpecialType 18/19) vanish via md 865. Hit flags 39/40 teleport instantly (`CheckOptFlag`). Guard: see 15.4. Throws are ordinary hits plus the \"grabbed overlay\" objects (md 939–941) that hit through the projectile path (jogo:23424).\n" +
 +        "\n" +
++        "",
 +        "**Walls and screen [CODE].** Variables: `iBackXPos` (camera left in world px·65536), `iBaseXPos` (base position: 0 = left world edge, 62849024 = right), `iBackXOffset` (camera offset used by cutscenes), `DamageWall` (a reaction hit the wall), `bForceWall` (forces wall detection anywhere; reset every tick in md 935 and set by cutscene kind 6). Details of the wall test and the WALL/COMP behaviour are in 15.5 and 15.6.\n" +
 +        "\n" +
 +        "### 15.4 Damage and life loss (questions 25–33)\n" +
 +        "\n" +
 +        "Source of truth: the game class `TCBManajer` (file `TCBManajer.java`, \"jogo:NNNN\" = line). Tags: **[CODE]** read in the game code, **[INFERRED]** deduced, **[UNKNOWN]** not determinable from the code. The game is strictly **1 vs 1**: \"several targets\" does not exist.\n" +
 +        "\n" +
-+        "",
 +        "**Call chain [CODE].** The hit-resolution task is md 935 (`case 935:` jogo:23194), run every tick. Damage and reaction are read from the attacker's `ObjReq` at hit time: `OptData[0]` = damage, `OptData[1]` = OPT1 (loaded per animation pattern in `_ActReqMain`, jogo:31993-32014; a pattern with no `$OPT` block gets `wOptFlag = 0` and `OptData[0..3] = 0`, so a hitbox frame without `$OPT` deals **0 damage with OPT1 = 0** — group 0, reaction 0 — and still counts as a hit). `DamageChange(gw, atk, tgt, bApply, bBody, atkAno, dmgByte, opt1, optFlag)` (jogo:3466) is called for projectiles and grab follow-up objects at jogo:23424 and for body hits at jogo:23464. If both players hit each other in the same tick, OPT1 is **forced to 0 for both** (jogo:23457-23459: a trade always uses reaction 0 / effect-sound group 0). The body-hit loop runs victim 0 first then victim 1; if player 1's hit KOs player 0, player 0's own hit is skipped by the early-out \"attacker life ≤ 0\" at jogo:3478-3480, so **index 1 wins a double KO**.\n" +
 +        "\n" +
 +        "**`$OPT` bytes [CODE].** `d0` = base damage 0..255 (jogo:3496; also the heal amount of hit flag 34 at jogo:2313 and the self-damage amount of flag 32 at jogo:23261). `d1` = OPT1 = `group*50+index` (jogo:3518-3519). `d2` ≠ 0 turns on the per-pattern tween of rotation/alpha/zoom/offset (`_Hokan`, jogo:32108; visual only). `d3` is written and **never read**. OPT1 values **250..255 index `HitEffectActNo[5]` out of range → the game crashes** (jogo:3529); the editor limit is 249.\n" +
@@ -1182,11 +1184,11 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "- *Reaction (md 876/877)*: on the entry tick speeds are loaded and the position moves with them; on later ticks (hitstop = 0) it **accelerates first** (`speed += accel`) **then moves** — the opposite of animation scripts. **X friction**: after accelerating X, if the sign flipped, or the old value was ≤ 0 and the new is > 0, or the new is 0 → `DamageXSpeed = 0` and `DamageXAccel = 0` (jogo:21075-21078), so X cannot accelerate from rest. Y has no clamp. `+speed` moves in the facing direction (flag 16 → `X -= speed<<9`, jogo:21082-21088); defenders face the attacker, so knock-back uses negative speeds unless the reaction ANO is negative (flipped).\n" +
 +        "- *Per-tick sequence for a defender*: reaction speed update → reaction move → `PlayerTail` (jogo:29714-29899): applies `DamageMove`, `_SetXY`, `_ActReq` (animation script movement) and writes `PlayerXPos` back. So the **reaction speed and the animation-script speed both apply in the same tick**; then `CheckOptFlag` runs. `DamageMove` (guard push) moves `X ± DamageMove<<15` then `DamageMove -= 2` (floor 0).\n" +
 +        "\n" +
++        "",
 +        "**Ground, air, landing [CODE].** Airborne = `PlayerYPos != 15728640` and `PlayerAir`. Attack landing: md 883 checks `Y > ground && iYSpeed > 0` → SE 12, `Y = ground`, then the HDAT 4 landing ANO (`POUSO_AO_ERRAR` / `POUSO_AO_ACERTAR`) or ANO 13 and md 893 (jogo:21958-21995). Free air movement in md 886 snaps to the ground and enters md 887 (jogo:22141-22147). Falling after an airborne animation ends: ANO 89 (fixed).\n" +
 +        "\n" +
 +        "**Screen and walls [CODE].** Camera task md 19: clamp `X ∈ [iBackXPos+hw, iBackXPos+31391744-hw]` when `iBackXOffset == 0`, no scroll target, not md 911..915 and not `ScreenEdgeOff` (jogo:15537-15562; `ScreenEdgeOff` is set by cutscene kinds 7/8/9). World-edge test uses `iBaseXPos == 0` or `62849024`. Grounded players are kept apart by `(w0+w1)/2` (`ATK_FLAGS` bit 16 \"GHOST\" disables that separation near the floor). Corner push-back: a player pushed into the edge while the opponent is attacking pushes the opponent back by 80 % of the penetration (jogo:15159-15171).\n" +
 +        "\n" +
-+        "",
 +        "**Bounce, ricochet, continuous fall [CODE].** There is **no automatic velocity reflection**. A bounce is a new reaction row with its own speeds: gamedata type 12 on a WALL 2/3 landing, the `comp` types, type 13 at the end of a table, type 2 / duration 255 timeouts.\n" +
 +        "\n" +
 +        "**Facing [CODE].** `wObjFlag & 16` = facing left (set for player 1 at start; bit 32 flips Y). It sets the movement sign of animation scripts, the hitbox mirror (`(wActFlag & 48) ^ (wObjFlag & 48)`, jogo:2058-2096) and projectile/effect spawn sides. `DamageChange` turns the defender toward the attacker (unless it is within half-width of the matching screen edge and facing the wall); `StartPlayerAttack` turns the attacker toward the opponent (jogo:31625-31634). A negative reaction ANO flips again.\n" +
@@ -1246,6 +1248,7 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "**(b) Hit-box `type` numbers inside a frame (`$HT_i: {$FLAG: n}`) [CODE: `CheckOptFlag` jogo:2112-2350, `_ActReqMain`, `PlayerTail`].** Processed markers are set to −1 after use, so they fire **once per pattern**; the per-frame state bits are cleared each tick (`PlayerState &= -50069508`) and re-applied from the current pattern.\n" +
 +        "\n" +
++        "",
 +        "| type | Effect / parameters |\n" +
 +        "|---|---|\n" +
 +        "| 0 | projectile spawn (x, y offset) — spawns once per pattern |\n" +
@@ -1269,7 +1272,6 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "| 71–125 | character's own effect/aura ANO 201 + n − 71, follows the owner while present |\n" +
 +        "| other | ignored **[CODE: no handler found]**; hit numbers 6–9, 18–19, 21–25, 29, 35–36 have no processing in `CheckOptFlag` |\n" +
 +        "\n" +
-+        "",
 +        "**(c) `wOptFlag` bits (the `$OPT` `$FLAG` word) [CODE].** `256` survives the mask, **no reader found** [UNKNOWN] · `512` chain/cancel/repeat/grab window (read by md 882/883: advancing to `ano+1` on grab, repeat-fire, cancel timing) · `1024` `PlayerState |= 1` (hide background, suppress wall detection; blackout/super marker) · `2048` wall-impact effect (needs `DamageWall`) · `4096·t` (t 1..15) dust/smoke selector. After each pass `wOptFlag &= 1792` so 2048 and the dust bits fire once, 256/512/1024 persist for the pattern.\n" +
 +        "\n" +
 +        "**(d) `PlayerState` bits (internal) [CODE].** 1 = background/blackout, 2 = unguardable, 4…131072 = always-set per-slot gates, 262144 raw damage, 524288 no cancel, 1048576 self-damage, 2097152 unused, 4194304 no combo, 8388608 chain override, 16777216 hidden/KO hold, 33554432 cutscene alive.\n" +
@@ -1453,7 +1455,7 @@ diff -ruN -x fixtures a/AiHelpShare.java b/AiHelpShare.java
 +}
 diff -ruN -x fixtures a/AnimPreview.java b/AnimPreview.java
 --- a/AnimPreview.java	2026-10-20 10:46:55.000000000 +0000
-+++ b/AnimPreview.java	2026-11-08 10:41:05.339921557 +0000
++++ b/AnimPreview.java	2026-11-08 15:19:12.648234976 +0000
 @@ -29,6 +29,9 @@
      private long frozenAt;
      private static final long HOLD_MS = 1000;
@@ -1525,7 +1527,7 @@ diff -ruN -x fixtures a/AnimPreview.java b/AnimPreview.java
 +     */
 +    void setGameScreen(GameScreen gs, int key, boolean screenLocked, int ax, int ay) {
 +        gscreen = gs;
-+        gmat = gs == null ? null : gs.matrix(key, GameScreen.CAMERA_NORMAL, 100f, 240f, 160f);
++        gmat = gs == null ? null : gs.matrix(key, GameScreen.CAMERA_NORMAL, 100f, 0f, 0f);
 +        gWorld = !screenLocked;
 +        gAnchorX = screenLocked ? 0 : ax;
 +        gAnchorY = screenLocked ? 0 : ay;
@@ -3692,7 +3694,7 @@ diff -ruN -x fixtures a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-11-08 10:53:46.399883395 +0000
++++ b/AttackView.java	2026-11-08 15:19:32.931766132 +0000
 @@ -17,9 +17,8 @@
  
      private static final float TICK_MS = 1000f / AttackSim.TICKS_PER_SECOND;
@@ -4143,7 +4145,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          c.drawRect(x - w / 2f, y - h, x + w / 2f, y, bodyPaint);
          c.drawLine(x - 6 * u, y, x + 6 * u, y, bodyPaint);
          c.drawLine(x, y - 6 * u, x, y + 6 * u, bodyPaint);
-@@ -612,26 +825,34 @@
+@@ -612,26 +825,37 @@
  
      public int getCenterMode() { return centerMode; }
  
@@ -4161,7 +4163,10 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +    /** save() + (no modo TELA) a matriz da camera do jogo para um objeto de chave {@code key} da simulacao {@code s}. */
 +    private void beginKey(Canvas c, BattleSim s, int key) {
 +        c.save();
-+        if (gameMode() && s != null) GameScreenDraw.apply(c, s, GameScreenDraw.forContext(getContext()), key);
++        if (s == null) return;
++        if (gameMode()) { GameScreenDraw.apply(c, s, GameScreenDraw.forContext(getContext()), key); return; }
++        float[] w = s.worldViewXform(key);              // NORMAL/CHAR com zoom: o que fica fora da faixa da camera (Frente, efeito 328...) vai para o retangulo amarelo
++        if (w != null) { c.translate(w[2], w[3]); c.scale(w[0], w[1]); }
 +    }
 +
      /** Modos automaticos: ajusta zoom e posicao a cada desenho. */
@@ -4194,7 +4199,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          float s = Math.min(getWidth() / (x1 - x0), getHeight() / (y1 - y0));
          scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
          originX = getWidth() * 0.5f - (x0 + x1) * 0.5f * scale;
-@@ -682,6 +903,7 @@
+@@ -682,6 +906,7 @@
  
      /** Indice do ANO mostrado (alvo da edicao) ou -1. */
      public int currentAnoIndex() {
@@ -4202,7 +4207,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
          return r == null ? -1 : r.ano.index;
      }
-@@ -698,6 +920,10 @@
+@@ -698,6 +923,10 @@
      // ---- API da timeline ----
  
      public Ano currentAno() {
@@ -4213,7 +4218,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
          ObjModel.setCurAno(r == null ? -1 : r.ano.index);
          return r == null ? null : r.ano;
-@@ -709,12 +935,14 @@
+@@ -709,12 +938,14 @@
      }
  
      public int currentPat() {
@@ -4228,7 +4233,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
          if (r == null || r.pat < 0 || r.mpts.length == 0) return 0;
          if (r.pat >= r.mpts.length) {                  // ANO acabou (so fisica depois): trava no fim do ultimo frame
-@@ -726,9 +954,16 @@
+@@ -726,9 +957,16 @@
      }
  
  
@@ -4245,7 +4250,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          int t = sim.firstTickOf(currentAnoIndex(), pat, Math.max(length, 600));
          if (t < 0) t = currentAno() == null ? -1 : transitionTick(currentAno()) - 1;
          if (t < 0) return false;
-@@ -746,6 +981,34 @@
+@@ -746,6 +984,34 @@
      private BattleSim ghostSim;
      private String ghostKey = "";
  
@@ -4280,7 +4285,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -769,8 +1032,24 @@
+@@ -769,8 +1035,24 @@
          return tickTable;
      }
  
@@ -4305,7 +4310,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          Ano a = currentAno();
          if (sim == null || a == null) return null;
          int target = currentPat() + (ghostMode == 1 ? 1 : -1);
-@@ -785,19 +1064,201 @@
+@@ -785,19 +1067,201 @@
          return ghostSim;
      }
  
@@ -4508,7 +4513,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Tick em que a primeira troca real de ANO sai desta ANO, ou -1. */
      private int transitionTick(Ano a) {
          if (sim == null) return -1;
-@@ -820,7 +1281,7 @@
+@@ -820,7 +1284,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -4517,7 +4522,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1296,29 @@
+@@ -835,13 +1299,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -4550,7 +4555,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1339,11 @@
+@@ -862,10 +1342,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -4563,7 +4568,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -883,6 +1361,7 @@
+@@ -883,6 +1364,7 @@
          if (data == null) return null;
          if (pack == 0) return data.effects == null ? null : data.effects.dac;
          if (pack == 1) return data.charf == null ? null : data.charf.dac;
@@ -4571,7 +4576,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          return data.attacker.dac;
      }
  
-@@ -890,6 +1369,7 @@
+@@ -890,6 +1372,7 @@
          if (data == null) return null;
          if (pack == 0) return data.effects == null ? null : data.effects.sprites;
          if (pack == 1) return data.charf == null ? null : data.charf.sprites;
@@ -4579,7 +4584,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -903,7 +1383,7 @@
+@@ -903,7 +1386,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -4588,7 +4593,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -911,6 +1391,8 @@
+@@ -911,6 +1394,8 @@
      // ---- reacoes (previa e edicao) ----
  
      public Dac opponentDac() { return data == null ? null : data.opponent.dac; }
@@ -4597,7 +4602,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public SpriteCache opponentSprites() { return data == null ? null : data.opponent.sprites; }
  
      /** Tabela de reacao do char do atacante (tipo 0..19 = indice 30..49 do OPT 1). */
-@@ -927,6 +1409,76 @@
+@@ -927,6 +1412,76 @@
      }
  
      /** Nova simulacao so para previa de reacao: o defensor recebe o OPT 1 (use BattleSim.forceHit). */
@@ -4674,7 +4679,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public BattleSim newReactionSim() {
          if (data == null) return null;
          BattleSim s = new BattleSim(data.attacker.dac, data.attacker.data, CharData.blank(0), false,
-@@ -942,18 +1494,45 @@
+@@ -942,18 +1497,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -4722,7 +4727,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1577,7 @@
+@@ -998,7 +1580,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -4731,7 +4736,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1589,48 @@
+@@ -1010,39 +1592,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -4803,7 +4808,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1062,14 +1650,15 @@
+@@ -1062,14 +1653,15 @@
      /** Hits que conectam no ANO atual e disparariam ANIM_SEQ / ANIM_END (cache; recalcula so quando algo muda). */
      public java.util.List<SeqMark> sequenceMarks() {
          Ano a = sim == null ? null : currentAno();
@@ -4821,7 +4826,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1706,14 @@
+@@ -1117,6 +1709,14 @@
                  break;
              }
          }
@@ -4836,7 +4841,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1722,65 @@
+@@ -1125,20 +1725,65 @@
          return out;
      }
  
@@ -4904,7 +4909,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1811,7 @@
+@@ -1169,7 +1814,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -4913,7 +4918,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1823,16 @@
+@@ -1181,16 +1826,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -4933,7 +4938,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1843,15 @@
+@@ -1201,6 +1846,15 @@
          return null;
      }
  
@@ -4949,7 +4954,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1885,16 @@
+@@ -1234,6 +1888,16 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -4966,7 +4971,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1241,7 +1902,9 @@
+@@ -1241,7 +1905,9 @@
                      if (l.owner == BattleSim.OWNER_PROJECTILE && !ghostProj) continue;
                      if (l.owner == BattleSim.OWNER_EFFECT && !ghostFx) continue;
                  }
@@ -4976,7 +4981,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              }
              if (ghostMode != 0) {
                  BattleSim g = ghost();
-@@ -1253,24 +1916,30 @@
+@@ -1253,24 +1919,30 @@
                          boolean ch = l.owner == BattleSim.OWNER_ATTACKER;
                          boolean ok = ch || (!hideEff && (l.owner == BattleSim.OWNER_PROJECTILE ? ghostProj
                                  : l.owner == BattleSim.OWNER_EFFECT && ghostFx));
@@ -5011,7 +5016,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              c.restore();
              drawLifeBars(c);
              drawNotice(c);
-@@ -1291,11 +1960,11 @@
+@@ -1291,11 +1963,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -5025,7 +5030,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,41 +1983,23 @@
+@@ -1314,41 +1986,23 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -5071,7 +5076,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1374,26 +2025,7 @@
+@@ -1374,26 +2028,7 @@
      }
  
      private void drawGrid(Canvas c) {
@@ -5099,7 +5104,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      }
  
      private void notifyUi() {
-@@ -1404,8 +2036,53 @@
+@@ -1404,8 +2039,53 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -7074,7 +7079,7 @@ diff -ruN -x fixtures a/AttackView.java.pre_sl b/AttackView.java.pre_sl
 +}
 diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-11-08 10:51:39.836996600 +0000
++++ b/BattleSim.java	2026-11-08 15:19:24.603335923 +0000
 @@ -25,10 +25,22 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -7189,9 +7194,8 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +        AttackSim.Obj r = s.root();
 +        if (r != null) { f.x = r.x; f.y = r.y; }
 +        return f;
-     }
- 
--    /** Cutscene da flag 20 (task md 996). */
++    }
++
 +    /** md 966: _ActReq e so depois _SetXY: o efeito nao sai do lugar, qualquer que seja a velocidade do ANO. */
 +    private static void stepFx(Fx f) {
 +        f.sim.step(false);
@@ -7279,8 +7283,9 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +        inFxLoop = false;
 +        if (!killSmoke.isEmpty()) { fxs.removeAll(killSmoke); killSmoke.clear(); }
 +        if (!pendingSmoke.isEmpty()) { fxs.addAll(pendingSmoke); pendingSmoke.clear(); }
-+    }
-+
+     }
+ 
+-    /** Cutscene da flag 20 (task md 996). */
 +    /** Cutscene da flag 20 (task md 996, prio 13729: roda depois dos lutadores/projeteis e do hit, antes da camera). */
      private static final class Cut {
          AttackSim sim;
@@ -7532,7 +7537,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +        camYFix = 0;
 +        camYOff = 0;
 +        dXs = dYs = dXa = dYa = 0;
-+        zCurX = zCurY = zTgtX = zTgtY = zDW = zDX = zDY = 0f;
++        zoomReset();
 +        transKind = -1;
 +        camTgt = -1;
 +        scrollTarget = -1;
@@ -7555,7 +7560,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          cineLeft = 0;
  
          oppX = (atkLeft ? -distancePx : distancePx) * PX;
-@@ -295,18 +597,28 @@
+@@ -295,18 +597,23 @@
          setOppAct(0);
  
          // animacao do projetil escolhida no inicio do golpe (altura relativa ao oponente)
@@ -7574,11 +7579,6 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          airborne = heightPx > 0;
          if (cinematic && hasCinematic()) {
              cineLeft = 122;                         // md 923 (1 tick) + TLoop 120 do md 926 + 927/928
-+            AttackSim.Obj co = atk.root();
-+            if (co != null) {
-+                cineZoomX = co.x / 65536f + (co.x > oppX ? 40f : -40f);
-+                cineZoomY = co.y / 65536f - 48f;
-+            }
 +            stunned[1] = true;                      // md 923: o oponente vai para md 925 (a task 924 solta depois)
              pushRaw(9);                             // PushSE(10) -> se_9
              if (fxDac != null && atk.root() != null) {
@@ -7589,7 +7589,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  if (f.sim.root() != null) fxs.add(f);
              }
          }
-@@ -314,16 +626,25 @@
+@@ -314,16 +621,24 @@
          consumeSe(atk, 0);
          consumeSe(opp, 1);
          updateAuras();
@@ -7611,11 +7611,10 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +    /** Zoom da camera na trava (md 29, iCameraLock 0/1): 200 % em 4 ticks, centrado no dono (x +-40 para o lado de fora, y - 48); volta a 100 % em 12 ticks. */
 +    static final float CINE_ZOOM = 200f;
 +    static final int CINE_ZOOM_TICKS = 4;
-+    private float cineZoomX, cineZoomY;
  
      public void setSpecialType(int t) {
          // modo ANO (golpe generico): o ANO inicial de uma linha 9-12 do HDAT 4 tambem ativa a trava
-@@ -341,6 +662,8 @@
+@@ -341,6 +656,8 @@
      public int specialTypeValue() { return specialType; }
      public boolean hasCinematic() { return specialType >= 9 && specialType <= 12; }
      public boolean cinematicActive() { return cineLeft > 0; }
@@ -7624,7 +7623,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
  
      private int doneSince = -1;
  
-@@ -360,29 +683,40 @@
+@@ -360,29 +677,40 @@
  
      private void stepImpl() {
          ticks++;
@@ -7671,7 +7670,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  idleMode = true;
                  lastSerial = -1;
                  spawnedSerial = -1;
-@@ -390,43 +724,93 @@
+@@ -390,43 +718,93 @@
                  atkFrozen = false;
              }
          }
@@ -7783,7 +7782,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private boolean looping;
-@@ -442,6 +826,7 @@
+@@ -442,6 +820,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, move, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -7791,7 +7790,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          return s;
      }
-@@ -464,6 +849,27 @@
+@@ -464,6 +843,27 @@
          return -1;
      }
  
@@ -7819,7 +7818,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      /** Primeiro tick de cada frame (pat) da ANO {@code anoIdx}, numa unica passada; -1 = nunca aparece. */
      public int[] firstTicks(int anoIdx, int frames, int max) {
          int[] out = new int[frames];
-@@ -477,6 +883,88 @@
+@@ -477,6 +877,88 @@
          return out;
      }
  
@@ -7908,7 +7907,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      /** Ticks ate o ANO do atacante terminar (ignora o tempo estendido: so o ANO, sem a fisica depois dele). */
      public int measureAnoLength() {
          BattleSim s = fresh();
-@@ -492,7 +980,14 @@
+@@ -492,7 +974,14 @@
  
      public int measureLength() {
          BattleSim s = fresh();
@@ -7924,7 +7923,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private int measure(BattleSim s) {
-@@ -513,7 +1008,7 @@
+@@ -513,7 +1002,7 @@
  
      /** Tudo que nao e o atacante parou: sem projeteis, efeitos, reacao nem hitstop. */
      /** Fim estendido: o atacante so congela quando esta no chao (ou voa); no ar ele cai e pousa antes. */
@@ -7933,7 +7932,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
  
      /** Projetil ainda em jogo: vivo e dentro do mapa (com folga); fora dele ja desapareceu para o tempo estendido. */
      private boolean projActive() {
-@@ -581,59 +1076,126 @@
+@@ -581,59 +1070,126 @@
          }
          if (spawnedSerial != r.serial) {
              spawnedSerial = r.serial;
@@ -7998,17 +7997,20 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-             }
++            }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-+            }
-+        }
-+    }
-+
+             }
+         }
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -8033,7 +8035,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-         }
++        }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
@@ -8047,11 +8049,8 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +        pendA = false;
 +        AttackSim.Obj r = atk.root();
 +        if (r != null) { r.x = pendAX; r.y = pendAY; }
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++    }
++
 +    /**
 +     * Flag 20: cria a task 996 (evento HDAT 13 do dono da animacao, linha = COORDS[2]). player = lutador dono do ANO
 +     * (0 atacante, 1 oponente); src = projetil dono do ANO (md 971/972 tambem chamam CheckOptFlag), ou null.
@@ -8090,7 +8089,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -641,125 +1203,144 @@
+@@ -641,125 +1197,144 @@
              c.wy = r.y + (h.y << 16);
              c.offX = cx << 16;
              int anim = c.flipped ? animF : animN;
@@ -8322,7 +8321,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          int count = (move.flags & 4) != 0 ? 3 : 1;
          for (int k = 0; k < count; k++) {
              int x, y;
-@@ -779,18 +1360,49 @@
+@@ -779,18 +1354,49 @@
              else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
  
              Proj p = new Proj();
@@ -8373,7 +8372,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          int dx = h.x << 16;
          int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
          int y = o.y + (h.y << 16);
-@@ -801,17 +1413,21 @@
+@@ -801,17 +1407,21 @@
          p.globalAno = move.projGlobal;
          p.groundAno = move.subChao;
          p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
@@ -8395,7 +8394,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          p.life++;
          AttackSim.Obj o = p.sim.root();
          if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
-@@ -844,19 +1460,19 @@
+@@ -844,19 +1454,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -8419,7 +8418,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -869,7 +1485,7 @@
+@@ -869,7 +1479,7 @@
          }
          if (p.firstX != o.x) p.moved = true;
  
@@ -8428,7 +8427,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          o = p.sim.root();
          if (o != null) {
              if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
-@@ -890,22 +1506,20 @@
+@@ -890,22 +1500,20 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
@@ -8457,7 +8456,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          // projeteis
          for (int i = 0; i < projs.size(); i++) {
              Proj p = projs.get(i);
-@@ -920,13 +1534,13 @@
+@@ -920,13 +1528,13 @@
                  p.hs = HIT_STOP / 2;
                  hsDef = HIT_STOP;
              }
@@ -8474,7 +8473,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              int[] pos = checkObjHit(r, def);
              if (pos != null) {
                  armed = false;
-@@ -936,8 +1550,8 @@
+@@ -936,8 +1544,8 @@
                      hsAtk = hs;
                      hsDef = hs;
                  }
@@ -8485,7 +8484,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              }
          }
      }
-@@ -979,6 +1593,7 @@
+@@ -979,6 +1587,7 @@
          }
          everHit = true;
          hitConfirmed = true;                       // wFlag|=1 (melee e projetil no laco de hits) -> work[10] = 1
@@ -8493,7 +8492,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (attackOver) return;                    // fora do md 882: nenhum hit troca mais o ANO
          boolean f38 = blocksSeq(r);
          int animReacao = (!f38 && move.animAoAcertar != 0) ? move.animAoAcertar : hitAno;
-@@ -989,7 +1604,7 @@
+@@ -989,7 +1598,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
@@ -8502,7 +8501,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1614,7 @@
+@@ -999,7 +1608,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
@@ -8511,7 +8510,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1633,7 @@
+@@ -1018,7 +1627,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
@@ -8520,7 +8519,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1645,6 @@
+@@ -1030,7 +1639,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
@@ -8528,7 +8527,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1063,6 +1677,7 @@
+@@ -1063,6 +1671,7 @@
          transKind = -1;
          if (switchAtk(next)) {
              hitConfirmed = false;                 // work[10] = 0
@@ -8536,7 +8535,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
          } else {
              r.x = ox;
-@@ -1117,6 +1732,7 @@
+@@ -1117,6 +1726,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -8544,7 +8543,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1767,7 @@
+@@ -1151,7 +1761,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
@@ -8553,7 +8552,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1184,9 +1800,34 @@
+@@ -1184,9 +1794,34 @@
          return false;
      }
  
@@ -8588,7 +8587,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          // md 883: y > chao com velocidade Y > 0 pousa, mesmo que o golpe tenha comecado no chao
          // ANO avulso (md 886 / 891): pousa assim que y > chao fora do hitstop, sem exigir velocidade Y
          boolean lands = move.generic ? (r.y > 0 && hsAtk == 0) : (r.y > 0 && r.speedY > 0);
-@@ -1208,7 +1849,6 @@
+@@ -1208,7 +1843,6 @@
              r.speedX = 0;
              r.accelX = 0;
              sounds.add(new Snd(true, 12, 0));
@@ -8596,7 +8595,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
              if (land == 0) land = 13;
              transKind = 3;
-@@ -1222,25 +1862,48 @@
+@@ -1222,25 +1856,48 @@
          // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
          if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
              transKind = 4;
@@ -8651,7 +8650,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          }
          if (r == null) return;
          int fl = (r.actFlags & 48) ^ (r.objFlags & 48);
-@@ -1251,40 +1914,49 @@
+@@ -1251,40 +1908,49 @@
              int x = r.x + (ox << 16);
              int y = r.y + (h.y << 16);
              Aura a = null;
@@ -8716,7 +8715,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private void afterGrabFrame() {
-@@ -1296,20 +1968,50 @@
+@@ -1296,20 +1962,50 @@
          }
      }
  
@@ -8778,7 +8777,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
-@@ -1331,6 +2033,7 @@
+@@ -1331,6 +2027,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
@@ -8786,7 +8785,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1341,17 +2044,31 @@
+@@ -1341,17 +2038,31 @@
  
      private void detectGrab(AttackSim.Obj def) {
          AttackSim.Obj g = grab == null ? null : grab.root();
@@ -8822,7 +8821,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      private static int[] checkObjHit(AttackSim.Obj a, AttackSim.Obj t) {
          int af = (a.actFlags & 48) ^ (a.objFlags & 48);
          int tf = (t.actFlags & 48) ^ (t.objFlags & 48);
-@@ -1438,25 +2155,37 @@
+@@ -1438,25 +2149,37 @@
              applyDamage(op, dmg, hitAno);
              lastHit += " [dano " + lastDamage + ", vida " + lifeO + "/" + maxO + ", combo " + combo + "]";
          }
@@ -8866,7 +8865,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1464,6 +2193,7 @@
+@@ -1464,6 +2187,7 @@
          dTime = 0;
          dOldType = op.type;
          dOldIdx = 0;
@@ -8874,7 +8873,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          dMove = op.pushes ? hitBack : 0;
          dead = false;
          if (lifeO <= 0) {                           // KO: o jogo troca a reacao pelo tipo 2 do gamedata (md 876)
-@@ -1473,14 +2203,104 @@
+@@ -1473,14 +2197,104 @@
          }
      }
  
@@ -8979,7 +8978,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1494,6 +2314,7 @@
+@@ -1494,6 +2308,7 @@
      }
  
      private void stepDefender() {
@@ -8987,7 +8986,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (!inDamage) {
              AttackSim.Obj r = opp.root();
              if (r != null) {
-@@ -1513,6 +2334,10 @@
+@@ -1513,6 +2328,10 @@
          tickDamage(0);
      }
  
@@ -8998,7 +8997,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      private void endDamage(int state, int anim) {
          if (lifeO <= 0) {                           // Life <= 0: ANO 24 e fica deitado (md 888 / 889), sem DamageEnd
              state = 889;
-@@ -1598,10 +2423,10 @@
+@@ -1598,10 +2417,10 @@
          }
          if (hs) return;
  
@@ -9011,7 +9010,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1620,6 +2445,7 @@
+@@ -1620,6 +2439,7 @@
                      }
                      dIdx = 0;
                      dTime = 0;
@@ -9019,7 +9018,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                      tickDamage(depth + 1);
                      return;
                  }
-@@ -1632,16 +2458,19 @@
+@@ -1632,16 +2452,19 @@
                  dType = 12;
                  dIdx = 0;
                  dTime = 0;
@@ -9040,7 +9039,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  tickDamage(depth + 1);
                  return;
              }
-@@ -1658,24 +2487,32 @@
+@@ -1658,24 +2481,32 @@
  
          int dur = tb.u8(dIdx, oppY != 0 ? 1 : 0);
          if (dTime >= dur) {
@@ -9075,10 +9074,39 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                          }
                          dIdx = 0;
                          tickDamage(depth + 1);
-@@ -1701,16 +2538,32 @@
-         float tw = 100f, tx = nx, ty = ny;
-         int n = 12;
-         AttackSim.Obj r = atk.root();
+@@ -1692,51 +2523,122 @@
+ 
+     // ============================================================ bordas e camera (md 19)
+ 
+-    // zoom de camera (hit 30/31): a camera vai ate o alvo em "frames" ticks e, quando o hit acaba, volta ao normal em 12 ticks
+-    private float zCurW = 100f, zCurX, zCurY, zTgtW = 100f, zTgtX, zTgtY, zDW, zDX, zDY;
++    // ---- zoom da camera: md 29 do jogo (jogo:16817-17012) ----
++    // Estado em coordenadas de TELA, como o jogo: translacao T (x, y para baixo) e zoom W, em ponto fixo << 7 (_work[0..4]); o alvo (_screeneffect) e os
++    // passos ((alvo << 7) - atual) / i. A matriz usa os inteiros atual >> 7 (_screenoffect_frame): X = 240 + fGS * W/100 * (x - 240) + Tx.
++    private final int[] zCur = new int[3], zTgt = new int[3], zStep = new int[3];
+     private int zLeft;
+ 
++    private void zoomReset() {
++        zCur[0] = zCur[1] = 0; zCur[2] = 100 << 7;
++        zTgt[0] = zTgt[1] = 0; zTgt[2] = 100;
++        zStep[0] = zStep[1] = zStep[2] = 0;
++        zLeft = 0;
++    }
++
++    /** Translacao x/y (px de tela) e zoom (%) que a matriz da camera usa neste tick. */
++    public int zoomTx() { return zCur[0] >> 7; }
++    public int zoomTy() { return -((-zCur[1]) >> 7); }           // o jogo guarda o y para cima (GL) e arredonda para baixo nesse sentido
++    public int zoomW() { return zCur[2] >> 7; }
++
++    /** Ponto de tela (inteiro, como o obj.x >> 16 do jogo) de um ponto do mundo em 16.16. */
++    private int scrX(int wx) { return (wx - screenLeft()) >> 16; }
++    private int scrY(int wy) { return (wy - screenTop()) >> 16; }
++
+     private void zoomTick() {
+-        float nx = screenLeft() / 65536f + 240f, ny = -80f + (camYFix >> 16);
+-        float tw = 100f, tx = nx, ty = ny;
+-        int n = 12;
+-        AttackSim.Obj r = atk.root();
 -        if (r != null) {
 -            for (int i = 0; i < r.hits.length; i++) {
 -                Ano.Hit h = r.hits[i];
@@ -9086,41 +9114,65 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 -                int cx = (r.objFlags & 16) != 0 ? -h.x : h.x;
 -                tw = h.width; tx = (r.x + (cx << 16)) / 65536f; ty = (r.y + (h.y << 16)) / 65536f;
 -                n = Math.max(1, h.height);
--            }
-+        boolean action = false;
-+        // CheckOptFlag grava iActionZoom* a cada tick, em qualquer objeto (projetil fora da pausa, atacante, oponente: nessa ordem de task);
-+        // o ultimo hit 30/31 vale. So com FRAMES > 0 o md do zoom usa a acao; com W = 100 ela nao muda nada (o alvo atual segue)
-+        float[] last = null;                                     // {w, frames, x, y} em px do mundo
-+        for (int i = 0; i <= projs.size() + 1; i++) {
-+            AttackSim.Obj o;
-+            if (i < projs.size()) { Proj pr = projs.get(i); o = pr.dead || pr.hs > 0 || stunAny() ? null : pr.sim.root(); }
-+            else o = i == projs.size() ? r : opp.root();
-+            if (o == null) continue;
-+            for (int k = 0; k < o.hits.length; k++) {
-+                Ano.Hit h = o.hits[k];
-+                if (h.flag != 30 && h.flag != 31) continue;
-+                int cx = (o.objFlags & 16) != 0 ? -h.x : h.x;
-+                last = new float[]{h.width, h.height, (o.x + (cx << 16)) / 65536f, (o.y + (h.y << 16)) / 65536f};
++        int tw = zTgt[2], tx = zTgt[0], ty = zTgt[1], n = 12;
++        boolean set = true;
++        AttackSim.Obj r = atk.root(), o0 = opp.root();
++        if (cinematic && cineLeft > 0 && r != null && o0 != null) {
++            // iCameraLock 0 (o dono do especial e o atacante): 200 %, alvo refeito a cada tick pela posicao atual do dono (x +-40 para fora, y - 48)
++            int nx = scrX(r.x), ny = scrY(r.y), ox = scrX(o0.x);
++            int n8 = 240 - nx + (nx > ox ? -40 : 40);
++            tw = (int) CINE_ZOOM; tx = n8 * 2; ty = (160 - ny + 48) * 2; n = CINE_ZOOM_TICKS;
++        } else {
++            // CheckOptFlag grava iActionZoom* a cada tick, em qualquer objeto (projetil fora da pausa, atacante, oponente: nessa ordem de task); o ultimo vale
++            int[] last = null;                                   // {W, frames, x tela, y tela}
++            for (int i = 0; i <= projs.size() + 1; i++) {
++                AttackSim.Obj o;
++                if (i < projs.size()) { Proj pr = projs.get(i); o = pr.dead || pr.hs > 0 || stunAny() ? null : pr.sim.root(); }
++                else o = i == projs.size() ? r : o0;
++                if (o == null) continue;
++                for (int k = 0; k < o.hits.length; k++) {
++                    Ano.Hit h = o.hits[k];
++                    if (h.flag != 30 && h.flag != 31) continue;
++                    int cx = (o.objFlags & 16) != 0 ? -h.x : h.x;
++                    last = new int[] {h.width, h.height, scrX(o.x + (cx << 16)), scrY(o.y + (h.y << 16))};
++                }
 +            }
-+        }
-+        if (last != null && last[1] > 0) {
-+            action = true;
-+            if (last[0] == 100f) { tw = zTgtW; tx = zTgtX; ty = zTgtY; }
-+            else { tw = last[0]; tx = last[2]; ty = last[3]; n = (int) last[1]; }
-+        }
-+        if (cinematic && cineLeft > 0) {                         // md 29 com iCameraLock 0/1: zoom 200 % em 4 ticks no dono do especial
-+            action = true;
-+            tw = CINE_ZOOM; tx = cineZoomX; ty = cineZoomY; n = CINE_ZOOM_TICKS;
++            if (last != null && last[1] > 0) {
++                if (last[0] == 100) set = false;                  // W = H = 100: o alvo atual continua
++                else { tw = last[0]; tx = (240 - last[2]) * last[0] / 100; ty = (160 - last[3]) * last[0] / 100; n = last[1]; }
++            } else if (r != null && o0 != null && (Math.abs(scrX(o0.x) - scrX(r.x)) > 320 || Math.abs(scrY(o0.y) - scrY(r.y)) > 200)) {
++                tw = 90; tx = 0; ty = 0; n = 16;                  // lutadores longe: zoom out 90 % em 16 ticks
++            } else {
++                tw = 100; tx = 0; ty = 0; n = 12;
+             }
          }
 -        if (tw == 100f && r != null) {
-+        if (!action && tw == 100f && r != null) {
-             // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
-             int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
-             if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1728,6 +2581,32 @@
-         if (zTgtW == 100f && zLeft == 0) { zCurX = nx; zCurY = ny; }
-     }
- 
+-            // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
+-            int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
+-            if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
+-        }
+-        if (tw != zTgtW || tx != zTgtX || ty != zTgtY) {
+-            zTgtW = tw; zTgtX = tx; zTgtY = ty;
++        if (set && (tw != zTgt[2] || tx != zTgt[0] || ty != zTgt[1])) {
++            zTgt[0] = tx; zTgt[1] = ty; zTgt[2] = tw;
++            for (int k = 0; k < 3; k++) zStep[k] = ((zTgt[k] << 7) - zCur[k]) / n;
+             zLeft = n;
+-            zDW = (tw - zCurW) / n; zDX = (tx - zCurX) / n; zDY = (ty - zCurY) / n;
+         }
+-        if (zLeft > 0) {
++        if (zLeft != 0) {
+             zLeft--;
+-            if (zLeft == 0) { zCurW = zTgtW; zCurX = zTgtX; zCurY = zTgtY; }
+-            else { zCurW += zDW; zCurX += zDX; zCurY += zDY; }
++            if (zLeft == 0) for (int k = 0; k < 3; k++) zCur[k] = zTgt[k] << 7;
++            else for (int k = 0; k < 3; k++) zCur[k] += zStep[k];
+         }
+-        if (zTgtW == 100f && zLeft == 0) { zCurX = nx; zCurY = ny; }
++    }
++
++    /** O zoom/translacao da camera esta fora do normal (100 %, sem deslocamento)? */
++    public boolean zoomActive() { return zoomW() != 100 || zoomTx() != 0 || zoomTy() != 0; }
++
 +    // ---- tela do jogo (GameScreen): matriz da camera por camada, como o DrawExec do jogo ----
 +
 +    /** Inicio da faixa da camera do jogo (md 31): 9, ou a menor chave dos lutadores - 3 na trava dos especiais / nas ANOs 61, 62, 51, 260. */
@@ -9136,21 +9188,45 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +     */
 +    public float[] gameXform(GameScreen gs, int key) {
 +        float sl = screenLeft() / 65536f, st = screenTop() / 65536f;
-+        boolean still = zCurW == 100f && zLeft == 0;                 // sem zoom: o centro e o meio da tela (antes do 1o tick zCurX ainda nao foi calculado)
-+        float[] m = gs.matrix(key, cameraStart(), zCurW, still ? 240f : zCurX - sl, still ? 160f : zCurY - st);
++        float[] m = gs.matrix(key, cameraStart(), zoomW(), zoomTx(), zoomTy());
 +        return new float[] {m[0], m[1], m[2] - m[0] * sl, m[3] - m[1] * st};
++    }
++
++    /**
++     * Vista do MUNDO (centro NORMAL/CHAR) de uma camada fora da faixa da camera durante o zoom: no jogo ela fica 1:1 na tela enquanto o resto e ampliado;
++     * aqui ela e levada (escala 1/z) para o lugar do mundo que aparece naquele ponto da tela (dentro do retangulo amarelo). {sx, sy, tx, ty} ou null
++     * (sem zoom, ou camada dentro da faixa: ela ja acompanha o mundo). Tela de 480 x 320, sem o esticamento do celular.
++     */
++    public float[] worldViewXform(int key) {
++        if (!zoomActive() || zoomW() <= 0 || GameScreen.inCamera(key, cameraStart())) return null;
++        float sl = screenLeft() / 65536f, st = screenTop() / 65536f, z = zoomW() / 100f;
++        return new float[] {1f / z, 1f / z, sl + 240f - (sl + 240f + zoomTx()) / z, st + 160f - (st + 160f + zoomTy()) / z};
 +    }
 +
 +    /** Alguma cutscene viva com CAM_MODE 1 e animacao: no jogo o cenario nao e desenhado (bEffectFullScreen). */
 +    public boolean fullScreenActive() {
 +        for (int i = 0; i < cuts.size(); i++) if (cuts.get(i).camMode == 1 && cuts.get(i).hasAnim) return true;
 +        return false;
-+    }
-+
+     }
+ 
      /** {esquerda, topo, direita, base} do retangulo da camera em px do mundo durante o zoom; null se normal. */
      public float[] zoomRect() {
-         if (zCurW == 100f || zCurW <= 0f) return null;
-@@ -1761,13 +2640,20 @@
+-        if (zCurW == 100f || zCurW <= 0f) return null;
+-        float w = 480f * 100f / zCurW, h = 320f * 100f / zCurW;
+-        return new float[]{zCurX - w / 2, zCurY - h / 2, zCurX + w / 2, zCurY + h / 2};
++        if (!zoomActive() || zoomW() <= 0) return null;
++        float sl = screenLeft() / 65536f, st = screenTop() / 65536f, z = zoomW() / 100f;
++        float x0 = sl + 240f + (-240f - zoomTx()) / z, y0 = st + 160f + (-160f - zoomTy()) / z;   // inversa da matriz (tela de 480 x 320)
++        return new float[]{x0, y0, x0 + 480f / z, y0 + 320f / z};
+     }
+ 
+     private void initCamera() {
+-        zCurW = 100f; zTgtW = 100f; zLeft = 0;
++        zoomReset();
+         camShake = 0; camShakeType = 0; lastOppSerial = -1; lastOppObj = null;
+         halfA = atkChar == null ? 30 : atkChar.halfWidth;
+         halfO = oppChar == null ? 30 : oppChar.halfWidth;
+@@ -1761,13 +2663,20 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -9175,7 +9251,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          oldAx = ra == null ? 0 : ra.x;
          oldOx = oppX;
      }
-@@ -1785,15 +2671,12 @@
+@@ -1785,15 +2694,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -9195,7 +9271,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1802,14 +2685,14 @@
+@@ -1802,14 +2708,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -9212,7 +9288,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2700,7 @@
+@@ -1817,7 +2723,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -9221,7 +9297,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,42 +2720,47 @@
+@@ -1837,42 +2743,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -9279,7 +9355,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2772,117 @@
+@@ -1884,21 +2795,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -9405,7 +9481,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,9 +2903,7 @@
+@@ -1919,9 +2926,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
@@ -9416,7 +9492,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          }
          AttackSim.Obj[] ch = s.children();
          for (int i = 0; i < ch.length; i++) {
-@@ -1929,10 +2911,24 @@
+@@ -1929,10 +2934,24 @@
              if (c == null || c.pendingSe < 0) continue;
              int se = c.pendingSe;
              c.pendingSe = -1;
@@ -9442,7 +9518,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      /** PushSE: < 80 = se_NN comum; >= 80 = audio de personagem na lista [atacante..., defensor...]. */
      private void pushRaw(int id) {
          if (id < 0) return;
-@@ -1979,55 +2975,52 @@
+@@ -1979,55 +2998,52 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -9526,7 +9602,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-@@ -2040,6 +3033,34 @@
+@@ -2040,6 +3056,34 @@
      public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
  
      public boolean defenderInDamage() { return inDamage; }
@@ -16829,8 +16905,8 @@ diff -ruN -x fixtures a/CutsceneInfo.java b/CutsceneInfo.java
 +}
 diff -ruN -x fixtures a/CutsceneScreen.java b/CutsceneScreen.java
 --- a/CutsceneScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/CutsceneScreen.java	2026-11-08 10:55:47.282940833 +0000
-@@ -0,0 +1,1314 @@
++++ b/CutsceneScreen.java	2026-11-08 15:19:39.147027229 +0000
+@@ -0,0 +1,1315 @@
 +package com.zue.attackeditor;
 +
 +import android.app.Activity;
@@ -17188,6 +17264,7 @@ diff -ruN -x fixtures a/CutsceneScreen.java b/CutsceneScreen.java
 +            if (cd.hasEvent(sel)) {
 +                col.addView(screenCell("virado para a direita (ANIM_ID)", CharData.EV_ANIM, false));
 +                col.addView(screenCell("virado para a esquerda (ANIM_FLIP)", CharData.EV_ANIM_FLIP, true));
++                col.addView(tv("Sem o golpe: câmera parada (sem zoom nem rolagem). Com zoom (flag 30/31) ou na trava dos especiais, Fundo e Meio são ampliados junto com o cenário; Frente não. Veja com o CHAR ligado.", 10, LayoutManager.DIM, false));
 +            } else {
 +                col.addView(tv("Sem eventos: toque em EVENTO e depois em NOVO.", 12, LayoutManager.DIM, false));
 +            }
@@ -17302,7 +17379,7 @@ diff -ruN -x fixtures a/CutsceneScreen.java b/CutsceneScreen.java
 +        if (pv != null) {
 +            LinearLayout c = new LinearLayout(a);
 +            c.setGravity(Gravity.CENTER_VERTICAL);
-+            TextView toCut = button("⏮ CENA", CutTimeBar.RED, new View.OnClickListener() { public void onClick(View v) {
++            TextView toCut = button("CENA →", CutTimeBar.RED, new View.OnClickListener() { public void onClick(View v) {
 +                if (pv == null) return;
 +                pv.pause();
 +                int t = pv.firstCutsceneTick(sel);
@@ -21618,8 +21695,8 @@ diff -ruN -x fixtures a/GameRules.java b/GameRules.java
 +}
 diff -ruN -x fixtures a/GameScreen.java b/GameScreen.java
 --- a/GameScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/GameScreen.java	2026-11-08 02:58:20.749767562 +0000
-@@ -0,0 +1,60 @@
++++ b/GameScreen.java	2026-11-08 15:19:12.648004653 +0000
+@@ -0,0 +1,64 @@
 +package com.zue.attackeditor;
 +
 +/**
@@ -21671,14 +21748,18 @@ diff -ruN -x fixtures a/GameScreen.java b/GameScreen.java
 +    static boolean inCamera(int key, int start) { return key >= start && key < CAMERA_END; }
 +
 +    /**
-+     * Matriz {sx, sy, tx, ty} (x' = sx * x + tx) em coordenadas da tela do jogo (0..480 x 0..320) para um objeto de chave {@code key}.
-+     * {@code zoomW} = zoom da camera em % (100 sem zoom); {@code cx, cy} = centro do zoom na tela (240, 160 sem zoom).
++     * Matriz {sx, sy, tx, ty} (x' = sx * x + tx) em coordenadas da tela do jogo (0..480 x 0..320) para um objeto de chave {@code key}, como o
++     * Graphics2D.setMatrix do jogo (translada T e escala em volta do meio): X = 240 + fGS * W/100 * (x - 240) + Tx. {@code zoomW} = W em %
++     * (100 sem zoom); {@code tx, ty} = translacao da camera (md 29) em px de tela, y para baixo (0, 0 sem zoom).
 +     */
-+    float[] matrix(int key, int start, float zoomW, float cx, float cy) {
++    float[] matrix(int key, int start, float zoomW, float tx, float ty) {
 +        if (!inCamera(key, start)) return new float[] {1f, 1f, 0f, 0f};
 +        float z = zoomW / 100f, s = fGS * z;
-+        return new float[] {s, s, 240f - 240f * s + (240f - cx) * z, 160f - 160f * s + (160f - cy) * z};
++        return new float[] {s, s, 240f - 240f * s + tx, 160f - 160f * s + ty};
 +    }
++
++    /** Translacao que o md 29 usa para centrar o zoom {@code zoomW} no ponto de tela (cx, cy): ((240 - cx) * W / 100, (160 - cy) * W / 100). */
++    static float[] zoomT(float cx, float cy, float zoomW) { return new float[] {(240f - cx) * zoomW / 100f, (160f - cy) * zoomW / 100f}; }
 +}
 diff -ruN -x fixtures a/GameScreenDraw.java b/GameScreenDraw.java
 --- a/GameScreenDraw.java	1970-01-01 00:00:00.000000000 +0000
@@ -22258,8 +22339,8 @@ diff -ruN -x fixtures a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-11-08 10:57:35.914442267 +0000
-@@ -0,0 +1,602 @@
++++ b/HelpText.java	2026-11-08 15:21:55.461781578 +0000
+@@ -0,0 +1,603 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -22375,7 +22456,8 @@ diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 +                + "ESTENDIDO: o atacante fica parado no último frame quando o ANO acaba, para você ver projéteis e a reação do oponente até o fim. "
 +                + "ATAQUE: como estendido, mas a reprodução para sozinha no pouso (a barra continua livre)."));
 +        s.add(new Section(ToolbarOrder.CENTER, "CENTRO",
-+                "Câmera da preview. NORMAL: livre; você arrasta e dá zoom com os dedos, e o mapa inteiro fica enquadrado ao centralizar. TELA: desenha como o jogo neste celular: a área da tela do aparelho (contorno branco), com a rolagem e o tremor da câmera; o que o jogo põe na câmera (cenário, lutadores, efeitos, cutscene Fundo e Meio) é esticado para a largura do celular e recebe o zoom (inclusive o de 200% dos especiais), e o que fica fora dela (cutscene Frente, HUD) aparece 1:1 no 480 x 320 do meio (tracejado amarelo). Na trava dos especiais a cutscene Fundo também fica fora do zoom. CHAR: enquadra os dois lutadores com zoom automático, bom para golpes de longe ou de ar."));
++                "Câmera da preview. NORMAL: livre; você arrasta e dá zoom com os dedos, e o mapa inteiro fica enquadrado ao centralizar. TELA: desenha como o jogo neste celular: a área da tela do aparelho (contorno branco), com a rolagem e o tremor da câmera; o que o jogo põe na câmera (cenário, lutadores, efeitos, cutscene Fundo e Meio) é esticado para a largura do celular e recebe o zoom (inclusive o de 200% dos especiais), e o que fica fora dela (cutscene Frente, HUD) aparece 1:1 no 480 x 320 do meio (tracejado amarelo). Na trava dos especiais a cutscene Fundo também fica fora do zoom. CHAR: enquadra os dois lutadores com zoom automático, bom para golpes de longe ou de ar."
++                + " Com zoom de câmera (hitbox 30/31 a cada tick, 200% na trava, 90% com os lutadores longe), o zoom segue o md 29 do jogo (alvo em pixels de tela, passos inteiros). Em NORMAL e CHAR o retângulo amarelo é o que o jogo mostra, e o que fica fora da faixa da câmera (cutscene Frente, Fundo na trava, efeito de hit 328) é desenhado dentro dele, do tamanho e no lugar em que o jogo o mostra sobre o cenário ampliado."));
 +        s.add(new Section(ToolbarOrder.LAND, "POUSO",
 +                "ON: o atacante cai e pousa como no jogo, e a troca de ANO de pouso/queda acontece (SEQ e END de ar/chão). "
 +                + "OFF: só zera a velocidade no chão e segue no mesmo ANO. Desligue para editar um ANO sem a queda interferir."));
@@ -22586,7 +22668,7 @@ diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 +                "Um link é outro ANO que nasce junto com o ANO e segue o pai (efeitos, partes do corpo, auras). O jogo aceita no máximo 13 por ANO e só 1 nível: link de link não nasce, e hitboxes, flags e animações dentro de um link não valem (o link mostra só as sprites dele). "
 +                + "O botão LINKS lista os links do ANO atual; com a preview num ANO que tem links, a lista rola para o primeiro e a seta ▶ vai para o próximo.");
 +        lk.add("Animações por flag",
-+                "Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora. A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote). Cutscenes (flag 20): o 3º valor da hitbox é o evento da tabela HDAT 13 do personagem. O botão EDITAR CUTSCENE da gaveta da flag 20 (o único jeito de abrir o editor) abre a tela: no topo o EVENTO (toque nele para abrir a grade de eventos: trocar, NOVO, DUPLICAR, COPIAR, COLAR e ZERAR; não há excluir, só zerar) e USAR NESTE HIT, que troca o evento do hit; com o modo CHAR ligado aparece também o ANO, uma escolha entre as ANOs que usam o evento. A prévia, com o botão CHAR no canto inferior direito, mostra o golpe/ANO do personagem inteiro com play (qualquer alteração pausa e atualiza a prévia); desligado, mostra só a cutscene: a animação normal e a virada, uma embaixo da outra, cada uma no quadro da tela do jogo neste celular (no canto da tela nasce no 0, 0; no mundo, em volta da cruz do hit), com o tamanho real e o esticamento da camada, e EDITAR ANO embaixo de cada uma (abre o ANO na timeline; só para o PAC do personagem — o app ainda não edita effect.pac nem bobj). O botão ANIM abre a tela das duas animações: em cima, lado a lado na tela do jogo, a ANIM_ID (faixa azul, virado para a frente) e a ANIM_FLIP_ID (faixa laranja, virado para trás), cada uma com o frame atual; embaixo, um slot para cada uma com ESCOLHER (primeiro o PAC, depois a grade dos ANOs dele) e EDITAR ANO N. EDITAR não abre outro menu: o slot cresce com ◀ FRAME, ⏸/▶ e FRAME ▶, \"Aplicar apenas nesse Frame\" (desmarcado), Zoom com \"Unir zoom\" (marcado quando X = Y) e Posição X/Y. Os campos começam no 1º frame e acompanham os frames da prévia; mudar um valor soma a mesma diferença em todos os frames do ANO (ou só no frame da prévia), sem mexer nos links. Só o PAC do personagem pode ser editado. Tudo fica em rascunho até o SALVAR, que mostra as duas animações juntas, o resumo (ex.: posição +10, −4 em todos os frames) e avisa se só uma das duas foi editada; CONFIRMAR aplica (o ↶ do app desfaz os ANOs, o ↶ do editor o evento) e os ANOs editados entram em qualquer opção do SALVAR do app; ✕ ou CANCELAR perguntam se descarta. Embaixo da prévia CHAR, a barra de progresso fica vermelha no trecho em que a cutscene está viva e o botão ⏮ CENA vai direto ao primeiro tick dela. Abaixo ficam X/Y do hit e, ao lado, a DURAÇÃO (Até o ANO acabar, ou N MPTs), TRAVAR OPONENTE (chave), CAMADA (Fundo, Meio, Frente), MODO DE CÂMERA (chave Canto da tela — desligada, a cena segue o mundo — e, dentro dela, a chave Tela cheia) e a FLAG em grupos pela função, cada opção uma chave: ligar uma desliga as outras e desligar a ligada volta a FLAG 0. O que o jogo ignora ou fixa naquele modo (por exemplo, a duração com a FLAG 3 ou a posição com a câmera no canto da tela) fica esmaecido, com o motivo, e os avisos aparecem no topo. Ao salvar, o app grava as linhas $EVT_nn no $ROTEIRO_CUTSCENE do $HDAT_13 do 000.bin.txt, mantendo os comentários e corrigindo $ROW e $SZ.");
++                "Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora. A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote). Cutscenes (flag 20): o 3º valor da hitbox é o evento da tabela HDAT 13 do personagem. O botão EDITAR CUTSCENE da gaveta da flag 20 (o único jeito de abrir o editor) abre a tela: no topo o EVENTO (toque nele para abrir a grade de eventos: trocar, NOVO, DUPLICAR, COPIAR, COLAR e ZERAR; não há excluir, só zerar) e USAR NESTE HIT, que troca o evento do hit; com o modo CHAR ligado aparece também o ANO, uma escolha entre as ANOs que usam o evento. A prévia, com o botão CHAR no canto inferior direito, mostra o golpe/ANO do personagem inteiro com play (qualquer alteração pausa e atualiza a prévia); desligado, mostra só a cutscene: a animação normal e a virada, uma embaixo da outra, cada uma no quadro da tela do jogo neste celular (no canto da tela nasce no 0, 0; no mundo, em volta da cruz do hit), com o tamanho real e o esticamento da camada, e EDITAR ANO embaixo de cada uma (abre o ANO na timeline; só para o PAC do personagem — o app ainda não edita effect.pac nem bobj). O botão ANIM abre a tela das duas animações: em cima, lado a lado na tela do jogo, a ANIM_ID (faixa azul, virado para a frente) e a ANIM_FLIP_ID (faixa laranja, virado para trás), cada uma com o frame atual; embaixo, um slot para cada uma com ESCOLHER (primeiro o PAC, depois a grade dos ANOs dele) e EDITAR ANO N. EDITAR não abre outro menu: o slot cresce com ◀ FRAME, ⏸/▶ e FRAME ▶, \"Aplicar apenas nesse Frame\" (desmarcado), Zoom com \"Unir zoom\" (marcado quando X = Y) e Posição X/Y. Os campos começam no 1º frame e acompanham os frames da prévia; mudar um valor soma a mesma diferença em todos os frames do ANO (ou só no frame da prévia), sem mexer nos links. Só o PAC do personagem pode ser editado. Tudo fica em rascunho até o SALVAR, que mostra as duas animações juntas, o resumo (ex.: posição +10, −4 em todos os frames) e avisa se só uma das duas foi editada; CONFIRMAR aplica (o ↶ do app desfaz os ANOs, o ↶ do editor o evento) e os ANOs editados entram em qualquer opção do SALVAR do app; ✕ ou CANCELAR perguntam se descarta. Embaixo da prévia CHAR, a barra de progresso fica vermelha no trecho em que a cutscene está viva e o botão CENA → vai direto ao primeiro tick dela. Com zoom de câmera (hitbox 30/31) ou na trava dos especiais, as camadas Fundo e Meio da cena são ampliadas e deslocadas junto com o cenário e os lutadores (mesmo presas ao canto da tela); a Frente nunca: fica 1:1 na tela (o Fundo também escapa na trava). A cena presa ao canto da tela não rola nem treme com a câmera; a do mundo acompanha a rolagem. Abaixo ficam X/Y do hit e, ao lado, a DURAÇÃO (Até o ANO acabar, ou N MPTs), TRAVAR OPONENTE (chave), CAMADA (Fundo, Meio, Frente), MODO DE CÂMERA (chave Canto da tela — desligada, a cena segue o mundo — e, dentro dela, a chave Tela cheia) e a FLAG em grupos pela função, cada opção uma chave: ligar uma desliga as outras e desligar a ligada volta a FLAG 0. O que o jogo ignora ou fixa naquele modo (por exemplo, a duração com a FLAG 3 ou a posição com a câmera no canto da tela) fica esmaecido, com o motivo, e os avisos aparecem no topo. Ao salvar, o app grava as linhas $EVT_nn no $ROTEIRO_CUTSCENE do $HDAT_13 do 000.bin.txt, mantendo os comentários e corrigindo $ROW e $SZ.");
 +        lk.add("Sincronia do link",
 +                "Cada link tem posição base (bx, by) e flags: sincronizar MPT (acompanha o frame do pai), sincronizar XY (acompanha a posição do pai) e \"não copiar a posição ao nascer\". O menu Imagem tem \"mover links junto\" e \"Editar posição do Link\".");
 +        c.add(lk);
@@ -23208,7 +23290,7 @@ diff -ruN -x fixtures a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN -x fixtures a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-11-08 10:56:05.131647811 +0000
++++ b/I18nCatalog.java	2026-11-08 15:21:28.625867512 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -23222,7 +23304,7 @@ diff -ruN -x fixtures a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN -x fixtures a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-11-08 10:56:05.126686293 +0000
++++ b/I18nCatalog0.java	2026-11-08 15:21:28.621510574 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -23495,7 +23577,7 @@ diff -ruN -x fixtures a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN -x fixtures a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-11-08 10:56:05.127216484 +0000
++++ b/I18nCatalog1.java	2026-11-08 15:21:28.621975225 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -23768,8 +23850,8 @@ diff -ruN -x fixtures a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN -x fixtures a/I18nCatalog10.java b/I18nCatalog10.java
 --- a/I18nCatalog10.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog10.java	2026-11-08 10:56:05.131494503 +0000
-@@ -0,0 +1,40 @@
++++ b/I18nCatalog10.java	2026-11-08 15:21:28.625694456 +0000
+@@ -0,0 +1,41 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 10 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -23808,11 +23890,12 @@ diff -ruN -x fixtures a/I18nCatalog10.java b/I18nCatalog10.java
 +        {"O ANO não aparece nesta simulação (com a distância/altura atuais): a timeline fica no frame 0.", "The ANO does not appear in this simulation (with the current distance/height): the timeline stays on frame 0.", "El ANO no aparece en esta simulación (con la distancia/altura actuales): la timeline queda en el frame 0."},
 +        {"VOLTAR PARA ANO", "BACK TO ANO", "VOLVER AL ANO"},
 +        {"a timeline edita o ANO", "the timeline edits ANO", "la timeline edita el ANO"},
++        {"Sem o golpe: câmera parada (sem zoom nem rolagem). Com zoom (flag 30/31) ou na trava dos especiais, Fundo e Meio são ampliados junto com o cenário; Frente não. Veja com o CHAR ligado.", "Without the move: the camera is still (no zoom or scrolling). With zoom (flag 30/31) or in the special-move lock, Back and Middle are enlarged together with the stage; Front is not. See it with CHAR on.", "Sin el golpe: cámara quieta (sin zoom ni desplazamiento). Con zoom (flag 30/31) o en el bloqueo de los especiales, Fondo y Medio se amplían junto con el escenario; Frente no. Míralo con el CHAR activado."},
 +    };
 +}
 diff -ruN -x fixtures a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-11-08 10:56:05.127699960 +0000
++++ b/I18nCatalog2.java	2026-11-08 15:21:28.622435076 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24085,7 +24168,7 @@ diff -ruN -x fixtures a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN -x fixtures a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-11-08 10:56:05.128106151 +0000
++++ b/I18nCatalog3.java	2026-11-08 15:21:28.622925557 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24358,7 +24441,7 @@ diff -ruN -x fixtures a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN -x fixtures a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-11-08 10:56:05.128562351 +0000
++++ b/I18nCatalog4.java	2026-11-08 15:21:28.623389854 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24631,7 +24714,7 @@ diff -ruN -x fixtures a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN -x fixtures a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-11-08 10:56:05.129022959 +0000
++++ b/I18nCatalog5.java	2026-11-08 15:21:28.623805318 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24904,7 +24987,7 @@ diff -ruN -x fixtures a/I18nCatalog5.java b/I18nCatalog5.java
 +}
 diff -ruN -x fixtures a/I18nCatalog6.java b/I18nCatalog6.java
 --- a/I18nCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog6.java	2026-11-08 10:56:05.129456292 +0000
++++ b/I18nCatalog6.java	2026-11-08 15:21:28.624236855 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -25177,7 +25260,7 @@ diff -ruN -x fixtures a/I18nCatalog6.java b/I18nCatalog6.java
 +}
 diff -ruN -x fixtures a/I18nCatalog7.java b/I18nCatalog7.java
 --- a/I18nCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog7.java	2026-11-08 10:56:05.130028720 +0000
++++ b/I18nCatalog7.java	2026-11-08 15:21:28.624675590 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -25450,7 +25533,7 @@ diff -ruN -x fixtures a/I18nCatalog7.java b/I18nCatalog7.java
 +}
 diff -ruN -x fixtures a/I18nCatalog8.java b/I18nCatalog8.java
 --- a/I18nCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog8.java	2026-11-08 10:56:05.130608127 +0000
++++ b/I18nCatalog8.java	2026-11-08 15:21:28.625122542 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -25723,7 +25806,7 @@ diff -ruN -x fixtures a/I18nCatalog8.java b/I18nCatalog8.java
 +}
 diff -ruN -x fixtures a/I18nCatalog9.java b/I18nCatalog9.java
 --- a/I18nCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog9.java	2026-11-08 10:56:05.131203442 +0000
++++ b/I18nCatalog9.java	2026-11-08 15:21:28.625517308 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -25984,7 +26067,7 @@ diff -ruN -x fixtures a/I18nCatalog9.java b/I18nCatalog9.java
 +        {"cena viva", "scene alive", "escena viva"},
 +        {"desligado: segue o mundo (fica no golpe)", "off: follows the world (stays on the move)", "apagado: sigue el mundo (queda en el golpe)"},
 +        {"o jogo esconde o cenário enquanto a cena existe", "the game hides the stage while the scene exists", "el juego oculta el escenario mientras la escena exista"},
-+        {"⏮ CENA", "⏮ SCENE", "⏮ ESCENA"},
++        {"CENA →", "SCENE →", "ESCENA →"},
 +        {"A animação escolhida e o zoom/posição editados nesta tela ainda não foram salvos.", "The chosen animation and the zoom/position edited on this screen have not been saved yet.", "La animación elegida y el zoom/posición editados en esta pantalla aún no se han guardado."},
 +        {"A cena usa a ANIM_ID com o personagem virado para a frente e a ANIM_FLIP_ID virado para trás: confira as duas antes de salvar.", "The scene uses ANIM_ID with the character facing forward and ANIM_FLIP_ID facing backward: check both before saving.", "La escena usa la ANIM_ID con el personaje mirando hacia delante y la ANIM_FLIP_ID mirando hacia atrás: revisa las dos antes de guardar."},
 +        {"Animação da cena quando o personagem está virado para a frente (para a direita).", "Scene animation when the character is facing forward (to the right).", "Animación de la escena cuando el personaje mira hacia delante (a la derecha)."},
@@ -26041,7 +26124,7 @@ diff -ruN -x fixtures a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-11-08 10:57:35.945834627 +0000
++++ b/I18nHelpCatalog.java	2026-11-08 15:21:55.497698670 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -26055,7 +26138,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-11-08 10:57:35.944877025 +0000
++++ b/I18nHelpCatalog0.java	2026-11-08 15:21:55.496613859 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26140,7 +26223,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-11-08 10:57:35.944964169 +0000
++++ b/I18nHelpCatalog1.java	2026-11-08 15:21:55.496727946 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26225,7 +26308,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-11-08 10:57:35.945056410 +0000
++++ b/I18nHelpCatalog2.java	2026-11-08 15:21:55.496837372 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26310,7 +26393,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-11-08 10:57:35.945161404 +0000
++++ b/I18nHelpCatalog3.java	2026-11-08 15:21:55.496990403 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26395,7 +26478,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-11-08 10:57:35.945236974 +0000
++++ b/I18nHelpCatalog4.java	2026-11-08 15:21:55.497077668 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26480,7 +26563,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-11-08 10:57:35.945292680 +0000
++++ b/I18nHelpCatalog5.java	2026-11-08 15:21:55.497138538 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26565,7 +26648,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-11-08 10:57:35.945351631 +0000
++++ b/I18nHelpCatalog6.java	2026-11-08 15:21:55.497200449 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26650,7 +26733,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-11-08 10:57:35.945475413 +0000
++++ b/I18nHelpCatalog7.java	2026-11-08 15:21:55.497357944 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26728,14 +26811,14 @@ diff -ruN -x fixtures a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +        {"Animações por flag",
 +         "Animations by flag",
 +         "Animaciones por flag"},
-+        {"Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora. A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote). Cutscenes (flag 20): o 3º valor da hitbox é o evento da tabela HDAT 13 do personagem. O botão EDITAR CUTSCENE da gaveta da flag 20 (o único jeito de abrir o editor) abre a tela: no topo o EVENTO (toque nele para abrir a grade de eventos: trocar, NOVO, DUPLICAR, COPIAR, COLAR e ZERAR; não há excluir, só zerar) e USAR NESTE HIT, que troca o evento do hit; com o modo CHAR ligado aparece também o ANO, uma escolha entre as ANOs que usam o evento. A prévia, com o botão CHAR no canto inferior direito, mostra o golpe/ANO do personagem inteiro com play (qualquer alteração pausa e atualiza a prévia); desligado, mostra só a cutscene: a animação normal e a virada, uma embaixo da outra, cada uma no quadro da tela do jogo neste celular (no canto da tela nasce no 0, 0; no mundo, em volta da cruz do hit), com o tamanho real e o esticamento da camada, e EDITAR ANO embaixo de cada uma (abre o ANO na timeline; só para o PAC do personagem — o app ainda não edita effect.pac nem bobj). O botão ANIM abre a tela das duas animações: em cima, lado a lado na tela do jogo, a ANIM_ID (faixa azul, virado para a frente) e a ANIM_FLIP_ID (faixa laranja, virado para trás), cada uma com o frame atual; embaixo, um slot para cada uma com ESCOLHER (primeiro o PAC, depois a grade dos ANOs dele) e EDITAR ANO N. EDITAR não abre outro menu: o slot cresce com ◀ FRAME, ⏸/▶ e FRAME ▶, \"Aplicar apenas nesse Frame\" (desmarcado), Zoom com \"Unir zoom\" (marcado quando X = Y) e Posição X/Y. Os campos começam no 1º frame e acompanham os frames da prévia; mudar um valor soma a mesma diferença em todos os frames do ANO (ou só no frame da prévia), sem mexer nos links. Só o PAC do personagem pode ser editado. Tudo fica em rascunho até o SALVAR, que mostra as duas animações juntas, o resumo (ex.: posição +10, −4 em todos os frames) e avisa se só uma das duas foi editada; CONFIRMAR aplica (o ↶ do app desfaz os ANOs, o ↶ do editor o evento) e os ANOs editados entram em qualquer opção do SALVAR do app; ✕ ou CANCELAR perguntam se descarta. Embaixo da prévia CHAR, a barra de progresso fica vermelha no trecho em que a cutscene está viva e o botão ⏮ CENA vai direto ao primeiro tick dela. Abaixo ficam X/Y do hit e, ao lado, a DURAÇÃO (Até o ANO acabar, ou N MPTs), TRAVAR OPONENTE (chave), CAMADA (Fundo, Meio, Frente), MODO DE CÂMERA (chave Canto da tela — desligada, a cena segue o mundo — e, dentro dela, a chave Tela cheia) e a FLAG em grupos pela função, cada opção uma chave: ligar uma desliga as outras e desligar a ligada volta a FLAG 0. O que o jogo ignora ou fixa naquele modo (por exemplo, a duração com a FLAG 3 ou a posição com a câmera no canto da tela) fica esmaecido, com o motivo, e os avisos aparecem no topo. Ao salvar, o app grava as linhas $EVT_nn no $ROTEIRO_CUTSCENE do $HDAT_13 do 000.bin.txt, mantendo os comentários e corrigindo $ROW e $SZ.",
-+         "Hitboxes with special flags create animations: projectile (0), shake (3 to 5), dust (10 to 17), cutscene (20), camera zoom (30/31), teleport (39/40) and character animations (41 to 125). These animations are roots: they show their own links. The warning \"ANOs N, N and N have links that have other links or animations/effects\" in the warning list says which links the game ignores. Dust/smoke (the \"Poeira / fumaça\" action, types 1 to 15) is drawn in the preview like in the game: one is born per frame, it stays still in the world at the character's position, uses ANO +80 when the character is facing left, at most 6 at the same time (the seventh erases the oldest). Types 1 to 5 come from the scenery bobj folder, 6 to 15 from effect; the action menu shows the animated preview of each type and where it comes from. In the effects lane the clip says where the art comes from: effect N, charf N or char N (N = the pack's ANO). Cutscenes (flag 20): the hitbox's 3rd value is the event of the character's HDAT 13 table. The EDIT CUTSCENE button in the flag 20 drawer (the only way to open the editor) opens the screen: on top the EVENT (tap it to open the event grid: switch, NEW, DUPLICATE, COPY, PASTE and CLEAR; there is no delete, only clear) and USE IN THIS HIT, which changes the hit's event; with the CHAR mode on the ANO also appears, a choice among the ANOs that use the event. The preview, with the CHAR button in the bottom-right corner, shows the whole character move/ANO with play (any change pauses and updates the preview); off, it shows only the cutscene: the normal and the flipped animation, one below the other, each in a frame of the game screen on this phone (on the screen corner it starts at 0, 0; in the world, around the hit cross), with the real size and the layer stretch, and EDIT ANO under each one (opens the ANO on the timeline; only for the character PAC — the app does not edit effect.pac or bobj yet). The ANIM button opens the screen of both animations: on top, side by side on the game screen, ANIM_ID (blue band, facing forward) and ANIM_FLIP_ID (orange band, facing backward), each with its current frame; below, one slot for each with ESCOLHER (the PAC first, then its ANO grid) and EDIT ANO N. EDIT does not open another menu: the slot grows with ◀ FRAME, ⏸/▶ and FRAME ▶, \"Apply only to this Frame\" (unchecked), Zoom with \"Link zoom\" (checked when X = Y) and Position X/Y. The fields start at the 1st frame and follow the preview frames; changing a value adds the same difference to every frame of the ANO (or only to the preview frame), without touching the links. Only the character PAC can be edited. Everything stays as a draft until SAVE, which shows both animations together, the summary (e.g. position +10, −4 in every frame) and warns if only one of the two was edited; CONFIRM applies it (the app ↶ undoes the ANOs, the editor ↶ the event) and the edited ANOs go into any option of the app SAVE; ✕ or CANCEL ask whether to discard. Under the CHAR preview, the progress bar turns red where the cutscene is alive and the ⏮ SCENE button jumps straight to its first tick. Below are the hit X/Y and, beside it, the DURATION (Until the ANO ends, or N MPTs), LOCK OPPONENT (switch), LAYER (Back, Middle, Front), CAMERA MODE (Screen corner switch — off, the scene follows the world — and, inside it, the Full screen switch) and the FLAG in groups by function, each option a switch: turning one on turns the others off and turning off the one that is on brings FLAG back to 0. What the game ignores or fixes in that mode (for example, the duration with FLAG 3 or the position with the camera on the screen corner) is dimmed, with the reason, and warnings appear at the top. When you save, the app writes the $EVT_nn lines into the $ROTEIRO_CUTSCENE of the $HDAT_13 in 000.bin.txt, keeping the comments and fixing $ROW and $SZ.",
-+         "Las hitboxes con flags especiales crean animaciones: proyectil (0), temblor (3 a 5), polvo (10 a 17), cutscene (20), zoom de cámara (30/31), teletransporte (39/40) y animaciones del personaje (41 a 125). Esas animaciones son raíces: muestran sus propios links. El aviso \"Los ANOs N, N y N tienen links que tienen otros links o animaciones/efectos\" en la lista de avisos dice qué links ignora el juego. El polvo/humo (la acción \"Poeira / fumaça\", tipos 1 a 15) se dibuja en la vista previa como en el juego: nace uno por frame, queda quieto en el mundo en la posición del personaje, usa la ANO +80 cuando está volteado, como máximo 6 a la vez (el séptimo borra el más antiguo). Los tipos 1 a 5 vienen de la carpeta bobj del escenario, 6 a 15 del effect; el menú de la acción muestra la vista previa animada de cada tipo y de dónde viene. En la franja de efectos el clip dice de dónde viene el arte: effect N, charf N o char N (N = la ANO del paquete). Cutscenes (flag 20): el 3.er valor de la hitbox es el evento de la tabla HDAT 13 del personaje. El botón EDITAR CUTSCENE del cajón de la flag 20 (la única forma de abrir el editor) abre la pantalla: arriba el EVENTO (tócalo para abrir la cuadrícula de eventos: cambiar, NUEVO, DUPLICAR, COPIAR, PEGAR y VACIAR; no hay eliminar, solo vaciar) y USAR EN ESTE HIT, que cambia el evento del hit; con el modo CHAR activado aparece también el ANO, una elección entre los ANOs que usan el evento. La vista previa, con el botón CHAR en la esquina inferior derecha, muestra el golpe/ANO completo del personaje con play (cualquier cambio pausa y actualiza la vista previa); desactivado, muestra solo la cutscene: la animación normal y la girada, una debajo de la otra, cada una en un cuadro de la pantalla del juego en este móvil (en la esquina nace en 0, 0; en el mundo, alrededor de la cruz del hit), con el tamaño real y el estiramiento de la capa, y EDITAR ANO debajo de cada una (abre el ANO en la timeline; solo para el PAC del personaje — la app aún no edita effect.pac ni bobj). El botón ANIM abre la pantalla de las dos animaciones: arriba, lado a lado en la pantalla del juego, la ANIM_ID (franja azul, mirando hacia delante) y la ANIM_FLIP_ID (franja naranja, mirando hacia atrás), cada una con su frame actual; abajo, un slot para cada una con ESCOLHER (primero el PAC, luego su cuadrícula de ANOs) y EDITAR ANO N. EDITAR no abre otro menú: el slot crece con ◀ FRAME, ⏸/▶ y FRAME ▶, \"Aplicar solo en este Frame\" (desmarcado), Zoom con \"Unir zoom\" (marcado cuando X = Y) y Posición X/Y. Los campos empiezan en el 1.er frame y siguen los frames de la vista previa; cambiar un valor suma la misma diferencia en todos los frames del ANO (o solo en el frame de la vista previa), sin tocar los links. Solo se puede editar el PAC del personaje. Todo queda como borrador hasta GUARDAR, que muestra las dos animaciones juntas, el resumen (ej.: posición +10, −4 en todos los frames) y avisa si solo se editó una de las dos; CONFIRMAR lo aplica (el ↶ de la app deshace los ANOs, el ↶ del editor el evento) y los ANOs editados entran en cualquier opción del GUARDAR de la app; ✕ o CANCELAR preguntan si se descarta. Bajo la vista previa CHAR, la barra de progreso se vuelve roja en el tramo en que la cutscene está viva y el botón ⏮ ESCENA va directo a su primer tick. Debajo están X/Y del hit y, al lado, la DURACIÓN (Hasta que el ANO termine, o N MPTs), TRABAR OPONENTE (interruptor), CAPA (Fondo, Medio, Frente), MODO DE CÁMARA (interruptor Esquina de la pantalla — apagado, la escena sigue el mundo — y, dentro de él, el interruptor Pantalla completa) y la FLAG en grupos por función, cada opción un interruptor: encender uno apaga los demás y apagar el encendido vuelve la FLAG a 0. Lo que el juego ignora o fija en ese modo (por ejemplo, la duración con la FLAG 3 o la posición con la cámara en la esquina) aparece atenuado, con el motivo, y los avisos aparecen arriba. Al guardar, la app escribe las líneas $EVT_nn en el $ROTEIRO_CUTSCENE del $HDAT_13 del 000.bin.txt, conservando los comentarios y corrigiendo $ROW y $SZ."},
++        {"Hitboxes com flags especiais criam animações: projétil (0), tremor (3 a 5), poeira (10 a 17), cutscene (20), zoom de câmera (30/31), teleporte (39/40) e animações do personagem (41 a 125). Essas animações são raízes: mostram os próprios links. O aviso \"Os ANOs N, N e N têm links que têm outros links ou animações/efeitos\" na lista de avisos diz quais links o jogo ignora. A poeira/fumaça (ação \"Poeira / fumaça\", tipos 1 a 15) é desenhada na prévia como no jogo: nasce uma por frame, fica parada no mundo na posição do personagem, usa a ANO +80 quando ele está virado, no máximo 6 ao mesmo tempo (a sétima apaga a mais antiga). Tipos 1 a 5 vêm da pasta bobj do cenário, 6 a 15 do effect; o menu da ação mostra a prévia animada de cada tipo e de onde ela vem. Na faixa dos efeitos o clipe diz de onde vem a arte: effect N, charf N ou char N (N = ANO do pacote). Cutscenes (flag 20): o 3º valor da hitbox é o evento da tabela HDAT 13 do personagem. O botão EDITAR CUTSCENE da gaveta da flag 20 (o único jeito de abrir o editor) abre a tela: no topo o EVENTO (toque nele para abrir a grade de eventos: trocar, NOVO, DUPLICAR, COPIAR, COLAR e ZERAR; não há excluir, só zerar) e USAR NESTE HIT, que troca o evento do hit; com o modo CHAR ligado aparece também o ANO, uma escolha entre as ANOs que usam o evento. A prévia, com o botão CHAR no canto inferior direito, mostra o golpe/ANO do personagem inteiro com play (qualquer alteração pausa e atualiza a prévia); desligado, mostra só a cutscene: a animação normal e a virada, uma embaixo da outra, cada uma no quadro da tela do jogo neste celular (no canto da tela nasce no 0, 0; no mundo, em volta da cruz do hit), com o tamanho real e o esticamento da camada, e EDITAR ANO embaixo de cada uma (abre o ANO na timeline; só para o PAC do personagem — o app ainda não edita effect.pac nem bobj). O botão ANIM abre a tela das duas animações: em cima, lado a lado na tela do jogo, a ANIM_ID (faixa azul, virado para a frente) e a ANIM_FLIP_ID (faixa laranja, virado para trás), cada uma com o frame atual; embaixo, um slot para cada uma com ESCOLHER (primeiro o PAC, depois a grade dos ANOs dele) e EDITAR ANO N. EDITAR não abre outro menu: o slot cresce com ◀ FRAME, ⏸/▶ e FRAME ▶, \"Aplicar apenas nesse Frame\" (desmarcado), Zoom com \"Unir zoom\" (marcado quando X = Y) e Posição X/Y. Os campos começam no 1º frame e acompanham os frames da prévia; mudar um valor soma a mesma diferença em todos os frames do ANO (ou só no frame da prévia), sem mexer nos links. Só o PAC do personagem pode ser editado. Tudo fica em rascunho até o SALVAR, que mostra as duas animações juntas, o resumo (ex.: posição +10, −4 em todos os frames) e avisa se só uma das duas foi editada; CONFIRMAR aplica (o ↶ do app desfaz os ANOs, o ↶ do editor o evento) e os ANOs editados entram em qualquer opção do SALVAR do app; ✕ ou CANCELAR perguntam se descarta. Embaixo da prévia CHAR, a barra de progresso fica vermelha no trecho em que a cutscene está viva e o botão CENA → vai direto ao primeiro tick dela. Com zoom de câmera (hitbox 30/31) ou na trava dos especiais, as camadas Fundo e Meio da cena são ampliadas e deslocadas junto com o cenário e os lutadores (mesmo presas ao canto da tela); a Frente nunca: fica 1:1 na tela (o Fundo também escapa na trava). A cena presa ao canto da tela não rola nem treme com a câmera; a do mundo acompanha a rolagem. Abaixo ficam X/Y do hit e, ao lado, a DURAÇÃO (Até o ANO acabar, ou N MPTs), TRAVAR OPONENTE (chave), CAMADA (Fundo, Meio, Frente), MODO DE CÂMERA (chave Canto da tela — desligada, a cena segue o mundo — e, dentro dela, a chave Tela cheia) e a FLAG em grupos pela função, cada opção uma chave: ligar uma desliga as outras e desligar a ligada volta a FLAG 0. O que o jogo ignora ou fixa naquele modo (por exemplo, a duração com a FLAG 3 ou a posição com a câmera no canto da tela) fica esmaecido, com o motivo, e os avisos aparecem no topo. Ao salvar, o app grava as linhas $EVT_nn no $ROTEIRO_CUTSCENE do $HDAT_13 do 000.bin.txt, mantendo os comentários e corrigindo $ROW e $SZ.",
++         "Hitboxes with special flags create animations: projectile (0), shake (3 to 5), dust (10 to 17), cutscene (20), camera zoom (30/31), teleport (39/40) and character animations (41 to 125). These animations are roots: they show their own links. The warning \"ANOs N, N and N have links that have other links or animations/effects\" in the warning list says which links the game ignores. Dust/smoke (the \"Poeira / fumaça\" action, types 1 to 15) is drawn in the preview like in the game: one is born per frame, it stays still in the world at the character's position, uses ANO +80 when the character is facing left, at most 6 at the same time (the seventh erases the oldest). Types 1 to 5 come from the scenery bobj folder, 6 to 15 from effect; the action menu shows the animated preview of each type and where it comes from. In the effects lane the clip says where the art comes from: effect N, charf N or char N (N = the pack's ANO). Cutscenes (flag 20): the hitbox's 3rd value is the event of the character's HDAT 13 table. The EDIT CUTSCENE button in the flag 20 drawer (the only way to open the editor) opens the screen: on top the EVENT (tap it to open the event grid: switch, NEW, DUPLICATE, COPY, PASTE and CLEAR; there is no delete, only clear) and USE IN THIS HIT, which changes the hit's event; with the CHAR mode on the ANO also appears, a choice among the ANOs that use the event. The preview, with the CHAR button in the bottom-right corner, shows the whole character move/ANO with play (any change pauses and updates the preview); off, it shows only the cutscene: the normal and the flipped animation, one below the other, each in a frame of the game screen on this phone (on the screen corner it starts at 0, 0; in the world, around the hit cross), with the real size and the layer stretch, and EDIT ANO under each one (opens the ANO on the timeline; only for the character PAC — the app does not edit effect.pac or bobj yet). The ANIM button opens the screen of both animations: on top, side by side on the game screen, ANIM_ID (blue band, facing forward) and ANIM_FLIP_ID (orange band, facing backward), each with its current frame; below, one slot for each with ESCOLHER (the PAC first, then its ANO grid) and EDIT ANO N. EDIT does not open another menu: the slot grows with ◀ FRAME, ⏸/▶ and FRAME ▶, \"Apply only to this Frame\" (unchecked), Zoom with \"Link zoom\" (checked when X = Y) and Position X/Y. The fields start at the 1st frame and follow the preview frames; changing a value adds the same difference to every frame of the ANO (or only to the preview frame), without touching the links. Only the character PAC can be edited. Everything stays as a draft until SAVE, which shows both animations together, the summary (e.g. position +10, −4 in every frame) and warns if only one of the two was edited; CONFIRM applies it (the app ↶ undoes the ANOs, the editor ↶ the event) and the edited ANOs go into any option of the app SAVE; ✕ or CANCEL ask whether to discard. Under the CHAR preview, the progress bar turns red where the cutscene is alive and the SCENE → button jumps straight to its first tick. With camera zoom (hitbox 30/31) or in the special-move lock, the scene's Back and Middle layers are enlarged and moved together with the stage and the fighters (even when stuck to the screen corner); Front never is: it stays 1:1 on the screen (Back also escapes during the lock). A scene stuck to the screen corner does not scroll or shake with the camera; a world scene follows the scrolling. Below are the hit X/Y and, beside it, the DURATION (Until the ANO ends, or N MPTs), LOCK OPPONENT (switch), LAYER (Back, Middle, Front), CAMERA MODE (Screen corner switch — off, the scene follows the world — and, inside it, the Full screen switch) and the FLAG in groups by function, each option a switch: turning one on turns the others off and turning off the one that is on brings FLAG back to 0. What the game ignores or fixes in that mode (for example, the duration with FLAG 3 or the position with the camera on the screen corner) is dimmed, with the reason, and warnings appear at the top. When you save, the app writes the $EVT_nn lines into the $ROTEIRO_CUTSCENE of the $HDAT_13 in 000.bin.txt, keeping the comments and fixing $ROW and $SZ.",
++         "Las hitboxes con flags especiales crean animaciones: proyectil (0), temblor (3 a 5), polvo (10 a 17), cutscene (20), zoom de cámara (30/31), teletransporte (39/40) y animaciones del personaje (41 a 125). Esas animaciones son raíces: muestran sus propios links. El aviso \"Los ANOs N, N y N tienen links que tienen otros links o animaciones/efectos\" en la lista de avisos dice qué links ignora el juego. El polvo/humo (la acción \"Poeira / fumaça\", tipos 1 a 15) se dibuja en la vista previa como en el juego: nace uno por frame, queda quieto en el mundo en la posición del personaje, usa la ANO +80 cuando está volteado, como máximo 6 a la vez (el séptimo borra el más antiguo). Los tipos 1 a 5 vienen de la carpeta bobj del escenario, 6 a 15 del effect; el menú de la acción muestra la vista previa animada de cada tipo y de dónde viene. En la franja de efectos el clip dice de dónde viene el arte: effect N, charf N o char N (N = la ANO del paquete). Cutscenes (flag 20): el 3.er valor de la hitbox es el evento de la tabla HDAT 13 del personaje. El botón EDITAR CUTSCENE del cajón de la flag 20 (la única forma de abrir el editor) abre la pantalla: arriba el EVENTO (tócalo para abrir la cuadrícula de eventos: cambiar, NUEVO, DUPLICAR, COPIAR, PEGAR y VACIAR; no hay eliminar, solo vaciar) y USAR EN ESTE HIT, que cambia el evento del hit; con el modo CHAR activado aparece también el ANO, una elección entre los ANOs que usan el evento. La vista previa, con el botón CHAR en la esquina inferior derecha, muestra el golpe/ANO completo del personaje con play (cualquier cambio pausa y actualiza la vista previa); desactivado, muestra solo la cutscene: la animación normal y la girada, una debajo de la otra, cada una en un cuadro de la pantalla del juego en este móvil (en la esquina nace en 0, 0; en el mundo, alrededor de la cruz del hit), con el tamaño real y el estiramiento de la capa, y EDITAR ANO debajo de cada una (abre el ANO en la timeline; solo para el PAC del personaje — la app aún no edita effect.pac ni bobj). El botón ANIM abre la pantalla de las dos animaciones: arriba, lado a lado en la pantalla del juego, la ANIM_ID (franja azul, mirando hacia delante) y la ANIM_FLIP_ID (franja naranja, mirando hacia atrás), cada una con su frame actual; abajo, un slot para cada una con ESCOLHER (primero el PAC, luego su cuadrícula de ANOs) y EDITAR ANO N. EDITAR no abre otro menú: el slot crece con ◀ FRAME, ⏸/▶ y FRAME ▶, \"Aplicar solo en este Frame\" (desmarcado), Zoom con \"Unir zoom\" (marcado cuando X = Y) y Posición X/Y. Los campos empiezan en el 1.er frame y siguen los frames de la vista previa; cambiar un valor suma la misma diferencia en todos los frames del ANO (o solo en el frame de la vista previa), sin tocar los links. Solo se puede editar el PAC del personaje. Todo queda como borrador hasta GUARDAR, que muestra las dos animaciones juntas, el resumen (ej.: posición +10, −4 en todos los frames) y avisa si solo se editó una de las dos; CONFIRMAR lo aplica (el ↶ de la app deshace los ANOs, el ↶ del editor el evento) y los ANOs editados entran en cualquier opción del GUARDAR de la app; ✕ o CANCELAR preguntan si se descarta. Bajo la vista previa CHAR, la barra de progreso se vuelve roja en el tramo en que la cutscene está viva y el botón ESCENA → va directo a su primer tick. Con zoom de cámara (hitbox 30/31) o en el bloqueo de los especiales, las capas Fondo y Medio de la escena se amplían y se desplazan junto con el escenario y los luchadores (aunque estén pegadas a la esquina de la pantalla); la Frente nunca: queda 1:1 en la pantalla (el Fondo también escapa en el bloqueo). Una escena pegada a la esquina de la pantalla no se desplaza ni tiembla con la cámara; la del mundo sigue el desplazamiento. Debajo están X/Y del hit y, al lado, la DURACIÓN (Hasta que el ANO termine, o N MPTs), TRABAR OPONENTE (interruptor), CAPA (Fondo, Medio, Frente), MODO DE CÁMARA (interruptor Esquina de la pantalla — apagado, la escena sigue el mundo — y, dentro de él, el interruptor Pantalla completa) y la FLAG en grupos por función, cada opción un interruptor: encender uno apaga los demás y apagar el encendido vuelve la FLAG a 0. Lo que el juego ignora o fija en ese modo (por ejemplo, la duración con la FLAG 3 o la posición con la cámara en la esquina) aparece atenuado, con el motivo, y los avisos aparecen arriba. Al guardar, la app escribe las líneas $EVT_nn en el $ROTEIRO_CUTSCENE del $HDAT_13 del 000.bin.txt, conservando los comentarios y corrigiendo $ROW y $SZ."},
 +    };
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-11-08 10:57:35.945745510 +0000
++++ b/I18nHelpCatalog8.java	2026-11-08 15:21:55.497616700 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26820,7 +26903,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-11-08 10:57:35.945811103 +0000
++++ b/I18nHelpCatalog9.java	2026-11-08 15:21:55.497674646 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -57575,6 +57658,77 @@ diff -ruN -x fixtures a/com/zue/gd/util/hdatGD.java b/com/zue/gd/util/hdatGD.jav
 +        return value;
 +    }
 +}
+diff -ruN -x fixtures a/test/ActionZoomTest.java b/test/ActionZoomTest.java
+--- a/test/ActionZoomTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ActionZoomTest.java	2026-11-08 15:20:37.000358064 +0000
+@@ -0,0 +1,67 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** Zoom de camera das hitboxes 30/31 como o md 29 do jogo: alvo em tela (T, W), passos inteiros << 7, volta em 12 ticks, 90 % de longe. */
++public class ActionZoomTest {
++    static BattleSim make(int w, int frames, int dist, int t0) throws Exception {
++        A[] a = new A[45];
++        for (int i = 0; i < 45; i++) a[i] = new A().mpt(new M().time(5)).mpt(new M().time(5));
++        M f0 = new M().time(t0);
++        if (frames >= 0) f0.hit(30, 20, -40, w, frames);
++        a[40] = new A().mpt(f0).mpt(new M().time(60));
++        CharData ch = chr(move(new int[]{2, 40}), new byte[][] {});
++        A[] def = new A[30];
++        for (int i = 0; i < 30; i++) def[i] = new A().mpt(new M().time(5).hit(1, -10, -60, 20, 60));
++        GameData g = gd(new byte[][] { null, null, null, react(new int[]{4, 4, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}) });
++        BattleSim.cinematic = false;
++        BattleSim.edgeMode = 1;
++        return new BattleSim(dac(a), ch, ch.moves[0], false, dac(def), dac(new A().mpt(new M().time(4)), new A().mpt(new M().time(4))), g, dist, 0, 0);
++    }
++
++    public static void main(String[] args) throws Exception {
++        BattleSim s = make(150, 10, 120, 30);
++        int sx = (s.attackerX() * 65536 + (20 << 16) - s.screenLeft()) >> 16, sy = ((s.attackerY() - 40) * 65536 - s.screenTop()) >> 16;
++        int tx = (240 - sx) * 150 / 100, ty = (160 - sy) * 150 / 100;
++        check("tick 0 (o frame da hitbox ja roda ao criar): 1/10 do caminho em ponto fixo << 7 (W 100 -> 105)", s.zoomW(), 105);
++        check("tick 0: Tx = passo inteiro do md 29", s.zoomTx(), ((tx << 7) / 10) >> 7);
++        s.step();
++        check("tick 1: 2/10 (W 110)", s.zoomW(), 110);
++        for (int i = 0; i < 8; i++) s.step();
++        check("10 ticks (FRAMES da hitbox): chega exato em W 150 e T = (240 - x, 160 - y) * 150 %", s.zoomW() + ":" + s.zoomTx() + ":" + s.zoomTy(), "150:" + tx + ":" + ty);
++        float[] zr = s.zoomRect();
++        check("retangulo amarelo: 480 / 1,5 = 320 px, centrado no ponto do hit", zr != null && Math.abs(zr[2] - zr[0] - 320f) < 0.01f && Math.abs((zr[0] + zr[2]) / 2 - (s.attackerX() + 20)) < 1f, true);
++        for (int i = 0; i < 40; i++) s.step();                 // o frame 0 (30 ticks) acaba: sem a hitbox, volta a 100 % em 12 ticks
++        check("depois do frame da hitbox volta a 100 % / T 0", s.zoomW() + ":" + s.zoomTx() + ":" + s.zoomTy() + ":" + (s.zoomRect() == null), "100:0:0:true");
++
++        BattleSim k = make(100, 10, 120, 30);
++        for (int i = 0; i < 12; i++) k.step();
++        check("W 100 na hitbox: o alvo atual continua (sem zoom)", k.zoomW() + ":" + k.zoomActive(), "100:false");
++
++        BattleSim z0 = make(150, 0, 120, 30);
++        for (int i = 0; i < 12; i++) z0.step();
++        check("FRAMES 0: o md 29 ignora a hitbox", z0.zoomW(), 100);
++
++        BattleSim far = make(150, -1, 420, 30);
++        for (int i = 0; i < 16; i++) far.step();
++        check("lutadores a mais de 320 px: 90 % em 16 ticks", far.zoomW(), 90);
++
++        // camadas fora da faixa da camera na vista do mundo (NORMAL/CHAR): vao para o retangulo amarelo com escala 1/z
++        BattleSim.cinematic = true;
++        float[] wv = s.worldViewXform(400);
++        check("sem zoom: Frente nao muda", wv == null, true);
++        BattleSim q = make(200, 4, 120, 30);
++        for (int i = 0; i < 6; i++) q.step();
++        float[] f = q.worldViewXform(400), r = q.zoomRect();
++        float sl = q.screenLeft() / 65536f, st = q.screenTop() / 65536f;
++        check("Frente com zoom 200 %: escala 0,5", f != null && Math.abs(f[0] - 0.5f) < 1e-4f, true);
++        check("Frente: o canto (0, 0) da tela cai no canto do retangulo amarelo", f != null && Math.abs(sl * f[0] + f[2] - r[0]) < 0.01f && Math.abs(st * f[1] + f[3] - r[1]) < 0.01f, true);
++        check("Frente: o canto (480, 320) cai no outro canto", f != null && Math.abs((sl + 480f) * f[0] + f[2] - r[2]) < 0.01f && Math.abs((st + 320f) * f[1] + f[3] - r[3]) < 0.01f, true);
++        check("Meio (200) e Fundo (17) dentro da faixa: ja acompanham o mundo", (q.worldViewXform(200) == null) + ":" + (q.worldViewXform(17) == null) + ":" + (q.worldViewXform(328) != null), "true:true:true");
++        GameScreen plain = GameScreen.plain();
++        float[] m = q.gameXform(plain, 200);
++        check("TELA: o ponto do hit vai para o meio da tela (240, 160) com 200 %", Math.abs((q.attackerX() + 20) * m[0] + m[2] - 240f) < 1.1f && Math.abs((q.attackerY() - 40) * m[1] + m[3] - 160f) < 1.1f, true);
++        BattleSim.cinematic = true;
++        System.out.println("ActionZoomTest fails=" + fails);
++    }
++}
 diff -ruN -x fixtures a/test/AddSpritesTest.java b/test/AddSpritesTest.java
 --- a/test/AddSpritesTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/AddSpritesTest.java	2026-11-04 16:16:03.428848876 +0000
@@ -61044,8 +61198,8 @@ diff -ruN -x fixtures a/test/GameRulesTest.java b/test/GameRulesTest.java
 +}
 diff -ruN -x fixtures a/test/GameScreenTest.java b/test/GameScreenTest.java
 --- a/test/GameScreenTest.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/GameScreenTest.java	2026-11-08 02:58:32.709163775 +0000
-@@ -0,0 +1,35 @@
++++ b/test/GameScreenTest.java	2026-11-08 15:20:16.746522085 +0000
+@@ -0,0 +1,36 @@
 +package com.zue.attackeditor;
 +
 +import static com.zue.attackeditor.BattleTest.*;
@@ -61069,14 +61223,15 @@ diff -ruN -x fixtures a/test/GameScreenTest.java b/test/GameScreenTest.java
 +        check("Frente (400) e o efeito 328 nunca", GameScreen.inCamera(400, 9) + ":" + GameScreen.inCamera(328, 9), "false:false");
 +        check("na trava: Fundo (17, 10, 19, 21) escapa; Meio (200) entra", GameScreen.inCamera(17, 127) + ":" + GameScreen.inCamera(21, 127) + ":" + GameScreen.inCamera(200, 127), "false:false:true");
 +        // matrizes
-+        float[] mid = g20.matrix(200, 9, 100f, 240f, 160f);
++        float[] mid = g20.matrix(200, 9, 100f, 0f, 0f);
 +        check("Meio sem zoom num 20:9: esticado 1,48 em volta de (240, 160)", r2(mid[0]) + ":" + r2(240f * mid[0] + mid[2]) + ":" + r2(0f * mid[0] + mid[2]), "1.48:240.0:-115.5");
-+        float[] front = g20.matrix(400, 9, 200f, 100f, 100f);
++        float[] front = g20.matrix(400, 9, 200f, 280f, 120f);
 +        check("Frente: sempre 1:1 (nem zoom nem esticar)", java.util.Arrays.toString(front), "[1.0, 1.0, 0.0, 0.0]");
-+        float[] p = GameScreen.plain().matrix(200, 9, 200f, 300f, 200f);
++        float[] t = GameScreen.zoomT(300f, 200f, 200f);
++        float[] p = GameScreen.plain().matrix(200, 9, 200f, t[0], t[1]);
 +        check("zoom 200% num 480 x 320: o centro do zoom vai para o meio da tela", r2(300f * p[0] + p[2]) + ":" + r2(200f * p[1] + p[3]), "240.0:160.0");
 +        check("zoom 200% dobra o tamanho", String.valueOf(r2(p[0])), "2.0");
-+        float[] lockBack = g20.matrix(17, 127, 200f, 300f, 200f);
++        float[] lockBack = g20.matrix(17, 127, 200f, t[0], t[1]);
 +        check("na trava o Fundo fica 1:1 mesmo com o zoom de 200%", java.util.Arrays.toString(lockBack), "[1.0, 1.0, 0.0, 0.0]");
 +        System.out.println("GameScreenTest fails=" + fails);
 +    }
@@ -62005,7 +62160,7 @@ diff -ruN -x fixtures a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN -x fixtures a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-11-08 10:56:05.231434552 +0000
++++ b/test/I18nIgnored.java	2026-11-08 15:21:28.721606667 +0000
 @@ -0,0 +1,656 @@
 +package com.zue.attackeditor;
 +
