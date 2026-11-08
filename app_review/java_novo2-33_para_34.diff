@@ -506,8 +506,8 @@ diff -ruN -x fixtures a/AiHelp.java b/AiHelp.java
 +}
 diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 --- a/AiHelpDoc.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/AiHelpDoc.java	2026-11-08 10:47:20.232796174 +0000
-@@ -0,0 +1,857 @@
++++ b/AiHelpDoc.java	2026-11-08 10:58:36.426227727 +0000
+@@ -0,0 +1,859 @@
 +package com.zue.attackeditor;
 +
 +/** Texto fixo do TBRHelp.md (gerado a partir de aihelp_src/*.md); os {{MARCADORES}} sao preenchidos por {@link AiHelp}. Nao editar a mao. */
@@ -889,12 +889,15 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "\n" +
 +        "How the game really draws (and what `CENTRO: TELA` reproduces): the game screen on a phone is `width×320/height` × 320 points (e.g. 20:9 ≈ 711×320) centred on the 480×320 point (240,160). Every object whose draw priority is inside the camera range (normally 9..298: stage, shadows, fighters, effects, cutscene Fundo 17 and Meio 200) gets the camera matrix `x' = 240 + (x−240)·(width/480)·zoom + translate`, so it is stretched to the phone width (cut at the top/bottom) and zoomed (flags 30/31, the 90% far zoom-out and the 200% special lock). Objects outside the range — cutscene Frente (400), the HUD, the 328 hit effect, and during the special lock everything below the fighters (cutscene Fundo 17/10/19/21) — are drawn 1:1 in the middle 480×320, with side bars on wide phones. CAM_MODE 1 (\"tela cheia\") only hides the stage background. Authoring tips for a screen-locked cutscene (CAM_MODE ≠ 0): its ANO starts at the top-left (0,0) of 480×320 and the frame MIDs are screen coordinates (the original fullscreen cutscenes use Fundo or Frente, never Meio, so they are not zoomed during specials). In the cutscene editor with CHAR off, each animation is shown in a frame of this phone's game screen with its real size and layer stretch, and `EDITAR ANO` opens it on the timeline (character pack only).\n" +
 +        "\n" +
++        "**Back bar and `EDITAR NOS USOS` (edit in uses).** When an ANO is opened from another one (✎ EDIT of a projectile/effect/SEQ/landing, `EDITAR ANO` in the cutscene editor), the top bar shows `◀ VOLTAR AO …` and, beside it, `EDITAR NOS USOS`: a grid with a thumbnail of every ANO that uses the open ANO (links, animation flags 71–125, flag 20 cutscenes with ALVO 1, projectile/sub-projectile fields, move fields such as SEQ/END/landing/ANIM_AO_ACERTAR/grabbed). The ANO the user came from is highlighted (`ORIGEM`); after changing the event inside the cutscene editor nothing is highlighted. Tapping a card opens the ANO **in context**: the preview plays the host ANO/move (visual only) and the timeline edits the open ANO starting at the tick where it appears; F-GHOST, POSE, SPEEDLINE and transition marks are off there. The bar becomes `◀ VOLTAR PARA ANO N` | `EDITAR NOS USOS`; context edits are included in `SALVAR`.\n" +
++        "\n" +
 +        "## 12. OUTPUT CONTRACT — how you must deliver data to the user (Mode B only)\n" +
 +        "\n" +
 +        "Use this only when the user asked you to **generate or change an attack**. Deliver **`.txt` content** — never binary, and never \"paste into `▲ DADOS / EDITAR`\". For questions about the app (Mode A) do not use this contract: answer with app steps.\n" +
 +        "\n" +
 +        "For **each** deliverable use this exact pattern:\n" +
 +        "\n" +
++        "",
 +        "1. One line telling **what it is and which file it goes into**. Example: *\"Move 2 (`$GOLPE_2`) → replaces the `$GOLPE_2` block in `000.bin.txt`.\"* When the change is big, return the **whole file** instead of blocks.\n" +
 +        "2. A fenced code block containing **only the data**, whole block, never truncated and never with `...` or \"same as before\". First line inside the block is a comment naming the target:\n" +
 +        "   ````\n" +
@@ -906,7 +909,6 @@ diff -ruN -x fixtures a/AiHelpDoc.java b/AiHelpDoc.java
 +        "   (Comments with `//` are allowed by the parser.)\n" +
 +        "3. After all blocks: **where to put the files** (the character folder `Tap Battle/assets/charNN/`; first keep a copy of the original `.txt`, e.g. with `SALVAR` → separate folder), then tap **`↻`** in the title bar to reload the folders (confirm the dialog), then a short **\"How to test\"** list (what to select, what to look for in the preview, which warning must NOT appear) and a reminder to `SALVAR` (separate-folder mode) when happy.\n" +
 +        "\n" +
-+        "",
 +        "Rules:\n" +
 +        "- One block per ANO (`$ANO_n`), one per move (`$GOLPE_i`), one per reaction slot (`$HDAT_14+t` block incl. `$info` and `$REACAO_DANO_t`), one per `$SPR_n` set. Don't mix kinds in one block.\n" +
 +        "- Keep key spelling and capitals exactly as in section 3; numbers decimal; no trailing explanations inside blocks.\n" +
@@ -2215,6 +2217,267 @@ diff -ruN -x fixtures a/AnoPicker.java b/AnoPicker.java
      }
  
      /** A ANO inteira, em laco, maior; com o botao para usar. */
+diff -ruN -x fixtures a/AnoUses.java b/AnoUses.java
+--- a/AnoUses.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AnoUses.java	2026-11-08 10:50:42.608907768 +0000
+@@ -0,0 +1,113 @@
++package com.zue.attackeditor;
++
++import java.util.ArrayList;
++import java.util.HashSet;
++import java.util.List;
++
++/**
++ * Onde um ANO do personagem e usado (EDITAR NOS USOS): links de outros ANOs, animacoes de hitbox flag 71-125, cutscenes da flag 20 com o pack do
++ * personagem (ALVO 1), projeteis e campos dos golpes do HDAT 4. Java puro (testado sem Android). Cada uso diz o ANO "host" (o que toca na previa do
++ * contexto) e, quando e um campo de golpe, o golpe.
++ */
++final class AnoUses {
++    private AnoUses() { }
++
++    static final int LINK = 0, FLAG = 1, CUTSCENE = 2, PROJ = 3, MOVE = 4, GRAB = 5;
++
++    static final class Use {
++        final int kind;
++        /** ANO que usa o alvo (no golpe: o ANIM_INICIAL dele). */
++        final int host;
++        /** Golpe do HDAT 4 (-1 = o ANO host sozinho ou o golpe dono dele). */
++        final int move;
++        /** Frame do host onde o uso aparece (-1 = desde o inicio). */
++        final int pat;
++        /** Evento da cutscene, flag da animacao ou -1. */
++        final int ev, flag;
++        /** Cutscene: o alvo e so a ANIM_FLIP (o atacante tem de estar virado para a esquerda). */
++        final boolean flipped;
++        /** Campo do golpe ("ANIM_SEQ_CHAO"...) ou null. */
++        final String field;
++
++        Use(int kind, int host, int move, int pat, int ev, int flag, boolean flipped, String field) {
++            this.kind = kind; this.host = host; this.move = move; this.pat = pat; this.ev = ev; this.flag = flag; this.flipped = flipped; this.field = field;
++        }
++
++        /** Rotulo curto em PT (partes fixas; a tela traduz pelos pedacos de {@link #parts}). */
++        String label() {
++            StringBuilder b = new StringBuilder();
++            for (String[] p : parts()) b.append(p[0]);
++            return b.toString();
++        }
++
++        /** Pedacos do rotulo: {texto, "t"} = traduzir; {texto, ""} = nao traduzir (numeros, nomes de campo). */
++        List<String[]> parts() {
++            List<String[]> o = new ArrayList<String[]>();
++            switch (kind) {
++                case LINK: o.add(new String[] {"Link do ANO", "t"}); o.add(new String[] {" " + host, ""}); break;
++                case FLAG: o.add(new String[] {"Animação da flag", "t"}); o.add(new String[] {" " + flag + " · ANO " + host + " · frame " + (pat + 1), ""}); break;
++                case CUTSCENE:
++                    o.add(new String[] {"Cutscene do evento", "t"});
++                    o.add(new String[] {" " + ev + " · ANO " + host + " · frame " + (pat + 1), ""});
++                    if (flipped) { o.add(new String[] {" · ", ""}); o.add(new String[] {"virado", "t"}); }
++                    break;
++                case PROJ: o.add(new String[] {"Projétil do", "t"}); o.add(new String[] {String.format(java.util.Locale.US, " GOLPE_%02d (%s)", move, field), ""}); break;
++                case GRAB: o.add(new String[] {"Agarrado no", "t"}); o.add(new String[] {String.format(java.util.Locale.US, " GOLPE_%02d (%s)", move, field), ""}); break;
++                default: o.add(new String[] {"Campo do", "t"}); o.add(new String[] {String.format(java.util.Locale.US, " GOLPE_%02d (%s)", move, field), ""}); break;
++            }
++            return o;
++        }
++    }
++
++    /** Todos os usos do ANO {@code t} (pack do personagem). {@code ch} pode ser null (so links e flags). */
++    static List<Use> find(CharData ch, Dac dac, int t) {
++        List<Use> out = new ArrayList<Use>();
++        if (dac == null || t < 0) return out;
++        HashSet<String> seen = new HashSet<String>();
++        for (int h = 0; h < dac.size(); h++) {
++            Ano a = dac.getAno(h);
++            if (a == null || !a.present) continue;
++            for (Ano.Link l : a.links) {
++                if (l.getAno() == t && seen.add("L" + h)) out.add(new Use(LINK, h, -1, -1, -1, -1, false, null));
++            }
++            for (int p = 0; p < a.mpts.length; p++) {
++                for (Ano.Hit hit : a.mpts[p].hits) {
++                    int f = hit.flag;
++                    if (f >= 71 && f <= 125 && 201 + f - 71 == t && seen.add("F" + h + ":" + f)) out.add(new Use(FLAG, h, -1, p, -1, f, false, null));
++                    if (f == 20 && ch != null && ch.hasEvent(hit.width) && ch.eventField(hit.width, CharData.EV_ALVO) == 1) {
++                        int ev = hit.width, an = ch.eventField(ev, CharData.EV_ANIM), fl = ch.eventField(ev, CharData.EV_ANIM_FLIP);
++                        if (an == 0) continue;                                       // sem ANIM_ID o jogo nao cria nada
++                        if ((an == t || fl == t) && seen.add("C" + h + ":" + ev)) out.add(new Use(CUTSCENE, h, -1, p, ev, 20, an != t, null));
++                    }
++                }
++            }
++        }
++        if (ch == null) return out;
++        for (int i = 0; i < ch.moves.length; i++) {
++            CharData.Move m = ch.moves[i];
++            if (m == null || m.generic || m.animInicial <= 0) continue;
++            int h = m.animInicial;
++            String[] pn = {"PROJETIL_ANIM_NORMAL", "PROJETIL_ANIM_ABAIXO", "PROJETIL_ANIM_ACIMA", "PROJETIL_ANIM_ACERTAR_GLOBAL", "PROJETIL_ANIM_AO_ACERTAR",
++                    "PROJETIL_COLISAO_CHAO", "SUBPROJETIL_ANIM_ID", "SUBPROJETIL_ANIM_AO_ACERTAR", "SUBPROJETIL_COLISAO_CHAO"};
++            int[] pv = {m.projNormal, m.projAbaixo, m.projAcima, m.projGlobal, m.projAoAcertar, m.projChao, m.subId, m.subAoAcertar, m.subChao};
++            for (int k = 0; k < pn.length; k++) if (pv[k] > 0 && pv[k] == t) out.add(new Use(PROJ, h, i, -1, -1, -1, false, pn[k]));
++            if ((m.flags & 4) != 0 && m.projNormal > 0) {
++                if (m.projNormal + 1 == t) out.add(new Use(PROJ, h, i, -1, -1, -1, false, "PROJETIL_ANIM_NORMAL + 1"));
++                if (m.projNormal + 2 == t) out.add(new Use(PROJ, h, i, -1, -1, -1, false, "PROJETIL_ANIM_NORMAL + 2"));
++            }
++            String[] mn = {"ANIM_INICIAL", "ANIM_AO_ACERTAR", "ANIM_SEQ_CHAO", "ANIM_END_CHAO", "ANIM_SEQ_AR", "ANIM_END_AR", "POUSO_AO_ERRAR", "POUSO_AO_ACERTAR"};
++            int[] mv = {m.animInicial, m.animAoAcertar, m.animSeqChao, m.animEndChao, m.animSeqAr, m.animEndAr, m.pousoErrar, m.pousoAcertar};
++            for (int k = 0; k < mn.length; k++) if (mv[k] > 0 && mv[k] == t) out.add(new Use(MOVE, h, i, -1, -1, -1, false, mn[k]));
++            if ((m.flags & (8 | 128)) != 0 && m.animInicial + 1 == t) out.add(new Use(MOVE, h, i, -1, -1, -1, false, "ANIM_INICIAL + 1"));
++            if (m.oponenteAgarrado > 0 && m.oponenteAgarrado == t) out.add(new Use(GRAB, h, i, -1, -1, -1, false, "OPONENTE_ANIM_SENDO_AGARRADO"));
++        }
++        return out;
++    }
++
++    /** Posicao do primeiro uso cujo host e a origem da navegacao (o ANO de onde se veio), ou -1. */
++    static int originIndex(List<Use> uses, int origin) {
++        if (origin < 0) return -1;
++        for (int i = 0; i < uses.size(); i++) if (uses.get(i).host == origin) return i;
++        return -1;
++    }
++}
+diff -ruN -x fixtures a/AnoUsesScreen.java b/AnoUsesScreen.java
+--- a/AnoUsesScreen.java	1970-01-01 00:00:00.000000000 +0000
++++ b/AnoUsesScreen.java	2026-11-08 10:54:31.364915949 +0000
+@@ -0,0 +1,140 @@
++package com.zue.attackeditor;
++
++import android.app.Activity;
++import android.app.Dialog;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.widget.FrameLayout;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++import java.util.List;
++
++/**
++ * EDITAR NOS USOS: grade (3 colunas) com a miniatura do ANO que usa o ANO aberto e o tipo do uso ({@link AnoUses}). O uso que veio da navegacao
++ * (o ANO de origem) fica destacado. Tocar num card abre o ANO no contexto daquele uso.
++ */
++final class AnoUsesScreen {
++    interface Pick { void on(AnoUses.Use u); }
++
++    private AnoUsesScreen() { }
++
++    static void show(final Activity a, AttackView view, int target, int origin, final Pick pick) {
++        AttackData d = view.attackData();
++        if (d == null) return;
++        view.pause();
++        final float den = a.getResources().getDisplayMetrics().density;
++        final Dac dac = d.attacker.dac;
++        SpriteCache spr = d.attacker.sprites;
++        List<AnoUses.Use> uses = AnoUses.find(d.attacker.data, dac, target);
++        int oi = AnoUses.originIndex(uses, origin);
++        final Dialog dlg = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
++        LinearLayout root = new LinearLayout(a);
++        root.setOrientation(LinearLayout.VERTICAL);
++        root.setBackgroundColor(LayoutManager.BG);
++        root.setPadding(dp(den, 10), dp(den, 12), dp(den, 10), dp(den, 10));
++        LinearLayout h = new LinearLayout(a);
++        h.setGravity(Gravity.CENTER_VERTICAL);
++        h.addView(raw(a, I18n.tr("USOS DO ANO") + " " + target, 17, LayoutManager.TEXT, true), new LinearLayout.LayoutParams(0, -2, 1f));
++        TextView x = raw(a, "✕", 20, LayoutManager.TEXT, true);
++        x.setGravity(Gravity.CENTER);
++        x.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); } });
++        h.addView(x, new LinearLayout.LayoutParams(dp(den, 44), dp(den, 40)));
++        root.addView(h);
++        root.addView(tv(a, "Toque num uso para editar este ANO no contexto dele: a prévia toca o ANO/golpe que o usa (só para ver) e a timeline edita este ANO, começando no tick em que ele aparece.", 11, LayoutManager.DIM));
++        ScrollView sv = new SafeScrollView(a);
++        LinearLayout grid = new LinearLayout(a);
++        grid.setOrientation(LinearLayout.VERTICAL);
++        sv.addView(grid);
++        root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
++        if (uses.isEmpty()) {
++            grid.addView(tv(a, "Nenhum uso: nenhum link, flag de animação, cutscene, projétil ou campo de golpe usa este ANO.", 12, LayoutManager.DIM));
++        }
++        int side = (a.getResources().getDisplayMetrics().widthPixels - dp(den, 20) - dp(den, 6) * 3) / 3;
++        LinearLayout row = null;
++        View originCard = null;
++        for (int i = 0; i < uses.size(); i++) {
++            if (i % 3 == 0) { row = new LinearLayout(a); grid.addView(row); }
++            final AnoUses.Use u = uses.get(i);
++            boolean isOrigin = i == oi;
++            LinearLayout card = new LinearLayout(a);
++            card.setOrientation(LinearLayout.VERTICAL);
++            card.setGravity(Gravity.CENTER_HORIZONTAL);
++            card.setPadding(dp(den, 3), dp(den, 3), dp(den, 3), dp(den, 4));
++            GradientDrawable g = new GradientDrawable();
++            g.setColor(isOrigin ? 0x334C8DFF : LayoutManager.PANEL);
++            g.setStroke(dp(den, isOrigin ? 3 : 1), isOrigin ? LayoutManager.ACCENT : 0xFF2C313C);
++            g.setCornerRadius(dp(den, 8));
++            card.setBackground(g);
++            FrameLayout fl = new FrameLayout(a);
++            Ano ha = dac.getAno(u.host);
++            if (ha != null && ha.present && ha.mpts.length > 0) {
++                AnimPreview pv = new AnimPreview(a);
++                pv.setFirstFrameOnly(true);
++                pv.set(dac, spr, u.host);
++                fl.addView(pv, new FrameLayout.LayoutParams(side - dp(den, 6), side - dp(den, 6)));
++            } else {
++                TextView e = tv(a, "ANO vazia", 11, LayoutManager.DIM);
++                e.setGravity(Gravity.CENTER);
++                fl.addView(e, new FrameLayout.LayoutParams(side - dp(den, 6), side - dp(den, 6)));
++            }
++            TextView badge = raw(a, "ANO " + u.host, 10, 0xFFFFFFFF, true);
++            badge.setBackgroundColor(0xAA000000);
++            badge.setPadding(dp(den, 4), 0, dp(den, 4), 0);
++            fl.addView(badge, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
++            if (isOrigin) {
++                TextView ob = tv(a, "ORIGEM", 10, 0xFFFFFFFF);
++                ob.setTypeface(Typeface.DEFAULT_BOLD);
++                ob.setBackgroundColor(LayoutManager.ACCENT);
++                ob.setPadding(dp(den, 4), 0, dp(den, 4), 0);
++                fl.addView(ob, new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END));
++            }
++            card.addView(fl);
++            TextView lab = raw(a, labelOf(u), 10, isOrigin ? 0xFFFFFFFF : LayoutManager.TEXT, isOrigin);
++            lab.setGravity(Gravity.CENTER);
++            card.addView(lab);
++            card.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { dlg.dismiss(); pick.on(u); } });
++            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
++            cp.setMargins(dp(den, 3), dp(den, 3), dp(den, 3), dp(den, 3));
++            row.addView(card, cp);
++            if (isOrigin) originCard = row;
++        }
++        if (row != null) for (int k = uses.size() % 3; k > 0 && k < 3; k++) row.addView(new View(a), new LinearLayout.LayoutParams(0, 1, 1f));
++        dlg.setContentView(root);
++        dlg.show();
++        if (originCard != null) {
++            final View oc = originCard;
++            final ScrollView fsv = sv;
++            sv.post(new Runnable() { public void run() { fsv.smoothScrollTo(0, Math.max(0, oc.getTop() - dp(den, 8))); } });
++        }
++    }
++
++    /** Rotulo do uso com as partes fixas traduzidas. */
++    static String labelOf(AnoUses.Use u) {
++        StringBuilder b = new StringBuilder();
++        for (String[] p : u.parts()) b.append("t".equals(p[1]) ? I18n.tr(p[0]) : p[0]);
++        return b.toString();
++    }
++
++    private static int dp(float den, int v) { return Math.round(v * den); }
++
++    private static TextView tv(Activity a, String s, int sp, int color) {
++        TextView t = new I18nTextView(a);
++        t.setText(s);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
++        t.setTextColor(color);
++        return t;
++    }
++
++    private static TextView raw(Activity a, String s, int sp, int color, boolean bold) {
++        TextView t = new I18nTextView(a).noTranslate();
++        t.setText(s);
++        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
++        t.setTextColor(color);
++        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
++        return t;
++    }
++}
 diff -ruN -x fixtures a/AnoXform.java b/AnoXform.java
 --- a/AnoXform.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/AnoXform.java	2026-11-08 10:38:54.583231856 +0000
@@ -3429,7 +3692,7 @@ diff -ruN -x fixtures a/AttackSim.java b/AttackSim.java
      /** Raiz + links ordenados como o DrawExec: chave (prio - actPrio) crescente, empate por taskPrio. */
 diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 --- a/AttackView.java	2026-10-20 16:17:27.000000000 +0000
-+++ b/AttackView.java	2026-11-08 10:41:21.608887705 +0000
++++ b/AttackView.java	2026-11-08 10:53:46.399883395 +0000
 @@ -17,9 +17,8 @@
  
      private static final float TICK_MS = 1000f / AttackSim.TICKS_PER_SECOND;
@@ -3442,10 +3705,68 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
  
      private final AttackRenderer renderer = new AttackRenderer();
      private final AttackRenderer.Options opts = new AttackRenderer.Options();
-@@ -95,6 +94,14 @@
+@@ -92,9 +91,72 @@
+     /** Troca o golpe mostrado (mantem o estado de "virar"). */
+     public void setData(AttackData d) {
+         this.data = d;
++        ctxAno = -1;                                       // dados novos: sai do modo contexto (EDITAR NOS USOS liga de novo depois)
++        ctx = null;
          rebuild(0);
      }
  
++    // ---- modo contexto (EDITAR NOS USOS): a previa toca o golpe/ANO que usa o ANO alvo; a timeline edita o ANO alvo ----
++    private int ctxAno = -1;
++    private BattleSim.Trace ctx;
++    private String ctxKey = "";
++
++    public boolean inContext() { return ctxAno >= 0; }
++    public int contextAno() { return ctxAno; }
++
++    /** Liga o contexto (os dados do host ja carregados com setData): para no 1o tick em que o ANO {@code ano} aparece. */
++    public void setContext(int ano) {
++        ctxAno = ano;
++        ctx = null;
++        ctxKey = "";
++        if (data != null) rebuild(0);
++        pause();
++        int f = contextFirstTick();
++        if (f > 0) seekTo(f);
++    }
++
++    /** Rastreio do ANO alvo na simulacao atual (refeito quando algo muda). */
++    private BattleSim.Trace ctxTrace() {
++        if (ctxAno < 0 || sim == null) return null;
++        String key = editVersion + ":" + System.identityHashCode(data) + ":" + facingLeft + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
++                + ":" + BattleSim.lockFromTick + ":" + BattleSim.landingOn + ":" + BattleSim.extendTime + ":" + BattleSim.flyMode;
++        if (ctx == null || !key.equals(ctxKey)) {
++            ctx = sim.traceAno(ctxAno, Math.min(3600, Math.max(length, 600) + 600));
++            ctxKey = key;
++        }
++        return ctx;
++    }
++
++    /** Primeiro tick em que o ANO do contexto aparece; -1 se ele nao aparece nesta simulacao. */
++    public int contextFirstTick() { BattleSim.Trace t = ctxTrace(); return t == null ? -1 : t.first; }
++
++    /** Frame e ticks decorridos do ANO do contexto no tick {@code f}: antes de aparecer = 0, 0; depois de sumir = o ultimo visto. */
++    private int[] ctxAt(int f) {
++        BattleSim.Trace t = ctxTrace();
++        Ano a = data == null ? null : data.attacker.dac.getAno(ctxAno);
++        if (t == null || a == null || a.mpts.length == 0 || t.first < 0 || f < t.first) return new int[] {0, 0};
++        int i = Math.min(f, t.pat.length - 1);
++        while (i > t.first && t.pat[i] < 0) i--;
++        if (t.pat[i] < 0) return new int[] {0, 0};
++        return new int[] {Math.min(t.pat[i], a.mpts.length - 1), Math.max(0, t.elapsed[i])};
++    }
++
++    /** O contexto estende o fim da barra ate o ANO alvo sumir. */
++    private void ctxExtend() {
++        if (ctxAno < 0) return;
++        ctx = null;
++        BattleSim.Trace t = ctxTrace();
++        if (t != null && t.last >= length) length = t.last + 1;
++    }
++
 +    /** Troca os dados mantendo o frame e o estado de play (ex.: a game data foi relida ao voltar para o app). */
 +    public void setDataKeep(AttackData d) {
 +        this.data = d;
@@ -3457,7 +3778,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void setSoundPlayer(SoundPlayer p) { sound = p; }
      public SoundPlayer soundPlayer() { return sound; }
      public void setSoundOn(boolean on) { soundOn = on; }
-@@ -116,6 +123,9 @@
+@@ -116,6 +178,9 @@
          BattleSim.oppHeightPx = Math.max(0, Math.min(200, ho));
          if (data != null) rebuild(frame);
      }
@@ -3467,7 +3788,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void setFly(boolean on) { BattleSim.flyMode = on; if (data != null) rebuild(frame); }
      public boolean isFly() { return BattleSim.flyMode; }
      /** 0 livre, 1 camera no centro do mapa (tela centrada na origem). */
-@@ -131,6 +141,9 @@
+@@ -131,6 +196,9 @@
      public void setLockTransitions(boolean on) { BattleSim.lockFromTick = on ? frame : -1; lockDismissed = false; if (data != null) rebuild(frame); }
      public void setLanding(boolean on) { BattleSim.landingOn = on; if (data != null) rebuild(frame); }
      public boolean isLanding() { return BattleSim.landingOn; }
@@ -3477,19 +3798,20 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      private boolean lockDismissed;
  
      /** O golpe tem SEQ (chao ou ar) ou AO ACERTAR? So ai a trava de transicao tem o que travar. */
-@@ -177,9 +190,11 @@
+@@ -177,9 +245,12 @@
              sim.setOpponentChar(data.opponent.data);
              sim.setSpecialType(data.moveIndex);
              if (data.charf != null) sim.setCharfDac(data.charf.dac);
 +            if (data.bobj != null) sim.setBobjDac(data.bobj.dac);
              length = Math.max(1, sim.measureLength());
++            ctxExtend();
              landStop = sim.measuredLandTick();
              checkLandWarning();
 +            if (!measuredEarly) checkRules();
              anoEnd = Math.min(length, Math.max(1, sim.measureAnoLength()));
              loops = sim.loops();
              seekInternal(Math.min(keepFrame, length - 1));
-@@ -214,6 +229,7 @@
+@@ -214,6 +285,7 @@
                      ns.setOpponentChar(d.opponent.data);
                      ns.setSpecialType(d.moveIndex);
                      if (d.charf != null) ns.setCharfDac(d.charf.dac);
@@ -3497,15 +3819,18 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
                      len = Math.max(1, ns.measureLength());
                      land = ns.measuredLandTick();
                      aEnd = Math.min(len, Math.max(1, ns.measureAnoLength()));
-@@ -235,6 +251,7 @@
+@@ -233,8 +305,10 @@
+                         ghostSim = null;
+                         sim = fs;
                          length = flen;
++                        ctxExtend();
                          landStop = fland;
                          checkLandWarning();
 +                        if (!measuredEarly) checkRules();
                          anoEnd = fend;
                          loops = sim.loops();
                          stopSounds();
-@@ -255,10 +272,11 @@
+@@ -255,10 +329,11 @@
      public void replaceAnoAsync(Ano na, Runnable done) {
          final Ano old = currentAno();
          if (old == null || data == null) { if (done != null) done.run(); return; }
@@ -3518,7 +3843,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuildAsync(frame, done);
      }
-@@ -269,7 +287,7 @@
+@@ -269,7 +344,7 @@
          final Dac dac = data.attacker.dac;
          final java.util.ArrayList<Ano> olds = new java.util.ArrayList<Ano>();
          for (Ano na : list) { olds.add(dac.getAno(na.index)); dac.setAno(na.index, na); }
@@ -3527,7 +3852,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuildAsync(frame, done);
      }
-@@ -290,6 +308,19 @@
+@@ -290,6 +365,19 @@
      /** Quem abre o menu de posicao dos personagens (botao POS dos avisos). */
      public void setPosRequest(Runnable r) { posRequest = r; }
  
@@ -3547,7 +3872,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void showNotice(QuickNotice n) {
          notice = n;
          noticeExpanded = false;
-@@ -304,6 +335,31 @@
+@@ -304,6 +392,31 @@
  
      private boolean noticeVisible() { return notice != null && SystemClock.uptimeMillis() < noticeUntil; }
  
@@ -3579,7 +3904,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      // aviso de pouso
  
      private static final String LAND_MSG = "Animação/golpe acabou antes por causa do pouso. Experimente mudar a posição do personagem para ver o movimento completo.";
-@@ -352,18 +408,21 @@
+@@ -352,18 +465,21 @@
          warnText.setTextAlign(Paint.Align.LEFT);
          float maxW = (noticeExpanded ? w - 2 * margin : w * 0.8f) - 2 * pad - xs;
          java.util.ArrayList<String> lines = new java.util.ArrayList<String>();
@@ -3611,7 +3936,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          }
          float lh = warnText.getFontSpacing();
          float btnH = lh + pad, gap = 6f * density;
-@@ -381,14 +440,14 @@
+@@ -381,14 +497,14 @@
          warnBg.setColor(noticeExpanded ? (n.color & 0x00FFFFFF) | 0xE6000000 : n.color);
          c.drawRoundRect(noticeBox, 8f * density, 8f * density, warnBg);
          float base = y + pad - warnText.ascent();
@@ -3628,7 +3953,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          warnText.setTextAlign(al);
          float by = y + bh - pad - btnH;
          drawRow(c, n.left, x + pad, by, btnH, pad, gap, n.buttonColor);
-@@ -409,7 +468,7 @@
+@@ -409,7 +525,7 @@
              android.graphics.RectF r = new android.graphics.RectF(x, y, x + bw, y + h);
              warnBg.setColor(color);
              c.drawRoundRect(r, 6f * density, 6f * density, warnBg);
@@ -3637,7 +3962,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              noticeRects.add(r);
              noticeActs.add(a);
              x += bw + gap;
-@@ -450,6 +509,7 @@
+@@ -450,6 +566,7 @@
      public void play() {
          if (playing) return;
          if (atLandStop()) seekTo(0);       // parado no pouso: recomeca
@@ -3645,7 +3970,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          playing = true;
          if (sound != null) sound.resumeAll();
          hideNotice();
-@@ -476,6 +536,43 @@
+@@ -476,6 +593,43 @@
  
      public void restart() { seekTo(0); }
  
@@ -3689,7 +4014,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void stepForward() {
          pause();
          if (sim == null) return;
-@@ -483,12 +580,35 @@
+@@ -483,12 +637,35 @@
          stopSounds();
          liveStep();
          frame++;
@@ -3725,7 +4050,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void stepBack() {
          pause();
          if (frame <= 0) return;                   // voltar Frame nao pula para o fim
-@@ -506,6 +626,7 @@
+@@ -506,6 +683,7 @@
      }
  
      private void seekInternal(int target) {
@@ -3733,7 +4058,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          stopSounds();
          sim.reset();
          seekSnd.clear();
-@@ -539,7 +660,11 @@
+@@ -539,7 +717,11 @@
      }
  
      private void playSounds() {
@@ -3746,7 +4071,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          if (sound == null || !soundOn || data == null) return;
          for (int i = 0; i < l.size(); i++) {
              BattleSim.Snd s = l.get(i);
-@@ -553,6 +678,31 @@
+@@ -553,11 +735,39 @@
      public int getFrame() { return frame; }
      public int getLength() { return length; }
  
@@ -3778,7 +4103,16 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Dados carregados (atacante, golpe, indice); null sem dados. */
      public AttackData attackData() { return data; }
  
-@@ -576,7 +726,7 @@
+     /** Ticks do ANO (sem a fisica que o tempo estendido acrescenta depois); <= getLength(). */
+-    public int getAnoEnd() { return anoEnd; }
++    public int getAnoEnd() {
++        if (ctxAno >= 0) { BattleSim.Trace t = ctxTrace(); if (t != null && t.last >= 0) return Math.min(length, t.last + 1); }
++        return anoEnd;
++    }
+     private int anoEnd = 1;
+ 
+     public void setListener(Listener l) { listener = l; notifyUi(); }
+@@ -576,7 +786,7 @@
      private boolean bodyOn;
      private final Paint bodyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
  
@@ -3787,7 +4121,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void setCharObj(boolean on) { bodyOn = on; invalidate(); }
      public boolean isCharObj() { return bodyOn; }
      /** Modo das ancoras: false = Apenas Ancora, true = Ancora e Box. */
-@@ -585,16 +735,19 @@
+@@ -585,16 +795,19 @@
          opts.anchorSpr = spr; opts.anchorHurt = hurt; opts.anchorHit = hit; opts.anchorFx = fx; opts.anchorGlobal = global; opts.anchorProj = proj; invalidate();
      }
  
@@ -3809,7 +4143,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          c.drawRect(x - w / 2f, y - h, x + w / 2f, y, bodyPaint);
          c.drawLine(x - 6 * u, y, x + 6 * u, y, bodyPaint);
          c.drawLine(x, y - 6 * u, x, y + 6 * u, bodyPaint);
-@@ -612,26 +765,34 @@
+@@ -612,26 +825,34 @@
  
      public int getCenterMode() { return centerMode; }
  
@@ -3860,7 +4194,41 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          float s = Math.min(getWidth() / (x1 - x0), getHeight() / (y1 - y0));
          scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
          originX = getWidth() * 0.5f - (x0 + x1) * 0.5f * scale;
-@@ -726,6 +887,12 @@
+@@ -682,6 +903,7 @@
+ 
+     /** Indice do ANO mostrado (alvo da edicao) ou -1. */
+     public int currentAnoIndex() {
++        if (ctxAno >= 0) return ctxAno;
+         AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
+         return r == null ? -1 : r.ano.index;
+     }
+@@ -698,6 +920,10 @@
+     // ---- API da timeline ----
+ 
+     public Ano currentAno() {
++        if (ctxAno >= 0) {
++            ObjModel.setCurAno(ctxAno);
++            return data == null || sim == null ? null : data.attacker.dac.getAno(ctxAno);
++        }
+         AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
+         ObjModel.setCurAno(r == null ? -1 : r.ano.index);
+         return r == null ? null : r.ano;
+@@ -709,12 +935,14 @@
+     }
+ 
+     public int currentPat() {
++        if (ctxAno >= 0) return sim == null ? -1 : ctxAt(frame)[0];
+         AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
+         return r == null ? -1 : Math.min(r.pat, r.mpts.length - 1);   // depois do fim do ANO fica no ultimo frame
+     }
+ 
+     /** Ticks ja decorridos dentro do frame atual. */
+     public int currentElapsed() {
++        if (ctxAno >= 0) return sim == null ? 0 : ctxAt(frame)[1];
+         AttackSim.Obj r = sim == null ? null : sim.timelineAtk().root();
+         if (r == null || r.pat < 0 || r.mpts.length == 0) return 0;
+         if (r.pat >= r.mpts.length) {                  // ANO acabou (so fisica depois): trava no fim do ultimo frame
+@@ -726,9 +954,16 @@
      }
  
  
@@ -3873,7 +4241,11 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Vai para o primeiro tick em que o frame {@code pat} da ANO atual aparece (pausa). */
      public boolean seekToPat(int pat) {
          if (sim == null) return false;
-@@ -746,6 +913,34 @@
++        if (ctxAno >= 0) return ctxSeek(pat, -1);
+         int t = sim.firstTickOf(currentAnoIndex(), pat, Math.max(length, 600));
+         if (t < 0) t = currentAno() == null ? -1 : transitionTick(currentAno()) - 1;
+         if (t < 0) return false;
+@@ -746,6 +981,34 @@
      private BattleSim ghostSim;
      private String ghostKey = "";
  
@@ -3887,7 +4259,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +
 +    /** Camada da pose parada (ANO 0 do atacante) no lugar do atacante; null se nao ha o que desenhar. */
 +    private BattleSim.Layer poseLayer() {
-+        if (sim == null || data == null) return null;
++        if (sim == null || data == null || ctxAno >= 0) return null;
 +        AttackSim.Obj ar = sim.timelineAtk().root();
 +        if (ar == null) return null;
 +        boolean left = (ar.objFlags & 16) != 0;
@@ -3908,7 +4280,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public void setGhostMode(int m) { ghostMode = m; ghostKey = ""; ghostSim = null; invalidate(); }
      public int getGhostMode() { return ghostMode; }
      public void setGhostAlpha(int a) { ghostAlpha = Math.max(0, Math.min(255, a)); invalidate(); }
-@@ -769,6 +964,21 @@
+@@ -769,8 +1032,24 @@
          return tickTable;
      }
  
@@ -3929,8 +4301,11 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +
      /** Combate parado no primeiro tick do frame vizinho do atual, ou null. */
      private BattleSim ghost() {
++        if (ctxAno >= 0) return null;                       // contexto: o ANO alvo nao e o lutador
          Ano a = currentAno();
-@@ -785,6 +995,174 @@
+         if (sim == null || a == null) return null;
+         int target = currentPat() + (ghostMode == 1 ? 1 : -1);
+@@ -785,19 +1064,201 @@
          return ghostSim;
      }
  
@@ -3981,6 +4356,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +
 +    /** SPEEDLINE: so o movimento do Frame atual. Um ponto onde o Frame comeca e uma seta ate onde ele termina; se o movimento para, a seta acaba num ponto. */
 +    private void drawSpeedLine(Canvas c) {
++        if (ctxAno >= 0) return;
 +        Ano a = currentAno();
 +        if (!speedLineOn || a == null || sim == null) return;
 +        slPrepare(a);
@@ -4056,7 +4432,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +    /** Alvo sob o dedo: o ponto onde o Frame atual comeca (modo 0: toque abre o menu) ou a ponta da seta (modo 1: arrastar muda a speed; toque abre o menu). {cabeca da cadeia, indice, modo}. */
 +    private int[] slHit(float sx, float sy) {
 +        Ano a = currentAno();
-+        if (!speedLineOn || a == null || sim == null) return null;
++        if (!speedLineOn || a == null || sim == null || ctxAno >= 0) return null;
 +        slPrepare(a);
 +        int[] ci = new int[1];
 +        SpeedLine.Chain ch = slCurrentChain(a.mpts, ci);
@@ -4104,8 +4480,9 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +
      /** Arrastar a timeline: vai para {@code elapsed} ticks dentro do frame {@code pat} da ANO atual (pausa). */
      public void seekToPatTick(int pat, int elapsed) {
++        if (ctxAno >= 0) { if (!ctxSeek(pat, elapsed)) ctxSeek(pat, -1); return; }
          Ano a = currentAno();
-@@ -792,7 +1170,9 @@
+         if (sim == null || a == null || pat < 0 || pat >= a.mpts.length) return;
          int base = tickTableFor(a)[pat];
          int tt = transitionTick(a);
          int limit = tt < 0 ? Integer.MAX_VALUE : tt - 1;     // arrastar nunca faz a troca: trava no ultimo tick antes dela
@@ -4116,7 +4493,22 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          if (target == Integer.MAX_VALUE || target < 0) return;
          pause();
          seekTo(target);
-@@ -820,7 +1200,7 @@
+     }
+ 
++    /** Contexto: vai ao primeiro tick em que o ANO alvo esta no frame {@code pat} (e com {@code elapsed} ticks decorridos, se >= 0). */
++    private boolean ctxSeek(int pat, int elapsed) {
++        BattleSim.Trace t = ctxTrace();
++        if (t == null) return false;
++        for (int i = Math.max(0, t.first); i < t.pat.length && i < length; i++) {
++            if (t.pat[i] == pat && (elapsed < 0 || t.elapsed[i] == elapsed)) { pause(); seekTo(i); return true; }
++        }
++        return false;
++    }
++
+     /** Tick em que a primeira troca real de ANO sai desta ANO, ou -1. */
+     private int transitionTick(Ano a) {
+         if (sim == null) return -1;
+@@ -820,7 +1281,7 @@
          m.normalize();
          final Ano.Mpt prev = a.mpts[pat];
          a.mpts[pat] = m;
@@ -4125,7 +4517,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -835,13 +1215,29 @@
+@@ -835,13 +1296,29 @@
              prev[i] = a.mpts[pats[i]];
          }
          for (int i = 0; i < pats.length; i++) { ms[i].normalize(); a.mpts[pats[i]] = ms[i]; }
@@ -4158,7 +4550,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Troca a lista de MPTs da ANO atual (dividir, apagar, duplicar...). */
      public void replaceMpts(Ano.Mpt[] mp) {
          Ano old = currentAno();
-@@ -862,10 +1258,11 @@
+@@ -862,10 +1339,11 @@
      public void replaceAno(Ano na, String undoKey) {
          final Ano old = currentAno();
          if (old == null || data == null) return;
@@ -4171,7 +4563,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -883,6 +1280,7 @@
+@@ -883,6 +1361,7 @@
          if (data == null) return null;
          if (pack == 0) return data.effects == null ? null : data.effects.dac;
          if (pack == 1) return data.charf == null ? null : data.charf.dac;
@@ -4179,7 +4571,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          return data.attacker.dac;
      }
  
-@@ -890,6 +1288,7 @@
+@@ -890,6 +1369,7 @@
          if (data == null) return null;
          if (pack == 0) return data.effects == null ? null : data.effects.sprites;
          if (pack == 1) return data.charf == null ? null : data.charf.sprites;
@@ -4187,7 +4579,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -903,7 +1302,7 @@
+@@ -903,7 +1383,7 @@
          final int idx = na.index;
          final Ano old = dac.getAno(idx);
          dac.setAno(idx, na);
@@ -4196,7 +4588,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -911,6 +1310,8 @@
+@@ -911,6 +1391,8 @@
      // ---- reacoes (previa e edicao) ----
  
      public Dac opponentDac() { return data == null ? null : data.opponent.dac; }
@@ -4205,7 +4597,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public SpriteCache opponentSprites() { return data == null ? null : data.opponent.sprites; }
  
      /** Tabela de reacao do char do atacante (tipo 0..19 = indice 30..49 do OPT 1). */
-@@ -927,6 +1328,76 @@
+@@ -927,6 +1409,76 @@
      }
  
      /** Nova simulacao so para previa de reacao: o defensor recebe o OPT 1 (use BattleSim.forceHit). */
@@ -4282,7 +4674,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public BattleSim newReactionSim() {
          if (data == null) return null;
          BattleSim s = new BattleSim(data.attacker.dac, data.attacker.data, CharData.blank(0), false,
-@@ -942,18 +1413,45 @@
+@@ -942,18 +1494,45 @@
          if (t == null) return;
          final ReactionTable before = t.copy();
          change.run();
@@ -4330,7 +4722,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
      }
-@@ -998,7 +1496,7 @@
+@@ -998,7 +1577,7 @@
              }
          }
          if (frames == 0) return 0;
@@ -4339,7 +4731,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          rebuild(frame);
          return frames;
-@@ -1010,39 +1508,48 @@
+@@ -1010,39 +1589,48 @@
      public void previewSe(int se) {
          if (sound == null || data == null || se < 0) return;
          sound.stopAll();
@@ -4411,7 +4803,15 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          editVersion++;
          if (data != null) rebuild(frame);
          return true;
-@@ -1069,7 +1576,8 @@
+@@ -1062,14 +1650,15 @@
+     /** Hits que conectam no ANO atual e disparariam ANIM_SEQ / ANIM_END (cache; recalcula so quando algo muda). */
+     public java.util.List<SeqMark> sequenceMarks() {
+         Ano a = sim == null ? null : currentAno();
+-        if (a == null || data == null || data.move == null || data.move.generic) {
++        if (a == null || data == null || data.move == null || data.move.generic || ctxAno >= 0) {
+             if (!seqMarks.isEmpty()) seqMarks = new java.util.ArrayList<SeqMark>();
+             return seqMarks;
+         }
          CharData.Move mv = data.move;
          String key = a.index + ":" + editVersion + ":" + System.identityHashCode(data) + ":" + distance + ":" + height + ":" + BattleSim.oppHeightPx
                  + ":" + mv.animSeqChao + ":" + mv.animSeqAr + ":" + mv.animEndChao + ":" + mv.animEndAr
@@ -4421,7 +4821,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          if (key.equals(seqKey)) return seqMarks;
          seqKey = key;
          java.util.List<SeqMark> out = new java.util.ArrayList<SeqMark>();
-@@ -1117,6 +1625,14 @@
+@@ -1117,6 +1706,14 @@
                  break;
              }
          }
@@ -4436,7 +4836,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          out = kept;
          java.util.Collections.sort(out, new java.util.Comparator<SeqMark>() {
              @Override public int compare(SeqMark x, SeqMark y) { return x.pat != y.pat ? x.pat - y.pat : x.kind - y.kind; }
-@@ -1125,20 +1641,65 @@
+@@ -1125,20 +1722,65 @@
          return out;
      }
  
@@ -4463,10 +4863,10 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          mv.clamp();
 -        pushUndo(null, new Runnable() { public void run() { mv.copyFrom(before); } });
 +        pushUndo(null, UndoEdits.swapMove(mv, before, null));
-+        editVersion++;
-+        rebuild(frame);
-+    }
-+
+         editVersion++;
+         rebuild(frame);
+     }
+ 
 +    /**
 +     * Golpe real do HDAT 4 que "dono" do ANO aberto no modo ANO (o golpe da tela e so uma copia generica); null no modo golpe
 +     * (ai o golpe da tela e o proprio) ou se nenhum golpe usa o ANO.
@@ -4488,10 +4888,10 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
 +        target.clamp();
 +        if (shown != target && shown.generic) syncGeneric(shown, target);
 +        pushUndo(null, UndoEdits.swapMove(target, before, new Runnable() { public void run() { if (shown != target && shown.generic) syncGeneric(shown, target); } }));
-         editVersion++;
-         rebuild(frame);
-     }
- 
++        editVersion++;
++        rebuild(frame);
++    }
++
 +    /** Campos que o golpe generico (modo ANO) herda do dono: os mesmos de {@link CharData#genericFrom}. */
 +    private static void syncGeneric(CharData.Move g, CharData.Move src) {
 +        g.flags = src.flags;
@@ -4504,7 +4904,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      /** Titulo do que a aba edita, ou null se nao ha o que editar. */
      public String editTitle(String tab) {
          if (sim == null || data == null) return null;
-@@ -1169,7 +1730,7 @@
+@@ -1169,7 +1811,7 @@
                  final CharData.Move mv = data.move;
                  final CharData.Move before = mv.copy();
                  DacText.parseMove(text, mv);
@@ -4513,7 +4913,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              } else {
                  if (r == null) return "sem ANO";
                  final Dac dac = data.attacker.dac;
-@@ -1181,16 +1742,16 @@
+@@ -1181,16 +1823,16 @@
                      final Ano.Mpt m = DacText.parseMpt(text);
                      final Ano.Mpt prev = old.mpts[pat];
                      old.mpts[pat] = m;
@@ -4533,7 +4933,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
                  }
              }
          } catch (DacText.ParseError e) {
-@@ -1201,6 +1762,15 @@
+@@ -1201,6 +1843,15 @@
          return null;
      }
  
@@ -4549,7 +4949,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      public String spriteProblem() {
          if (data == null) return "";
          int n = data.attacker.sprites.errorCount() + data.opponent.sprites.errorCount()
-@@ -1234,6 +1804,16 @@
+@@ -1234,6 +1885,16 @@
              renderer.spriteBoxes = spriteBoxes;
              renderer.boxScale = scale;
              java.util.List<BattleSim.Layer> ls = sim.layers();
@@ -4566,7 +4966,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              for (int i = 0; i < ls.size(); i++) {
                  BattleSim.Layer l = ls.get(i);
                  if (hideEff && l.owner != BattleSim.OWNER_ATTACKER && l.owner != BattleSim.OWNER_DEFENDER && l.owner != BattleSim.OWNER_SHADOW) continue;
-@@ -1241,7 +1821,9 @@
+@@ -1241,7 +1902,9 @@
                      if (l.owner == BattleSim.OWNER_PROJECTILE && !ghostProj) continue;
                      if (l.owner == BattleSim.OWNER_EFFECT && !ghostFx) continue;
                  }
@@ -4576,7 +4976,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              }
              if (ghostMode != 0) {
                  BattleSim g = ghost();
-@@ -1253,24 +1835,30 @@
+@@ -1253,24 +1916,30 @@
                          boolean ch = l.owner == BattleSim.OWNER_ATTACKER;
                          boolean ok = ch || (!hideEff && (l.owner == BattleSim.OWNER_PROJECTILE ? ghostProj
                                  : l.owner == BattleSim.OWNER_EFFECT && ghostFx));
@@ -4611,7 +5011,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
              c.restore();
              drawLifeBars(c);
              drawNotice(c);
-@@ -1291,11 +1879,11 @@
+@@ -1291,11 +1960,11 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextAlign(Paint.Align.CENTER);
          String mid = sim.opponentDead() ? "KO" : (sim.comboCount() > 0 ? sim.comboCount() + " HITS" : "");
@@ -4625,7 +5025,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          }
      }
  
-@@ -1314,41 +1902,23 @@
+@@ -1314,41 +1983,23 @@
          barText.setColor(0xFFFFFFFF);
          barText.setTextSize(9f * density);
          barText.setTextAlign(rightAligned ? Paint.Align.RIGHT : Paint.Align.LEFT);
@@ -4671,7 +5071,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
          return data.attacker.sprites;
      }
  
-@@ -1374,26 +1944,7 @@
+@@ -1374,26 +2025,7 @@
      }
  
      private void drawGrid(Canvas c) {
@@ -4699,7 +5099,7 @@ diff -ruN -x fixtures a/AttackView.java b/AttackView.java
      }
  
      private void notifyUi() {
-@@ -1404,8 +1955,53 @@
+@@ -1404,8 +2036,53 @@
  
      // ---- toque: arrastar move a origem, pinca da zoom ----
  
@@ -6674,7 +7074,7 @@ diff -ruN -x fixtures a/AttackView.java.pre_sl b/AttackView.java.pre_sl
 +}
 diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 --- a/BattleSim.java	2026-10-20 15:44:46.000000000 +0000
-+++ b/BattleSim.java	2026-11-08 10:31:52.138936346 +0000
++++ b/BattleSim.java	2026-11-08 10:51:39.836996600 +0000
 @@ -25,10 +25,22 @@
      public static final int OWNER_AURA_EFFECT = 4;
      public static final int OWNER_AURA_CHAR = 5;
@@ -7419,7 +7819,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      /** Primeiro tick de cada frame (pat) da ANO {@code anoIdx}, numa unica passada; -1 = nunca aparece. */
      public int[] firstTicks(int anoIdx, int frames, int max) {
          int[] out = new int[frames];
-@@ -477,6 +883,23 @@
+@@ -477,6 +883,88 @@
          return out;
      }
  
@@ -7440,10 +7840,75 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +        return out;
 +    }
 +
++    /** Rastreio de um ANO do atacante numa simulacao (EDITAR NOS USOS): por tick, o frame e os ticks ja decorridos nele; -1 = o ANO nao esta na tela. */
++    public static final class Trace {
++        public int[] pat, elapsed;
++        public int first = -1, last = -1;
++    }
++
++    /**
++     * Onde o ANO {@code anoIdx} do DAC do atacante esta em cada tick (0 .. max-1): no lutador, num link, projetil, aura (flags 71+), cutscene (ALVO 1)
++     * ou no agarrao. Segue sempre o mesmo objeto enquanto ele existir (o primeiro que aparecer). Para 240 ticks depois de ele sumir.
++     */
++    public Trace traceAno(int anoIdx, int max) {
++        Trace tr = new Trace();
++        tr.pat = new int[Math.max(0, max)];
++        tr.elapsed = new int[tr.pat.length];
++        java.util.Arrays.fill(tr.pat, -1);
++        java.util.Arrays.fill(tr.elapsed, -1);
++        Ano target = atkDac == null ? null : atkDac.getAno(anoIdx);
++        if (target == null || !target.present || target.mpts.length == 0) return tr;
++        BattleSim s = fresh();
++        AttackSim.Obj prev = null;
++        for (int t = 0; t < tr.pat.length; t++) {
++            if (t > 0) s.step();
++            AttackSim.Obj o = s.findAnoObj(target, prev);
++            if (o == null) {
++                if (tr.last >= 0 && t - tr.last > 240) break;
++                continue;
++            }
++            prev = o;
++            int n = o.mpts.length;
++            int p = Math.min(o.pat, n - 1);
++            int dur = p >= 0 && o.mpts[p].hasTime ? o.mpts[p].time : 0;
++            tr.pat[t] = Math.max(0, p);
++            tr.elapsed[t] = o.pat >= n ? dur : Math.max(0, Math.min(dur, dur - o.time));
++            if (tr.first < 0) tr.first = t;
++            tr.last = t;
++        }
++        return tr;
++    }
++
++    private static void addObjs(java.util.List<AttackSim.Obj> out, AttackSim s) {
++        if (s == null) return;
++        if (s.root() != null) out.add(s.root());
++        AttackSim.Obj[] ch = s.children();
++        for (int i = 0; i < ch.length; i++) if (ch[i] != null) out.add(ch[i]);
++    }
++
++    /** Objeto vivo (raiz ou link) com o ANO {@code target} nas simulacoes do atacante; {@code prefer} ganha se ainda estiver vivo. */
++    AttackSim.Obj findAnoObj(Ano target, AttackSim.Obj prefer) {
++        java.util.List<AttackSim.Obj> all = new java.util.ArrayList<AttackSim.Obj>();
++        addObjs(all, timelineAtk());
++        if (timelineAtk() != atk) addObjs(all, atk);
++        addObjs(all, grab);
++        for (int i = 0; i < projs.size(); i++) if (!projs.get(i).dead) addObjs(all, projs.get(i).sim);
++        for (int i = 0; i < auras.size(); i++) if (auras.get(i).who == 0) addObjs(all, auras.get(i).sim);
++        for (int i = 0; i < cuts.size(); i++) if (cuts.get(i).player == 0) addObjs(all, cuts.get(i).sim);
++        AttackSim.Obj first = null;
++        for (int i = 0; i < all.size(); i++) {
++            AttackSim.Obj o = all.get(i);
++            if (o.ano != target) continue;
++            if (o == prefer) return o;
++            if (first == null) first = o;
++        }
++        return first;
++    }
++
      /** Ticks ate o ANO do atacante terminar (ignora o tempo estendido: so o ANO, sem a fisica depois dele). */
      public int measureAnoLength() {
          BattleSim s = fresh();
-@@ -492,7 +915,14 @@
+@@ -492,7 +980,14 @@
  
      public int measureLength() {
          BattleSim s = fresh();
@@ -7459,7 +7924,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private int measure(BattleSim s) {
-@@ -513,7 +943,7 @@
+@@ -513,7 +1008,7 @@
  
      /** Tudo que nao e o atacante parou: sem projeteis, efeitos, reacao nem hitstop. */
      /** Fim estendido: o atacante so congela quando esta no chao (ou voa); no ar ele cai e pousa antes. */
@@ -7468,7 +7933,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
  
      /** Projetil ainda em jogo: vivo e dentro do mapa (com folga); fora dele ja desapareceu para o tempo estendido. */
      private boolean projActive() {
-@@ -581,59 +1011,126 @@
+@@ -581,59 +1076,126 @@
          }
          if (spawnedSerial != r.serial) {
              spawnedSerial = r.serial;
@@ -7533,20 +7998,17 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +                ty = logY(p) + (h.y << 16);
 +                if (np == 1 && ty > 0) ty = 0;
 +                lastHit = "flag 40: " + (np == 1 ? "oponente -> atacante" : "atacante -> oponente") + " + (" + cx + "," + h.y + ")";
-+            }
+             }
 +            movePlayer(who, true, tx, true, ty);
 +            int whoOrder = who == 0 ? 1 : 2;
 +            if (whoOrder > order) {                         // o PlayerTail do alvo ainda vai rodar neste tick: ja aparece na nova posicao
 +                AttackSim.Obj d = who == 0 ? atk.root() : opp.root();
 +                if (who == 0) { pendA = false; if (d != null) { d.x = tx; d.y = ty; } }
 +                else if (d != null) { d.x = tx; d.y = ty; }
-             }
-         }
-     }
- 
--    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
--    private void cutsceneFlags(AttackSim.Obj r) {
--        if (atkChar == null) return;
++            }
++        }
++    }
++
 +    // posicao logica dos jogadores (PlayerXPos/PlayerYPos): a do atacante pode estar pendente ate o proximo PlayerTail
 +    private boolean pendA;
 +    private int pendAX, pendAY;
@@ -7571,7 +8033,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +            if (setX) oppX = x;
 +            if (setY) oppY = y;
 +            return;
-+        }
+         }
 +        AttackSim.Obj r = atk.root();
 +        if (r == null) return;
 +        if (!pendA) { pendA = true; pendAX = r.x; pendAY = r.y; }
@@ -7585,8 +8047,11 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +        pendA = false;
 +        AttackSim.Obj r = atk.root();
 +        if (r != null) { r.x = pendAX; r.y = pendAY; }
-+    }
-+
+     }
+ 
+-    /** Flag 20: cria a task 996 (evento HDAT 13 do atacante, linha = COORDS[2]). */
+-    private void cutsceneFlags(AttackSim.Obj r) {
+-        if (atkChar == null) return;
 +    /**
 +     * Flag 20: cria a task 996 (evento HDAT 13 do dono da animacao, linha = COORDS[2]). player = lutador dono do ANO
 +     * (0 atacante, 1 oponente); src = projetil dono do ANO (md 971/972 tambem chamam CheckOptFlag), ou null.
@@ -7625,7 +8090,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              c.startAno = r.ano.index;
              c.startPat = r.pat;
              int cx = c.flipped ? -h.x : h.x;
-@@ -641,125 +1138,144 @@
+@@ -641,125 +1203,144 @@
              c.wy = r.y + (h.y << 16);
              c.offX = cx << 16;
              int anim = c.flipped ? animF : animN;
@@ -7857,7 +8322,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          int count = (move.flags & 4) != 0 ? 3 : 1;
          for (int k = 0; k < count; k++) {
              int x, y;
-@@ -779,18 +1295,49 @@
+@@ -779,18 +1360,49 @@
              else if (facingLeft && x > r.x) x = r.x - PROJ_FAR;
  
              Proj p = new Proj();
@@ -7908,7 +8373,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          int dx = h.x << 16;
          int x = (o.objFlags & 16) != 0 ? o.x - dx : o.x + dx;
          int y = o.y + (h.y << 16);
-@@ -801,17 +1348,21 @@
+@@ -801,17 +1413,21 @@
          p.globalAno = move.projGlobal;
          p.groundAno = move.subChao;
          p.sim = new AttackSim(atkDac, move.subId, p.flip, x, y);
@@ -7930,7 +8395,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          p.life++;
          AttackSim.Obj o = p.sim.root();
          if (o == null || ((o.actFlags & 2) != 0 && !o.holdLast) || p.life > 1200
-@@ -844,19 +1395,19 @@
+@@ -844,19 +1460,19 @@
              if (o.y > 0) o.y = 0;
          }
  
@@ -7954,7 +8419,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  int cos = SIN[(deg + 90) % 360];
                  int sin = SIN[deg % 360];
                  o.x += (cos * spd << 16) / 64;
-@@ -869,7 +1420,7 @@
+@@ -869,7 +1485,7 @@
          }
          if (p.firstX != o.x) p.moved = true;
  
@@ -7963,7 +8428,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          o = p.sim.root();
          if (o != null) {
              if (o.x == p.stillX && o.y == p.stillY && o.frozenOnLast()) p.still++; else p.still = 0;
-@@ -890,22 +1441,20 @@
+@@ -890,22 +1506,20 @@
                  for (int i = 0; i < o.hits.length; i++) {
                      if (o.hits[i].flag == 0) spawnSub(p, o, o.hits[i]);
                  }
@@ -7992,7 +8457,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          // projeteis
          for (int i = 0; i < projs.size(); i++) {
              Proj p = projs.get(i);
-@@ -920,13 +1469,13 @@
+@@ -920,13 +1534,13 @@
                  p.hs = HIT_STOP / 2;
                  hsDef = HIT_STOP;
              }
@@ -8009,7 +8474,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              int[] pos = checkObjHit(r, def);
              if (pos != null) {
                  armed = false;
-@@ -936,8 +1485,8 @@
+@@ -936,8 +1550,8 @@
                      hsAtk = hs;
                      hsDef = hs;
                  }
@@ -8020,7 +8485,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              }
          }
      }
-@@ -979,6 +1528,7 @@
+@@ -979,6 +1593,7 @@
          }
          everHit = true;
          hitConfirmed = true;                       // wFlag|=1 (melee e projetil no laco de hits) -> work[10] = 1
@@ -8028,7 +8493,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (attackOver) return;                    // fora do md 882: nenhum hit troca mais o ANO
          boolean f38 = blocksSeq(r);
          int animReacao = (!f38 && move.animAoAcertar != 0) ? move.animAoAcertar : hitAno;
-@@ -989,7 +1539,7 @@
+@@ -989,7 +1604,7 @@
              else if (probe && atk.root() != null) {        // sondagem: nao troca, mas registra onde a SEQ_PROJETIL (AO_ACERTAR) entraria
                  HitEvent h2 = new HitEvent();
                  h2.tick = ticks; h2.ano = cur; h2.pat = atk.root().pat; h2.kind = 2; h2.target = animReacao;
@@ -8037,7 +8502,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  hitEvents.add(h2);
              }
          }
-@@ -999,7 +1549,7 @@
+@@ -999,7 +1614,7 @@
          if ((hitAno == cur || animReacao == cur) && hitConfirmed) {
              AttackSim.Obj ev = atk.root();
              if (ev != null) {                            // registra o hit para o marcador de sequencia da timeline
@@ -8046,7 +8511,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  int evSeq = evAir ? move.animSeqAr : move.animSeqChao;
                  int evEnd = evAir ? move.animEndAr : move.animEndChao;
                  int kind = -1, tgt = 0;
-@@ -1018,7 +1568,7 @@
+@@ -1018,7 +1633,7 @@
                  return;
              }
              AttackSim.Obj rr = atk.root();
@@ -8055,7 +8520,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              int seq = air ? move.animSeqAr : move.animSeqChao;
              int end = air ? move.animEndAr : move.animEndChao;
              if (end != 0 && cur == seq) {
-@@ -1030,7 +1580,6 @@
+@@ -1030,7 +1645,6 @@
                      phase = 1;
                      cancelAtk = 0;
                      lastHit += " -> ANIM_SEQ " + seq;
@@ -8063,7 +8528,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                      if (end != 0) hitConfirmed = false;
                  }
              }
-@@ -1063,6 +1612,7 @@
+@@ -1063,6 +1677,7 @@
          transKind = -1;
          if (switchAtk(next)) {
              hitConfirmed = false;                 // work[10] = 0
@@ -8071,7 +8536,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              lastHit += " [agarrao: atacante -> oponente, ANO " + next + "]";
          } else {
              r.x = ox;
-@@ -1117,6 +1667,7 @@
+@@ -1117,6 +1732,7 @@
          BattleSim s = new BattleSim(atkDac, atkChar, m2, atkLeft, defDac, fxDac, gd, distancePx, heightPx, atkWavCount);
          s.oppChar = oppChar;
          s.specialType = specialType;
@@ -8079,7 +8544,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (charfDac != null) s.setCharfDac(charfDac); else s.reset();
          s.probe = true;
          for (int t = 0; t < 1800; t++) {
-@@ -1151,7 +1702,7 @@
+@@ -1151,7 +1767,7 @@
          if (!endOnSeqFinish || phase != 1) return;
          AttackSim.Obj r = atk.root();
          if (r == null || !r.isDone()) return;
@@ -8088,7 +8553,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          int end = air ? move.animEndAr : move.animEndChao;
          phase = 2;
          transKind = 1;
-@@ -1184,9 +1735,34 @@
+@@ -1184,9 +1800,34 @@
          return false;
      }
  
@@ -8123,7 +8588,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          // md 883: y > chao com velocidade Y > 0 pousa, mesmo que o golpe tenha comecado no chao
          // ANO avulso (md 886 / 891): pousa assim que y > chao fora do hitstop, sem exigir velocidade Y
          boolean lands = move.generic ? (r.y > 0 && hsAtk == 0) : (r.y > 0 && r.speedY > 0);
-@@ -1208,7 +1784,6 @@
+@@ -1208,7 +1849,6 @@
              r.speedX = 0;
              r.accelX = 0;
              sounds.add(new Snd(true, 12, 0));
@@ -8131,7 +8596,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              int land = (phase == 5 || move.generic) ? 13 : (hitConfirmed ? move.pousoAcertar : move.pousoErrar);
              if (land == 0) land = 13;
              transKind = 3;
-@@ -1222,25 +1797,48 @@
+@@ -1222,25 +1862,48 @@
          // acabou a animacao no ar e o personagem nao voa: cai (ANO 89)
          if (r.y < 0 && phase != 4 && phase != 5 && r.isDone() && !flies && landingOn) {
              transKind = 4;
@@ -8186,7 +8651,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          }
          if (r == null) return;
          int fl = (r.actFlags & 48) ^ (r.objFlags & 48);
-@@ -1251,40 +1849,49 @@
+@@ -1251,40 +1914,49 @@
              int x = r.x + (ox << 16);
              int y = r.y + (h.y << 16);
              Aura a = null;
@@ -8251,7 +8716,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private void afterGrabFrame() {
-@@ -1296,20 +1903,50 @@
+@@ -1296,20 +1968,50 @@
          }
      }
  
@@ -8313,7 +8778,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      /** Editor: trava as trocas automaticas de ANO (sequencia, fim, pouso, queda) para editar uma ANO sem o fluxo interferir. */
-@@ -1331,6 +1968,7 @@
+@@ -1331,6 +2033,7 @@
          if ((transKind == 3 || transKind == 4) && physHold == null && !idleMode) physHold = atk;
          transKind = -1;
          atk = new AttackSim(atkDac, ano, atkLeft, r.x, r.y);
@@ -8321,7 +8786,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          lastSerial = -1;
          spawnedSerial = -1;
          armed = false;
-@@ -1341,17 +1979,31 @@
+@@ -1341,17 +2044,31 @@
  
      private void detectGrab(AttackSim.Obj def) {
          AttackSim.Obj g = grab == null ? null : grab.root();
@@ -8357,7 +8822,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      private static int[] checkObjHit(AttackSim.Obj a, AttackSim.Obj t) {
          int af = (a.actFlags & 48) ^ (a.objFlags & 48);
          int tf = (t.actFlags & 48) ^ (t.objFlags & 48);
-@@ -1438,25 +2090,37 @@
+@@ -1438,25 +2155,37 @@
              applyDamage(op, dmg, hitAno);
              lastHit += " [dano " + lastDamage + ", vida " + lifeO + "/" + maxO + ", combo " + combo + "]";
          }
@@ -8401,7 +8866,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          endAnim = -1;
          dCharSrc = op.fromChar;
          dType = op.type;
-@@ -1464,6 +2128,7 @@
+@@ -1464,6 +2193,7 @@
          dTime = 0;
          dOldType = op.type;
          dOldIdx = 0;
@@ -8409,7 +8874,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          dMove = op.pushes ? hitBack : 0;
          dead = false;
          if (lifeO <= 0) {                           // KO: o jogo troca a reacao pelo tipo 2 do gamedata (md 876)
-@@ -1473,14 +2138,104 @@
+@@ -1473,14 +2203,104 @@
          }
      }
  
@@ -8514,7 +8979,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      }
  
      private static void applyFlip(AttackSim s, boolean flip) {
-@@ -1494,6 +2249,7 @@
+@@ -1494,6 +2314,7 @@
      }
  
      private void stepDefender() {
@@ -8522,7 +8987,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          if (!inDamage) {
              AttackSim.Obj r = opp.root();
              if (r != null) {
-@@ -1513,6 +2269,10 @@
+@@ -1513,6 +2334,10 @@
          tickDamage(0);
      }
  
@@ -8533,7 +8998,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      private void endDamage(int state, int anim) {
          if (lifeO <= 0) {                           // Life <= 0: ANO 24 e fica deitado (md 888 / 889), sem DamageEnd
              state = 889;
-@@ -1598,10 +2358,10 @@
+@@ -1598,10 +2423,10 @@
          }
          if (hs) return;
  
@@ -8546,7 +9011,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  if (comp == 11) {
                      if (oppY > 0 || (dYs <= 0 && dYa <= 0)) {
                          oppY = 0;
-@@ -1620,6 +2380,7 @@
+@@ -1620,6 +2445,7 @@
                      }
                      dIdx = 0;
                      dTime = 0;
@@ -8554,7 +9019,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                      tickDamage(depth + 1);
                      return;
                  }
-@@ -1632,16 +2393,19 @@
+@@ -1632,16 +2458,19 @@
                  dType = 12;
                  dIdx = 0;
                  dTime = 0;
@@ -8575,7 +9040,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  tickDamage(depth + 1);
                  return;
              }
-@@ -1658,24 +2422,32 @@
+@@ -1658,24 +2487,32 @@
  
          int dur = tb.u8(dIdx, oppY != 0 ? 1 : 0);
          if (dTime >= dur) {
@@ -8610,7 +9075,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                          }
                          dIdx = 0;
                          tickDamage(depth + 1);
-@@ -1701,16 +2473,32 @@
+@@ -1701,16 +2538,32 @@
          float tw = 100f, tx = nx, ty = ny;
          int n = 12;
          AttackSim.Obj r = atk.root();
@@ -8652,7 +9117,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
              // md 29 do jogo sem zoom de acao: lutadores a mais de 320 px na horizontal ou 200 px na vertical => zoom out 90% em 16 ticks
              int adx = Math.abs(r.x - oppX) >> 16, ady = Math.abs(r.y - oppY) >> 16;
              if (adx > 320 || ady > 200) { tw = 90f; n = 16; }
-@@ -1728,6 +2516,32 @@
+@@ -1728,6 +2581,32 @@
          if (zTgtW == 100f && zLeft == 0) { zCurX = nx; zCurY = ny; }
      }
  
@@ -8685,7 +9150,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      /** {esquerda, topo, direita, base} do retangulo da camera em px do mundo durante o zoom; null se normal. */
      public float[] zoomRect() {
          if (zCurW == 100f || zCurW <= 0f) return null;
-@@ -1761,13 +2575,20 @@
+@@ -1761,13 +2640,20 @@
                  // o atacante nao cabe na distancia pedida: o oponente se afasta para manter a distancia, sempre dentro da borda
                  oppX = Math.max(camLeft + ho, Math.min(camLeft + SCREEN_W - ho, atkLeft ? nx - distancePx * PX : nx + distancePx * PX));
              }
@@ -8710,7 +9175,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          oldAx = ra == null ? 0 : ra.x;
          oldOx = oppX;
      }
-@@ -1785,15 +2606,12 @@
+@@ -1785,15 +2671,12 @@
      private int camShake, camShakeType, lastOppSerial = -1;
      private AttackSim.Obj lastOppObj;
  
@@ -8730,7 +9195,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          }
      }
  
-@@ -1802,14 +2620,14 @@
+@@ -1802,14 +2685,14 @@
          if (ra == null) return;
          if (edgeMode == 0) { camYFix = 0; camYOff = 0; return; }
          int a = Math.min(240, ra.y >> 16), b = Math.min(240, oppY >> 16);
@@ -8747,7 +9212,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      public int screenRight() { return screenLeft() + SCREEN_W; }
      public int mapLeft() { return camLeft - camBase; }
      public int mapRight() { return camLeft - camBase + MAP_BASE_MAX + SCREEN_W; }
-@@ -1817,7 +2635,7 @@
+@@ -1817,7 +2700,7 @@
      private boolean atWall(int wall) {
          if (edgeMode == 0) return false;
          int h = halfO * PX;
@@ -8756,7 +9221,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          boolean l = oppX <= camLeft + h && (camBase <= h || force);
          boolean r = oppX >= camLeft + SCREEN_W - h && (camBase + h >= MAP_BASE_MAX || force);
          return (l || r) && (dCharSrc || dYs <= 0);
-@@ -1837,42 +2655,47 @@
+@@ -1837,42 +2720,47 @@
          if (edgeMode == 0) return;
          AttackSim.Obj ra = atk.root();
          if (ra == null) return;
@@ -8814,7 +9279,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
                  d[i] = 0;
              }
          }
-@@ -1884,21 +2707,117 @@
+@@ -1884,21 +2772,117 @@
          }
          camBase += scroll;
          camLeft += scroll;
@@ -8940,7 +9405,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      private boolean atkFacingLeft() {
          AttackSim.Obj r = atk.root();
          return r != null && (r.objFlags & 16) != 0;
-@@ -1919,9 +2838,7 @@
+@@ -1919,9 +2903,7 @@
              int se = r.pendingSe;
              r.pendingSe = -1;
              // ChrSePlay: o jogador 1 soma ChrSoundCount[3] (n. de audios do jogador 0) a qualquer SE
@@ -8951,16 +9416,16 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
          }
          AttackSim.Obj[] ch = s.children();
          for (int i = 0; i < ch.length; i++) {
-@@ -1929,8 +2846,22 @@
+@@ -1929,10 +2911,24 @@
              if (c == null || c.pendingSe < 0) continue;
              int se = c.pendingSe;
              c.pendingSe = -1;
 -            if (se < 80) pushRaw(se - 1);
 +            int cn = SoundIds.commonOf(se);
 +            if (cn >= 0) sounds.add(new Snd(true, cn, 0));      // links so tocam sons globais
-+        }
-+    }
-+
+         }
+     }
+ 
 +    /** SE do frame (byte sem sinal): 1..79 e 100..255 = global se_(id-1); 80..99 = audio do personagem (o jogador 1 soma os audios do jogador 0). */
 +    private void pushSe(int se, int owner) {
 +        if (SoundIds.isCharId(se)) {
@@ -8969,13 +9434,15 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
 +            if (idx < atkWavCount) sounds.add(new Snd(false, idx, 0));
 +            else sounds.add(new Snd(false, idx - atkWavCount, 1));
 +            return;
-         }
++        }
 +        int cn = SoundIds.commonOf(se);
 +        if (cn >= 0) sounds.add(new Snd(true, cn, 0));
-     }
- 
++    }
++
      /** PushSE: < 80 = se_NN comum; >= 80 = audio de personagem na lista [atacante..., defensor...]. */
-@@ -1979,55 +2910,52 @@
+     private void pushRaw(int id) {
+         if (id < 0) return;
+@@ -1979,55 +2975,52 @@
  
      public List<Layer> layers() {
          layers.clear();
@@ -9059,7 +9526,7 @@ diff -ruN -x fixtures a/BattleSim.java b/BattleSim.java
      public int opponentX() { return oppX >> 16; }
      public int opponentY() { return oppY >> 16; }
      public int attackerY() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.y >> 16; }
-@@ -2040,6 +2968,34 @@
+@@ -2040,6 +3033,34 @@
      public int attackerX() { AttackSim.Obj r = atk.root(); return r == null ? 0 : r.x >> 16; }
  
      public boolean defenderInDamage() { return inDamage; }
@@ -16362,7 +16829,7 @@ diff -ruN -x fixtures a/CutsceneInfo.java b/CutsceneInfo.java
 +}
 diff -ruN -x fixtures a/CutsceneScreen.java b/CutsceneScreen.java
 --- a/CutsceneScreen.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/CutsceneScreen.java	2026-11-08 10:44:36.414758419 +0000
++++ b/CutsceneScreen.java	2026-11-08 10:55:47.282940833 +0000
 @@ -0,0 +1,1314 @@
 +package com.zue.attackeditor;
 +
@@ -16781,7 +17248,7 @@ diff -ruN -x fixtures a/CutsceneScreen.java b/CutsceneScreen.java
 +        String why = ano <= 0 ? I18n.tr("sem animação") : alvo == 0 ? I18n.tr("o app ainda não edita o effect.pac") : alvo != 1 ? I18n.tr("o app ainda não edita o bobj") : nav == null ? I18n.tr("indisponível aqui") : null;
 +        TextView ed = button(I18n.tr("EDITAR ANO") + " " + ano, why == null ? LayoutManager.ACCENT : LayoutManager.DIM, new View.OnClickListener() { public void onClick(View v) {
 +            dlg.dismiss();                                          // a volta e pelo VOLTAR de sempre da timeline
-+            nav.openAno(fano, false);
++            nav.openAnoFrom(fano, false, false, sel == hitEvent ? hitAno : -1);   // origem (destaque em EDITAR NOS USOS) so se o evento ainda e o do hit
 +        } });
 +        if (why != null) { ed.setEnabled(false); ed.setAlpha(0.45f); }
 +        LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-1, -2);
@@ -21791,8 +22258,8 @@ diff -ruN -x fixtures a/HelpScreen.java b/HelpScreen.java
 +}
 diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 --- a/HelpText.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/HelpText.java	2026-11-08 10:46:22.630274607 +0000
-@@ -0,0 +1,601 @@
++++ b/HelpText.java	2026-11-08 10:57:35.914442267 +0000
+@@ -0,0 +1,602 @@
 +package com.zue.attackeditor;
 +
 +import java.util.ArrayList;
@@ -21972,7 +22439,8 @@ diff -ruN -x fixtures a/HelpText.java b/HelpText.java
 +                "O botão ↻ (na barra de título, ao lado do idioma e do AJUDA) faz o app reler as pastas que ele usa, sem reiniciar: os personagens (charNN), os efeitos, as cenas (bobj) e os sons. Use quando você apagar, adicionar ou renomear uma pasta de personagem, ou trocar os .txt de um personagem. Antes de recarregar, o app avisa que as edições não salvas serão perdidas (SALVAR primeiro, se precisar). Depois de recarregar, o app volta ao mesmo personagem, oponente e golpe/ANO se eles ainda existirem; se a pasta do personagem sumiu, abre o primeiro da lista."
 +                + " Se faltar algum arquivo .dac.txt, .bin.txt ou .cnv.txt de um pack (gamedata, effect, charNN, charfNN, bobjNN), o app mostra um alerta com a lista do que falta, ao abrir e ao recarregar: CONTINUAR ASSIM segue sem eles; EXTRAIR extrai do arquivo .pac que estiver na mesma pasta (assets), sem apagar nada que você já editou.");
 +        inicio.add("MODO: GOLPES / ANO",
-+                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Tocar no botão ao lado (mostra o golpe ou a ANO atual) abre a grade de escolha, igual nos dois modos. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO. No topo da grade há o switch GOLPES | ANOS, que troca de modo na hora. A grade mostra o primeiro Frame de cada item. Tocar num cartão expande e toca a animação ali mesmo, sem abrir (com simulação de pouso nos golpes aéreos, loop nas ANOs com wActFlag 1; as outras tocam uma vez, travam no último Frame por 1 s e recomeçam; e a box de hitbox/projétil); o botão grande ➜ ABRIR leva para editar. No modo ANO o botão FILTRAR alterna Padrão, Importância (as que têm info), Golpes (partes de golpes do BIN), Ataque (hitbox/projétil), Tempo (mais ticks), Frames (mais Frames) e Efeitos (animações de flag): nenhuma ANO some, as que casam vão para o topo com moldura verde. Embaixo: ＋ CRIAR (a ANO seguinte à última, com um Frame sem imagem de 6 ticks), EXCLUIR (esvazia a ANO: ela continua existindo; avisa se tem hitbox, projétil ou se é de um ataque do BIN), COPIAR, MOVER (escolhe outra ANO: os Frames vão para ela e a original fica vazia) e COLAR (com o mesmo aviso). Segurar um cartão liga o modo seleção para excluir várias de uma vez. O botão ⓘ abre um texto ao lado dele, com cores: azul = fixo no código-fonte do jogo, verde = vem do BIN ou de outra fonte. O próprio botão ⓘ usa as mesmas cores: verde = o golpe ou a ANO tem algo definido no Bin, azul = só regra fixa do jogo. Na ANO: o papel dela (ANIM_INICIAL do Golpe N, SEQ do golpe N, SEQ PROJ do golpe N, Projétil do golpe N, Animação de pouso padrão) e o nome dos ANOs fixos do jogo (Parado, Carga de ki…); nos ataques normais 29 a 39, a sequência da janela OPT 512 (ANO 30: A → 32, A + frente → 31, A + trás → 37, A + baixo → 36; ANO 32: A → 33 e as mesmas direções) ou \"Sem continuação\". No golpe: o botão que o dispara com o ícone dele e o comando de joystick completo, sempre terminando no botão A (por exemplo ↓ → + A) e o bloco Sequências (SEQ e END no chão e no ar, SEQ PROJ = ANIM_AO_ACERTAR e agarrão do BIN em verde; repetição do especial e agarrão automático do código em azul com \"(automática)\"; o pouso não entra). Tocar fora do texto só o fecha. Uma ANO vazia aberta começa com um Frame sem imagem (IMG −1) de 6 ticks. As notas do ⓘ das ANOs fixas do jogo (Idle, dashes, pulos, reações de dano, carga de energia...) vêm do arquivo AnoNotes do app: um case por ANO, para editar à mão (azul = fixo no código do jogo, verde = vem do Bin); ANO sem nota usa o nome antigo. No modo GOLPES a linha de baixo é FLUXO (abre o fluxo do golpe, editável: dá para definir SEQ, END, pouso...), COPIAR, COLAR e TROCAR. COLAR cola o golpe copiado sobre o golpe selecionado (do mesmo personagem; 0, 3 e 6 só no próprio número): os ANOs entram como ANOs novas no fim do DAC e os números mudam no Bin; reações iguais às que já existem são reaproveitadas, senão vão para slots vazios, e sem slot vazio você escolhe qual substituir. TROCAR troca as linhas de dois golpes no Bin (só o número do golpe muda; 0, 3 e 6 só entre si). Os dois mexem só na memória: SALVAR grava (os ANOs novos entram no 000.dac.txt).");
++                "GOLPES lista os golpes do personagem (cada um com seus ANOs, projéteis e reações). ANO lista os ANOs soltos, para abrir e editar uma animação isolada, sem o golpe em volta. Tocar no botão ao lado (mostra o golpe ou a ANO atual) abre a grade de escolha, igual nos dois modos. No modo ANO a tela do projétil e o GOLPE SET continuam disponíveis para o golpe que é dono do ANO. No topo da grade há o switch GOLPES | ANOS, que troca de modo na hora. A grade mostra o primeiro Frame de cada item. Tocar num cartão expande e toca a animação ali mesmo, sem abrir (com simulação de pouso nos golpes aéreos, loop nas ANOs com wActFlag 1; as outras tocam uma vez, travam no último Frame por 1 s e recomeçam; e a box de hitbox/projétil); o botão grande ➜ ABRIR leva para editar. No modo ANO o botão FILTRAR alterna Padrão, Importância (as que têm info), Golpes (partes de golpes do BIN), Ataque (hitbox/projétil), Tempo (mais ticks), Frames (mais Frames) e Efeitos (animações de flag): nenhuma ANO some, as que casam vão para o topo com moldura verde. Embaixo: ＋ CRIAR (a ANO seguinte à última, com um Frame sem imagem de 6 ticks), EXCLUIR (esvazia a ANO: ela continua existindo; avisa se tem hitbox, projétil ou se é de um ataque do BIN), COPIAR, MOVER (escolhe outra ANO: os Frames vão para ela e a original fica vazia) e COLAR (com o mesmo aviso). Segurar um cartão liga o modo seleção para excluir várias de uma vez. O botão ⓘ abre um texto ao lado dele, com cores: azul = fixo no código-fonte do jogo, verde = vem do BIN ou de outra fonte. O próprio botão ⓘ usa as mesmas cores: verde = o golpe ou a ANO tem algo definido no Bin, azul = só regra fixa do jogo. Na ANO: o papel dela (ANIM_INICIAL do Golpe N, SEQ do golpe N, SEQ PROJ do golpe N, Projétil do golpe N, Animação de pouso padrão) e o nome dos ANOs fixos do jogo (Parado, Carga de ki…); nos ataques normais 29 a 39, a sequência da janela OPT 512 (ANO 30: A → 32, A + frente → 31, A + trás → 37, A + baixo → 36; ANO 32: A → 33 e as mesmas direções) ou \"Sem continuação\". No golpe: o botão que o dispara com o ícone dele e o comando de joystick completo, sempre terminando no botão A (por exemplo ↓ → + A) e o bloco Sequências (SEQ e END no chão e no ar, SEQ PROJ = ANIM_AO_ACERTAR e agarrão do BIN em verde; repetição do especial e agarrão automático do código em azul com \"(automática)\"; o pouso não entra). Tocar fora do texto só o fecha. Uma ANO vazia aberta começa com um Frame sem imagem (IMG −1) de 6 ticks. As notas do ⓘ das ANOs fixas do jogo (Idle, dashes, pulos, reações de dano, carga de energia...) vêm do arquivo AnoNotes do app: um case por ANO, para editar à mão (azul = fixo no código do jogo, verde = vem do Bin); ANO sem nota usa o nome antigo. No modo GOLPES a linha de baixo é FLUXO (abre o fluxo do golpe, editável: dá para definir SEQ, END, pouso...), COPIAR, COLAR e TROCAR. COLAR cola o golpe copiado sobre o golpe selecionado (do mesmo personagem; 0, 3 e 6 só no próprio número): os ANOs entram como ANOs novas no fim do DAC e os números mudam no Bin; reações iguais às que já existem são reaproveitadas, senão vão para slots vazios, e sem slot vazio você escolhe qual substituir. TROCAR troca as linhas de dois golpes no Bin (só o número do golpe muda; 0, 3 e 6 só entre si). Os dois mexem só na memória: SALVAR grava (os ANOs novos entram no 000.dac.txt)."
++                + " Quando um ANO é aberto a partir de outro (✎ EDITAR de projétil, efeito, SEQ, pouso, EDITAR ANO do editor de cutscenes...), aparece no topo a barra \"◀ VOLTAR AO …\" e, ao lado, EDITAR NOS USOS: uma grade com a miniatura de cada ANO que usa o ANO aberto (link, animação de flag 71–125, cutscene da flag 20 com o PAC do personagem, projéteis e sub-projéteis, campos do golpe como SEQ, END, pouso, ANIM_AO_ACERTAR e agarrado). O card do ANO de onde você veio fica destacado (ORIGEM): por exemplo, do ANO 60 → cutscene → EDITAR CUTSCENE → EDITAR ANO, a grade destaca o 60; se você trocou o evento no editor antes de abrir, nada fica destacado. Tocar num card abre o ANO no CONTEXTO daquele uso: a prévia toca o ANO/golpe que o usa (só para ver; a cutscene virada liga o VIRAR) e a timeline edita o ANO aberto, começando parada no tick em que ele aparece; a barra de progresso vai até ele sumir. No contexto ficam desligados F-GHOST, POSE, SPEEDLINE e as marcas de transição. A barra vira \"◀ VOLTAR PARA ANO N\" (volta ao ANO sozinho, no mesmo frame) | EDITAR NOS USOS. As edições feitas no contexto entram no SALVAR do app.");
 +        inicio.add("Barra de tempo e transporte",
 +                "A barra mostra o tick da simulação (e o frame/total). INÍCIO volta ao tick 0, -1 e +1 andam um tick (para conferir frame a frame), PAUSAR/TOCAR reproduz, e o botão de velocidade alterna a velocidade da reprodução. "
 +                + "O jogo roda a 60 ticks por segundo.");
@@ -22740,7 +23208,7 @@ diff -ruN -x fixtures a/I18nBuilder.java b/I18nBuilder.java
 +}
 diff -ruN -x fixtures a/I18nCatalog.java b/I18nCatalog.java
 --- a/I18nCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog.java	2026-11-08 10:44:55.624993716 +0000
++++ b/I18nCatalog.java	2026-11-08 10:56:05.131647811 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -22754,7 +23222,7 @@ diff -ruN -x fixtures a/I18nCatalog.java b/I18nCatalog.java
 +}
 diff -ruN -x fixtures a/I18nCatalog0.java b/I18nCatalog0.java
 --- a/I18nCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog0.java	2026-11-08 10:44:55.619552402 +0000
++++ b/I18nCatalog0.java	2026-11-08 10:56:05.126686293 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -23027,7 +23495,7 @@ diff -ruN -x fixtures a/I18nCatalog0.java b/I18nCatalog0.java
 +}
 diff -ruN -x fixtures a/I18nCatalog1.java b/I18nCatalog1.java
 --- a/I18nCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog1.java	2026-11-08 10:44:55.620132145 +0000
++++ b/I18nCatalog1.java	2026-11-08 10:56:05.127216484 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -23300,8 +23768,8 @@ diff -ruN -x fixtures a/I18nCatalog1.java b/I18nCatalog1.java
 +}
 diff -ruN -x fixtures a/I18nCatalog10.java b/I18nCatalog10.java
 --- a/I18nCatalog10.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog10.java	2026-11-08 10:44:55.624844084 +0000
-@@ -0,0 +1,23 @@
++++ b/I18nCatalog10.java	2026-11-08 10:56:05.131494503 +0000
+@@ -0,0 +1,40 @@
 +package com.zue.attackeditor;
 +
 +/** Catalogo de traducao da interface, bloco 10 (gerado de i18n_src/*.py; nao editar a mao). */
@@ -23323,11 +23791,28 @@ diff -ruN -x fixtures a/I18nCatalog10.java b/I18nCatalog10.java
 +        {"zoom/posição diferentes por frame", "zoom/position different per frame", "zoom/posición distintos por frame"},
 +        {"⚠ Só a ANIM_FLIP_ID foi editada: confira se a ANIM_ID (virado para a frente) precisa do mesmo ajuste.", "⚠ Only ANIM_FLIP_ID was edited: check whether ANIM_ID (facing forward) needs the same adjustment.", "⚠ Solo se editó la ANIM_FLIP_ID: revisa si la ANIM_ID (mirando hacia delante) necesita el mismo ajuste."},
 +        {"⚠ Só a ANIM_ID foi editada: confira se a ANIM_FLIP_ID (virado para trás) precisa do mesmo ajuste.", "⚠ Only ANIM_ID was edited: check whether ANIM_FLIP_ID (facing backward) needs the same adjustment.", "⚠ Solo se editó la ANIM_ID: revisa si la ANIM_FLIP_ID (mirando hacia atrás) necesita el mismo ajuste."},
++        {"Agarrado no", "Grabbed in", "Agarrado en"},
++        {"Animação da flag", "Animation of flag", "Animación de la flag"},
++        {"Campo do", "Field of", "Campo del"},
++        {"Cutscene do evento", "Cutscene of event", "Cutscene del evento"},
++        {"Link do ANO", "Link of ANO", "Link del ANO"},
++        {"Projétil do", "Projectile of", "Proyectil del"},
++        {"virado", "flipped", "volteado"},
++        {"Nenhum uso: nenhum link, flag de animação, cutscene, projétil ou campo de golpe usa este ANO.", "No uses: no link, animation flag, cutscene, projectile or move field uses this ANO.", "Ningún uso: ningún link, flag de animación, cutscene, proyectil o campo de golpe usa este ANO."},
++        {"ORIGEM", "ORIGIN", "ORIGEN"},
++        {"Toque num uso para editar este ANO no contexto dele: a prévia toca o ANO/golpe que o usa (só para ver) e a timeline edita este ANO, começando no tick em que ele aparece.", "Tap a use to edit this ANO in its context: the preview plays the ANO/move that uses it (only to watch) and the timeline edits this ANO, starting at the tick where it appears.", "Toca un uso para editar este ANO en su contexto: la vista previa reproduce el ANO/golpe que lo usa (solo para ver) y la timeline edita este ANO, empezando en el tick en que aparece."},
++        {"USOS DO ANO", "USES OF ANO", "USOS DEL ANO"},
++        {"EDITAR NOS USOS", "EDIT IN USES", "EDITAR EN LOS USOS"},
++        {"EDITAR NOS USOS: a prévia toca", "EDIT IN USES: the preview plays", "EDITAR EN LOS USOS: la vista previa reproduce"},
++        {"F-GHOST, POSE e SPEEDLINE ficam desligados aqui.", "F-GHOST, POSE and SPEEDLINE are off here.", "F-GHOST, POSE y SPEEDLINE quedan apagados aquí."},
++        {"O ANO não aparece nesta simulação (com a distância/altura atuais): a timeline fica no frame 0.", "The ANO does not appear in this simulation (with the current distance/height): the timeline stays on frame 0.", "El ANO no aparece en esta simulación (con la distancia/altura actuales): la timeline queda en el frame 0."},
++        {"VOLTAR PARA ANO", "BACK TO ANO", "VOLVER AL ANO"},
++        {"a timeline edita o ANO", "the timeline edits ANO", "la timeline edita el ANO"},
 +    };
 +}
 diff -ruN -x fixtures a/I18nCatalog2.java b/I18nCatalog2.java
 --- a/I18nCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog2.java	2026-11-08 10:44:55.620652124 +0000
++++ b/I18nCatalog2.java	2026-11-08 10:56:05.127699960 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -23600,7 +24085,7 @@ diff -ruN -x fixtures a/I18nCatalog2.java b/I18nCatalog2.java
 +}
 diff -ruN -x fixtures a/I18nCatalog3.java b/I18nCatalog3.java
 --- a/I18nCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog3.java	2026-11-08 10:44:55.621307256 +0000
++++ b/I18nCatalog3.java	2026-11-08 10:56:05.128106151 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -23873,7 +24358,7 @@ diff -ruN -x fixtures a/I18nCatalog3.java b/I18nCatalog3.java
 +}
 diff -ruN -x fixtures a/I18nCatalog4.java b/I18nCatalog4.java
 --- a/I18nCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog4.java	2026-11-08 10:44:55.621908637 +0000
++++ b/I18nCatalog4.java	2026-11-08 10:56:05.128562351 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24146,7 +24631,7 @@ diff -ruN -x fixtures a/I18nCatalog4.java b/I18nCatalog4.java
 +}
 diff -ruN -x fixtures a/I18nCatalog5.java b/I18nCatalog5.java
 --- a/I18nCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog5.java	2026-11-08 10:44:55.622436563 +0000
++++ b/I18nCatalog5.java	2026-11-08 10:56:05.129022959 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24419,7 +24904,7 @@ diff -ruN -x fixtures a/I18nCatalog5.java b/I18nCatalog5.java
 +}
 diff -ruN -x fixtures a/I18nCatalog6.java b/I18nCatalog6.java
 --- a/I18nCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog6.java	2026-11-08 10:44:55.623074213 +0000
++++ b/I18nCatalog6.java	2026-11-08 10:56:05.129456292 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24692,7 +25177,7 @@ diff -ruN -x fixtures a/I18nCatalog6.java b/I18nCatalog6.java
 +}
 diff -ruN -x fixtures a/I18nCatalog7.java b/I18nCatalog7.java
 --- a/I18nCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog7.java	2026-11-08 10:44:55.623681276 +0000
++++ b/I18nCatalog7.java	2026-11-08 10:56:05.130028720 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -24965,7 +25450,7 @@ diff -ruN -x fixtures a/I18nCatalog7.java b/I18nCatalog7.java
 +}
 diff -ruN -x fixtures a/I18nCatalog8.java b/I18nCatalog8.java
 --- a/I18nCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog8.java	2026-11-08 10:44:55.624249753 +0000
++++ b/I18nCatalog8.java	2026-11-08 10:56:05.130608127 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -25238,7 +25723,7 @@ diff -ruN -x fixtures a/I18nCatalog8.java b/I18nCatalog8.java
 +}
 diff -ruN -x fixtures a/I18nCatalog9.java b/I18nCatalog9.java
 --- a/I18nCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nCatalog9.java	2026-11-08 10:44:55.624740166 +0000
++++ b/I18nCatalog9.java	2026-11-08 10:56:05.131203442 +0000
 @@ -0,0 +1,269 @@
 +package com.zue.attackeditor;
 +
@@ -25556,7 +26041,7 @@ diff -ruN -x fixtures a/I18nEditText.java b/I18nEditText.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 --- a/I18nHelpCatalog.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog.java	2026-11-08 10:46:22.677770970 +0000
++++ b/I18nHelpCatalog.java	2026-11-08 10:57:35.945834627 +0000
 @@ -0,0 +1,10 @@
 +package com.zue.attackeditor;
 +
@@ -25570,7 +26055,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog.java b/I18nHelpCatalog.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 --- a/I18nHelpCatalog0.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog0.java	2026-11-08 10:46:22.676713606 +0000
++++ b/I18nHelpCatalog0.java	2026-11-08 10:57:35.944877025 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -25655,7 +26140,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog0.java b/I18nHelpCatalog0.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 --- a/I18nHelpCatalog1.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog1.java	2026-11-08 10:46:22.676828672 +0000
++++ b/I18nHelpCatalog1.java	2026-11-08 10:57:35.944964169 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -25740,7 +26225,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog1.java b/I18nHelpCatalog1.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 --- a/I18nHelpCatalog2.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog2.java	2026-11-08 10:46:22.676937266 +0000
++++ b/I18nHelpCatalog2.java	2026-11-08 10:57:35.945056410 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -25825,7 +26310,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog2.java b/I18nHelpCatalog2.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 --- a/I18nHelpCatalog3.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog3.java	2026-11-08 10:46:22.677056786 +0000
++++ b/I18nHelpCatalog3.java	2026-11-08 10:57:35.945161404 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -25910,7 +26395,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog3.java b/I18nHelpCatalog3.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 --- a/I18nHelpCatalog4.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog4.java	2026-11-08 10:46:22.677140336 +0000
++++ b/I18nHelpCatalog4.java	2026-11-08 10:57:35.945236974 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -25995,7 +26480,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog4.java b/I18nHelpCatalog4.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 --- a/I18nHelpCatalog5.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog5.java	2026-11-08 10:46:22.677199790 +0000
++++ b/I18nHelpCatalog5.java	2026-11-08 10:57:35.945292680 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26080,7 +26565,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog5.java b/I18nHelpCatalog5.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 --- a/I18nHelpCatalog6.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog6.java	2026-11-08 10:46:22.677261972 +0000
++++ b/I18nHelpCatalog6.java	2026-11-08 10:57:35.945351631 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26165,7 +26650,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog6.java b/I18nHelpCatalog6.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 --- a/I18nHelpCatalog7.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog7.java	2026-11-08 10:46:22.677393101 +0000
++++ b/I18nHelpCatalog7.java	2026-11-08 10:57:35.945475413 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26250,7 +26735,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog7.java b/I18nHelpCatalog7.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 --- a/I18nHelpCatalog8.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog8.java	2026-11-08 10:46:22.677672914 +0000
++++ b/I18nHelpCatalog8.java	2026-11-08 10:57:35.945745510 +0000
 @@ -0,0 +1,81 @@
 +package com.zue.attackeditor;
 +
@@ -26335,7 +26820,7 @@ diff -ruN -x fixtures a/I18nHelpCatalog8.java b/I18nHelpCatalog8.java
 +}
 diff -ruN -x fixtures a/I18nHelpCatalog9.java b/I18nHelpCatalog9.java
 --- a/I18nHelpCatalog9.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/I18nHelpCatalog9.java	2026-11-08 10:46:22.677746569 +0000
++++ b/I18nHelpCatalog9.java	2026-11-08 10:57:35.945811103 +0000
 @@ -0,0 +1,15 @@
 +package com.zue.attackeditor;
 +
@@ -26909,7 +27394,7 @@ diff -ruN -x fixtures a/LayerOps.java b/LayerOps.java
 +}
 diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
 --- a/LayoutManager.java	2026-10-20 16:18:02.000000000 +0000
-+++ b/LayoutManager.java	2026-11-08 10:41:21.612734580 +0000
++++ b/LayoutManager.java	2026-11-08 10:56:05.059074456 +0000
 @@ -3,6 +3,8 @@
  import android.app.Activity;
  import java.io.File;
@@ -26977,7 +27462,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          }
      }
  
-@@ -116,13 +134,22 @@
+@@ -116,13 +134,23 @@
  
      private boolean panelOpen;
      private TimelineView timelineRef;
@@ -26991,7 +27476,9 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
 +        if (toolsRef0 != null) toolsRef0.updateUndoButtons();
 +    }
      private TimelineTools toolsRef0;
-     private TextView backBar;
+-    private TextView backBar;
++    private TextView backBar, usesBtn;
++    private LinearLayout backRow;
      private Navigator navigator;
  
      private static final String[] ADD_BASIC = {"Sprite", "Hitbox (ataque)", "Hurtbox (corpo)", "Projetil", "Efeito / animacao", "Som", "Velocidade", "Animacao ligada"};
@@ -27001,7 +27488,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
  
      /** Popup flutuante com tudo que a timeline sabe criar; cria no ponteiro. */
      private void showAddPopup(Activity a, View anchor, final TimelineOps ops) {
-@@ -140,14 +167,14 @@
+@@ -140,14 +168,14 @@
          }
          col.addView(text(a, "Acoes especiais", 11, DIM), lp(-2, -2, 4, 8, 0, 4));
          AttackData addData = attackView == null ? null : attackView.attackData();
@@ -27018,7 +27505,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          sv.addView(col);
          setBg(sv, roundRect(0xFF1B2029, 12, 1, 0xFF3A4150));
          int[] loc = new int[2];
-@@ -161,11 +188,49 @@
+@@ -161,11 +189,49 @@
          pw[0].showAtLocation(anchor, Gravity.NO_GRAVITY, sw - w - dp(8), Math.max(dp(8), loc[1] + dp(44) - h));
      }
  
@@ -27069,7 +27556,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  .setMultiChoiceItems(TimelineView.FILTER_NAMES, on, new android.content.DialogInterface.OnMultiChoiceClickListener() {
                      @Override public void onClick(android.content.DialogInterface d, int which, boolean checked) { tl.setShown(which, checked); }
                  })
-@@ -181,7 +246,7 @@
+@@ -181,7 +247,7 @@
          t.setPadding(dp(8), dp(10), dp(8), dp(10));
          t.setClickable(true);
          setBg(t, stateBg(0x00000000, PANEL_HI));
@@ -27078,7 +27565,12 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          sp.setSpan(new android.text.style.ForegroundColorSpan(color), 0, 1, 0);
          t.setText(sp);
          t.setOnClickListener(l);
-@@ -206,6 +271,14 @@
+@@ -202,19 +268,27 @@
+         if (toolsRef0 != null && toolsRef0.sheetOpen()) { toolsRef0.cancelSheet(); return true; }
+         if (panelOpen && handleRef != null) { handleRef.performClick(); return true; }
+         if (timelineRef != null && timelineRef.isExpanded()) { timelineRef.setExpanded(false); return true; }
+-        if (backBar != null && backBar.getVisibility() == View.VISIBLE && navigator != null) { navigator.back(); return true; }
++        if (backRow != null && backRow.getVisibility() == View.VISIBLE && navigator != null) { navigator.back(); return true; }
          return false;
      }
  
@@ -27093,7 +27585,19 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      public void setNavigator(Navigator n) {
          navigator = n;
          if (toolsRef0 != null) toolsRef0.nav = n;
-@@ -225,7 +298,7 @@
+     }
+ 
+-    /** Mostra/esconde a barra "voltar ao golpe" (texto null esconde). */
++    /** Mostra/esconde a barra "voltar ao golpe" | "EDITAR NOS USOS" (texto null esconde). */
+     public void setBackBar(String text) {
+-        if (backBar == null) return;
+-        backBar.setVisibility(text == null ? View.GONE : View.VISIBLE);
++        if (backRow == null) return;
++        backRow.setVisibility(text == null ? View.GONE : View.VISIBLE);
+         if (text != null) backBar.setText(text);
+     }
+     private TextView modeLabel;
+@@ -225,7 +299,7 @@
          t.box = new LinearLayout(c);
          t.box.setOrientation(LinearLayout.VERTICAL);
          t.box.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -27102,7 +27606,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          t.sq.setText(letter);
          t.sq.setGravity(Gravity.CENTER);
          t.sq.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-@@ -262,6 +335,41 @@
+@@ -262,13 +336,57 @@
          r.setPadding(pad, pad, pad, pad);
          applyInsets(r, pad);
  
@@ -27142,9 +27646,27 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
 +        r.addView(titleBar, lp(-1, -2, 0, 0, 0, 4));
 +
          // ---- topo: estado, titulo do golpe, aviso e espaco reservado para opcoes futuras
++        backRow = new LinearLayout(a);                 // voltar ao golpe/ANO e, ao lado, editar nos usos
++        backRow.setVisibility(View.GONE);
          backBar = button(a, "", true);
-         backBar.setVisibility(View.GONE);
-@@ -291,46 +399,62 @@
+-        backBar.setVisibility(View.GONE);
+         backBar.setOnClickListener(new View.OnClickListener() {
+             @Override public void onClick(View v) { if (navigator != null) navigator.back(); }
+         });
+-        r.addView(backBar, lp(-1, -2, 0, 0, 0, 4));
++        backRow.addView(backBar, new LinearLayout.LayoutParams(0, -2, 1f));
++        usesBtn = button(a, "EDITAR NOS USOS", false);
++        usesBtn.setOnClickListener(new View.OnClickListener() {
++            @Override public void onClick(View v) { if (navigator != null) navigator.openUses(); }
++        });
++        LinearLayout.LayoutParams ub = new LinearLayout.LayoutParams(-2, -1);
++        ub.leftMargin = dp(4);
++        backRow.addView(usesBtn, ub);
++        r.addView(backRow, lp(-1, -2, 0, 0, 0, 4));
+ 
+         // ---- menu superior: personagens, posicao, tela, hitbox, grade, centrar, virar; modo e lista
+         final Spinner cs = spinner(a);
+@@ -291,46 +409,62 @@
          final TextView bLand = button(a, BattleSim.landingOn ? "POUSO: ON" : "POUSO: OFF", false);
          final TextView bTime = button(a, "TEMPO: NORMAL", false);
          final TextView bHide = button(a, "HIDE-EFF", false);
@@ -27222,7 +27744,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          TextView wr = text(a, "", 12, WARN);
          wr.setSingleLine(true);
          wr.setEllipsize(android.text.TextUtils.TruncateAt.END);
-@@ -338,9 +462,10 @@
+@@ -338,9 +472,10 @@
          wr.setClickable(true);
          wr.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              warnExpanded = !warnExpanded;
@@ -27235,7 +27757,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
  
  
          // ---- preview no centro
-@@ -349,7 +474,7 @@
+@@ -349,7 +484,7 @@
          holder.addView(view, new android.widget.FrameLayout.LayoutParams(-1, -1));
          r.addView(holder, new LinearLayout.LayoutParams(-1, -2));
          // tudo abaixo da preview desliza
@@ -27244,7 +27766,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          scroll.setFillViewport(false);
          scroll.setVerticalScrollBarEnabled(false);
          final LinearLayout sc = new LinearLayout(a);
-@@ -366,13 +491,24 @@
+@@ -366,13 +501,24 @@
          final TextView bSplit = button(a, "\u2702 DIVIDIR", false);
          final TextView bDup = button(a, "DUPLICAR", false);
          final TextView bDel = button(a, "\u2715 EXCLUIR", false);
@@ -27272,7 +27794,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          sc.addView(bar, lp(-1, -2, 0, 0, 0, 4));
          final TimelineView tl = new TimelineView(a);
          scroll.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-@@ -383,7 +519,7 @@
+@@ -383,7 +529,7 @@
          });
          final android.widget.FrameLayout tlBox = new android.widget.FrameLayout(a);
          tlBox.addView(tl, new android.widget.FrameLayout.LayoutParams(-1, -2));
@@ -27281,7 +27803,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          plus.setText("\uFF0B");
          plus.setGravity(Gravity.CENTER);
          plus.setTextColor(Color.WHITE);
-@@ -399,7 +535,7 @@
+@@ -399,7 +545,7 @@
          plp2.setMargins(0, dp(4), 0, 0);
          tlBox.addView(plus, plp2);
          tlBox.setMinimumHeight(dp(104));
@@ -27290,7 +27812,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          filt.setText("#");
          filt.setGravity(Gravity.CENTER);
          filt.setTextColor(Color.WHITE);
-@@ -452,6 +588,7 @@
+@@ -452,6 +598,7 @@
          }
          panel.addView(tabRow, lp(-1, -2, 0, 0, 0, 3));
          final TextView fi = mono(a, "", 11, TEXT);
@@ -27298,7 +27820,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          fi.setBackgroundColor(0xFF161A21);
          fi.setPadding(dp(8), dp(6), dp(8), dp(6));
          fi.setLines(8);                       // altura fixa: o texto rola, a preview nao muda de tamanho
-@@ -460,7 +597,7 @@
+@@ -460,7 +607,7 @@
          fi.setMovementMethod(new android.text.method.ScrollingMovementMethod());
          android.widget.FrameLayout box = new android.widget.FrameLayout(a);
          box.addView(fi, new android.widget.FrameLayout.LayoutParams(-1, -2));
@@ -27307,7 +27829,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          pencil.setText("\u270E");
          pencil.setGravity(Gravity.CENTER);
          pencil.setTextColor(Color.WHITE);
-@@ -501,28 +638,111 @@
+@@ -501,28 +648,111 @@
                  if (panelOpen) { statusLine.setText(view.status()); refreshInfo(false); }
              }
          };
@@ -27422,7 +27944,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  tools.show(type, index, flag, occ);
                  tools.openSheet();
              }
-@@ -531,23 +751,54 @@
+@@ -531,23 +761,54 @@
                  tl.clearSelection();
                  if (!tools.sheetOpen()) return;
                  int n = tools.discardSession();
@@ -27481,7 +28003,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          timelineRef = tl;
          sc.addView(bottom, lp(-1, -2, 0, 6, 0, 0));
  
-@@ -587,19 +838,18 @@
+@@ -587,19 +848,18 @@
              boolean h;
              @Override public void onClick(View v) { h = !h; view.setHideEff(h); setChecked(bHide, h); }
          });
@@ -27508,7 +28030,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          bFlip.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { apply.set(8, !on[8]); } });
          setChecked(bLand, BattleSim.landingOn);
          bLand.setOnClickListener(new View.OnClickListener() {
-@@ -657,7 +907,7 @@
+@@ -657,7 +917,7 @@
                  tbox.setPadding(dp(16), dp(8), dp(16), dp(8));
                  for (int k = 0; k < ids.length; k++) {
                      final int id = ids[k];
@@ -27517,7 +28039,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                      cb.setText(names[k]);
                      cb.setTextColor(TEXT);
                      cb.setChecked(checked[k]);
-@@ -666,7 +916,7 @@
+@@ -666,7 +926,7 @@
                      });
                      tbox.addView(cb);
                  }
@@ -27526,7 +28048,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  cbBox.setText("Box dos sprites (amarela, bordas de todas as sprites)");
                  cbBox.setTextColor(0xFFFFE04C);
                  cbBox.setChecked(spriteBoxesOn[0]);
-@@ -674,14 +924,45 @@
+@@ -674,14 +934,45 @@
                      @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean isOn) { spriteBoxesOn[0] = isOn; view.setSpriteBoxes(isOn); }
                  });
                  tbox.addView(cbBox);
@@ -27576,7 +28098,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                          .setView(tsv).setPositiveButton("OK", null).show();
              }
          });
-@@ -715,7 +996,7 @@
+@@ -715,7 +1006,7 @@
              final String[] nm = {"Âncora dos sprites (amarelo)", "Âncora das hurtboxes (azul)", "Âncora das hitboxes (vermelho)", "Âncora dos efeitos/animações (cinza) e globais (roxo)", "Âncora dos projéteis (laranja)"};
              for (int k = 0; k < nm.length; k++) {
                  final int kk = k;
@@ -27585,7 +28107,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  if (k == 3) {
                      android.text.SpannableString sp = new android.text.SpannableString(nm[k]);
                      int g = nm[k].indexOf("cinza"), pu = nm[k].indexOf("roxo");
-@@ -729,7 +1010,7 @@
+@@ -729,7 +1020,7 @@
                  });
                  ob.addView(cb);
              }
@@ -27594,7 +28116,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
              cl.setText("Links (linhas e pontos entre objetos)"); cl.setTextColor(0xFF7CFFB2); cl.setChecked(on[2]);
              cl.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
                  @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) { on[2] = v; applyObj.run(); }
-@@ -759,17 +1040,17 @@
+@@ -759,17 +1050,17 @@
                  ap.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) {
                      int w, h;
                      try { w = Integer.parseInt(ew.getText().toString().trim()); h = Integer.parseInt(eh.getText().toString().trim()); }
@@ -27616,7 +28138,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                      .setView(osv).setPositiveButton("OK", null).show();
          } };
          bChar.setOnClickListener(new View.OnClickListener() {
-@@ -782,24 +1063,35 @@
+@@ -782,24 +1073,35 @@
                  bA.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); openPicker(a, "Atacante", cs); } });
                  TextView bO = button(a, "OPONENTE:  " + os.getSelectedItem(), false);
                  bO.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { dlg[0].dismiss(); openPicker(a, "Oponente", os); } });
@@ -27659,7 +28181,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                          .setTitle("Personagens").setView(box).setNegativeButton("FECHAR", null).create();
                  dlg[0].show();
              }
-@@ -856,7 +1148,9 @@
+@@ -856,7 +1158,9 @@
              }
          });
  
@@ -27670,7 +28192,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          characterSpinner = cs;
          attackSpinner = as;
          opponentSpinner = os;
-@@ -877,18 +1171,45 @@
+@@ -877,18 +1181,45 @@
      /** SPRITES: lista de sprites do personagem atacante atual. */
      private void showSpritePacks(final Activity a, final AttackView view) {
          final AttackData d = view.attackData();
@@ -27719,7 +28241,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  .setItems(items, new android.content.DialogInterface.OnClickListener() {
                      @Override public void onClick(android.content.DialogInterface dlg, int which) { askWhere(a, view, d, which); }
                  }).setNegativeButton("FECHAR", null).show();
-@@ -896,20 +1217,28 @@
+@@ -896,20 +1227,28 @@
  
      private void askWhere(final Activity a, final AttackView view, final AttackData d, final int which) {
          final File dir = d.attacker.dir;
@@ -27754,7 +28276,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          try {
              File dir = d.attacker.dir;
              Dac dac = d.attacker.dac;
-@@ -918,39 +1247,290 @@
+@@ -918,39 +1257,290 @@
              int idx = d.moveIndex;
              if ((which == 0) && m.generic) {
                  CharData.Move own = cd.ownerOf(d.moveIndex);
@@ -28069,7 +28591,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      /** Barra de duracao: normal ate o fim do ANO; tom diferente no trecho excedente (so simulacao de fisica). */
      static final class ExtSeekBar extends SeekBar {
          private int anoEnd = Integer.MAX_VALUE;
-@@ -976,25 +1556,21 @@
+@@ -976,25 +1566,21 @@
          }
      }
  
@@ -28105,7 +28627,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      }
  
      /** Dialogo com -10 / -1 / +1 / +10 que aplica na hora. */
-@@ -1019,7 +1595,7 @@
+@@ -1019,7 +1605,7 @@
              row.addView(b, lpw(1f, k == 0 ? 0 : 3, 0, k == 3 ? 0 : 3, 0));
          }
          box.addView(row, lp(-1, -2, 0, 0, 0, 0));
@@ -28114,7 +28636,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  .setTitle(title).setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1045,22 +1621,49 @@
+@@ -1045,22 +1631,49 @@
      private String warnMsg = "";
      private boolean warnExpanded;
  
@@ -28174,7 +28696,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      }
  
      public void setError(String msg) {
-@@ -1121,7 +1724,7 @@
+@@ -1121,7 +1734,7 @@
                  c.drawLine(pad(), y, w - pad(), y, p);
                  p.setColor(0xFFB8C2D6);
                  p.setTextAlign(android.graphics.Paint.Align.LEFT);
@@ -28183,7 +28705,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
              }
              // grade vertical: distancias predefinidas ao redor do personagem parado
              float ref = drag == 0 ? ox : drag == 1 ? ax : ax;
-@@ -1135,7 +1738,7 @@
+@@ -1135,7 +1748,7 @@
                      if (sg > 0 || ref - px < 0) {
                          p.setColor(0xFFFFC857);
                          p.setTextAlign(android.graphics.Paint.Align.CENTER);
@@ -28192,7 +28714,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                      }
                  }
              }
-@@ -1145,9 +1748,9 @@
+@@ -1145,9 +1758,9 @@
              p.setTextAlign(android.graphics.Paint.Align.CENTER);
              p.setTextSize(11f * den);
              p.setTextSize(10.5f * den);
@@ -28204,7 +28726,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                      w / 2f, gy() + 31f * den, p);
          }
  
-@@ -1226,6 +1829,24 @@
+@@ -1226,6 +1839,24 @@
          box.setOrientation(LinearLayout.VERTICAL);
          box.setPadding(dp(10), dp(6), dp(10), dp(6));
          box.addView(prev, new LinearLayout.LayoutParams(-1, dp(300)));
@@ -28229,7 +28751,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          final TextView fly = button(a, view.isFly() ? "FLY: LIGADO" : "FLY: DESLIGADO", view.isFly());
          fly.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
              boolean on = !view.isFly();
-@@ -1235,13 +1856,16 @@
+@@ -1235,13 +1866,16 @@
              if (on) setBg(v, stateBg(ACCENT, 0xFF6AA1FF)); else setBg(v, stateBg(PANEL, PANEL_HI));
          } });
          box.addView(fly, lp(-1, -2, 0, 6, 0, 0));
@@ -28249,7 +28771,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      }
  
      // ---- OPCOES DO GOLPE: checkboxes das flags do ATK_FLAGS (HDAT 4, byte 0)
-@@ -1253,9 +1877,10 @@
+@@ -1253,9 +1887,10 @@
          final AttackView view = attackView;
          final AttackData d = view == null ? null : view.attackData();
          if (d == null || d.move == null || d.move.generic) {
@@ -28261,7 +28783,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          final CharData.Move mv = d.move;
          optMoveIndex = d.moveIndex;
          final boolean[] busy = {false};
-@@ -1294,21 +1919,21 @@
+@@ -1294,21 +1929,21 @@
          if (hasProj) addFlagBox(a, box, view, mv, busy, syncs, MF_GROUND_ONLY, "Projétil não explode no inimigo (só no chão)",
                  "O projétil acerta e causa dano normalmente, mas não troca para PROJETIL_ANIM_ACERTAR_GLOBAL enquanto está no ar: continua voando. Só troca (ou usa PROJETIL_COLISAO_CHAO) quando chega no chão.", 0);
          addFlagBox(a, box, view, mv, busy, syncs, MF_NO_TRADE, "Hitbox destrói as hitboxes do oponente",
@@ -28288,7 +28810,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          cb.setText(label);
          cb.setTextColor(TEXT);
          box.addView(cb, lp(-1, -2, 0, 4, 0, 0));
-@@ -1346,11 +1971,30 @@
+@@ -1346,11 +1981,30 @@
      }
  
      /** F-GHOST SET: o que a previa mostra (alem do personagem) e a transparencia. */
@@ -28320,7 +28842,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          cp.setText("Mostrar projeteis");
          cp.setTextColor(TEXT);
          cp.setChecked(view.isGhostProj());
-@@ -1358,7 +2002,7 @@
+@@ -1358,7 +2012,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostProj(on); }
          });
          box.addView(cp);
@@ -28329,7 +28851,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          ce.setText("Mostrar efeitos (os mesmos do HIDE-EFF, menos projeteis)");
          ce.setTextColor(TEXT);
          ce.setChecked(view.isGhostFx());
-@@ -1366,7 +2010,7 @@
+@@ -1366,7 +2020,7 @@
              @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean on) { view.setGhostFx(on); }
          });
          box.addView(ce);
@@ -28338,7 +28860,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          cc.setText("Aplicar tambem ao Frame atual");
          cc.setTextColor(TEXT);
          cc.setChecked(view.isGhostCurrent());
-@@ -1389,7 +2033,7 @@
+@@ -1389,7 +2043,7 @@
              @Override public void onStopTrackingTouch(SeekBar s2) { }
          });
          box.addView(gs);
@@ -28347,7 +28869,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  .setTitle("FR-PREVIEW SET").setView(box).setPositiveButton("OK", null).show();
      }
  
-@@ -1403,7 +2047,7 @@
+@@ -1403,7 +2057,7 @@
          seek.setMax(Math.max(1, length - 1));
          if (seek instanceof ExtSeekBar) ((ExtSeekBar) seek).setAnoEnd(attackView.getAnoEnd() - 1);
          seek.setProgress(frame);
@@ -28356,7 +28878,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          btnPlay.setText(playing ? "PAUSAR" : "TOCAR");
          if (timelineRef != null) {
              timelineRef.setSprites(attackView.attackerSprites());
-@@ -1416,6 +2060,7 @@
+@@ -1416,6 +2070,7 @@
              statusLine.setText(attackView.status());
              refreshInfo(false);
          }
@@ -28364,7 +28886,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          String problem = attackView.spriteProblem();
          if (problem.length() > 0) {
              warning.setTextColor(WARN);
-@@ -1423,6 +2068,7 @@
+@@ -1423,6 +2078,7 @@
          }
      }
  
@@ -28372,7 +28894,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      // ---- aviso piscando: transicao travada + play ----
      private boolean lockTrans, blinking, blinkOn, landBeforeLock = true;
      private final Runnable blinkRun = new Runnable() {
-@@ -1528,7 +2174,7 @@
+@@ -1528,7 +2184,7 @@
      private void openEditor(final Activity a) {
          final String tab = tabKey;
          final String title = attackView.editTitle(tab);
@@ -28381,7 +28903,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          attackView.pause();
          final android.widget.EditText et = new android.widget.EditText(a);
          et.setTypeface(Typeface.MONOSPACE);
-@@ -1542,9 +2188,9 @@
+@@ -1542,9 +2198,9 @@
          et.setMinLines(10);
          et.setPadding(dp(8), dp(8), dp(8), dp(8));
          et.setText(attackView.editText(tab));
@@ -28393,7 +28915,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          b.setTitle("Editar " + title);
          b.setView(sv);
          b.setPositiveButton("APLICAR", null);
-@@ -1559,7 +2205,7 @@
+@@ -1559,7 +2215,7 @@
                  if (err != null) { et.setError(err); return; }
                  dlg.dismiss();
                  refreshInfo(true);
@@ -28402,7 +28924,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
              }
          });
          dlg.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(new View.OnClickListener() {
-@@ -1567,9 +2213,9 @@
+@@ -1567,9 +2223,9 @@
                  if (attackView.undoEdit()) {
                      dlg.dismiss();
                      refreshInfo(true);
@@ -28414,7 +28936,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
                  }
              }
          });
-@@ -1600,7 +2246,7 @@
+@@ -1600,7 +2256,7 @@
      }
  
      private TextView button(Context c, String label, boolean primary) {
@@ -28423,7 +28945,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          t.setText(label);
          t.setGravity(Gravity.CENTER);
          t.setSingleLine(true);
-@@ -1614,7 +2260,7 @@
+@@ -1614,7 +2270,7 @@
      }
  
      private TextView text(Context c, String s, int sp, int color) {
@@ -28432,7 +28954,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          t.setText(s);
          t.setTextColor(color);
          t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-@@ -1636,11 +2282,9 @@
+@@ -1636,11 +2292,9 @@
  
      private HeaderSpinner attackHeaderSpinner;
  
@@ -28445,7 +28967,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
      private HeaderSpinner headerSpinner(Context c) {
          HeaderSpinner s = new HeaderSpinner(c);
          setBg(s, roundRect(PANEL, 8, 0, 0));
-@@ -1648,52 +2292,14 @@
+@@ -1648,52 +2302,14 @@
          return s;
      }
  
@@ -28501,7 +29023,7 @@ diff -ruN -x fixtures a/LayoutManager.java b/LayoutManager.java
          }
      }
  
-@@ -1766,12 +2372,13 @@
+@@ -1766,12 +2382,13 @@
              t.setTextColor(colorAt(position));
              t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
              t.setSingleLine(true);
@@ -28904,7 +29426,7 @@ diff -ruN -x fixtures a/LinkScreen.java b/LinkScreen.java
          sv.addView(col, new ScrollView.LayoutParams(-1, -2));
 diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
 --- a/MainActivity.java	2026-10-20 11:18:53.000000000 +0000
-+++ b/MainActivity.java	2026-11-07 17:22:25.169053177 +0000
++++ b/MainActivity.java	2026-11-08 10:55:38.097619434 +0000
 @@ -32,6 +32,8 @@
      private CharAssets opponent;
      private CharAssets effects;
@@ -28914,7 +29436,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
      private GameData gameData;
      private SoundPlayer sound;
      private boolean anoMode;
-@@ -40,28 +42,37 @@
+@@ -40,28 +42,39 @@
      @Override public void onCreate(Bundle b) {
          super.onCreate(b);
          requestFiles();
@@ -28927,9 +29449,12 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
          wire();
          ui.setNavigator(new Navigator() {
 -            @Override public void openAno(int ano, boolean projectile) { openAnoEditor(ano, projectile); }
-+            @Override public void openAno(int ano, boolean projectile) { openAnoEditor(ano, projectile, false); }
-+            @Override public void openEffect(int ano) { openAnoEditor(ano, false, true); }
-             @Override public void back() { closeAnoEditor(); }
+-            @Override public void back() { closeAnoEditor(); }
++            @Override public void openAno(int ano, boolean projectile) { openAnoEditor(ano, projectile, false, ui.attackView.currentAnoIndex()); }
++            @Override public void openEffect(int ano) { openAnoEditor(ano, false, true, ui.attackView.currentAnoIndex()); }
++            @Override public void openAnoFrom(int ano, boolean projectile, boolean effect, int origin) { openAnoEditor(ano, projectile, effect, origin); }
++            @Override public void openUses() { openUsesGrid(); }
++            @Override public void back() { if (ctxActive) exitContext(); else closeAnoEditor(); }
          });
 -        loadCharacters();
 +        needRetry = ROOT.listFiles() == null;          // sem permissao ainda: o onResume tenta de novo quando voltar da tela de permissao
@@ -28956,7 +29481,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
                  .setTitle("Sair do app?")
                  .setMessage("Edicoes nao salvas serao perdidas.")
                  .setNegativeButton("CANCELAR", null)
-@@ -75,10 +86,30 @@
+@@ -75,10 +88,30 @@
      @Override protected void onResume() {
          super.onResume();
          // voltou da tela de permissao: tenta de novo se ainda nao achou nada
@@ -28989,7 +29514,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
      @Override protected void onPause() {
          ui.attackView.pause();
          super.onPause();
-@@ -89,6 +120,7 @@
+@@ -89,6 +122,7 @@
          if (opponent != null && opponent != attacker) opponent.release();
          if (effects != null) effects.release();
          if (charf != null) charf.release();
@@ -28997,7 +29522,14 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
          sound.release();
          super.onDestroy();
      }
-@@ -125,12 +157,42 @@
+@@ -119,18 +153,50 @@
+             @Override public void onClick(View v) {
+                 anoMode = !anoMode;
+                 inSub = false;
++        dropContext();
+                 ui.setBackBar(null);
+                 ui.setListModeChecked(anoMode);
+                 if (attacker != null) { loadedAttack = -1; fillList(); loadAttack(0); }
              }
          });
          ui.beforeSave = new Runnable() { @Override public void run() { dropPlaceholder(); } };
@@ -29036,6 +29568,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
 +                        if (anoMode == ano) return;
 +                        anoMode = ano;
 +                        inSub = false;
++        dropContext();
 +                        ui.setBackBar(null);
 +                        ui.setListModeChecked(anoMode);
 +                        if (attacker != null) { loadedAttack = -1; fillList(); loadAttack(0); }
@@ -29044,18 +29577,93 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
                  });
              }
          });
-@@ -146,18 +208,21 @@
+@@ -146,18 +212,96 @@
      private boolean inSub;
      private int retAttack = -1;
      private boolean retAnoMode;
 +    private int retFrame;                 // tick em que a previa estava ao abrir o editor de ANO: ao voltar fica nele, pausada
++
++    private boolean forceProjectile, forceEffect;
++
++    // ---- EDITAR NOS USOS: grade dos usos do ANO aberto e o modo contexto ----
++    /** ANO de onde a navegacao veio (fica destacado na grade de usos); -1 = nenhum. */
++    private int originAno = -1;
++    private boolean ctxActive;
++    private int ctxTarget = -1;
++    private boolean ctxFacing;
++    private String ctxSnap = "", subBackText;
++
++    /** Sai do estado de contexto (sem recarregar nada): volta o lado do atacante. */
++    private void dropContext() {
++        if (!ctxActive) return;
++        ctxActive = false;
++        if (ui.attackView.isFacingLeft() != ctxFacing) ui.attackView.setFacingLeft(ctxFacing);
++    }
  
 -    private boolean forceProjectile;
-+    private boolean forceProjectile, forceEffect;
++    private void openUsesGrid() {
++        if (attacker == null) return;
++        final int target = ctxActive ? ctxTarget : anoMode ? loadedAttack : ui.attackView.currentAnoIndex();
++        if (target < 0) return;
++        AnoUsesScreen.show(this, ui.attackView, target, originAno, new AnoUsesScreen.Pick() {
++            @Override public void on(AnoUses.Use u) { openContext(target, u); }
++        });
++    }
  
 -    private void openAnoEditor(int ano, boolean projectile) {
-+    private void openAnoEditor(int ano, boolean projectile, boolean effect) {
++    /** Abre o ANO {@code t} no contexto do uso {@code u}: a previa toca o golpe/ANO host e a timeline edita o ANO t a partir do tick em que ele aparece. */
++    private void openContext(int t, AnoUses.Use u) {
++        AttackData base = ui.attackView.attackData();
++        if (attacker == null || opponent == null || base == null) return;
++        if (!ctxActive) {
++            ctxFacing = ui.attackView.isFacingLeft();
++            Ano ta = attacker.dac.getAno(t);
++            ctxSnap = ta == null ? "" : DacText.ano(ta, -1);
++            ctxTarget = t;
++        }
++        AttackData d;
++        if (u.move >= 0 && u.move < attacker.data.moves.length) {
++            d = new AttackData(attacker, opponent, effects, gameData, u.move, attacker.data.moves[u.move]);
++            d.charf = charf;
++            d.bobj = bobj;
++        } else {
++            d = AnoMoves.dataFor(base, u.host);
++        }
++        ui.closeSheet();
++        ctxActive = true;
++        ui.attackView.setData(d);
++        boolean flip = u.kind == AnoUses.CUTSCENE && u.flipped;     // so a ANIM_FLIP usa o ANO: o atacante precisa estar virado para a esquerda
++        ui.attackView.setFacingLeft(flip || ctxFacing);
++        ui.attackView.setContext(t);
++        originAno = u.host;
++        ui.setBackBar("\u25C0 " + I18n.tr("VOLTAR PARA ANO") + " " + t);
++        ArrayList<String> w = new ArrayList<String>();
++        w.add(I18n.tr("EDITAR NOS USOS: a prévia toca") + " " + AnoUsesScreen.labelOf(u) + "; " + I18n.tr("a timeline edita o ANO") + " " + t + ". "
++                + I18n.tr("F-GHOST, POSE e SPEEDLINE ficam desligados aqui."));
++        if (ui.attackView.contextFirstTick() < 0)
++            w.add(0, I18n.tr("O ANO não aparece nesta simulação (com a distância/altura atuais): a timeline fica no frame 0.") + " (ANO " + t + ")");
++        ui.setWarnings(w);
++    }
++
++    /** VOLTAR PARA ANO t: sai do contexto e reabre o ANO t sozinho, no mesmo frame. */
++    private void exitContext() {
++        int t = ctxTarget;
++        int pat = Math.max(0, ui.attackView.currentPat()), el = ui.attackView.currentElapsed();
++        Ano ta = attacker == null ? null : attacker.dac.getAno(t);
++        boolean changed = ta != null && !DacText.ano(ta, -1).equals(ctxSnap);
++        dropContext();
++        if (changed) ui.attackView.markPendingAnos(java.util.Collections.singletonList(Integer.valueOf(t)));   // o SALVAR do app grava o ANO editado no contexto
++        loadedAttack = -1;
++        loadAttack(t);
++        ui.attackSpinner.setSelection(t);
++        ui.attackView.seekToPatTick(pat, el);
++        ui.setBackBar(subBackText);
++    }
++
++    private void openAnoEditor(int ano, boolean projectile, boolean effect, int origin) {
          if (attacker == null) return;
++        dropContext();
++        originAno = origin;
          Ano an = attacker.dac.getAno(ano);
          if (!inSub) {
              retAttack = loadedAttack;
@@ -29068,9 +29676,19 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
          if (!anoMode) {
              anoMode = true;
              ui.setListModeChecked(true);
-@@ -173,16 +238,21 @@
+@@ -166,23 +310,30 @@
+         loadedAttack = -1;
+         loadAttack(ano);
+         ui.attackSpinner.setSelection(ano);
+-        ui.setBackBar("\u25C0 VOLTAR AO " + (retAnoMode ? "ANO " + retAttack : String.format(Locale.US, "GOLPE_%02d", retAttack)));
++        subBackText = "\u25C0 VOLTAR AO " + (retAnoMode ? "ANO " + retAttack : String.format(Locale.US, "GOLPE_%02d", retAttack));
++        ui.setBackBar(subBackText);
+     }
+ 
+     private void closeAnoEditor() {
          if (!inSub) return;
          inSub = false;
++        dropContext();
          forceProjectile = false;
 +        forceEffect = false;
          anoMode = retAnoMode;
@@ -29090,7 +29708,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
          characters.clear();
          File[] fs = ROOT.listFiles();
          if (fs != null) {
-@@ -206,9 +276,95 @@
+@@ -206,9 +357,96 @@
          } catch (Exception e) {
              notes.add("effect: " + e.getMessage());
          }
@@ -29136,6 +29754,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
 +        int keepAttack = inSub ? retAttack : loadedAttack;
 +        dropPlaceholder();
 +        inSub = false;
++        dropContext();
 +        forceProjectile = false;
 +        forceEffect = false;
 +        ui.setBackBar(null);
@@ -29188,7 +29807,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
          }
      }
  
-@@ -232,7 +388,7 @@
+@@ -232,7 +470,7 @@
      private void reportLoose(CharAssets a) {
          if (a == null) return;
          if (a.importedLoose > 0) {
@@ -29197,7 +29816,15 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
              a.importedLoose = 0;
          }
          if (a.importError != null) {
-@@ -267,17 +423,38 @@
+@@ -255,6 +493,7 @@
+             CharAssets old = attacker;
+             attacker = a;
+             inSub = false;
++        dropContext();
+             ui.setBackBar(null);
+             loadCharf(a);
+             loadedChar = ci;
+@@ -267,17 +506,38 @@
              String warn = a.dac.getWarnings().isEmpty() ? "" : "  |  avisos DAC: " + a.dac.getWarnings().size();
              ui.status.setText(a.dir.getName() + "  |  ANO=" + a.dac.size() + "  CNV=" + a.cnv.size()
                      + "  golpes=" + mv.length + "  wav=" + a.wavCount + warn);
@@ -29237,7 +29864,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
      private int listSize() {
          if (attacker == null) return 0;
          return anoMode ? attacker.dac.size() : attacker.data.moves.length;
-@@ -286,7 +463,6 @@
+@@ -286,7 +546,6 @@
      /** Lista de golpes (HDAT 4) ou de todos os ANOs: vermelho = tem hitbox flag 2, amarelo = flag 0. */
      private void fillList() {
          ArrayList<String> labels = new ArrayList<String>();
@@ -29245,7 +29872,15 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
          if (!anoMode) {
              CharData.Move[] mv = attacker.data.moves;
              for (int i = 0; i < mv.length; i++) {
-@@ -346,9 +522,7 @@
+@@ -338,6 +597,7 @@
+     }
+ 
+     private void loadAttack(int i) {
++        if (ctxActive) { dropContext(); if (inSub) ui.setBackBar(subBackText); }      // trocou de ANO pela lista: sai do contexto
+         if (i != loadedAttack) ui.closeSheet();
+         if (attacker == null || opponent == null || i < 0 || i >= listSize()) return;
+         int target = anoMode ? i : attacker.data.moves[i].animInicial;
+@@ -346,9 +606,7 @@
              Ano probe = attacker.dac.getAno(target);
              boolean emptyAno = probe == null || !probe.present;
              if (emptyAno && target >= 0 && target < attacker.dac.size()) {
@@ -29256,7 +29891,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
                  placeholderIdx = target;
                  attacker.dac.setAno(target, placeholder);
              }
-@@ -356,6 +530,8 @@
+@@ -356,6 +614,8 @@
              if (anoMode) {
                  m = CharData.genericFrom(i, attacker.data.ownerOf(i));
                  m.projectile = (inSub && forceProjectile) || attacker.anoKinds()[i] == CharAssets.KIND_PROJECTILE;
@@ -29265,7 +29900,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
              } else {
                  m = attacker.data.moves[i];
              }
-@@ -371,8 +547,15 @@
+@@ -371,8 +631,15 @@
              if (anoMode && attacker.data.ownerOf(i) == null && attacker.anoKinds()[i] == CharAssets.KIND_PROJECTILE)
                  warns.add("flag 0 sem projetil: nenhum golpe do HDAT 4 usa o ANO " + i);
              if (effects == null) warns.add("sem effect: golpes nao mostram efeito de hit");
@@ -29281,7 +29916,7 @@ diff -ruN -x fixtures a/MainActivity.java b/MainActivity.java
              if (charf == null) warns.add("sem " + charfNote + " (hitbox flags 41-70 sem animacao)");
              loadedAttack = i;
              ui.attackView.setData(data);
-@@ -381,7 +564,7 @@
+@@ -381,7 +648,7 @@
                      anoMode ? "ANO " + i : String.format(Locale.US, "GOLPE_%02d", i), m.animInicial, ano.mpts.length, ano.links.length, m.projNormal, m.projAbaixo, m.projAcima));
              if (placeholder != null && attacker.dac.getAno(placeholderIdx) == placeholder)
                  warns.add(0, "ANO " + placeholderIdx + " vazia: frame provisório sem imagem. Se sair sem editar, ela volta a ficar vazia");
@@ -29725,13 +30360,20 @@ diff -ruN -x fixtures a/MoveTransplant.java b/MoveTransplant.java
 +}
 diff -ruN -x fixtures a/Navigator.java b/Navigator.java
 --- a/Navigator.java	2026-10-12 21:10:07.000000000 +0000
-+++ b/Navigator.java	2026-10-28 13:29:58.000000000 +0000
-@@ -4,5 +4,7 @@
++++ b/Navigator.java	2026-11-08 10:54:46.067128393 +0000
+@@ -2,7 +2,13 @@
+ 
+ /** Navegacao entre o golpe e o editor de animacao paralelo (uma ANO aberta sozinha). */
  public interface Navigator {
-     /** Abre a ANO do DAC do atacante no modo ANO, com botao para voltar ao golpe. */
+-    /** Abre a ANO do DAC do atacante no modo ANO, com botao para voltar ao golpe. */
++    /** Abre a ANO do DAC do atacante no modo ANO, com botao para voltar ao golpe. A origem (destaque em EDITAR NOS USOS) e o ANO aberto agora. */
      void openAno(int anoIndex, boolean projectile);
 +    /** Como openAno, mas o ANO e um efeito/aura (nao um personagem nem um projetil): nao pousa nem tem sombra. */
 +    void openEffect(int anoIndex);
++    /** Como openAno/openEffect, com a origem dita por quem chama ({@code origin} = ANO de onde se veio; -1 = sem origem, nada fica destacado). */
++    void openAnoFrom(int anoIndex, boolean projectile, boolean effect, int origin);
++    /** EDITAR NOS USOS: grade dos usos do ANO aberto; tocar num abre o ANO no contexto daquele uso. */
++    void openUses();
      void back();
  }
 diff -ruN -x fixtures a/NoticeBar.java b/NoticeBar.java
@@ -57330,6 +57972,73 @@ diff -ruN -x fixtures a/test/AnoNotesTest.java b/test/AnoNotesTest.java
 +        System.out.println("AnoNotesTest fails=" + fails);
 +    }
 +}
+diff -ruN -x fixtures a/test/AnoUsesTest.java b/test/AnoUsesTest.java
+--- a/test/AnoUsesTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/AnoUsesTest.java	2026-11-08 10:52:44.162675041 +0000
+@@ -0,0 +1,63 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** EDITAR NOS USOS: todos os lugares que usam um ANO do personagem. */
++public class AnoUsesTest {
++    static String kinds(java.util.List<AnoUses.Use> l) {
++        StringBuilder b = new StringBuilder();
++        for (AnoUses.Use u : l) b.append(u.kind).append('@').append(u.host).append(u.move >= 0 ? "/g" + u.move : "").append(u.pat >= 0 ? "/f" + u.pat : "").append(u.flipped ? "/v" : "").append(u.field != null ? "/" + u.field : "").append(' ');
++        return b.toString().trim();
++    }
++
++    public static void main(String[] args) throws Exception {
++        A[] a = new A[210];
++        for (int i = 0; i < a.length; i++) a[i] = new A().mpt(new M().time(1));
++        a[40] = new A().mpt(new M().time(5).hit(20, 0, 0, 0, 0)).mpt(new M().time(5).hit(71, 0, 0, 5, 5)).mpt(new M().time(5).hit(71, 0, 0, 5, 5));
++        a[50] = new A().mpt(new M().time(5)).mpt(new M().time(5).hit(20, 0, 0, 1, 0));
++        Dac dac = dac(a);
++        Ano p = dac.getAno(60);
++        dac.setAno(60, new Ano(60, true, p.flags, p.priority, new Ano.Link[] {new Ano.Link(0, 0, 201), new Ano.Link(5, 5, 201)}, p.mpts));
++        // eventos: 0 = ALVO 1, ANIM 45 / FLIP 46; 1 = ALVO 0 (effect) ANIM 45 -> nao conta; golpes: 0 (ANO 40) com projetil 47 e SEQ 48; 1 (ANO 50) com triplo (flags 4) e agarrado 49
++        byte[][] t = new byte[40][];
++        int[] cols = new int[40], rows = new int[40];
++        for (int i = 0; i < 40; i++) t[i] = new byte[0];
++        byte[] m0 = move(new int[] {2, 40}, new int[] {4, 47}, new int[] {10, 48});
++        byte[] m1 = move(new int[] {0, 4}, new int[] {2, 50}, new int[] {4, 52}, new int[] {24, 49});
++        t[4] = AnoMovesTest.concat(m0, m1); cols[4] = 48; rows[4] = 2;
++        Buf ev = new Buf();
++        for (int v : new int[] {1, 0, 0, 45, 46, 0, 0, 0, 0, 0, 0, 45, 45, 0, 0, 0}) ev.u16(v);
++        t[13] = ev.get(); cols[13] = 8; rows[13] = 2;
++        CharData ch = CharData.read(hdat(t, cols, rows));
++
++        check("ANO 201: link do ANO 60 (uma vez) e animacao da flag 71 no frame 1 do ANO 40 (so a 1a vez)", kinds(AnoUses.find(ch, dac, 201)), "1@40/f1 0@60");
++        check("ANIM_ID da cutscene (ALVO 1) no frame 0 do ANO 40; o evento do effect (ALVO 0) no ANO 50 nao conta", kinds(AnoUses.find(ch, dac, 45)), "2@40/f0");
++        check("ANIM_FLIP: marcado como virado", kinds(AnoUses.find(ch, dac, 46)), "2@40/f0/v");
++        check("projetil e SEQ do golpe 0", kinds(AnoUses.find(ch, dac, 47)) + " | " + kinds(AnoUses.find(ch, dac, 48)), "3@40/g0/PROJETIL_ANIM_NORMAL | 4@40/g0/ANIM_SEQ_CHAO");
++        check("triplo (ATK_FLAGS 4): +1 e +2 do projetil", kinds(AnoUses.find(ch, dac, 53)) + " | " + kinds(AnoUses.find(ch, dac, 54)), "3@50/g1/PROJETIL_ANIM_NORMAL + 1 | 3@50/g1/PROJETIL_ANIM_NORMAL + 2");
++        check("oponente agarrado", kinds(AnoUses.find(ch, dac, 49)), "5@50/g1/OPONENTE_ANIM_SENDO_AGARRADO");
++        check("ANIM_INICIAL e uso do proprio golpe", kinds(AnoUses.find(ch, dac, 40)), "4@40/g0/ANIM_INICIAL");
++        check("ANO sem uso: lista vazia", AnoUses.find(ch, dac, 33).size(), 0);
++        check("sem CharData: so links e flags", kinds(AnoUses.find(null, dac, 201)), "1@40/f1 0@60");
++        java.util.List<AnoUses.Use> u = AnoUses.find(ch, dac, 201);
++        check("origem: destaca o uso cujo host e o ANO de onde se veio", AnoUses.originIndex(u, 60) + ":" + AnoUses.originIndex(u, 40) + ":" + AnoUses.originIndex(u, 99) + ":" + AnoUses.originIndex(u, -1), "1:0:-1:-1");
++        check("rotulos", u.get(0).label() + " | " + u.get(1).label(), "Animação da flag 71 · ANO 40 · frame 2 | Link do ANO 60");
++        check("rotulo do projetil e da cutscene virada", AnoUses.find(ch, dac, 47).get(0).label() + " | " + AnoUses.find(ch, dac, 46).get(0).label(),
++                "Projétil do GOLPE_00 (PROJETIL_ANIM_NORMAL) | Cutscene do evento 0 · ANO 40 · frame 1 · virado");
++
++        // dados reais (fixtures), se existirem: os usos achados batem com o que anosOfMove alcanca
++        java.io.File fd = new java.io.File("../app/test/fixtures/char.dac.txt");
++        if (!fd.exists()) fd = new java.io.File("test/fixtures/char.dac.txt");
++        if (fd.exists()) {
++            Dac rd = Dac.fromTxt(new String(java.nio.file.Files.readAllBytes(fd.toPath()), "UTF-8"));
++            int withLinks = 0;
++            for (int i = 0; i < rd.size(); i++) {
++                Ano an = rd.getAno(i);
++                if (an == null || !an.present) continue;
++                for (Ano.Link l : an.links) if (!AnoUses.find(null, rd, l.getAno()).isEmpty()) { withLinks++; break; }
++            }
++            check("dados reais: todo ANO que e link de alguem tem pelo menos um uso", withLinks > 0, true);
++        }
++        System.out.println("AnoUsesTest fails=" + fails);
++    }
++}
 diff -ruN -x fixtures a/test/AnoXformTest.java b/test/AnoXformTest.java
 --- a/test/AnoXformTest.java	1970-01-01 00:00:00.000000000 +0000
 +++ b/test/AnoXformTest.java	2026-11-08 10:39:28.599722991 +0000
@@ -58239,6 +58948,76 @@ diff -ruN -x fixtures a/test/CinematicZoomTest.java b/test/CinematicZoomTest.jav
 +        check("trava desligada: sem zoom", off.zoomRect() == null, true);
 +        BattleSim.cinematic = true;
 +        System.out.println("CinematicZoomTest fails=" + fails);
++    }
++}
+diff -ruN -x fixtures a/test/ContextTraceTest.java b/test/ContextTraceTest.java
+--- a/test/ContextTraceTest.java	1970-01-01 00:00:00.000000000 +0000
++++ b/test/ContextTraceTest.java	2026-11-08 10:53:06.164720920 +0000
+@@ -0,0 +1,66 @@
++package com.zue.attackeditor;
++
++import static com.zue.attackeditor.BattleTest.*;
++
++/** EDITAR NOS USOS: onde o ANO alvo esta, tick a tick, na simulacao do ANO/golpe que o usa (BattleSim.traceAno). */
++public class ContextTraceTest {
++    static final int PX = 65536;
++
++    static BattleSim sim(Dac atk, CharData ch) throws Exception {
++        BattleSim.edgeMode = 1;
++        BattleSim.cutscenes = true;
++        return new BattleSim(atk, ch, ch.moves[0], false, CutsceneTest.defDac(), CutsceneTest.fxDac(), gd(new byte[][] {}), 300, 0, 0);
++    }
++
++    static String at(BattleSim.Trace t, int tick) { return t.pat[tick] + "/" + t.elapsed[tick]; }
++
++    public static void main(String[] args) throws Exception {
++        // ANO 40 (golpe): frames de 10, 10 e 40 ticks; link para o ANO 44 (2 frames de 5); frame 1 com a flag 71 (aura = ANO 201); frame 0 com a cutscene do evento 0
++        A[] a = new A[210];
++        for (int i = 0; i < a.length; i++) a[i] = new A().mpt(new M().time(1));
++        a[40] = new A().mpt(new M().time(10).hit(20, 0, 0, 0, 0)).mpt(new M().time(10).hit(71, 4, -8, 10, 10)).mpt(new M().time(40));
++        a[44] = new A().mpt(new M().time(5)).mpt(new M().time(5));
++        a[45] = new A().mpt(new M().time(6)).mpt(new M().time(6)).mpt(new M().time(30));
++        a[201] = new A().mpt(new M().time(3)).mpt(new M().time(50));
++        Dac dac = dac(a);
++        Ano p40 = dac.getAno(40);
++        dac.setAno(40, new Ano(40, true, p40.flags, p40.priority, new Ano.Link[] {new Ano.Link(0, 0, 44)}, p40.mpts));
++        // evento 0: ALVO 1 (pack do personagem), ANIM 45, FLIP 46, ate o ANO acabar
++        CharData ch = CutsceneTest.chrEv(new int[] {1, 0, 0, 45, 46, 0, 0, 0});
++        BattleSim s = sim(dac, ch);
++
++        BattleSim.Trace tl = s.traceAno(44, 120);
++        check("link: aparece no tick 0, frame 0 com 0 ticks decorridos", tl.first + ":" + at(tl, 0), "0:0/0");
++        check("link: ticks decorridos contam dentro do frame", at(tl, 4), "0/4");
++        check("link: frame 1 comeca no tick 5", at(tl, 5), "1/0");
++
++        BattleSim.Trace ta = s.traceAno(201, 120);
++        check("aura da flag 71 (ANO 201): nasce no frame 1 do golpe (tick 10)", ta.first + ":" + at(ta, 10), "10:0/0");
++        check("aura: antes de nascer nao esta na tela", ta.pat[9], -1);
++        check("aura: frame 1 depois de 3 ticks", at(ta, 13), "1/0");
++
++        BattleSim.Trace tc = s.traceAno(45, 120);
++        check("cutscene ALVO 1 (ANIM 45): no tick 0, frame 0", tc.first + ":" + at(tc, 0), "0:0/0");
++        check("cutscene: frame 1 no tick 6", at(tc, 6), "1/0");
++        check("cutscene (ate o ANO acabar): continua enquanto o ANO do golpe nao muda; parada no ultimo frame", tc.last >= 59 && tc.pat[tc.last] == 2, true);
++        BattleSim.Trace tf = s.traceAno(46, 120);
++        check("ANIM_FLIP com o atacante virado para a direita: nao aparece", tf.first + ":" + tf.last, "-1:-1");
++
++        BattleSim.Trace tr = s.traceAno(40, 120);
++        check("o proprio ANO do golpe: o lutador, do tick 0", tr.first + ":" + at(tr, 0) + ":" + at(tr, 15), "0:0/0:1/5");
++        check("ANO que ninguem usa: nunca aparece", s.traceAno(30, 60).first, -1);
++
++        // projetil: golpe com PROJETIL_ANIM_NORMAL 47 e flag 0 no frame 1 do ANO 41
++        A[] b = new A[60];
++        for (int i = 0; i < b.length; i++) b[i] = new A().mpt(new M().time(1));
++        b[41] = new A().mpt(new M().time(4)).mpt(new M().time(4).hit(0, 10, -20, 0, 0)).mpt(new M().time(30));
++        b[47] = new A().mpt(new M().time(8).speedX(2 * PX)).mpt(new M().time(40).speedX(2 * PX));
++        Dac dp = dac(b);
++        CharData cp = chr(move(new int[] {2, 41}, new int[] {4, 47}), new byte[][] {});
++        BattleSim sp = new BattleSim(dp, cp, cp.moves[0], false, CutsceneTest.defDac(), CutsceneTest.fxDac(), gd(new byte[][] {}), 300, 0, 0);
++        BattleSim.Trace tp = sp.traceAno(47, 120);
++        check("projetil: aparece depois do frame da flag 0 (tick >= 4)", tp.first >= 4 && tp.first <= 6, true);
++        if (tp.first >= 0) check("projetil: comeca no frame 0", tp.pat[tp.first], 0);
++        System.out.println("ContextTraceTest fails=" + fails + " (proj first=" + tp.first + ")");
 +    }
 +}
 diff -ruN -x fixtures a/test/CropProblemTest.java b/test/CropProblemTest.java
@@ -61226,8 +62005,8 @@ diff -ruN -x fixtures a/test/I18nCoverageTest.java b/test/I18nCoverageTest.java
 +}
 diff -ruN -x fixtures a/test/I18nIgnored.java b/test/I18nIgnored.java
 --- a/test/I18nIgnored.java	1970-01-01 00:00:00.000000000 +0000
-+++ b/test/I18nIgnored.java	2026-11-08 10:44:55.756647689 +0000
-@@ -0,0 +1,651 @@
++++ b/test/I18nIgnored.java	2026-11-08 10:56:05.231434552 +0000
+@@ -0,0 +1,656 @@
 +package com.zue.attackeditor;
 +
 +/** Literais de texto que NAO vao para a tela (formatos, chaves, depuracao): o teste de cobertura as ignora. Gerado por gen_i18n.py. */
@@ -61286,6 +62065,7 @@ diff -ruN -x fixtures a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " END",
 +        " Frame(s)",
 +        " GIF(s)  ·  ",
++        " GOLPE_%02d (%s)",
 +        " HDATs",
 +        " HITS",
 +        " MPT",
@@ -61338,6 +62118,7 @@ diff -ruN -x fixtures a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        " · LINKS",
 +        " · Link ",
 +        " · SPR_",
++        " · frame ",
 +        " · hitstop ",
 +        " · img ",
 +        " · links ",
@@ -61479,6 +62260,7 @@ diff -ruN -x fixtures a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "ANIM_FLIP_ID",
 +        "ANIM_ID",
 +        "ANIM_INICIAL",
++        "ANIM_INICIAL + 1",
 +        "ANIM_SEQ_AR",
 +        "ANIM_SEQ_CHAO",
 +        "ANMF",
@@ -61602,6 +62384,8 @@ diff -ruN -x fixtures a/test/I18nIgnored.java b/test/I18nIgnored.java
 +        "PROJETIL_ANIM_ACIMA",
 +        "PROJETIL_ANIM_AO_ACERTAR",
 +        "PROJETIL_ANIM_NORMAL",
++        "PROJETIL_ANIM_NORMAL + 1",
++        "PROJETIL_ANIM_NORMAL + 2",
 +        "PROJETIL_COLISAO_CHAO",
 +        "Pastas recarregadas: ",
 +        "Pictures",
