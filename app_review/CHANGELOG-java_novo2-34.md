@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 3070 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 3080 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -887,6 +887,17 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
 - **Avisos novos**: Meio no canto da tela (esticada e ampliada no jogo; para tela cheia fixa use Frente ou Fundo), Frente 1:1 com faixas, eventos 8/9 no Fundo atrás do cenário sem a tela cheia, Fundo fora do zoom na trava; textos da "tela cheia" corrigidos (a HUD não some).
 - **Achados nos dados reais do personagem**: as cutscenes de tela cheia originais usam Fundo (eventos 0, 8, 9, 20, 21) ou Frente (2, 3), nenhuma em Meio; as frames são em coordenadas de tela a partir do canto (ex.: ANO 242: MID 48,182 com zoom 100–300). ANO 59 aponta para o evento 22 e ANO 294 para o 27, que não existem neste `.bin.txt` (o jogo não faz nada nesses hits).
 - Testes: `GameScreenTest` (16: 20:9, 16:9, 3:2, faixa normal/trava/ANO 61, Meio esticado, Frente/328 1:1, zoom 200% centrado), `CinematicZoomTest` (+5: faixa da câmera na trava, Meio no centro com 200%, Fundo e Frente 1:1, fGS sem zoom), `CutsceneFieldsTest` (47: chaves das camadas e avisos). **Só compilados/revisados**: o desenho no canvas (prévias TELA, quadro da tela no editor), EDITAR ANO e a navegação; comparar no jogo continua sendo o teste final.
+
+### 3.7a Editor de cutscenes: chaves que desligam e barra de duração com a cena em vermelho
+
+- **Chaves (switches)**: antes os botões da FLAG, da câmera e do TRAVAR só ligavam ou trocavam, nunca desligavam. Agora:
+  - **FLAG**: cada opção dos grupos é uma chave; ligar uma desliga as outras (o jogo guarda um número só) e **desligar a ligada volta a FLAG 0**. A opção "Nenhum efeito extra" saiu (todas desligadas = 0). "Sem limite de tela" continua com as duas chaves oponente/dono (7, 8, as duas = 9, nenhuma = 0).
+  - **MODO DE CÂMERA**: chave **Canto da tela** (desligada = CAM_MODE 0, segue o mundo; ligada = 2) e, dentro dela, a chave **Tela cheia** (= 1). Qualquer valor diferente de 0 liga o canto, como no jogo.
+  - **TRAVAR OPONENTE**: chave.
+  - Camada (Fundo/Meio/Frente) e a duração continuam como escolha única (sempre há um valor).
+- **Barra de duração** (prévia CHAR do editor): a `SeekBar` virou uma barra própria (`CutTimeBar`) em que o trecho em que a cutscene está **viva** fica **vermelho** (mais forte na parte já tocada), com o texto "Cena ativa nos ticks a–b" e "● cena viva" quando o tick atual está dentro. O ⏮ virou **⏮ CENA**: pausa e vai ao primeiro tick em que a cena existe (se ela não aparece no golpe/ANO, avisa).
+- Núcleo: `BattleSim.cutsceneTicks(ev, length)` (simulação própria, marca os ticks com uma task md 996 do atacante com aquele evento) e `AttackView.cutsceneTicks/firstCutsceneTick` (guardados até a próxima edição); `CutsceneFields.camOf/cornerOf/fullOf/flagToggle`.
+- Testes: `CutsceneTest` (+5: viva do tick 0 ao 9 com DURAÇÃO 1 MPT, até o fim do ANO com DURAÇÃO 0, evento fora do golpe sem ticks, FLAG 3 com câmera no mundo sem tick nenhum), `CutsceneFieldsTest` (+5: chaves da câmera ida e volta, desligar FLAG → 0, caixas 7/8/9, nenhuma opção com valor 0). **Só compilados/revisados**: as chaves na tela, a barra vermelha, o toque/arrasto nela e o ⏮ CENA.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
