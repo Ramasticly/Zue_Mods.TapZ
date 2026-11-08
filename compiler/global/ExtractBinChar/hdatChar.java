@@ -397,7 +397,7 @@ public final class hdatChar {
         w.write("         // oponente e ki (_KI = com 100 de ki ou mais).\n");
         w.write("         // TOQUE: [sequência do HDAT 6, -, -]. 0 = o toque não faz nada.\n");
         w.write("         // COMBO_1 a COMBO_4: [sequência, ki exigido × 100, -]. Saem tocando de novo\n");
-        w.write("         // (a até 88 px do oponente) durante a janela da hitbox tipo 2 do DAC, com o\n");
+        w.write("         // (a até 88 px do oponente) logo depois de um frame com hitbox de ataque (flag 2), com o\n");
         w.write("         // oponente apanhando. Sequência 0 encerra o combo.\n");
         w.write("         // As colunas marcadas \"-\" não são lidas pelo jogo.\n");
         w.write("         // Antes da tabela: barra de fúria cheia = ativa a fúria (sequência 55);\n");

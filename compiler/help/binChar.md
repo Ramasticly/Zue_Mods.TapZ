@@ -80,13 +80,14 @@ jogo lê dados do HDAT seguinte. Mantenha uma linha para cada golpe usado.
 
 ## Hitboxes do DAC que dependem destes HDATs
 
-No `000.dac.txt`, cada `$HIT` tem um tipo (o 1º valor). Alguns tipos se ligam
-aos HDATs do personagem:
+No `000.dac.txt`, cada hitbox (`$HT_N` dentro de `$HITS`) tem um `$FLAG`. Alguns
+valores se ligam aos HDATs do personagem:
 
-| Tipo | Efeito |
+| `$FLAG` | Efeito |
 |---|---|
 | 0 | Ponto de onde sai o projétil do golpe (HDAT 4 `$PROJETIL_*`) |
-| 2 | Janela de cancelamento: abre a continuação dos comandos de toque (HDAT 42) |
+| 1 | Corpo: onde o personagem pode ser atingido |
+| 2 | Hitbox de ataque: acerta o corpo (flag 1) do oponente. Também abre a janela da continuação dos toques (HDAT 42): o toque de combo só sai logo depois de um frame do atacante com flag 2 |
 | 20 | Dispara um evento do HDAT 13. A **largura** da hitbox é o número do evento (`$EVT_N`) e o X/Y é a posição |
 
 ---
@@ -580,7 +581,7 @@ A linha do grupo é `estado (0/40/80) + distância (0/5/10/15) + 20 se ki ≥ 10
 | Campo | O que faz |
 |---|---|
 | `$TOQUE` | `[sequência, -, -]`: a sequência do HDAT 6 do primeiro toque (0 = o toque não faz nada) |
-| `$COMBO_1` … `$COMBO_4` | `[sequência, ki exigido × 100, -]`: as continuações. Cada uma sai se o jogador tocar de novo a até 88 px do oponente durante a janela da hitbox tipo 2 do DAC, com o oponente apanhando e com o ki pedido. Sequência 0 encerra o combo |
+| `$COMBO_1` … `$COMBO_4` | `[sequência, ki exigido × 100, -]`: as continuações. Cada uma sai se o jogador tocar de novo a até 88 px do oponente durante a janela aberta pela hitbox de ataque (flag 2) do DAC, com o oponente apanhando e com o ki pedido. Sequência 0 encerra o combo |
 
 A coluna marcada `-` não é lida.
 
