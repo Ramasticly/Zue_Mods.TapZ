@@ -4,7 +4,7 @@ Conferência do app (editor/simulador de golpes) contra o código do jogo (`TCBM
 Todas as referências `jogo:NNNN` são linhas desse arquivo; `app:Arquivo` é o arquivo do app. Foco principal: **cutscenes da flag 20**,
 que não ficavam iguais ao jogo.
 
-Baseline do 33: 347 testes OK. Agora: 3141 testes OK (ver a seção *Testes*).
+Baseline do 33: 347 testes OK. Agora: 3148 testes OK (ver a seção *Testes*).
 
 ---
 
@@ -933,6 +933,12 @@ Tocar numa sprite abre uma **grade de botões quadrados** (ícone + texto): Imag
   - **NORMAL e CHAR**: o que fica fora da faixa da câmera (cutscene Frente, Fundo na trava, efeito 328) passa a ser desenhado dentro do retângulo amarelo, com escala 1/zoom (`BattleSim.worldViewXform`, aplicado em `AttackView.beginKey`) — do tamanho e no lugar em que o jogo o mostra sobre o cenário ampliado. Sem zoom nada muda. O modo TELA já aplicava a matriz por camada e agora usa o zoom do md 29.
   - Na prévia só-cutscene (CHAR desligado), uma nota explica que ali a câmera é parada e como o zoom afeta cada camada.
 - Testes: `ActionZoomTest` (15: passos inteiros do md 29, chegada exata em W e T, retângulo amarelo, volta a 100 % em 12 ticks, W 100 e FRAMES 0 sem efeito, 90 % de longe, Frente dentro do retângulo com escala 0,5, Meio/Fundo sem mudança, TELA centrando o hit), `GameScreenTest` e `CinematicZoomTest` ajustados à matriz com T (os mesmos resultados de antes). **Só compilados/revisados**: o desenho em NORMAL/CHAR/TELA, o botão e a nota.
+
+### 3.9 Adicionar no meio do Frame não divide mais
+
+- **Problema**: com o ponteiro no meio de um Frame, **＋ → Som** e **＋ → Velocidade** dividiam o Frame no ponteiro (`FrameOps.addKey` começava com `splitAt`). Os outros itens do ＋ (hitbox, hurtbox, projétil, efeito, ações) e o toque na célula vazia já usavam o Frame inteiro.
+- **Agora**: `FrameOps.addKey` põe o item no **Frame inteiro** em que o ponteiro está, sem dividir; se o Frame já tem o item, nada muda e só a gaveta abre. O ponteiro fica onde estava. O Frame só se divide com **DIVIDIR** (inalterado). O ＋ sprite continua entrando como um Frame novo depois do Frame do ponteiro.
+- Testes: `TimelineEditTest` (+7: som no meio = 3 Frames e o mesmo total, som no Frame inteiro, Frame que já tem o som não muda, velocidade no Frame inteiro, ponteiro fora = null, DIVIDIR continua dividindo), `BattleTest` ajustado (keyframe no Frame inteiro). **Só compilado/revisado**: o ＋ na tela.
 
 ### 3.3 Menu AJUDA
 Botão **AJUDA** (barra de título, à direita): descreve, pela utilidade na edição e na execução de golpes, SALVAR, CHAR (POS/FLY/CHAR OBJ), SPRITES, LINKS, GOLPE SET, HITBOX, TEMPO, CENTRO, POUSO, TRANSIÇÃO, VIRAR, HIDE-EFF, FR-PREVIEW, TELA, e o resto da tela (MODO golpes/ANO, barra de tempo e transporte, DIVIDIR/DUPLICAR/EXCLUIR/DESFAZER, timeline com ＋ e #, ferramentas, DADOS/EDITAR, avisos). Texto em `HelpText` (Java puro; teste confere que todo botão do menu tem entrada). Seção nova **Speed x Accel**: speed = velocidade constante (px por tick); accel = soma o valor na velocidade atual a cada tick, vale só no frame em que está escrita e a velocidade acumulada só passa adiante com Manter velocidade (bit 64); exemplos de 250 px (speed 50 × 5 ticks) e 500 px (accel 50 × 5 ticks).
